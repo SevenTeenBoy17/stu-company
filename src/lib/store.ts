@@ -265,7 +265,7 @@ function seedRuns() {
   return [studentOne, studentTwo, studentThree];
 }
 
-function createSeedStore(): Store {
+export function createSeedStore(): Store {
   const users = createSeedUsers();
   const runs = seedRuns();
 
