@@ -1,0 +1,236 @@
+Brown Zone / Mr.Brown AI 经济沙盘
+教师电脑本地迁移与离线使用说明
+
+一、先回答最重要的问题
+
+1. 这个应用可以迁移到其他教师个人电脑上使用。
+2. 教师电脑未联网时，也可以使用核心功能：
+   - 官网首页、课程页、Demo 入口
+   - 学生端策略台、交易/储蓄/房产/创业模拟
+   - 市场信息页的教学观察池数据
+   - 历史复盘、本地 AI 兜底分析、雷达图本地维度
+   - 教师端、家长端、管理端的演示数据
+3. 未联网时不可使用或会降级的部分：
+   - Vercel 线上地址不可访问，只能访问本机 localhost
+   - 远端大模型实时回复不可用，会降级为本地教学兜底文案
+   - AllTick 实时股票行情不可用，会降级为本地教学观察池行情
+4. 离线使用前必须准备好 Node.js 和项目依赖。若教师电脑没有联网，也没有提前复制 node_modules，则无法现场 npm install。
+
+
+二、推荐迁移方式
+
+在原电脑上完成以下准备：
+
+1. 确认当前项目能正常构建：
+
+   npm run build
+
+2. 将整个 brown-zone-web 文件夹复制到 U 盘或移动硬盘。
+
+3. 如果教师电脑无法联网，务必一起复制 node_modules 文件夹。
+   也就是说，迁移包至少应包含：
+
+   - node_modules
+   - .next
+   - public
+   - src
+   - package.json
+   - package-lock.json
+   - next.config.ts
+   - postcss.config.mjs
+   - tsconfig.json
+   - .env.local 或 .env.example
+
+4. 以下内容不是运行必须项，可以不复制：
+
+   - .qa-screens
+   - .vercel
+   - .next-start*.log
+
+
+三、教师电脑需要提前安装什么
+
+1. 必须安装 Node.js。
+   推荐版本：Node.js 20 LTS 或 Node.js 22 LTS。
+
+2. 检查是否已安装：
+
+   node -v
+   npm -v
+
+3. 如果教师电脑完全离线，请提前在有网电脑下载 Node.js Windows x64 安装包，并拷贝到教师电脑安装。
+
+
+四、离线演示推荐启动方式
+
+注意：离线本地演示建议使用 npm run dev，不建议使用 npm run start。
+
+原因：
+生产模式 npm run start 会按线上环境设置安全 Cookie，在普通 http://localhost 下登录态可能不稳定。
+npm run dev 更适合教师电脑本地离线演示。
+
+启动步骤：
+
+1. 打开 PowerShell 或命令提示符。
+
+2. 进入项目目录，例如：
+
+   cd /d D:\BrownZone\brown-zone-web
+
+3. 启动本地应用：
+
+   npm run dev -- --hostname 127.0.0.1 --port 3000
+
+4. 浏览器打开：
+
+   http://127.0.0.1:3000
+
+5. Demo 登录页：
+
+   http://127.0.0.1:3000/demo
+
+6. 停止应用：
+
+   在启动窗口按 Ctrl + C
+
+
+五、离线环境建议的 .env.local 设置
+
+如果教师电脑没有联网，建议将 .env.local 中远端服务 key 留空，避免断网时等待超时。
+
+可使用如下内容：
+
+APP_URL=http://127.0.0.1:3000
+SESSION_SECRET=brown-zone-local-teacher-demo-secret
+DATABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+AI_API_KEY=
+AI_MODEL=claude-sonnet-4-6
+AI_BASE_URL_PRIMARY=https://gpt-agent.cc/v1
+AI_BASE_URL_SECONDARY=https://gpt-agent.cc
+ALLTICK_API_KEY=
+ALLTICK_STOCK_BASE_URL=https://quote.alltick.co/quote-stock-b-api
+
+说明：
+
+1. AI_API_KEY 留空后，AI 导师会直接使用本地教学兜底分析。
+2. ALLTICK_API_KEY 留空后，市场信息会直接使用本地教学观察池。
+3. 如果教师电脑有网络，并希望使用远端 AI 和实时行情，可以填回对应 key。
+4. 不建议把包含真实 API Key 的 .env.local 随意发给学生或公开传播。
+
+
+六、内置演示账号
+
+所有账号密码相同：
+
+密码：
+BrownZone2026!
+
+学生端：
+student@brownzone.ai
+
+教师端：
+teacher@brownzone.ai
+
+家长端：
+parent@brownzone.ai
+
+管理端：
+admin@brownzone.ai
+
+
+七、如果同一教室内多台设备访问教师电脑
+
+如果教师电脑和学生设备在同一个局域网，可以让教师电脑作为本地服务器。
+
+1. 教师电脑启动：
+
+   npm run dev -- --hostname 0.0.0.0 --port 3000
+
+2. 查看教师电脑局域网 IP，例如：
+
+   ipconfig
+
+3. 学生设备访问：
+
+   http://教师电脑IP:3000
+
+示例：
+
+   http://192.168.1.23:3000
+
+注意：
+
+1. 教师电脑防火墙可能会弹出 Node.js 访问提示，请允许专用网络访问。
+2. 局域网访问不需要互联网，但需要同一 Wi-Fi 或同一局域网。
+3. 若学校网络隔离学生设备，则学生设备可能无法访问教师电脑。
+
+
+八、常见问题
+
+1. 浏览器打不开 localhost
+
+检查启动窗口是否仍在运行。
+如果 3000 端口被占用，可换端口：
+
+   npm run dev -- --hostname 127.0.0.1 --port 3001
+
+然后访问：
+
+   http://127.0.0.1:3001
+
+2. 登录后又回到登录页
+
+请确认本地演示使用的是：
+
+   npm run dev
+
+不要优先使用：
+
+   npm run start
+
+3. 离线时 AI 回复不是真正远端大模型
+
+这是正常现象。离线时 AI 会使用本地教学兜底模式，仍可用于课堂讲解和演示，但不是远端模型实时生成。
+
+4. 离线时股票行情不是实时行情
+
+这是正常现象。离线时市场信息会使用教学观察池数据，适合课堂演示，不代表真实实时行情。
+
+5. 学生操作记录是否永久保存
+
+当前版本使用应用内存演示数据。
+在同一次本地服务运行期间，学生操作会保留。
+如果关闭服务或重启电脑，数据会恢复到内置演示初始状态。
+如果后续需要长期保存班级数据，需要接入数据库或单独做本地持久化版本。
+
+6. 是否可以直接双击 HTML 文件打开
+
+不可以。
+这是 Next.js 网页应用，需要通过 Node.js 启动本地服务后访问 localhost。
+
+
+九、建议的课堂使用流程
+
+1. 上课前 5 分钟打开教师电脑。
+2. 进入项目目录。
+3. 运行：
+
+   npm run dev -- --hostname 127.0.0.1 --port 3000
+
+4. 打开：
+
+   http://127.0.0.1:3000/demo
+
+5. 用学生端账号进入策略台演示。
+6. 再切换教师端账号查看课堂面板。
+7. 需要局域网多人访问时，改用 0.0.0.0 启动方式。
+
+
+十、最终判断
+
+可以迁移。
+可以离线使用核心教学功能。
+离线时会自动失去远端 AI、实时行情、Vercel 在线访问能力，但应用不会因此无法运行。
+如果教师电脑完全离线，请务必提前安装 Node.js，并复制完整项目文件夹，尤其是 node_modules。

@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f6fb;
+  --foreground: #101726;
+  --surface: #ffffff;
+  --surface-muted: #eef2f8;
+  --brand: #f08a38;
+  --brand-soft: #ffe2c4;
+  --brand-ink: #1f2638;
+  --muted: #63708a;
+  --line: rgba(16, 23, 38, 0.1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(240, 138, 56, 0.08), transparent 22%),
+    linear-gradient(180deg, #f5f7fb 0%, #eef2f7 100%);
+  color: var(--foreground);
+  overflow-x: clip;
+  font-family:
+    var(--font-body),
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    sans-serif;
+}
+
+body[data-scroll-locked="true"] {
+  overflow: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(240, 138, 56, 0.18);
+}
+
+.font-display {
+  font-family:
+    var(--font-display),
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    sans-serif;
+}
+
+.page-shell {
+  margin-inline: auto;
+  width: min(1440px, calc(100vw - 1.5rem - var(--safe-left) - var(--safe-right)));
+}
+
+.panel {
+  border: 1px solid rgba(16, 23, 38, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 24px 70px rgba(15, 23, 39, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.grid-strokes {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-position: center center;
+  background-size: 64px 64px;
+}
+
+@keyframes stock-ticker-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.stock-ticker-marquee {
+  display: inline-flex;
+  width: max-content;
+  min-width: 100%;
+  animation: stock-ticker-marquee var(--ticker-duration, 30s) linear infinite;
+  will-change: transform;
+}
+
+.safe-bottom-offset {
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+.safe-inline-offset {
+  padding-left: calc(1rem + var(--safe-left));
+  padding-right: calc(1rem + var(--safe-right));
+}
+
+.safe-floating-offset {
+  bottom: calc(1rem + var(--safe-bottom));
+  right: calc(1rem + var(--safe-right));
+}
+
+.safe-drawer-offset {
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+[data-history-ai-review="true"] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    width: min(1440px, calc(100vw - 3rem - var(--safe-left) - var(--safe-right)));
+  }
+
+  .safe-inline-offset {
+    padding-left: calc(1.5rem + var(--safe-left));
+    padding-right: calc(1.5rem + var(--safe-right));
+  }
+
+  .safe-floating-offset {
+    bottom: calc(1.5rem + var(--safe-bottom));
+    right: calc(1.5rem + var(--safe-right));
+  }
+}

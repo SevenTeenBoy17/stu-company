@@ -1,0 +1,2 @@
+export const MARKET_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+export const MARKET_REFRESH_INTERVAL_LABEL = "10 分钟";
