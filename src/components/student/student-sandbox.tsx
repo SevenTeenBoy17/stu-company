@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
-import { MessageSquareQuote } from "lucide-react";
+import {
+  ArrowRight,
+  Landmark,
+  LineChart,
+  MessageSquareQuote,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  WalletCards,
+} from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
 import { StudentAllocationPanel } from "@/components/student/student-allocation-panel";
@@ -10,7 +19,7 @@ import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
-import type { PortfolioIntel, SimulationState, TutorRadarPayload } from "@/lib/types";
+import type { ActionLog, PortfolioIntel, SimulationState, TutorRadarPayload } from "@/lib/types";
 import { cn, formatCurrency, formatPercent, getMarketMoveClasses } from "@/lib/utils";
 
 type TradeForm = {
@@ -20,12 +29,39 @@ type TradeForm = {
   orderMode: "market" | "limit";
 };
 
+type ActionTab = "trade" | "bank" | "property" | "venture";
+
 const defaultTrade: TradeForm = {
   assetId: "asset-etf",
   side: "buy",
   quantity: 20,
   orderMode: "market",
 };
+
+const actionTabs: Array<{ id: ActionTab; label: string; hint: string }> = [
+  { id: "trade", label: "交易", hint: "股票 / ETF / 债券" },
+  { id: "bank", label: "现金流", hint: "储蓄、贷款与还款" },
+  { id: "property", label: "房产", hint: "模拟买入或退出" },
+  { id: "venture", label: "创业", hint: "投入或退出项目" },
+];
+
+const actionTypeLabel: Record<ActionLog["type"], string> = {
+  trade: "交易",
+  bank: "现金流",
+  property: "房产",
+  venture: "创业",
+  advance: "回合推进",
+};
+
+function actionDirection(amount: number) {
+  if (amount > 0) return "流入";
+  if (amount < 0) return "流出";
+  return "记录";
+}
+
+function currentRank(state: SimulationState) {
+  return state.leaderboard.find((entry) => entry.userId === state.user.id)?.rank ?? state.leaderboard.length;
+}
 
 export function StudentSandbox({ initialState }: { initialState: SimulationState }) {
   const [state, setState] = useState<SimulationState | null>(initialState);
@@ -35,6 +71,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const [tutorRadar, setTutorRadar] = useState<TutorRadarPayload>(() =>
     buildTutorRadarPayload(initialState),
   );
+  const [activeTab, setActiveTab] = useState<ActionTab>("trade");
   const [intelPending, setIntelPending] = useState(false);
   const [radarPending, setRadarPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -90,15 +127,11 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         cache: "no-store",
         signal: controller.signal,
       });
-
-      if (!response.ok) {
-        return;
+      if (response.ok) {
+        setPortfolioIntel((await response.json()) as PortfolioIntel);
       }
-
-      const payload = (await response.json()) as PortfolioIntel;
-      setPortfolioIntel(payload);
     } catch {
-      // 保留本地教学兜底，不让面板因为行情接口抖动而空掉。
+      // Keep the local teaching fallback when the market source is unstable.
     } finally {
       if (!controller.signal.aborted) {
         setIntelPending(false);
@@ -109,18 +142,9 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   async function loadTutorRadarForState(currentState: SimulationState) {
     setRadarPending(true);
     try {
-      const response = await fetch("/api/ai/radar-chart", {
-        method: "POST",
-        cache: "no-store",
-      });
+      const response = await fetch("/api/ai/radar-chart", { method: "POST", cache: "no-store" });
       const payload = (await response.json()) as TutorRadarPayload & { error?: string };
-
-      if (!response.ok || payload.error) {
-        setTutorRadar(buildTutorRadarPayload(currentState));
-        return;
-      }
-
-      setTutorRadar(payload);
+      setTutorRadar(response.ok && !payload.error ? payload : buildTutorRadarPayload(currentState));
     } catch {
       setTutorRadar(buildTutorRadarPayload(currentState));
     } finally {
@@ -129,14 +153,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   }
 
   const refreshTutorRadarOnMount = useEffectEvent(async () => {
-    if (!state) return;
-    await loadTutorRadarForState(state);
+    if (state) {
+      await loadTutorRadarForState(state);
+    }
   });
-
-  async function refreshTutorRadar() {
-    if (!state) return;
-    await loadTutorRadarForState(state);
-  }
 
   useEffect(() => {
     if (!state) return;
@@ -146,59 +166,105 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   }, [state]);
 
   useEffect(() => {
-    if (!studentId) return;
-    void refreshTutorRadarOnMount();
+    if (studentId) {
+      void refreshTutorRadarOnMount();
+    }
   }, [studentId]);
 
   useEffect(() => {
     if (!studentId) return;
-
-    const timer = window.setInterval(() => {
-      void refreshPortfolioIntel();
-    }, MARKET_REFRESH_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(timer);
-    };
+    const timer = window.setInterval(() => void refreshPortfolioIntel(), MARKET_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(timer);
   }, [studentId]);
 
   useEffect(() => {
-    return () => {
-      refreshControllerRef.current?.abort();
-    };
+    return () => refreshControllerRef.current?.abort();
   }, []);
 
   if (!state) {
     return (
       <div className="panel rounded-[2rem] p-8">
-        <p className="text-[15px] font-semibold text-slate-500">正在加载学生沙盘...</p>
+        <p className="text-base font-semibold text-slate-500">正在加载学生沙盘...</p>
       </div>
     );
   }
 
   const latestSnapshot = state.run.snapshots.at(-1);
-  const holdingsValue = state.market.assets.reduce((total, asset) => {
-    const holding = state.run.holdings.find((item) => item.assetId === asset.id);
-    return total + (holding ? holding.quantity * asset.currentPrice : 0);
-  }, 0);
+  const previousSnapshot = state.run.snapshots.at(-2);
+  const netWorth = latestSnapshot?.netWorth ?? state.run.cash + state.run.savings - state.run.debt;
+  const netWorthDelta = previousSnapshot ? netWorth - previousSnapshot.netWorth : 0;
+  const holdingsRows = state.market.assets
+    .map((asset) => {
+      const holding = state.run.holdings.find((item) => item.assetId === asset.id);
+      const quantity = holding?.quantity ?? 0;
+      const value = quantity * asset.currentPrice;
+      const pnl = holding ? (asset.currentPrice - holding.averageCost) * holding.quantity : 0;
+      return { asset, quantity, value, pnl };
+    })
+    .filter((row) => row.quantity > 0)
+    .sort((a, b) => b.value - a.value);
+  const holdingsValue = holdingsRows.reduce((total, row) => total + row.value, 0);
+  const rank = currentRank(state);
+  const recentActions = state.run.actionLog.slice().reverse().slice(0, 7);
+  const topLeaderboard = state.leaderboard.slice(0, 5);
+
+  const heroMetrics = [
+    {
+      label: "当前净值",
+      value: formatCurrency(netWorth),
+      meta: netWorthDelta === 0 ? "本回合保持观察" : `较上回合 ${formatCurrency(netWorthDelta)}`,
+      icon: WalletCards,
+      money: true,
+    },
+    { label: "可用现金", value: formatCurrency(state.run.cash), meta: "行动前先留安全垫", icon: Landmark, money: true },
+    {
+      label: "持仓市值",
+      value: formatCurrency(holdingsValue),
+      meta: `${holdingsRows.length} 个资产正在观察`,
+      icon: LineChart,
+      money: true,
+    },
+    { label: "班级排名", value: `#${rank}`, meta: state.classroom.name, icon: Trophy, money: false },
+    {
+      label: "风险评分",
+      value: `${latestSnapshot?.riskScore ?? "--"}`,
+      meta: `纪律分 ${latestSnapshot?.disciplineScore ?? "--"}`,
+      icon: ShieldCheck,
+      money: false,
+    },
+  ];
+
+  const submitAction = (body?: object, url = "/api/sim/actions") => {
+    startTransition(() => {
+      void mutate(url, body).catch((error) => {
+        setMessage(error instanceof Error ? error.message : "操作失败，请稍后再试。");
+      });
+    });
+  };
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-24">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "当前净值", value: latestSnapshot ? formatCurrency(latestSnapshot.netWorth) : "--", money: true },
-          { label: "可用现金", value: formatCurrency(state.run.cash), money: true },
-          { label: "持仓市值", value: formatCurrency(holdingsValue), money: true },
-          { label: "风险评分", value: `${latestSnapshot?.riskScore ?? "--"}`, money: false },
-        ].map((item) => (
-          <div key={item.label} className="panel rounded-[1.8rem] p-5 md:p-6">
-            <p className="text-[15px] font-semibold text-slate-500">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-950 md:text-[2.2rem]">
-              {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
-            </p>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-6 pb-24">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {heroMetrics.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="panel min-w-0 rounded-[2rem] p-5 transition-transform hover:-translate-y-1 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-base font-bold text-slate-500">{item.label}</p>
+                  <p className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
+                    {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
+                  </p>
+                </div>
+                <span className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
+                  <Icon className="h-5 w-5" />
+                </span>
+              </div>
+              <p className="mt-4 text-sm font-semibold text-slate-500">{item.meta}</p>
+            </div>
+          );
+        })}
+      </section>
 
       <StudentAllocationPanel
         intel={portfolioIntel}
@@ -211,72 +277,57 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 [&_label>span]:text-[15px] [&_label>span]:font-semibold [&_label>span]:text-slate-700">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f08a38]">
-                回合 {state.run.currentRound}
-              </p>
-              <h2 className="mt-3 text-[2rem] font-semibold text-slate-950 md:text-[2.25rem]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.26fr)_minmax(340px,0.74fr)]">
+        <section id="student-action-panel" className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 xl:sticky xl:top-6 xl:self-start">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+              <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">
                 {state.market.round.headline}
               </h2>
-              <p className="mt-3 max-w-3xl text-[15px] leading-8 text-slate-600 md:text-base">
-                {state.market.event.description}
-              </p>
+              <p className="mt-3 text-base leading-8 text-slate-600">{state.market.event.description}</p>
             </div>
             <button
               type="button"
               disabled={pending}
-              onClick={() =>
-                startTransition(() => {
-                  void mutate("/api/sim/advance-round");
-                })
-              }
-              className="rounded-full bg-slate-950 px-5 py-3.5 text-[15px] font-semibold text-white disabled:opacity-60"
+              onClick={() => submitAction(undefined, "/api/sim/advance-round")}
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
             >
-              推进到下一回合
+              推进下一回合
+              <ArrowRight className="ml-2 h-4 w-4" />
             </button>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {state.market.assets.map((asset) => (
-              <div
-                key={asset.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setTradeForm((current) => ({ ...current, assetId: asset.id }));
-                  }
-                }}
-                className={cn(
-                  "rounded-[1.5rem] border p-5 text-left transition-colors",
-                  tradeForm.assetId === asset.id
-                    ? "border-[#f08a38] bg-[#fff4e9]"
-                    : "border-slate-200 bg-slate-950/[0.02]",
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-950">{asset.name}</p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      {asset.symbol}
-                    </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {state.market.assets.map((asset) => {
+              const move = getMarketMoveClasses(asset.dayChange);
+              const active = tradeForm.assetId === asset.id;
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
+                  className={cn(
+                    "min-w-0 rounded-[1.5rem] border p-4 text-left transition-all duration-200",
+                    active
+                      ? "border-orange-400 bg-orange-50 shadow-[0_18px_42px_rgba(240,138,56,0.18)]"
+                      : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-white",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-lg font-black text-slate-950">{asset.name}</p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
+                    </div>
+                    <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
+                      {formatPercent(asset.dayChange)}
+                    </span>
                   </div>
-                  <span className={cn("text-sm font-semibold", getMarketMoveClasses(asset.dayChange).text)}>
-                    {formatPercent(asset.dayChange)}
-                  </span>
-                </div>
-                <p className="mt-3 text-[1.9rem] font-semibold">
-                  <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
-                </p>
-                <p className="mt-2 text-[15px] leading-7 text-slate-600">{asset.description}</p>
-                <div className="mt-4">
-                  <button
-                    type="button"
+                  <p className="mt-3 text-2xl font-black text-slate-950">
+                    <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{asset.description}</p>
+                  <span
                     onClick={(event) => {
                       event.stopPropagation();
                       dispatchAssistantOpen({
@@ -284,143 +335,278 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                         assetId: asset.id,
                       });
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
+                    className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+                    role="button"
+                    tabIndex={0}
                   >
-                    <MessageSquareQuote className="h-3.5 w-3.5" />
+                    <MessageSquareQuote className="h-4 w-4" />
                     询问 AI
-                  </button>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
+            <div className="grid gap-2 sm:grid-cols-4">
+              {actionTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "rounded-2xl px-4 py-3 text-left transition-colors",
+                    activeTab === tab.id ? "bg-white shadow-sm" : "hover:bg-white/70",
+                  )}
+                >
+                  <span className="block text-base font-black text-slate-950">{tab.label}</span>
+                  <span className="mt-1 block text-xs font-semibold text-slate-400">{tab.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-5">
+            {activeTab === "trade" ? (
+              <div className="space-y-5">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-bold text-slate-600">方向</span>
+                    <select
+                      value={tradeForm.side}
+                      onChange={(event) =>
+                        setTradeForm((current) => ({ ...current, side: event.target.value as TradeForm["side"] }))
+                      }
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                    >
+                      <option value="buy">买入</option>
+                      <option value="sell">卖出</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-bold text-slate-600">订单模式</span>
+                    <select
+                      value={tradeForm.orderMode}
+                      onChange={(event) =>
+                        setTradeForm((current) => ({ ...current, orderMode: event.target.value as TradeForm["orderMode"] }))
+                      }
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                    >
+                      <option value="market">市价</option>
+                      <option value="limit">限价</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-bold text-slate-600">数量</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={tradeForm.quantity}
+                      onChange={(event) =>
+                        setTradeForm((current) => ({ ...current, quantity: Number(event.target.value) }))
+                      }
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  disabled={pending || !selectedAsset}
+                  onClick={() =>
+                    submitAction({
+                      type: "trade",
+                      assetId: tradeForm.assetId,
+                      side: tradeForm.side,
+                      quantity: tradeForm.quantity,
+                      orderMode: tradeForm.orderMode,
+                    })
+                  }
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-orange-400 px-5 text-base font-black text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  提交{tradeForm.side === "buy" ? "买入" : "卖出"}指令
+                </button>
+              </div>
+            ) : null}
+
+            {activeTab === "bank" ? (
+              <div className="space-y-5">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-slate-600">金额</span>
+                  <input
+                    type="number"
+                    min={1000}
+                    value={bankAmount}
+                    onChange={(event) => setBankAmount(Number(event.target.value))}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "转入储蓄", payload: { type: "bank", action: "deposit", amount: bankAmount } },
+                    { label: "提取储蓄", payload: { type: "bank", action: "withdraw", amount: bankAmount } },
+                    { label: "申请贷款", payload: { type: "bank", action: "loan", amount: bankAmount } },
+                    { label: "偿还贷款", payload: { type: "bank", action: "repay", amount: bankAmount } },
+                  ].map(({ label, payload }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => submitAction(payload)}
+                      className="min-h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
+            ) : null}
+
+            {activeTab === "property" ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { label: "买入一套模拟房产", payload: { type: "property", action: "buy" } },
+                  { label: "出售一套模拟房产", payload: { type: "property", action: "sell" } },
+                ].map(({ label, payload }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => submitAction(payload)}
+                    className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {activeTab === "venture" ? (
+              <div className="space-y-5">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-bold text-slate-600">创业投入金额</span>
+                  <input
+                    type="number"
+                    min={2000}
+                    value={ventureAmount}
+                    onChange={(event) => setVentureAmount(Number(event.target.value))}
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                  />
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "投入创业", payload: { type: "venture", action: "invest", amount: ventureAmount } },
+                    { label: "退出创业", payload: { type: "venture", action: "exit" } },
+                  ].map(({ label, payload }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => submitAction(payload)}
+                      className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
-        </section>
 
-        <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f08a38]">统一操作台</p>
-          <h2 className="mt-3 text-[2rem] font-semibold text-slate-950">
-            订单、现金流与扩展动作都在这里完成
-          </h2>
-
-          <div className="mt-6 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm text-slate-600">方向</span>
-                <select
-                  value={tradeForm.side}
-                  onChange={(event) =>
-                    setTradeForm((current) => ({
-                      ...current,
-                      side: event.target.value as TradeForm["side"],
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
-                >
-                  <option value="buy">买入</option>
-                  <option value="sell">卖出</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm text-slate-600">订单模式</span>
-                <select
-                  value={tradeForm.orderMode}
-                  onChange={(event) =>
-                    setTradeForm((current) => ({
-                      ...current,
-                      orderMode: event.target.value as TradeForm["orderMode"],
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
-                >
-                  <option value="market">市价</option>
-                  <option value="limit">限价</option>
-                </select>
-              </label>
+          {message ? (
+            <div className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">
+              {message}
             </div>
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-600">数量</span>
-              <input
-                type="number"
-                min={1}
-                value={tradeForm.quantity}
-                onChange={(event) =>
-                  setTradeForm((current) => ({
-                    ...current,
-                    quantity: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={pending || !selectedAsset}
-              onClick={() =>
-                startTransition(() => {
-                  void mutate("/api/sim/actions", {
-                    type: "trade",
-                    assetId: tradeForm.assetId,
-                    side: tradeForm.side,
-                    quantity: tradeForm.quantity,
-                    orderMode: tradeForm.orderMode,
-                  });
-                })
-              }
-              className="w-full rounded-full bg-[#f08a38] px-5 py-3.5 text-[15px] font-semibold text-slate-950 disabled:opacity-60"
-            >
-              提交{tradeForm.side === "buy" ? "买入" : "卖出"}指令
-            </button>
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {[
-              { label: "转入储蓄", payload: { type: "bank", action: "deposit", amount: bankAmount } },
-              { label: "提取储蓄", payload: { type: "bank", action: "withdraw", amount: bankAmount } },
-              { label: "买入房产", payload: { type: "property", action: "buy" } },
-              { label: "投入创业", payload: { type: "venture", action: "invest", amount: ventureAmount } },
-            ].map(({ label, payload }) => (
-              <button
-                key={label}
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  startTransition(() => {
-                    void mutate("/api/sim/actions", payload);
-                  })
-                }
-                className="rounded-[1.4rem] border border-slate-200 bg-slate-950/[0.03] px-4 py-3 text-sm font-semibold text-slate-700 disabled:opacity-60"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <input
-              type="number"
-              min={1000}
-              value={bankAmount}
-              onChange={(event) => setBankAmount(Number(event.target.value))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
-            />
-            <input
-              type="number"
-              min={2000}
-              value={ventureAmount}
-              onChange={(event) => setVentureAmount(Number(event.target.value))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
-            />
-          </div>
+          ) : null}
         </section>
+
+        <aside className="min-w-0 space-y-6">
+          <section className="panel rounded-[2rem] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Holdings</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">持仓与现金温度</h3>
+              </div>
+              <Sparkles className="h-5 w-5 text-orange-500" />
+            </div>
+            <div className="mt-5 space-y-3">
+              {holdingsRows.length > 0 ? (
+                holdingsRows.map((row) => (
+                  <div key={row.asset.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-black text-slate-950">{row.asset.name}</p>
+                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          {row.asset.symbol} · {row.quantity} 份
+                        </p>
+                      </div>
+                      <p className={cn("text-sm font-black", getMarketMoveClasses(row.pnl).text)}>
+                        {formatCurrency(row.pnl)}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-sm font-bold text-slate-500">
+                      <span>市值</span>
+                      <MoneyText>{formatCurrency(row.value)}</MoneyText>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500">
+                  暂无持仓。可以先观察资产卡，再用交易面板提交模拟指令。
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="panel rounded-[2rem] p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Timeline</p>
+            <h3 className="mt-2 text-2xl font-black text-slate-950">最近操作流</h3>
+            <div className="mt-5 space-y-3">
+              {recentActions.length > 0 ? (
+                recentActions.map((entry) => (
+                  <div key={entry.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-black text-slate-950">{entry.label}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                          第 {entry.round} 回合 · {actionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dispatchAssistantOpen({
+                            prompt: `请帮我复盘这笔历史操作“${entry.label}”，它在当前回合是否合理？`,
+                            actionLogId: entry.id,
+                          })
+                        }
+                        className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+                      >
+                        问 AI
+                      </button>
+                    </div>
+                    {entry.amount !== 0 ? (
+                      <p className="mt-3 text-base font-black text-orange-700">
+                        <MoneyText>{formatCurrency(entry.amount)}</MoneyText>
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500">
+                  推进或提交操作后，这里会形成可复盘的行动链。
+                </div>
+              )}
+            </div>
+          </section>
+        </aside>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.82fr)]">
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f08a38]">
-                KeyAI / Mr.Brown
-              </p>
-              <h2 className="mt-3 text-[2rem] font-semibold text-slate-950">实时导师点评</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">KeyAI / Mr.Brown</p>
+              <h2 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">实时导师点评</h2>
             </div>
             <button
               type="button"
@@ -430,88 +616,65 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   autoSend: true,
                 })
               }
-              className="rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
+              className="inline-flex min-h-12 items-center rounded-full border border-slate-200 bg-white px-4 text-base font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
             >
               获取 AI 复盘
             </button>
           </div>
-          <div className="mt-6 rounded-[1.6rem] bg-slate-950 p-5 text-white">
-            <p className="text-sm leading-8 text-white/72">
-              {state.run.lastInsight ?? "等待新的回合总结..."}
+          <div className="mt-6 rounded-[2rem] bg-slate-950 p-6 text-white">
+            <p className="text-base leading-8 text-white/76">
+              {state.run.lastInsight ?? "等待新的回合总结。当前建议先看风险、现金垫和单一资产集中度，再决定是否行动。"}
             </p>
           </div>
-          <StudentTutorRadar
-            payload={tutorRadar}
-            loading={radarPending}
-            onRefresh={() => {
-              void refreshTutorRadar();
-            }}
-          />
-          {message ? (
-            <div className="mt-4 rounded-[1.4rem] bg-[#fff4e9] px-4 py-3 text-sm font-medium text-[#7a4717]">
-              {message}
-            </div>
-          ) : null}
+          <div className="mt-5">
+            <StudentTutorRadar
+              payload={tutorRadar}
+              loading={radarPending}
+              onRefresh={() => {
+                void loadTutorRadarForState(state);
+              }}
+            />
+          </div>
         </section>
 
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#f08a38]">班级榜单与操作流</p>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-[1.6rem] bg-slate-950/[0.03] p-4">
-              <h3 className="text-lg font-semibold text-slate-950">班级榜</h3>
-              <div className="mt-4 space-y-3">
-                {state.leaderboard.map((entry) => (
-                  <div
-                    key={entry.userId}
-                    className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm"
-                  >
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Leaderboard</p>
+          <h2 className="mt-3 text-3xl font-black text-slate-950">排行榜与当前位置</h2>
+          <div className="mt-5 space-y-3">
+            {topLeaderboard.map((entry) => {
+              const isCurrentUser = entry.userId === state.user.id;
+              return (
+                <div
+                  key={entry.userId}
+                  className={cn(
+                    "rounded-[1.5rem] border p-4 transition-colors",
+                    isCurrentUser ? "border-orange-400 bg-orange-50" : "border-slate-200 bg-slate-50",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-950">
+                      <p className="text-lg font-black text-slate-950">
                         #{entry.rank} {entry.name}
                       </p>
-                      <p className="text-[15px] font-semibold text-slate-500">纪律分 {entry.disciplineScore}</p>
+                      <p className="mt-1 text-sm font-bold text-slate-500">纪律分 {entry.disciplineScore}</p>
                     </div>
-                    <p className="font-semibold">
+                    <p className="text-lg font-black text-orange-700">
                       <MoneyText>{formatCurrency(entry.netWorth)}</MoneyText>
                     </p>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[1.6rem] bg-slate-950/[0.03] p-4">
-              <h3 className="text-lg font-semibold text-slate-950">最近动作</h3>
-              <div className="mt-4 space-y-3">
-                {state.run.actionLog.slice(0, 5).map((entry) => (
-                  <div key={entry.id} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-slate-950">{entry.label}</p>
-                        <p className="mt-1 text-[15px] font-semibold text-slate-500">
-                          第 {entry.round} 回合 ·{" "}
-                          {entry.amount !== 0 ? <MoneyText>{formatCurrency(entry.amount)}</MoneyText> : "节奏推进"}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          dispatchAssistantOpen({
-                            prompt: `请帮我复盘这笔动作“${entry.label}”，它在当前回合是否合理？`,
-                            actionLogId: entry.id,
-                          })
-                        }
-                        className="shrink-0 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
-                      >
-                        问 AI
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </div>
+          {topLeaderboard.every((entry) => entry.userId !== state.user.id) ? (
+            <div className="mt-4 rounded-[1.5rem] border border-orange-400 bg-orange-50 p-4">
+              <p className="text-base font-black text-slate-950">我的当前位置：#{rank}</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">继续提高纪律分和现金垫，排名会更稳。</p>
+            </div>
+          ) : null}
         </section>
       </div>
+
     </div>
   );
 }

@@ -1,0 +1,9 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Teacher role avatar">
+  <rect width="160" height="160" rx="48" fill="#101726"/>
+  <rect x="35" y="46" width="90" height="68" rx="18" fill="#fff8ee"/>
+  <path d="M54 68H106M54 86H92" stroke="#303d56" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="56" cy="113" r="13" fill="#f08a38"/>
+  <circle cx="104" cy="113" r="13" fill="#78d6bf"/>
+  <path d="M37 42L80 24L123 42L80 58L37 42Z" fill="#ffb967"/>
+  <path d="M119 48V78" stroke="#ffb967" stroke-width="6" stroke-linecap="round"/>
+</svg>

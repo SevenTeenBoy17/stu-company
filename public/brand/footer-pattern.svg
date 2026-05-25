@@ -1,0 +1,24 @@
+<svg width="1440" height="420" viewBox="0 0 1440 420" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <radialGradient id="amber" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1180 62) rotate(143) scale(420 260)">
+      <stop stop-color="#f08a38" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#f08a38" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="campus" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(236 296) rotate(-24) scale(390 220)">
+      <stop stop-color="#78d6bf" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#78d6bf" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.4" fill="#ffffff" opacity=".08"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="420" fill="#101726"/>
+  <rect width="1440" height="420" fill="url(#amber)"/>
+  <rect width="1440" height="420" fill="url(#campus)"/>
+  <rect width="1440" height="420" fill="url(#dots)"/>
+  <path d="M0 288C158 224 288 224 444 288C614 359 770 351 928 282C1116 201 1284 220 1440 284V420H0V288Z" fill="#0b1020" opacity=".62"/>
+  <path d="M90 328H1350" stroke="#ffffff" stroke-opacity=".08"/>
+  <path d="M220 329V246L305 207L390 246V329" stroke="#ffffff" stroke-opacity=".09" stroke-width="4"/>
+  <path d="M1050 329V238L1135 194L1220 238V329" stroke="#ffffff" stroke-opacity=".09" stroke-width="4"/>
+  <circle cx="720" cy="314" r="54" stroke="#f08a38" stroke-opacity=".18" stroke-width="8"/>
+</svg>

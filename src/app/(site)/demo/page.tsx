@@ -1,12 +1,13 @@
 import { DemoPortal } from "@/components/demo/demo-portal";
 import { getQuickDemoCredentials } from "@/lib/store";
 
+// UI-DEBT: Demo page still needs richer form empty/error-state review; see docs/ui-spec/audit-2026-05-25.md.
 export default function DemoPage() {
   return (
     <div className="pb-24">
       <section className="page-shell pt-8">
-        <div className="overflow-hidden rounded-[2.6rem] bg-[#0b1020] px-6 py-8 text-white shadow-[0_30px_90px_rgba(11,16,32,0.34)] sm:px-10 sm:py-12">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">Demo Portal</p>
+        <div className="bz-ink-panel overflow-hidden rounded-3xl px-6 py-8 sm:px-10 sm:py-12">
+          <p className="bz-eyebrow-inverse">Demo Portal</p>
           <h1 className="font-display mt-5 text-4xl font-semibold leading-tight sm:text-5xl">
             邀请制、样例账号与多角色闭环，都从这里进入。
           </h1>

@@ -4,6 +4,7 @@ import { TeacherConsole } from "@/components/teacher/teacher-console";
 import { getCurrentUser } from "@/lib/session-user";
 import { getTeacherOverview } from "@/lib/store";
 
+// UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function TeacherPage() {
   const user = await getCurrentUser();
 

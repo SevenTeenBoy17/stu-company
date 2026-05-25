@@ -13,6 +13,7 @@ import { ModuleIllustration } from "@/components/site/module-illustration";
 import { SectionReveal } from "@/components/site/section-reveal";
 import { StockTickerTape } from "@/components/site/stock-ticker-tape";
 
+// UI-DEBT: Home page still needs explicit page-level loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function HomePage() {
   const tickerPayload = await getTickerTapePayload();
 
@@ -20,19 +21,19 @@ export default async function HomePage() {
     <div className="overflow-x-clip pb-20 sm:pb-24">
       <StockTickerTape initialPayload={tickerPayload} />
 
-      <section className="page-shell grid gap-6 pt-6 md:gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-10">
-        <SectionReveal className="rounded-[2rem] bg-[#0b1020] px-5 py-7 text-white shadow-[0_34px_100px_rgba(11,16,32,0.34)] sm:rounded-[2.5rem] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">AI 驱动决策 · 沉浸式市场模拟</p>
-          <h1 className="font-display mt-5 max-w-3xl text-[2.35rem] font-semibold leading-[1.02] sm:mt-6 sm:text-5xl lg:text-[4.4rem]">
+      <section className="page-shell grid gap-6 pt-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pt-10">
+        <SectionReveal className="bz-ink-panel rounded-3xl px-5 py-7 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+          <p className="bz-eyebrow-inverse">AI 驱动决策 · 沉浸式市场模拟</p>
+          <h1 className="font-display mt-5 max-w-3xl text-display-lg font-semibold leading-tight sm:mt-6 sm:text-display-xl lg:text-display-2xl">
             用 AI 把经济学装进游戏里，让课堂真正进入决策现场。
           </h1>
-          <p className="mt-5 max-w-2xl text-[15px] leading-7 text-white/70 sm:mt-6 sm:text-lg sm:leading-8">
+          <p className="mt-5 max-w-2xl text-body leading-7 text-white/70 sm:mt-6 sm:text-body-lg sm:leading-8">
             Brown Zone 以 Mr.Brown AI 经济沙盘为核心，把 AP 经济学考点、资产配置、家校共育和排行榜挑战做成一体化网页端体验。
           </p>
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
             <Link
               href="/demo"
-              className="rounded-full bg-[#f08a38] px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_18px_38px_rgba(240,138,56,0.3)]"
+              className="bz-primary-action px-6 py-3 text-sm"
             >
               进入试玩入口
             </Link>
@@ -46,8 +47,8 @@ export default async function HomePage() {
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
             {showcaseStats.map((stat) => (
-              <div key={stat.label} className="rounded-[1.7rem] border border-white/8 bg-white/[0.05] p-5">
-                <p className="text-xs uppercase tracking-[0.22em] text-white/40">{stat.label}</p>
+              <div key={stat.label} className="bz-inverse-tile p-5">
+                <p className="text-caption uppercase tracking-wide text-white/40">{stat.label}</p>
                 <p className="mt-3 text-2xl font-semibold text-white">{stat.value}</p>
                 <p className="mt-2 text-sm leading-6 text-white/60">{stat.detail}</p>
               </div>
@@ -55,10 +56,10 @@ export default async function HomePage() {
           </div>
         </SectionReveal>
 
-        <SectionReveal delay={0.08} className="relative min-h-[400px] overflow-hidden rounded-[2rem] bg-[#0b1020] shadow-[0_34px_100px_rgba(11,16,32,0.34)] sm:min-h-[520px] sm:rounded-[2.5rem]">
+        <SectionReveal delay={0.08} className="bz-ink-panel relative min-h-96 overflow-hidden rounded-3xl sm:min-h-[520px]">
           <HeroStageArt className="absolute inset-0" />
-          <div className="absolute inset-x-4 bottom-4 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-[1.8rem] sm:p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#f08a38]">Product Promise</p>
+          <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5">
+            <p className="bz-eyebrow-inverse">Product Promise</p>
             <p className="mt-3 text-lg font-semibold text-white">展示优先版首发聚焦</p>
             <p className="mt-2 text-sm leading-7 text-white/62">
               官网叙事、课程模块、学生端 Demo、教师/家长后台与邀请制闭环全部可跑通，联赛先做异步榜单与挑战赛。
@@ -73,8 +74,8 @@ export default async function HomePage() {
           ["用", "在 12 回合市场中交易、储蓄、买房和创业，低成本试错。"],
           ["评", "AI 导师与成长报告同步给出行为偏差与下一回合建议。"],
         ].map(([title, text], index) => (
-          <SectionReveal key={title} delay={index * 0.06} className="panel rounded-[2rem] p-6">
-            <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">0{index + 1}</p>
+          <SectionReveal key={title} delay={index * 0.06} className="panel rounded-3xl p-6">
+            <p className="bz-eyebrow">0{index + 1}</p>
             <h2 className="mt-4 text-3xl font-semibold text-slate-950">{title}</h2>
             <p className="mt-3 text-base leading-8 text-slate-600">{text}</p>
           </SectionReveal>
@@ -83,7 +84,7 @@ export default async function HomePage() {
 
       <section className="page-shell mt-14 sm:mt-16">
         <SectionReveal className="flex flex-col gap-3">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">核心功能</p>
+          <p className="bz-eyebrow">核心功能</p>
           <h2 className="font-display text-4xl font-semibold text-slate-950">8 大模块围绕一套完整沙盘协同运转</h2>
           <p className="max-w-3xl text-base leading-8 text-slate-600">
             从资产配置到家校后台，每一块都来自附件里的真实需求，并按照可展示、可试玩、可扩展的方式重新组织。
@@ -95,13 +96,13 @@ export default async function HomePage() {
             <SectionReveal
               key={module.key}
               delay={(index % 4) * 0.04}
-              className="panel rounded-[2rem] overflow-hidden"
+              className="panel overflow-hidden rounded-3xl"
             >
-              <div className="bg-[linear-gradient(180deg,#f9fbff_0%,#eef2f8_100%)] p-4">
+              <div className="bg-bg-muted p-4">
                 <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
               </div>
               <div className="p-6">
-                <div className="inline-flex rounded-full bg-[#fff2e4] px-3 py-1 text-xs font-semibold text-[#b45e1b]">
+                <div className="bz-brand-chip inline-flex rounded-full px-3 py-1 text-xs font-semibold">
                   {module.level}
                 </div>
                 <h3 className="mt-4 text-2xl font-semibold text-slate-950">{module.title}</h3>
@@ -122,17 +123,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[0.95fr_1.05fr]">
-        <SectionReveal className="rounded-[2.4rem] bg-[#0b1020] p-8 text-white shadow-[0_28px_90px_rgba(11,16,32,0.28)]">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">方案优势</p>
+      <section className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <SectionReveal className="bz-ink-panel rounded-3xl p-8">
+          <p className="bz-eyebrow-inverse">方案优势</p>
           <h2 className="mt-4 font-display text-4xl font-semibold">为什么它比传统财商课更像下一代课堂产品</h2>
           <div className="mt-8 space-y-4">
             {comparisonRows.map((row) => (
-              <div key={row.label} className="rounded-[1.5rem] border border-white/8 bg-white/[0.04] p-5">
+              <div key={row.label} className="bz-inverse-tile p-5">
                 <p className="text-lg font-semibold text-white">{row.label}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <p className="rounded-2xl bg-white/[0.04] p-4 text-sm leading-7 text-white/55">{row.traditional}</p>
-                  <p className="rounded-2xl bg-[#f08a3814] p-4 text-sm leading-7 text-white/80">{row.brownZone}</p>
+                  <p className="rounded-2xl bg-brand/10 p-4 text-sm leading-7 text-white/80">{row.brownZone}</p>
                 </div>
               </div>
             ))}
@@ -140,12 +141,12 @@ export default async function HomePage() {
         </SectionReveal>
 
         <div className="space-y-6">
-          <SectionReveal className="panel rounded-[2rem] p-7">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">增长路径</p>
+          <SectionReveal className="panel rounded-3xl p-7">
+            <p className="bz-eyebrow">增长路径</p>
             <h3 className="mt-4 text-3xl font-semibold text-slate-950">先做校内试点，再把联赛与 SaaS 做成增长飞轮</h3>
             <div className="mt-6 space-y-4">
               {roadmapPhases.map((phase, index) => (
-                <div key={phase.title} className="rounded-[1.5rem] bg-slate-950/[0.03] p-5">
+                <div key={phase.title} className="bz-muted-tile p-5">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex size-9 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
                       {index + 1}
@@ -158,8 +159,8 @@ export default async function HomePage() {
             </div>
           </SectionReveal>
 
-          <SectionReveal id="business" className="panel rounded-[2rem] p-7">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">商业模式</p>
+          <SectionReveal id="business" className="panel rounded-3xl p-7">
+            <p className="bz-eyebrow">商业模式</p>
             <h3 className="mt-4 text-3xl font-semibold text-slate-950">校园版订阅 + 个人增值 + 赛事服务</h3>
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {[
@@ -167,7 +168,7 @@ export default async function HomePage() {
                 ["学生个人版", "高级模组、深度 AI 报告与可视化皮肤订阅。"],
                 ["赛事与认证", "校际联赛、等级证书与合作背书形成额外收入。"],
               ].map(([title, text]) => (
-                <div key={title} className="rounded-[1.5rem] bg-slate-950/[0.03] p-5">
+                <div key={title} className="bz-muted-tile p-5">
                   <p className="text-lg font-semibold text-slate-950">{title}</p>
                   <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
                 </div>
@@ -177,16 +178,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="safety" className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[0.92fr_1.08fr]">
-        <SectionReveal className="panel rounded-[2rem] p-7">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">团队与愿景</p>
+      <section id="safety" className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <SectionReveal className="panel rounded-3xl p-7">
+          <p className="bz-eyebrow">团队与愿景</p>
           <h2 className="mt-4 text-4xl font-semibold text-slate-950">以游戏为载体，做真正对同龄人有帮助的经济学启蒙</h2>
           <div className="mt-6 space-y-4">
             {teamProfiles.map((member) => (
-              <div key={member.name} className="rounded-[1.5rem] bg-slate-950/[0.03] p-5">
+              <div key={member.name} className="bz-muted-tile p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-lg font-semibold text-slate-950">{member.name}</p>
-                  <span className="rounded-full bg-[#fff2e4] px-3 py-1 text-xs font-semibold text-[#b45e1b]">
+                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                     {member.role}
                   </span>
                 </div>
@@ -196,8 +197,8 @@ export default async function HomePage() {
           </div>
         </SectionReveal>
 
-        <SectionReveal className="rounded-[2rem] bg-[linear-gradient(135deg,#0b1020_0%,#121a2f_100%)] p-8 text-white shadow-[0_28px_90px_rgba(11,16,32,0.28)]">
-          <p className="text-sm uppercase tracking-[0.28em] text-[#f08a38]">未成年人友好</p>
+        <SectionReveal className="bz-ink-panel bz-ink-gradient rounded-3xl p-8">
+          <p className="bz-eyebrow-inverse">未成年人友好</p>
           <h2 className="mt-4 font-display text-4xl font-semibold">坚持去金钱化、去开户导流，把“玩”变成理性训练</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {[
@@ -206,7 +207,7 @@ export default async function HomePage() {
               "邀请码与班级关系可控，适合校园试点与展示环境。",
               "联赛先做异步排行榜，不做鼓励冲动行为的实时对战房间。",
             ].map((item) => (
-              <div key={item} className="rounded-[1.5rem] border border-white/8 bg-white/[0.04] p-5 text-sm leading-7 text-white/72">
+              <div key={item} className="bz-inverse-tile p-5 text-sm leading-7 text-white/72">
                 {item}
               </div>
             ))}
@@ -214,7 +215,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/demo"
-              className="rounded-full bg-[#f08a38] px-6 py-3 text-sm font-semibold text-slate-950"
+              className="bz-primary-action px-6 py-3 text-sm"
             >
               打开 Demo 闭环
             </Link>

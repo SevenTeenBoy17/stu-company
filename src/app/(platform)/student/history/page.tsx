@@ -5,6 +5,7 @@ import { buildHistoryReviewPayload } from "@/lib/history-review";
 import { getCurrentUser } from "@/lib/session-user";
 import { getSimulationStateForUser } from "@/lib/store";
 
+// UI-DEBT: History page still needs a component-token pass plus richer loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentHistoryPage() {
   const user = await getCurrentUser();
 

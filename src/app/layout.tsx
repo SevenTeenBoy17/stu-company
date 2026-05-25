@@ -1,24 +1,37 @@
 import type { Metadata } from "next";
-import { Manrope, Sora, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 
 import { GlobalAiAssistant } from "@/components/shared/global-ai-assistant";
 import { getCurrentUser } from "@/lib/session-user";
 
 import "./globals.css";
 
-const bodyFont = Manrope({
-  variable: "--font-body",
+const sansFont = Noto_Sans_SC({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
-const displayFont = Sora({
+const displayFont = Noto_Serif_SC({
   variable: "--font-display",
   subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
+});
+
+const latinFont = Inter({
+  variable: "--font-latin",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 const monoFont = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -37,9 +50,9 @@ export default async function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} h-full antialiased`}
+      className={`${sansFont.variable} ${displayFont.variable} ${latinFont.variable} ${monoFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-background text-foreground">
+      <body className="min-h-full bg-bg-app text-fg-default">
         {children}
         <GlobalAiAssistant
           viewer={

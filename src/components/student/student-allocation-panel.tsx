@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Bot, Radar, Sparkles, Target } from "lucide-react";
 
 import { MoneyInlineText, MoneyText } from "@/components/shared/money-text";
@@ -69,12 +68,7 @@ export function StudentAllocationPanel({
         : "教学回放";
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      className="panel overflow-hidden rounded-[2.2rem]"
-    >
+    <section className="panel overflow-hidden rounded-[2.2rem]">
       <div className="grid xl:grid-cols-[1.12fr_0.88fr]">
         <div className="relative overflow-hidden bg-[#0e1629] px-6 py-6 text-white md:px-7 md:py-7">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
@@ -352,6 +346,6 @@ export function StudentAllocationPanel({
           </div>
         </div>
       </div>
-    </motion.section>
+    </section>
   );
 }

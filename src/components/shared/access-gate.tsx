@@ -8,8 +8,8 @@ export function AccessGate({
   description: string;
 }) {
   return (
-    <div className="rounded-[2rem] border border-slate-900/10 bg-white p-8 shadow-[0_24px_80px_rgba(15,23,39,0.08)]">
-      <p className="text-sm uppercase tracking-[0.24em] text-[#f08a38]">Demo Access</p>
+    <div className="panel rounded-3xl p-8">
+      <p className="bz-eyebrow">Demo Access</p>
       <h1 className="mt-4 text-3xl font-semibold text-slate-950">{title}</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">{description}</p>
       <div className="mt-8 flex flex-wrap gap-3">

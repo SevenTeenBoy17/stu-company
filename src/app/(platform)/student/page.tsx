@@ -4,6 +4,7 @@ import { StudentSandbox } from "@/components/student/student-sandbox";
 import { getCurrentUser } from "@/lib/session-user";
 import { getSimulationStateForUser } from "@/lib/store";
 
+// UI-DEBT: Student dashboard layout was refactored, but component-level hardcoded class cleanup is not complete; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentPage() {
   const user = await getCurrentUser();
 

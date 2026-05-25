@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import type { Role } from "@/lib/types";
@@ -32,6 +33,13 @@ const navMap: Record<Role, Array<{ href: string; label: string }>> = {
   ],
 };
 
+const roleAssets: Record<Role, { src: string; label: string }> = {
+  student: { src: "/brand/role-student.svg", label: "学生端头像" },
+  teacher: { src: "/brand/role-teacher.svg", label: "教师端头像" },
+  parent: { src: "/brand/role-parent.svg", label: "家长端头像" },
+  admin: { src: "/brand/role-admin.svg", label: "管理端头像" },
+};
+
 export function PlatformLayout({
   role,
   heading,
@@ -49,18 +57,24 @@ export function PlatformLayout({
       .map((item) => item.href)
       .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
       .sort((left, right) => right.length - left.length)[0] ?? navMap[role][0]?.href;
+  const roleAsset = roleAssets[role];
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_left,rgba(240,138,56,0.12),transparent_22%),linear-gradient(180deg,#f4f6fb_0%,#eef2f8_100%)]">
-      <div className="mx-auto max-w-[1440px] px-4 py-4 md:px-5 md:py-5 lg:px-8 lg:py-6">
+    <div className="bz-page-bg min-h-screen overflow-x-clip">
+      <div className="mx-auto max-w-screen-2xl px-4 py-4 md:px-5 md:py-5 lg:px-8 lg:py-6">
         <div className="xl:hidden">
-          <div className="rounded-[2rem] border border-slate-900/8 bg-[#0b1020] px-5 py-5 text-white shadow-[0_28px_70px_rgba(11,16,32,0.35)] sm:px-6">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#f08a38]">Brown Zone</p>
-            <h2 className="mt-3 text-[2.1rem] font-semibold sm:text-[2.2rem]">{heading}</h2>
-            <p className="mt-3 text-[15px] leading-8 text-white/60 sm:text-base">{summary}</p>
+          <div className="bz-ink-panel rounded-3xl px-5 py-5 sm:px-6">
+            <div className="flex items-start gap-4">
+              <Image src={roleAsset.src} alt={roleAsset.label} width={64} height={64} className="h-16 w-16 shrink-0 rounded-2xl shadow-glow" />
+              <div className="min-w-0">
+                <p className="bz-eyebrow-inverse">Brown Zone</p>
+                <h2 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h2>
+                <p className="mt-3 text-body leading-8 text-white/60 sm:text-body-lg">{summary}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4 rounded-[1.8rem] border border-slate-200/70 bg-white/88 p-3 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <div className="bz-surface-panel mt-4 rounded-3xl p-3">
             <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
               {navMap[role].map((item, index) => {
                 const active = item.href === activeHref;
@@ -70,14 +84,14 @@ export function PlatformLayout({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "shrink-0 rounded-full border px-4 py-3.5 text-[15px] font-semibold transition-colors",
+                      "shrink-0 rounded-full border px-4 py-3.5 text-body font-semibold transition-colors",
                       active
-                        ? "border-[#f08a38]/30 bg-[#fff4e9] text-slate-950"
+                        ? "border-border-brand bg-brand-soft text-slate-950"
                         : "border-transparent bg-slate-950/[0.04] text-slate-600",
                     )}
                   >
                     <span>{item.label}</span>
-                    <span className={cn("ml-2 text-xs", active ? "text-[#b96621]" : "text-slate-400")}>
+                    <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-400")}>
                       0{index + 1}
                     </span>
                   </Link>
@@ -88,10 +102,11 @@ export function PlatformLayout({
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="hidden rounded-[2rem] border border-slate-900/8 bg-[#0b1020] p-6 text-white shadow-[0_28px_70px_rgba(11,16,32,0.35)] xl:block">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#f08a38]">Brown Zone</p>
-            <h2 className="mt-3 text-[2.1rem] font-semibold">{heading}</h2>
-            <p className="mt-3 text-[15px] leading-8 text-white/60">{summary}</p>
+          <aside className="bz-ink-panel hidden rounded-3xl p-6 xl:block">
+            <Image src={roleAsset.src} alt={roleAsset.label} width={80} height={80} className="h-20 w-20 rounded-3xl shadow-glow" />
+            <p className="bz-eyebrow-inverse mt-5">Brown Zone</p>
+            <h2 className="mt-3 text-h1 font-semibold">{heading}</h2>
+            <p className="mt-3 text-body leading-8 text-white/60">{summary}</p>
             <div className="mt-8 space-y-2">
               {navMap[role].map((item, index) => {
                 const active = item.href === activeHref;
@@ -101,12 +116,12 @@ export function PlatformLayout({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-[15px] font-semibold transition-colors hover:bg-white/8",
+                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/8",
                       active ? "bg-white/10" : "bg-white/[0.04]",
                     )}
                   >
                     <span>{item.label}</span>
-                    <span className={cn("text-white/35", active && "text-[#ffb36d]")}>
+                    <span className={cn("text-white/35", active && "text-brand-warm")}>
                       0{index + 1}
                     </span>
                   </Link>

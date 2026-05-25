@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session-user";
 import { getAdminOverview } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 
+// UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function AdminPage() {
   const user = await getCurrentUser();
 
@@ -29,22 +30,24 @@ export default async function AdminPage() {
     >
       <div className="grid gap-4 lg:grid-cols-4">
         {overview.metrics.map((metric) => (
-          <div key={metric.label} className="panel rounded-[1.8rem] p-5">
-            <p className="text-sm text-slate-500">{metric.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-950">{metric.value}</p>
+          <div key={metric.label} className="panel rounded-3xl p-5">
+            <p className="text-sm text-fg-muted">{metric.label}</p>
+            <p className="mt-3 text-3xl font-semibold text-fg-default">{metric.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <section className="panel rounded-[2rem] p-6">
-          <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">榜单头部</p>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="panel rounded-3xl p-6">
+          <p className="bz-eyebrow">榜单头部</p>
           <div className="mt-5 space-y-3">
             {overview.topUsers.map((entry) => (
-              <div key={entry.userId} className="flex items-center justify-between rounded-[1.5rem] bg-slate-950/[0.03] px-4 py-4">
+              <div key={entry.userId} className="flex items-center justify-between rounded-2xl bg-bg-muted px-4 py-4">
                 <div>
-                  <p className="text-lg font-semibold text-slate-950">#{entry.rank} {entry.name}</p>
-                  <p className="text-sm text-slate-500">纪律分 {entry.disciplineScore}</p>
+                  <p className="text-lg font-semibold text-fg-default">
+                    #{entry.rank} {entry.name}
+                  </p>
+                  <p className="text-sm text-fg-muted">纪律分 {entry.disciplineScore}</p>
                 </div>
                 <p className="text-lg font-semibold">
                   <MoneyText>{formatCurrency(entry.netWorth)}</MoneyText>
@@ -54,28 +57,28 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="panel rounded-[2rem] p-6">
-          <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">最近任务</p>
+        <section className="panel rounded-3xl p-6">
+          <p className="bz-eyebrow">最近任务</p>
           <div className="mt-5 space-y-3">
             {overview.assignments.map((assignment) => (
-              <div key={assignment.id} className="rounded-[1.5rem] bg-slate-950/[0.03] p-5">
-                <p className="text-lg font-semibold text-slate-950">{assignment.title}</p>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{assignment.brief}</p>
+              <div key={assignment.id} className="rounded-2xl bg-bg-muted p-5">
+                <p className="text-lg font-semibold text-fg-default">{assignment.title}</p>
+                <p className="mt-2 text-sm leading-7 text-fg-muted">{assignment.brief}</p>
               </div>
             ))}
           </div>
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <section className="panel rounded-[2rem] p-6">
-          <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">邀请码池</p>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="panel rounded-3xl p-6">
+          <p className="bz-eyebrow">邀请码池</p>
           <div className="mt-5 space-y-3">
             {overview.invites.map((invite) => (
-              <div key={invite.id} className="rounded-[1.5rem] bg-slate-950/[0.03] px-4 py-4">
+              <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-lg font-semibold text-slate-950">{invite.label}</p>
-                  <span className="rounded-full bg-[#fff2e4] px-3 py-1 text-xs font-semibold text-[#b45e1b]">
+                  <p className="text-lg font-semibold text-fg-default">{invite.label}</p>
+                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                     {invite.code}
                   </span>
                 </div>
@@ -84,13 +87,15 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="panel rounded-[2rem] p-6">
-          <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">班级清单</p>
+        <section className="panel rounded-3xl p-6">
+          <p className="bz-eyebrow">班级清单</p>
           <div className="mt-5 space-y-3">
             {overview.classrooms.map((classroom) => (
-              <div key={classroom.id} className="rounded-[1.5rem] bg-slate-950/[0.03] p-5">
-                <p className="text-lg font-semibold text-slate-950">{classroom.name}</p>
-                <p className="mt-2 text-sm text-slate-500">{classroom.region} · 校内排名第 {classroom.schoolRank} 名</p>
+              <div key={classroom.id} className="rounded-2xl bg-bg-muted p-5">
+                <p className="text-lg font-semibold text-fg-default">{classroom.name}</p>
+                <p className="mt-2 text-sm text-fg-muted">
+                  {classroom.region} · 校内排名第 {classroom.schoolRank} 名
+                </p>
               </div>
             ))}
           </div>

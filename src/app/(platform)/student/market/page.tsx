@@ -4,6 +4,7 @@ import { StudentMarketBoard } from "@/components/student/student-market-board";
 import { getMarketBoardPayload } from "@/lib/market-data";
 import { getCurrentUser } from "@/lib/session-user";
 
+// UI-DEBT: Market board layout was refactored, but component-level hardcoded class cleanup is not complete; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentMarketPage() {
   const user = await getCurrentUser();
 

@@ -79,9 +79,9 @@ export function DemoPortal({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <section className="panel rounded-[2rem] p-6">
-        <p className="text-sm uppercase tracking-[0.24em] text-[#f08a38]">样例登录</p>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <section className="panel rounded-3xl p-6">
+        <p className="bz-eyebrow">样例登录</p>
         <h2 className="mt-4 text-3xl font-semibold text-slate-950">一键进入不同角色视角</h2>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {credentials.map((item) => (
@@ -89,7 +89,7 @@ export function DemoPortal({
               key={item.label}
               type="button"
               onClick={() => setLoginForm({ email: item.email, password: item.password })}
-              className="rounded-[1.5rem] border border-slate-200 bg-slate-950/[0.03] p-4 text-left"
+              className="bz-muted-tile border border-slate-200 p-4 text-left transition-colors hover:border-border-brand hover:bg-brand-subtle"
             >
               <p className="text-lg font-semibold text-slate-950">{item.label}</p>
               <p className="mt-2 text-sm text-slate-600">{item.email}</p>
@@ -103,7 +103,7 @@ export function DemoPortal({
             <input
               value={loginForm.email}
               onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
           <label className="block">
@@ -112,7 +112,7 @@ export function DemoPortal({
               type="password"
               value={loginForm.password}
               onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
           <button
@@ -126,15 +126,15 @@ export function DemoPortal({
         </div>
       </section>
 
-      <section className="panel rounded-[2rem] p-6">
-        <p className="text-sm uppercase tracking-[0.24em] text-[#f08a38]">邀请码注册</p>
+      <section className="panel rounded-3xl p-6">
+        <p className="bz-eyebrow">邀请码注册</p>
         <h2 className="mt-4 text-3xl font-semibold text-slate-950">模拟真实试点开通流程</h2>
         <div className="mt-6 grid gap-3">
           {inviteHints.map((item) => (
-            <div key={item.code} className="rounded-[1.4rem] border border-slate-200 bg-slate-950/[0.03] p-4">
+            <div key={item.code} className="bz-muted-tile border border-slate-200 p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-lg font-semibold text-slate-950">{item.role}</p>
-                <span className="rounded-full bg-[#fff2e4] px-3 py-1 text-xs font-semibold text-[#b45e1b]">
+                <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                   {item.code}
                 </span>
               </div>
@@ -149,7 +149,7 @@ export function DemoPortal({
             <input
               value={inviteForm.name}
               onChange={(event) => setInviteForm((current) => ({ ...current, name: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
           <label className="block">
@@ -157,7 +157,7 @@ export function DemoPortal({
             <input
               value={inviteForm.email}
               onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
           <label className="block">
@@ -166,7 +166,7 @@ export function DemoPortal({
               type="password"
               value={inviteForm.password}
               onChange={(event) => setInviteForm((current) => ({ ...current, password: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
           <label className="block">
@@ -174,7 +174,7 @@ export function DemoPortal({
             <input
               value={inviteForm.inviteCode}
               onChange={(event) => setInviteForm((current) => ({ ...current, inviteCode: event.target.value }))}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-[#f08a38]"
+              className="bz-field"
             />
           </label>
         </div>
@@ -183,14 +183,14 @@ export function DemoPortal({
           type="button"
           onClick={submitInvite}
           disabled={busy}
-          className="mt-6 rounded-full bg-[#f08a38] px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+          className="bz-primary-action mt-6 px-6 py-3 text-sm disabled:opacity-60"
         >
           {busy ? "处理中..." : "邀请码注册并进入"}
         </button>
       </section>
 
       {message ? (
-        <div className="lg:col-span-2 rounded-[1.6rem] border border-[#f08a38]/20 bg-[#fff4e9] px-5 py-4 text-sm font-medium text-[#7a4717]">
+        <div className="bz-brand-note rounded-2xl px-5 py-4 text-sm font-medium lg:col-span-2">
           {message}
         </div>
       ) : null}

@@ -30,7 +30,7 @@ export function LearnCatalog() {
 
   return (
     <div className="space-y-8">
-      <div className="panel rounded-[2rem] p-5 sm:p-6">
+      <div className="panel rounded-3xl p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-3">
             {levelFilters.map((filter) => (
@@ -41,7 +41,7 @@ export function LearnCatalog() {
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                   activeLevel === filter
-                    ? "bg-[#f08a38] text-slate-950"
+                    ? "bg-brand text-slate-950"
                     : "bg-slate-950/[0.04] text-slate-600 hover:bg-slate-950/[0.08]",
                 )}
               >
@@ -54,20 +54,20 @@ export function LearnCatalog() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="搜索课程、关键词或能力点"
-            className="w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 outline-none ring-0 transition focus:border-[#f08a38] lg:max-w-sm"
+            className="w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 outline-none ring-0 transition focus:border-brand lg:max-w-sm"
           />
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredModules.map((module) => (
-          <article key={module.key} className="panel overflow-hidden rounded-[2rem]">
-            <div className="bg-[linear-gradient(180deg,#f9fbff_0%,#eef2f8_100%)] p-4">
+          <article key={module.key} className="panel overflow-hidden rounded-3xl">
+            <div className="bg-bg-muted p-4">
               <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
             </div>
             <div className="p-6">
               <div className="flex items-center justify-between gap-3">
-                <span className="rounded-full bg-[#fff2e4] px-3 py-1 text-xs font-semibold text-[#b45e1b]">
+                <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                   {module.level}
                 </span>
                 <span className="text-xs uppercase tracking-[0.22em] text-slate-400">

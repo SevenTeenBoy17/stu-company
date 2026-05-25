@@ -1,0 +1,8 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Student role avatar">
+  <rect width="160" height="160" rx="48" fill="#101726"/>
+  <circle cx="80" cy="72" r="34" fill="#fff8ee"/>
+  <path d="M47 64L80 42L113 64L80 84L47 64Z" fill="#f08a38"/>
+  <path d="M58 80C66 91 94 91 102 80V103C92 112 68 112 58 103V80Z" fill="#ffd49a"/>
+  <rect x="43" y="111" width="74" height="14" rx="7" fill="#78d6bf" opacity=".9"/>
+  <circle cx="118" cy="51" r="10" fill="#ffb967"/>
+</svg>
