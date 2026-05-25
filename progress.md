@@ -1,0 +1,100 @@
+# Progress
+
+## 2026-05-25
+
+- Started supervised round for unfinished workflow completion.
+- Bootstrapped `.codex-supervisor` and read context snapshot/current goal.
+- Confirmed current scope is Stage 0 / Stage 1.1 only.
+- First local secret-generation attempt failed due to unavailable `.NET` API; next attempt will use a compatible Windows method.
+- Opened `.env.local` in Notepad after ensuring required Supabase keys exist as placeholders.
+- Waiting for the user to fill and save Supabase project values before running the connection test.
+- Polled `.env.local` for 300 seconds; Supabase values are still empty, so Stage 1.1 remains blocked.
+- Supabase connector is callable, but `_list_projects` returned no projects.
+- Opened Supabase dashboard and `.env.local`; showed a Windows popup requesting project creation/selection and local env fill.
+- Supabase connector later returned project `brone-web` / `pdxrgsseoxiliotjzsiu`.
+- Wrote public Supabase URL and anon key into `.env.local`; opened Settings > Database and Settings > API for the remaining private values.
+- Polled `.env.local` for 300 seconds after public values were written; still missing `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+- Rechecked Supabase project status: project is now `ACTIVE_HEALTHY`.
+- Reopened Supabase database/API settings and `.env.local` for the final two private values.
+- Stage 1.1 was run by db_architect and failed with sanitized error `connection timed out after 12000ms`.
+- Local shape check showed `DATABASE_URL` is the Supabase project HTTPS URL, not a Postgres URI.
+- Network reachability checks to Supabase direct and pooler hosts on ports 5432/6543 passed, so the blocker is the value shape, not basic TCP reachability.
+- Two local masked input attempts for a corrected `DATABASE_URL` returned invalid format; no replacement was written.
+- Discovered the working Supabase pooler node is `aws-1-us-east-2.pooler.supabase.com`; updated local `DATABASE_URL` using that host and the user-provided database password.
+- Stage 1.1 rerun by db_architect returned `connection ok`.
+- Stage 1.2 step 1 ran successfully through db_architect: `npx drizzle-kit generate`.
+- Generated `drizzle/0000_regular_luminals.sql` plus Drizzle metadata.
+- Migration generation stopped after step 1 per workflow; no apply/introspect was run.
+- Removed a leftover `.tmp-direct-db-test-*.mjs` diagnostic script from the workspace.
+- Stage 1.2 step 2 migration review completed and is blocked.
+- Review confirmed enum/table/PK/unique checks pass, and 16 tables match `schema.ts`; workflow's 13-table note appears stale.
+- Review blocked apply because the migration has zero foreign-key constraints despite relational columns.
+- Added FK references and lookup indexes to `src/lib/db/schema.ts`.
+- Removed the old unapplied `drizzle/` output and regenerated migration as `drizzle/0000_minor_wonder_man.sql`.
+- Re-review approved the regenerated migration: 16 tables, 21 FKs, 25 indexes.
+- Verification passed: `npx tsc --noEmit`, `npm run test`, and `npm run lint` (with existing unused `db` warning in `scripts/seed.ts`).
+- `code-review-graph build --repo . --skip-flows` and `detect-changes --base HEAD --brief` passed with 0 affected flows / 0 test gaps.
+- Reviewer confirmed no blockers before Stage 1.2 step 3; waiting for user confirmation before applying migration.
+- Stage 1.2 step 3 completed through db_architect: `npx drizzle-kit migrate` applied migration successfully to Supabase.
+- Step 4 introspect was not run; stopping for user confirmation per workflow.
+- Stage 1.2 step 4 attempted `npx drizzle-kit introspect` into a temporary output directory; it connected and fetched 16 tables / 1 enum, then failed on a Drizzle Kit check-constraint parsing bug.
+- Read-only `pg_catalog` / `information_schema` verification confirmed the remote DB has 16 public tables, 1 role enum, 21 FKs, 16 PKs, 2 unique constraints, 25 lookup indexes, and the Drizzle migration table.
+- Started Stage 1.3 seed round under dev-supervisor and narrowed scope to seed script only.
+- Read `CODEX-WORKFLOW.md` Stage 1.3, `scripts/seed.ts`, `src/lib/store.ts`, `src/lib/db/schema.ts`, and supporting type/config files.
+- Implemented `scripts/seed.ts` by reusing exported `createSeedStore()` and writing users, profiles, classrooms, parent links, invites, assignments, scenario runs, and growth reports to Supabase.
+- Added `npm run db:seed`.
+- First `npm run db:seed` attempt failed before DB writes because `dotenv/config` was not installed; fixed by adding a small local `.env/.env.local` loader to the seed script instead of adding a new dependency.
+- `npm run db:seed` succeeded and reported 6 users / 1 classroom / 3 invites / 2 assignments / 3 runs / 1 growth report.
+- Re-ran `npm run db:seed` to verify idempotence; counts remained unchanged.
+- Verification passed: `npx tsc --noEmit`, `npm run test`, `npm run lint`, `npm run build`.
+- Review gate passed: `python -m code_review_graph build --repo . --skip-flows` and `python -m code_review_graph detect-changes --repo . --base HEAD --brief` reported 0 affected flows / 0 test gaps / risk 0.00.
+- Started Stage 1.4 repo adapter round under dev-supervisor and narrowed scope to `src/lib/db/repo.ts` plus repo tests.
+- Read Stage 1.4 instructions, the existing repo skeleton, DB schema, store behavior, API route import state, test setup, and supporting assistant/history code.
+- Implemented Drizzle DB branches for all repo exports while preserving store fallback when DB is missing or query fails.
+- Added `src/lib/db/repo.test.ts`, mocking `@/lib/db/client` to force fallback mode and cover every exported repo function/helper.
+- Verified `npx tsc --noEmit` and `npm run test -- src/lib/db`.
+- Ran a read-only Supabase smoke script through repo exports; user/profile/invite/auth/simulation/teacher/parent/admin/leaderboard reads returned expected seeded data.
+- Ran full verification: `npm run test`, `npm run lint`, and `npm run build`.
+- Initial lint showed unused warnings in `repo.ts`; removed unused import/helper and made run update fields explicit, then reran focused and full verification successfully.
+- Review gate passed with `python -m code_review_graph build --repo . --skip-flows` and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Reviewer subagent completed read-only audit with no blockers and no redline violations.
+- Started Stage 2 API route migration under dev-supervisor; narrowed scope to API route imports/call sites plus required auth helper glue.
+- Batch 2.1 Auth completed: login, logout, register-by-invite, and invite validation now use `src/lib/db/repo` with async awaits and stable error responses.
+- Batch 2.2 Simulation completed: state, actions, and advance-round now use repo-backed simulation functions with async awaits.
+- Batch 2.3 Role dashboards completed: teacher classroom/assignments, parent report, and student history-review now read through repo where needed; `npx tsc --noEmit` and `npm run test` passed.
+- Batch 2.4 AI Sessions completed: chat/history/session-detail/tutor/radar routes now use repo-backed AI session and simulation state calls; `src/lib/ai.ts` was not changed; `npx tsc --noEmit` and `npm run test` passed.
+- Batch 2.5 Market completed: portfolio-intel now awaits repo simulation state, market routes use standardized error responses; `npx tsc --noEmit` and `npm run test` passed.
+- Final Stage 2 verification passed: `npm run lint`, `npm run build`, required store/global grep audits, code-review-graph build/detect, and reviewer audit.
+- Started Stage 3/4 supervised round with explicit Goal mode.
+- Stage 3.1 completed: added `drizzle/policies.sql`, `scripts/apply-policies.ts`, `npm run db:apply-policies`, and JWT `sub/role/classroomId` claims.
+- First `db:apply-policies` attempt failed because the script used top-level await under CJS output; wrapped it in `main()` and reran successfully.
+- `npm run db:apply-policies` applied RLS policies to Supabase and returned `RLS policies applied`.
+- Stage 3.2 completed: added `tests/integration/rls.test.ts` and updated Vitest include globs.
+- First full RLS test run timed out on the remote Supabase query with Vitest's 5 second default; raised integration test timeout to 30 seconds.
+- RLS verification passed: `npx vitest run tests/integration/rls.test.ts` returned 4 passed tests; full `npm run test` returned 10 files / 33 tests passed.
+- Stage 4.1 started: read token spec and UI skills; applied primitive tokens, replaced `@theme inline`, and migrated root fonts to Noto Sans SC / Noto Serif SC / Inter / JetBrains Mono.
+- `npm run lint` and `npm run build` passed after token/font migration.
+- Local dev server could not bind to port 3000 (`EACCES`), so screenshots were captured from port 3100 instead.
+- Captured Stage 4.1 screenshots at `.codex-supervisor/screenshots/stage4-1-home-1440.png` and `.codex-supervisor/screenshots/stage4-1-home-390.png`.
+- Stage 4.1 component-level grep found remaining existing component hardcodes: 205 hex color matches and 191 arbitrary size matches; stopped before component refactor per screenshot review gate.
+- Resumed Goal mode for Stage 4.2 and later work after visual review confirmation.
+- Stage 4.2 completed: refactored `src/components/student/student-sandbox.tsx` into hero metrics, allocation panel, action panel, holdings/timeline rail, Mr.Brown tutor radar, and leaderboard sections with responsive ordering.
+- Stage 4.3 completed: refactored `src/components/student/student-market-board.tsx` into a wider, easier-to-read market dashboard with watchlist grid, main stock card, key fields, radar + metric explanations, observation structure, ranking, sector heat, and classroom tips.
+- Stage 4.4 completed: added `docs/ui-spec/audit-2026-05-25.md` and page-level `UI-DEBT` notes for site/platform pages.
+- Final visual QA initially found the student allocation panel occupying space at `opacity: 0`; removed that single outer Framer Motion wrapper in `src/components/student/student-allocation-panel.tsx`.
+- Final screenshots were captured under `.codex-supervisor/screenshots/` with `stage4-final-review-v2-*`; `/student` and `/student/market` showed no horizontal overflow at 1440 desktop or 390 mobile widths.
+- Final verification passed: `npx tsc --noEmit`, `npm run lint`, `npm run test`, `npm run build`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Redline audit passed: `.env.local` is unstaged, API routes have no `@/lib/store` or `globalThis.__brownZoneStore__` references, and no raw AI gateway fetch was introduced outside `src/lib/ai.ts`.
+- Resumed Stage 4 cleanup and Stage 5 pre-launch audit under dev-supervisor Goal mode.
+- Stage 4 cleanup completed for the audited site/platform pages: admin, parent, teacher, shared platform/access/demo/site wrappers, and audit document now distinguish launch blockers from follow-up UI debt.
+- Updated `.env.example` so its key set matches `.env.local`, adding `SUPABASE_SERVICE_ROLE_KEY` without exposing any secret values.
+- Replaced default README with Brown Zone setup, Supabase setup, verification, demo account, and Vercel deployment guidance.
+- Added `docs/VERCEL-ENV.md`, `docs/prelaunch-audit-2026-05-25.md`, and `docs/deployment-checklist-2026-05-25.md`.
+- Added Playwright prelaunch smoke coverage for public pages, guarded student routes, and market ticker API.
+- Stage 5 verification passed: `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build`, `$env:NODE_ENV='production'; npm run build`, `npx playwright test`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Independent reviewer subagent reported Stage 5 Pre-Launch Audit PASS with no blockers and no redline violations.
+- Started Stage 6/7 supervised round under Goal mode; interpreted the repeated Stage 2 wording as stale template text and continued with Stage 6 visual assets plus Stage 7 release workflow.
+- Stage 6 visual asset upgrade completed: created `public/brand/hero-stage.svg`, four role avatar SVGs, and `public/brand/footer-pattern.svg`.
+- Integrated Stage 6 assets into `HeroStageArt`, `PlatformLayout`, and `SiteFooter`; platform sidebar labels were normalized to readable Simplified Chinese while preserving route behavior.
+- Stage 6 verification passed: `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build`, `npx playwright test`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Redline audit still passed after Stage 6: no `.env.local` staging and no raw external AI fetch outside `src/lib/ai.ts`.

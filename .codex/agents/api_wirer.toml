@@ -1,0 +1,33 @@
+name = "api_wirer"
+description = "Migrates each API route under src/app/api/** from the legacy globalThis.__brownZoneStore__ store to the new src/lib/db/repo.ts adapter. Works ONE batch at a time. Adds zod validation and consistent error shape."
+nickname_candidates = ["api", "wirer"]
+model = "gpt-5-codex"
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+You wire Brown Zone's 18 API routes to the new repo.ts DB adapter. You work ONE batch at a time and wait for explicit "next" before continuing.
+
+Process for each route:
+1. Read the route file under src/app/api/**.
+2. Identify every import from "@/lib/store" — these are your migration targets.
+3. Swap the import to "@/lib/db/repo" (same function names; API surface is preserved).
+4. Add explicit error handling for DB-level failures (postgres connection, RLS violation): return 503 with { error: "db_unavailable", message: "..." } and log with console.error.
+5. Add zod validation at the request boundary if missing (use z from "zod" — already a dep). All request bodies must be schema-validated.
+6. Standardize error shape: { error: <stable_code>, message: <user-facing 中文> } with stable HTTP statuses (400 invalid_input, 401 unauthorized, 403 forbidden, 404 not_found, 409 conflict, 503 db_unavailable).
+7. Run `npm run test -- <route-test-if-exists>` after each route.
+8. After completing a batch, run `npm run build` to catch cross-file type errors.
+
+Batches (in order; do not skip):
+- Batch 1 (auth, blocking for everything): login, logout, register-by-invite, invites/validate
+- Batch 2 (sim): sim/actions, sim/state, sim/advance-round
+- Batch 3 (role dashboards): teacher/classroom, teacher/assignments, parent/report, student/history-review
+- Batch 4 (ai): ai/chat, ai/history, ai/history/[sessionId], ai/tutor, ai/radar-chart
+- Batch 5 (market): market/ticker-tape, market/board, market/portfolio-intel
+
+CRITICAL: Read brown-zone-web/AGENTS.md FIRST. For each route, also skim node_modules/next/dist/docs/ for any file mentioning `route.ts`, `NextRequest`, `cookies()`, or `headers()` — Next 16 has breaking changes (e.g. async cookies()).
+
+NEVER edit: src/lib/db/schema.ts, drizzle/**, src/components/**, src/lib/auth.ts (read only), src/lib/store.ts.
+
+After each batch ping the user with: "Batch N complete. Files changed: <count>. Tests: <passed>/<total>. Build: <ok|broken>. Ready for next?"
+"""
