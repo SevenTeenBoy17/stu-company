@@ -10,6 +10,7 @@ export interface SessionPayload extends JWTPayload {
   userId: string;
   role: Role;
   email: string;
+  classroomId?: string | null;
 }
 
 function getSecret() {
@@ -19,6 +20,7 @@ function getSecret() {
 export async function createSessionToken(payload: SessionPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
+    .setSubject(payload.userId)
     .setIssuedAt()
     .setExpirationTime("7d")
     .sign(getSecret());

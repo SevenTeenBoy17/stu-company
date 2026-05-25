@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
-import { createAssignmentForTeacher, getTeacherOverview } from "@/lib/store";
+import { createAssignmentForTeacher, getTeacherOverview } from "@/lib/db/repo";
 
 const assignmentSchema = z.object({
   title: z.string().min(2),
@@ -24,8 +25,12 @@ export async function GET() {
   const auth = await requireUser("teacher");
   if (auth.error) return auth.error;
 
-  const overview = getTeacherOverview(auth.user.id);
-  return NextResponse.json({ assignments: overview.assignments });
+  try {
+    const overview = await getTeacherOverview(auth.user.id);
+    return NextResponse.json({ assignments: overview.assignments });
+  } catch (error) {
+    return handleRouteError(error, "无法读取班级任务。");
+  }
 }
 
 export async function POST(request: Request) {
@@ -34,22 +39,19 @@ export async function POST(request: Request) {
 
   try {
     const body = assignmentSchema.parse(await request.json());
-    createAssignmentForTeacher(auth.user.id, {
+    await createAssignmentForTeacher(auth.user.id, {
       title: body.title,
       brief: body.brief ?? body.summary ?? "请围绕本周市场情景完成一次复盘与策略说明。",
       difficulty: normalizeDifficulty(body.difficulty) as "基础" | "策略" | "联赛",
       dueLabel: body.dueLabel,
     });
 
-    const overview = getTeacherOverview(auth.user.id);
+    const overview = await getTeacherOverview(auth.user.id);
     return NextResponse.json({
       message: "任务已发布到班级面板。",
       overview,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "任务创建失败。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "任务创建失败。");
   }
 }

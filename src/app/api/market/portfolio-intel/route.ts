@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { apiError, handleRouteError } from "@/lib/api-response";
 import { requestAllocationInsight } from "@/lib/ai";
-import { readSession } from "@/lib/auth";
 import { fetchAlltickMarketPulse } from "@/lib/alltick";
+import { readSession } from "@/lib/auth";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 import { buildPortfolioAiContext, buildPortfolioIntel } from "@/lib/portfolio-intel";
-import { getSimulationStateForUser } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +13,10 @@ export async function GET() {
   try {
     const session = await readSession();
     if (!session || session.role !== "student") {
-      return NextResponse.json({ error: "需要学生账号登录。" }, { status: 401 });
+      return apiError("unauthorized", "需要学生账号登录。", 401);
     }
 
-    const state = getSimulationStateForUser(session.userId);
+    const state = await getSimulationStateForUser(session.userId);
     const pulse = await fetchAlltickMarketPulse();
 
     const baseIntel = buildPortfolioIntel(state, {
@@ -45,11 +46,6 @@ export async function GET() {
       },
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "资产配置面板暂时不可用。",
-      },
-      { status: 400 },
-    );
+    return handleRouteError(error, "资产配置面板暂时不可用。");
   }
 }

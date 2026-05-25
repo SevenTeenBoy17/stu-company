@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
-import { registerUserByInvite, roleHomePath } from "@/lib/store";
+import { registerUserByInvite, roleHomePath } from "@/lib/db/repo";
 
 const registerSchema = z.object({
   inviteCode: z.string().min(6),
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       userId: user.id,
       role: user.role,
       email: user.email,
+      classroomId: user.classroomId ?? null,
     });
 
     return NextResponse.json({
@@ -27,9 +29,6 @@ export async function POST(request: Request) {
       message: "邀请码注册成功。",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "注册失败。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "注册失败。");
   }
 }

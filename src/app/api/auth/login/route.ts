@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { apiError, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
-import { authenticateUser, roleHomePath } from "@/lib/store";
+import { authenticateUser, roleHomePath } from "@/lib/db/repo";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -15,13 +16,14 @@ export async function POST(request: Request) {
     const user = await authenticateUser(body.email, body.password);
 
     if (!user) {
-      return NextResponse.json({ error: "邮箱或密码不正确。" }, { status: 401 });
+      return apiError("unauthorized", "邮箱或密码不正确。", 401);
     }
 
     await persistSession({
       userId: user.id,
       role: user.role,
       email: user.email,
+      classroomId: user.classroomId ?? null,
     });
 
     return NextResponse.json({
@@ -29,9 +31,6 @@ export async function POST(request: Request) {
       message: "登录成功。",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "登录失败。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "登录失败。");
   }
 }

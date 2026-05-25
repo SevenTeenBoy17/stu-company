@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { handleRouteError } from "@/lib/api-response";
 import { getTickerTapePayload } from "@/lib/market-data";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "股票轮播条暂时不可用。",
-      },
-      { status: 400 },
-    );
+    return handleRouteError(error, "股票轮播条暂时不可用。");
   }
 }

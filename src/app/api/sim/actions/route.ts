@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
-import { applyActionForUser, getSimulationStateForUser } from "@/lib/store";
+import { applyActionForUser, getSimulationStateForUser } from "@/lib/db/repo";
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({
@@ -34,13 +35,10 @@ export async function POST(request: Request) {
 
   try {
     const body = actionSchema.parse(await request.json());
-    applyActionForUser(auth.user.id, body);
-    const state = getSimulationStateForUser(auth.user.id);
+    await applyActionForUser(auth.user.id, body);
+    const state = await getSimulationStateForUser(auth.user.id);
     return NextResponse.json({ state, message: "操作已生效。" });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "操作失败。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "操作失败，请检查现金、持仓或动作参数。");
   }
 }

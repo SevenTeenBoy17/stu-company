@@ -1,8 +1,8 @@
 import { readSession } from "@/lib/auth";
-import { findUserById } from "@/lib/store";
+import { findUserById } from "@/lib/db/repo";
 
 export async function getCurrentUser() {
   const session = await readSession();
   if (!session) return null;
-  return findUserById(session.userId);
+  return await findUserById(session.userId);
 }

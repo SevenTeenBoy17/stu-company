@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestTutorRadarPayload } from "@/lib/ai";
-import { getSimulationStateForUser } from "@/lib/store";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function POST() {
   if (auth.error) return auth.error;
 
   try {
-    const simulation = getSimulationStateForUser(auth.user.id);
+    const simulation = await getSimulationStateForUser(auth.user.id);
     const radar = await requestTutorRadarPayload({
       state: simulation,
     });
@@ -22,9 +23,6 @@ export async function POST() {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "雷达图生成暂时不可用。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "雷达图生成暂时不可用。");
   }
 }

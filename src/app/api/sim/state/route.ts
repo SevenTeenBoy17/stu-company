@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
-import { getSimulationStateForUser } from "@/lib/store";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 
 export async function GET() {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
   try {
-    const state = getSimulationStateForUser(auth.user.id);
+    const state = await getSimulationStateForUser(auth.user.id);
     return NextResponse.json({ state });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "无法读取当前沙盘。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "无法读取当前沙盘，请稍后再试。");
   }
 }

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestTutorInsight } from "@/lib/ai";
-import { getSimulationStateForUser } from "@/lib/store";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 
 const tutorSchema = z.object({
   mode: z.enum(["welcome", "action-review", "round-review", "parent-summary"]).default("round-review"),
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
 
   try {
     const body = tutorSchema.parse(await request.json());
-    const simulation = getSimulationStateForUser(auth.user.id);
+    const simulation = await getSimulationStateForUser(auth.user.id);
     const insight = await requestTutorInsight({
       mode: body.mode,
       prompt: body.prompt,
@@ -31,12 +32,9 @@ export async function POST(request: Request) {
       text: insight.text,
       provider: insight.provider,
       baseUrl: insight.baseUrl,
-      message: insight.provider === "remote" ? "已获取 AI 导师点评。" : "已返回本地兜底点评。",
+      message: insight.provider === "remote" ? "已获得 AI 导师点评。" : "已返回本地兜底点评。",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "AI 导师暂时不可用。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "AI 导师暂时不可用。");
   }
 }

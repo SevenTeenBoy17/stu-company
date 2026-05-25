@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 
+import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
-import { advanceRunForUser, getSimulationStateForUser } from "@/lib/store";
+import { advanceRunForUser, getSimulationStateForUser } from "@/lib/db/repo";
 
 export async function POST() {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
   try {
-    advanceRunForUser(auth.user.id);
-    const state = getSimulationStateForUser(auth.user.id);
+    await advanceRunForUser(auth.user.id);
+    const state = await getSimulationStateForUser(auth.user.id);
     return NextResponse.json({ state, message: "已推进到下一回合。" });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "推进回合失败。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "推进回合失败，请稍后再试。");
   }
 }

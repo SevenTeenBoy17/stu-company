@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { apiError, handleRouteError } from "@/lib/api-response";
+import { requestChatReply } from "@/lib/ai";
 import { buildAiSessionTitle } from "@/lib/assistant-config";
 import { buildAssistantContextBundle } from "@/lib/assistant-context";
 import { readSession } from "@/lib/auth";
-import { requestChatReply } from "@/lib/ai";
 import {
   appendAiMessage,
   createAiSession,
   findUserById,
   getAiSessionById,
-} from "@/lib/store";
+} from "@/lib/db/repo";
 import type { AiChatMessage, AiChatPageContext, Role } from "@/lib/types";
 import { createId } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   try {
     const body = chatSchema.parse(await request.json());
     const session = await readSession();
-    const user = session ? findUserById(session.userId) : null;
+    const user = session ? await findUserById(session.userId) : null;
 
     const contextBundle = buildAssistantContextBundle({
       route: body.pageContext.route,
@@ -117,21 +118,21 @@ export async function POST(request: Request) {
       });
     }
 
-    let activeSession = body.sessionId ? getAiSessionById(body.sessionId, user.id) : null;
+    let activeSession = body.sessionId ? await getAiSessionById(body.sessionId, user.id) : null;
     if (body.sessionId && !activeSession) {
-      return NextResponse.json({ error: "当前会话不存在或无权访问。" }, { status: 404 });
+      return apiError("not_found", "当前会话不存在或无权访问。", 404);
     }
 
     if (!activeSession) {
-      activeSession = createAiSession({
+      activeSession = await createAiSession({
         userId: user.id,
         mode: contextBundle.mode,
         title: buildAiSessionTitle(body.prompt),
       });
     }
 
-    appendAiMessage(activeSession.id, user.id, userMessage);
-    const latestSession = getAiSessionById(activeSession.id, user.id);
+    await appendAiMessage(activeSession.id, user.id, userMessage);
+    const latestSession = await getAiSessionById(activeSession.id, user.id);
 
     const reply = await requestChatReply({
       mode: contextBundle.mode,
@@ -141,7 +142,7 @@ export async function POST(request: Request) {
       role: user.role,
     });
 
-    appendAiMessage(
+    await appendAiMessage(
       activeSession.id,
       user.id,
       createChatMessage("assistant", reply.text, pageContext, {
@@ -160,9 +161,6 @@ export async function POST(request: Request) {
       starterPrompts: contextBundle.starterPrompts,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "KeyAI 暂时不可用。" },
-      { status: 400 },
-    );
+    return handleRouteError(error, "KeyAI 暂时不可用。");
   }
 }
