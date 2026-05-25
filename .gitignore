@@ -40,6 +40,7 @@ yarn-error.log*
 
 # local QA artifacts
 .qa-screens/
+.tools/
 
 # typescript
 *.tsbuildinfo
