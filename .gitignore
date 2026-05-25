@@ -41,6 +41,7 @@ yarn-error.log*
 # local QA artifacts
 .qa-screens/
 .tools/
+.codex-supervisor/
 
 # typescript
 *.tsbuildinfo
