@@ -67,7 +67,11 @@ async function captureRoute(page: Page, role: string, route: string) {
 }
 
 test.describe("UX audit @audit", () => {
-  test.describe.configure({ mode: "serial" });
+  // Serial so the dev server's turbopack compile only happens once per route
+  // and we don't get into a race where two tests hit the same page during its
+  // first compile. 90s timeout because the heavy student dashboard can take
+  // 30-45s to compile on first hit in dev mode.
+  test.describe.configure({ mode: "serial", timeout: 90_000 });
 
   for (const role of ROLES) {
     test(`${role.label} traversal`, async ({ page }) => {
