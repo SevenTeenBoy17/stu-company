@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 
+import { hashPassword, verifyPassword } from "@/lib/password";
+
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
@@ -400,7 +402,7 @@ export function validateInviteCode(code: string) {
 export async function authenticateUser(email: string, password: string) {
   const user = findUserByEmail(email);
   if (!user) return null;
-  const matched = await bcrypt.compare(password, user.passwordHash);
+  const matched = await verifyPassword(password, user.passwordHash);
   return matched ? user : null;
 }
 
@@ -424,7 +426,7 @@ export async function registerUserByInvite(input: {
   const newUser: UserRecord = {
     id: createId("user"),
     email: input.email,
-    passwordHash: await bcrypt.hash(input.password, 10),
+    passwordHash: await hashPassword(input.password),
     role: inviteStatus.invite.role,
     name: input.name,
     title:
