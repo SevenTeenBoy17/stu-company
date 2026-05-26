@@ -1,23 +1,19 @@
+import { redirect } from "next/navigation";
+
 import { PlatformLayout } from "@/components/platform/platform-layout";
-import { AccessGate } from "@/components/shared/access-gate";
 import { StudentSandbox } from "@/components/student/student-sandbox";
 import { getCurrentUser } from "@/lib/session-user";
-import { getSimulationStateForUser } from "@/lib/db/repo";
+import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 
 // UI-DEBT: Student dashboard layout was refactored, but component-level hardcoded class cleanup is not complete; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentPage() {
+  // (platform)/layout already redirects anonymous visitors. L3: wrong-role
+  // viewers redirect to their own home instead of getting a 200 with an
+  // AccessGate card — keeps search engines and CDN caches out of pages that
+  // require auth.
   const user = await getCurrentUser();
-
-  if (!user || user.role !== "student") {
-    return (
-      <div className="page-shell py-10">
-        <AccessGate
-          title="学生策略台需要学生账号登录"
-          description="请先从试玩入口使用学生样例账号登录，或使用学生邀请码注册后进入。登录后这里会展示 12 回合经济沙盘、统一交易面板和 AI 导师点评。"
-        />
-      </div>
-    );
-  }
+  if (!user) redirect("/demo?reason=login_required");
+  if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const initialState = await getSimulationStateForUser(user.id);
 

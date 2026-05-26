@@ -1,24 +1,17 @@
+import { redirect } from "next/navigation";
+
 import { PlatformLayout } from "@/components/platform/platform-layout";
-import { AccessGate } from "@/components/shared/access-gate";
 import { MoneyText } from "@/components/shared/money-text";
 import { getCurrentUser } from "@/lib/session-user";
-import { getAdminOverview } from "@/lib/db/repo";
+import { getAdminOverview, roleHomePath } from "@/lib/db/repo";
 import { formatCurrency } from "@/lib/utils";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function AdminPage() {
+  // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
-
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="page-shell py-10">
-        <AccessGate
-          title="管理端需要管理员账号登录"
-          description="请先从试玩入口使用管理员样例账号登录。这里会展示邀请码池、示范班级、热门用户和最近发布的任务。"
-        />
-      </div>
-    );
-  }
+  if (!user) redirect("/demo?reason=login_required");
+  if (user.role !== "admin") redirect(roleHomePath(user.role));
 
   const overview = await getAdminOverview();
 

@@ -1,23 +1,16 @@
+import { redirect } from "next/navigation";
+
 import { PlatformLayout } from "@/components/platform/platform-layout";
-import { AccessGate } from "@/components/shared/access-gate";
 import { TeacherConsole } from "@/components/teacher/teacher-console";
 import { getCurrentUser } from "@/lib/session-user";
-import { getTeacherOverview } from "@/lib/db/repo";
+import { getTeacherOverview, roleHomePath } from "@/lib/db/repo";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function TeacherPage() {
+  // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
-
-  if (!user || user.role !== "teacher") {
-    return (
-      <div className="page-shell py-10">
-        <AccessGate
-          title="教师指挥舱需要教师账号登录"
-          description="请先从试玩入口使用教师样例账号登录，或用教师邀请码注册。登录后这里会展示班级榜单、任务管理、学生行为标签和邀请码池。"
-        />
-      </div>
-    );
-  }
+  if (!user) redirect("/demo?reason=login_required");
+  if (user.role !== "teacher") redirect(roleHomePath(user.role));
 
   const overview = await getTeacherOverview(user.id);
 
