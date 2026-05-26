@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     const session = await readSession();
     const user = session ? await findUserById(session.userId) : null;
 
-    const contextBundle = buildAssistantContextBundle({
+    const contextBundle = await buildAssistantContextBundle({
       route: body.pageContext.route,
       user,
       pageContext: body.pageContext,

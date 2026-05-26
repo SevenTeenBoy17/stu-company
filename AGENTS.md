@@ -22,7 +22,7 @@ Any coding agent entering this repository must read this file before editing.
 | --- | --- | --- |
 | Persistence | Supabase Postgres through Drizzle ORM | `src/lib/db/repo.ts` is the API-facing repository layer. |
 | Seed data | `npm run db:seed` | Seeds users, profiles, invites, assignments, scenario runs, and reports. |
-| RLS policies | `drizzle/policies.sql` + `npm run db:apply-policies` | Keep policy changes reviewed before applying. |
+| RLS policies | `drizzle/policies.sql` + `npm run db:apply-policies` | Only effective when `DATABASE_ROLE=authenticated` AND queries run through `withRls()` in `src/lib/db/client.ts`. Default `owner` connection bypasses RLS — `repo.ts` application-layer checks are the primary defence. |
 | Auth | HTTP-only `brown_zone_session` JWT cookie | Claims include user id, role, and classroom id where available. |
 | AI gateway | `src/lib/ai.ts` only | Raw provider fetches outside this module are blockers. |
 | Market data | AllTick with local teaching fallback | Market refresh cadence is 10 minutes. |

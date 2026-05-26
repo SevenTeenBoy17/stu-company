@@ -1,7 +1,7 @@
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { AccessGate } from "@/components/shared/access-gate";
 import { getCurrentUser } from "@/lib/session-user";
-import { getParentOverview } from "@/lib/store";
+import { getParentOverview } from "@/lib/db/repo";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function ParentPage() {
@@ -18,7 +18,7 @@ export default async function ParentPage() {
     );
   }
 
-  const overview = getParentOverview(user.id);
+  const overview = await getParentOverview(user.id);
 
   return (
     <PlatformLayout

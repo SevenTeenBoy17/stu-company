@@ -13,6 +13,30 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // C2 guard: app routes and the shared assistant context must go through the
+  // DB adapter (@/lib/db/repo), never the in-memory store directly. The store
+  // remains importable only from src/lib/db/repo.ts and from *.test.ts files.
+  {
+    files: [
+      "src/app/**/*.ts",
+      "src/app/**/*.tsx",
+      "src/lib/assistant-context.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/store",
+              message:
+                "App / SSR / API code must import from @/lib/db/repo, not the in-memory store.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

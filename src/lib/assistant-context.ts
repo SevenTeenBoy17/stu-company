@@ -1,10 +1,11 @@
 import { resolveAiChatMode, getStarterPrompts } from "@/lib/assistant-config";
-import { findProfileByUserId, getSimulationStateForUser } from "@/lib/store";
+import { findProfileByUserId, getSimulationStateForUser } from "@/lib/db/repo";
 import type {
   ActionLog,
   AiChatMode,
   AiChatPageContext,
   Role,
+  SimulationState,
   UserRecord,
 } from "@/lib/types";
 import { formatCurrency, formatPercent } from "@/lib/utils";
@@ -25,8 +26,8 @@ function buildGuestContext(route: string) {
   ].join("\n");
 }
 
-function buildGenericRoleContext(route: string, user: UserRecord) {
-  const profile = findProfileByUserId(user.id);
+async function buildGenericRoleContext(route: string, user: UserRecord) {
+  const profile = await findProfileByUserId(user.id);
   const roleFocus: Record<Role, string> = {
     student: "可以回答学生学习路径、课程模块和模拟交易方法，但当前不使用强股票上下文。",
     teacher: "可以回答班级运营、挑战任务、课堂复盘与教师端功能。",
@@ -48,7 +49,7 @@ function buildGenericRoleContext(route: string, user: UserRecord) {
 }
 
 function buildAssetContextBlock(input: {
-  selectedAsset?: ReturnType<typeof getSimulationStateForUser>["market"]["assets"][number];
+  selectedAsset?: SimulationState["market"]["assets"][number];
   actionLog?: ActionLog;
   holdingQuantity?: number;
   holdingCost?: number;
@@ -83,8 +84,8 @@ function buildAssetContextBlock(input: {
   return lines.join("\n");
 }
 
-function buildStudentContext(route: string, user: UserRecord, pageContext: AiChatPageContext) {
-  const simulation = getSimulationStateForUser(user.id);
+async function buildStudentContext(route: string, user: UserRecord, pageContext: AiChatPageContext) {
+  const simulation = await getSimulationStateForUser(user.id);
   const selectedAsset = pageContext.assetId
     ? simulation.market.assets.find((asset) => asset.id === pageContext.assetId)
     : undefined;
@@ -131,11 +132,11 @@ function buildStudentContext(route: string, user: UserRecord, pageContext: AiCha
     .join("\n");
 }
 
-export function buildAssistantContextBundle(input: {
+export async function buildAssistantContextBundle(input: {
   route: string;
   user?: UserRecord | null;
   pageContext: AiChatPageContext;
-}): AssistantContextBundle {
+}): Promise<AssistantContextBundle> {
   const mode = resolveAiChatMode(input.route, input.user?.role);
   const starterPrompts = getStarterPrompts(mode, input.user?.role);
 
@@ -151,13 +152,13 @@ export function buildAssistantContextBundle(input: {
     return {
       mode,
       starterPrompts,
-      contextBlock: buildStudentContext(input.route, input.user, input.pageContext),
+      contextBlock: await buildStudentContext(input.route, input.user, input.pageContext),
     };
   }
 
   return {
     mode,
     starterPrompts,
-    contextBlock: buildGenericRoleContext(input.route, input.user),
+    contextBlock: await buildGenericRoleContext(input.route, input.user),
   };
 }
