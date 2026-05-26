@@ -3,7 +3,7 @@ import { AccessGate } from "@/components/shared/access-gate";
 import { StudentHistoryReviewDashboard } from "@/components/student/student-history-review-dashboard";
 import { buildHistoryReviewPayload } from "@/lib/history-review";
 import { getCurrentUser } from "@/lib/session-user";
-import { getSimulationStateForUser } from "@/lib/store";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 
 // UI-DEBT: History page still needs a component-token pass plus richer loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentHistoryPage() {
@@ -20,7 +20,7 @@ export default async function StudentHistoryPage() {
     );
   }
 
-  const initialState = getSimulationStateForUser(user.id);
+  const initialState = await getSimulationStateForUser(user.id);
   const initialPayload = buildHistoryReviewPayload(initialState);
 
   return (

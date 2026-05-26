@@ -9,7 +9,7 @@
  */
 
 import bcrypt from "bcryptjs";
-import { and, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { learningModules } from "@/lib/content";
 import { getDb, isDatabaseConfigured } from "@/lib/db/client";
@@ -60,9 +60,37 @@ type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
+const DB_QUERY_TIMEOUT_MS = 12000;
+
+// In production, default to NO memory fallback so DB outages surface as 5xx
+// rather than silently returning seed data. Set ALLOW_MEMORY_FALLBACK=true to
+// keep the offline teacher-laptop demo behaviour.
+const ALLOW_MEMORY_FALLBACK =
+  process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
+
 function logFallback(fn: string, reason: FallbackReason, err?: unknown) {
   if (reason !== "no_database_url" && process.env.NODE_ENV !== "test") {
     console.warn(`[repo] ${fn} -> fallback (${reason})`, err ?? "");
+  }
+}
+
+async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`${fn} timed out after ${DB_QUERY_TIMEOUT_MS}ms`)),
+          DB_QUERY_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   }
 }
 
@@ -72,20 +100,29 @@ async function withDb<T>(
   fallback: () => T | Promise<T>,
 ): Promise<T> {
   if (!isDatabaseConfigured()) {
+    if (!ALLOW_MEMORY_FALLBACK) {
+      throw new Error(`[repo] ${fn}: DATABASE_URL not configured`);
+    }
     logFallback(fn, "no_database_url");
     return await fallback();
   }
 
   const db = getDb();
   if (!db) {
+    if (!ALLOW_MEMORY_FALLBACK) {
+      throw new Error(`[repo] ${fn}: DB client unavailable`);
+    }
     logFallback(fn, "connection_failed");
     return await fallback();
   }
 
   try {
-    return await dbFn(db);
+    return await withQueryTimeout(fn, dbFn(db));
   } catch (err) {
     logFallback(fn, "query_failed", err);
+    if (!ALLOW_MEMORY_FALLBACK) {
+      throw err;
+    }
     return await fallback();
   }
 }
@@ -412,10 +449,32 @@ export async function registerUserByInvite(input: {
     "registerUserByInvite",
     async (db) =>
       db.transaction(async (tx) => {
-        const invite = await findInviteByCodeWithExecutor(tx, input.inviteCode);
-        if (!invite) throw new Error("邀请码不存在。");
-        if (invite.usesRemaining <= 0) throw new Error("邀请码已达到使用上限。");
-        if (new Date(invite.expiresAt).getTime() < Date.now()) throw new Error("邀请码已过期。");
+        // C5: atomic reservation — decrement usesRemaining only if there is
+        // still capacity AND the code has not expired. Prevents the
+        // SELECT-then-UPDATE race that previously allowed multiple concurrent
+        // registrations to share the same one-time invite.
+        const reservedRows = await tx
+          .update(inviteCodes)
+          .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
+          .where(
+            and(
+              ilike(inviteCodes.code, input.inviteCode),
+              sql`${inviteCodes.usesRemaining} > 0`,
+              sql`${inviteCodes.expiresAt} > now()`,
+            ),
+          )
+          .returning();
+
+        if (reservedRows.length === 0) {
+          const probe = await findInviteByCodeWithExecutor(tx, input.inviteCode);
+          if (!probe) throw new Error("邀请码不存在。");
+          if (new Date(probe.expiresAt).getTime() < Date.now()) {
+            throw new Error("邀请码已过期。");
+          }
+          throw new Error("邀请码已达到使用上限。");
+        }
+
+        const invite = toInvite(reservedRows[0]);
 
         const existingUser = await selectUserByEmail(tx, input.email);
         if (existingUser) throw new Error("这个邮箱已经被注册过了。");
@@ -482,10 +541,7 @@ export async function registerUserByInvite(input: {
           }
         }
 
-        await tx
-          .update(inviteCodes)
-          .set({ usesRemaining: invite.usesRemaining - 1 })
-          .where(eq(inviteCodes.id, invite.id));
+        // usesRemaining already decremented above via atomic reservation.
 
         return newUser;
       }),

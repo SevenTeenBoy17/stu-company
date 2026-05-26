@@ -2,7 +2,7 @@ import { PlatformLayout } from "@/components/platform/platform-layout";
 import { AccessGate } from "@/components/shared/access-gate";
 import { TeacherConsole } from "@/components/teacher/teacher-console";
 import { getCurrentUser } from "@/lib/session-user";
-import { getTeacherOverview } from "@/lib/store";
+import { getTeacherOverview } from "@/lib/db/repo";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function TeacherPage() {
@@ -19,7 +19,7 @@ export default async function TeacherPage() {
     );
   }
 
-  const overview = getTeacherOverview(user.id);
+  const overview = await getTeacherOverview(user.id);
 
   return (
     <PlatformLayout

@@ -2,7 +2,7 @@ import { PlatformLayout } from "@/components/platform/platform-layout";
 import { AccessGate } from "@/components/shared/access-gate";
 import { StudentSandbox } from "@/components/student/student-sandbox";
 import { getCurrentUser } from "@/lib/session-user";
-import { getSimulationStateForUser } from "@/lib/store";
+import { getSimulationStateForUser } from "@/lib/db/repo";
 
 // UI-DEBT: Student dashboard layout was refactored, but component-level hardcoded class cleanup is not complete; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentPage() {
@@ -19,7 +19,7 @@ export default async function StudentPage() {
     );
   }
 
-  const initialState = getSimulationStateForUser(user.id);
+  const initialState = await getSimulationStateForUser(user.id);
 
   return (
     <PlatformLayout

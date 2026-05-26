@@ -14,7 +14,15 @@ export interface SessionPayload extends JWTPayload {
 }
 
 function getSecret() {
-  return new TextEncoder().encode(env.SESSION_SECRET ?? "brown-zone-development-secret");
+  const secret = env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("[auth] SESSION_SECRET is required in production");
+    }
+    console.warn("[auth] using insecure dev SESSION_SECRET — never deploy");
+    return new TextEncoder().encode("brown-zone-development-secret-do-not-use");
+  }
+  return new TextEncoder().encode(secret);
 }
 
 export async function createSessionToken(payload: SessionPayload) {

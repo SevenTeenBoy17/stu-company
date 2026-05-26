@@ -1,8 +1,9 @@
 import { DemoPortal } from "@/components/demo/demo-portal";
-import { getQuickDemoCredentials } from "@/lib/store";
+import { getQuickDemoCredentials } from "@/lib/db/repo";
 
 // UI-DEBT: Demo page still needs richer form empty/error-state review; see docs/ui-spec/audit-2026-05-25.md.
-export default function DemoPage() {
+export default async function DemoPage() {
+  const credentials = await getQuickDemoCredentials();
   return (
     <div className="pb-24">
       <section className="page-shell pt-8">
@@ -19,7 +20,7 @@ export default function DemoPage() {
 
       <section className="page-shell mt-8">
         <DemoPortal
-          credentials={getQuickDemoCredentials()}
+          credentials={credentials}
           inviteHints={[
             { role: "学生试点码", code: "MRB-STUDENT-2026", note: "注册后自动加入树德实验试点班，并创建个人沙盘。" },
             { role: "家长绑定码", code: "MRB-PARENT-2026", note: "用于绑定已存在的学生成长报告，查看家长视角。" },

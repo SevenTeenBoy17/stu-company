@@ -8,8 +8,8 @@ describe("assistant context", () => {
     resetStoreForTests();
   });
 
-  it("uses guest mode on public routes", () => {
-    const context = buildAssistantContextBundle({
+  it("uses guest mode on public routes", async () => {
+    const context = await buildAssistantContextBundle({
       route: "/learn",
       pageContext: {
         route: "/learn",
@@ -20,13 +20,13 @@ describe("assistant context", () => {
     expect(context.starterPrompts[0]).toContain("Brown Zone");
   });
 
-  it("injects asset and action context on student routes", () => {
+  it("injects asset and action context on student routes", async () => {
     const user = findUserById("student-1");
     const simulation = getSimulationStateForUser("student-1");
     const asset = simulation.market.assets[0];
     const actionLog = simulation.run.actionLog[0];
 
-    const context = buildAssistantContextBundle({
+    const context = await buildAssistantContextBundle({
       route: "/student",
       user,
       pageContext: {

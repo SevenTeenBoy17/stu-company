@@ -67,16 +67,25 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 12_0
   }
 }
 
+/**
+ * C6: AI gateway configuration. Returns null when the operator has not opted
+ * into a specific endpoint. We never silently fall back to a hardcoded
+ * third-party domain — PII would leave the boundary without consent.
+ *
+ * Reads from process.env (not env.ts snapshot) so test fixtures and
+ * Edge-runtime late binding still work. env.ts only validates these vars'
+ * shapes; all are .optional() so it adds no protection here.
+ */
 function getAiConfig() {
+  const apiKey = process.env.AI_API_KEY ?? process.env.BROWN_AGENT_API_KEY;
+  const primary = process.env.AI_BASE_URL_PRIMARY ?? process.env.BROWN_AGENT_BASE_URL;
+  const secondary =
+    process.env.AI_BASE_URL_SECONDARY ?? process.env.BROWN_AGENT_FALLBACK_BASE_URL;
+  if (!apiKey || !primary) return null;
   return {
-    apiKey: process.env.AI_API_KEY ?? process.env.BROWN_AGENT_API_KEY,
+    apiKey,
     model: process.env.AI_MODEL ?? "claude-sonnet-4-6",
-    baseUrls: [
-      process.env.AI_BASE_URL_PRIMARY ?? process.env.BROWN_AGENT_BASE_URL ?? "https://gpt-agent.cc/v1",
-      process.env.AI_BASE_URL_SECONDARY ??
-        process.env.BROWN_AGENT_FALLBACK_BASE_URL ??
-        "https://gpt-agent.cc",
-    ],
+    baseUrls: [primary, secondary].filter((url): url is string => Boolean(url)),
   };
 }
 
@@ -305,14 +314,16 @@ async function requestRemoteText(input: {
   messages: Array<{ role: "user" | "assistant"; content: Array<{ type: "text"; text: string }> }>;
   fallbackText: string;
 }): Promise<TutorInsightResponse> {
-  const { apiKey, model, baseUrls } = getAiConfig();
+  const config = getAiConfig();
 
-  if (!apiKey) {
+  if (!config) {
     return {
       text: input.fallbackText,
       provider: "fallback",
     };
   }
+
+  const { apiKey, model, baseUrls } = config;
 
   for (const baseUrl of baseUrls) {
     try {

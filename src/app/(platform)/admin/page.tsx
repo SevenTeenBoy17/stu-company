@@ -2,7 +2,7 @@ import { PlatformLayout } from "@/components/platform/platform-layout";
 import { AccessGate } from "@/components/shared/access-gate";
 import { MoneyText } from "@/components/shared/money-text";
 import { getCurrentUser } from "@/lib/session-user";
-import { getAdminOverview } from "@/lib/store";
+import { getAdminOverview } from "@/lib/db/repo";
 import { formatCurrency } from "@/lib/utils";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
@@ -20,7 +20,7 @@ export default async function AdminPage() {
     );
   }
 
-  const overview = getAdminOverview();
+  const overview = await getAdminOverview();
 
   return (
     <PlatformLayout

@@ -2,7 +2,10 @@ import { z } from "zod";
 
 const envSchema = z.object({
   APP_URL: z.string().url().optional(),
-  SESSION_SECRET: z.string().min(16).optional(),
+  SESSION_SECRET:
+    process.env.NODE_ENV === "production"
+      ? z.string().min(32, "SESSION_SECRET must be ≥32 chars in production")
+      : z.string().min(16).optional(),
   DATABASE_URL: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_URL: z.string().optional(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
