@@ -40,12 +40,23 @@ export default async function ParentPage() {
         <section className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">学期成长轨迹</p>
           <div className="mt-6 rounded-3xl bg-bg-inverse p-6 text-white">
+            {/* QA-FIX 2026-05-26: previous markup put each bar's percentage height
+                inside a wrapper without an explicit height → percentage resolved
+                to 0 and the chart looked empty. Wrapper now stretches to h-56
+                so the bar height percentages have something to be relative to. */}
             <div className="flex h-56 items-end gap-3">
               {overview.report.netWorthTrend.map((value, index, array) => {
                 const max = Math.max(...array);
+                const heightPercent = max > 0 ? (value / max) * 100 : 0;
                 return (
-                  <div key={`${value}-${index}`} className="flex flex-1 flex-col items-center gap-3">
-                    <div className="w-full rounded-t-2xl bg-brand" style={{ height: `${(value / max) * 100}%` }} />
+                  <div
+                    key={`${value}-${index}`}
+                    className="flex h-full flex-1 flex-col items-center justify-end gap-3"
+                  >
+                    <div
+                      className="w-full rounded-t-2xl bg-brand"
+                      style={{ height: `${heightPercent}%` }}
+                    />
                     <span className="text-xs text-white/55">R{index + 1}</span>
                   </div>
                 );
