@@ -6,14 +6,21 @@ import { fetchAlltickMarketPulse } from "@/lib/alltick";
 import { readSession } from "@/lib/auth";
 import { getSimulationStateForUser } from "@/lib/db/repo";
 import { buildPortfolioAiContext, buildPortfolioIntel } from "@/lib/portfolio-intel";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await readSession();
     if (!session || session.role !== "student") {
       return apiError("unauthorized", "需要学生账号登录。", 401);
+    }
+
+    // H4: portfolio intel goes through the AI gateway too.
+    const rl = rateLimit(rateLimitKey("ai-intel", session.userId, request), 20, 60_000);
+    if (!rl.ok) {
+      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
     }
 
     const state = await getSimulationStateForUser(session.userId);

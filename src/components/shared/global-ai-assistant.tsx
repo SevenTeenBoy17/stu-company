@@ -65,11 +65,14 @@ function writeGuestSessions(sessions: AiChatSession[]) {
   window.localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(sessions.slice(0, 5)));
 }
 
+// H3: auth-mirror cache moves from localStorage to sessionStorage so a shared
+// school computer drops the previous student's AI history when the tab/window
+// closes. Logout-time cleanup also wipes any pre-existing localStorage caches.
 function readAuthMirrorSessions(userId: string) {
   if (typeof window === "undefined") return [] as AiChatSession[];
 
   try {
-    const raw = window.localStorage.getItem(`brown-zone-ai-auth-cache:${userId}`);
+    const raw = window.sessionStorage.getItem(`brown-zone-ai-auth-cache:${userId}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as AiChatSession[];
     return Array.isArray(parsed) ? parsed : [];
@@ -80,7 +83,23 @@ function readAuthMirrorSessions(userId: string) {
 
 function writeAuthMirrorSessions(userId: string, sessions: AiChatSession[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(`brown-zone-ai-auth-cache:${userId}`, JSON.stringify(sessions.slice(0, 10)));
+  window.sessionStorage.setItem(
+    `brown-zone-ai-auth-cache:${userId}`,
+    JSON.stringify(sessions.slice(0, 10)),
+  );
+}
+
+/** Wipe any AI-related browser storage (called on logout). */
+export function clearBrownZoneAiStorage() {
+  if (typeof window === "undefined") return;
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    const keys: string[] = [];
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key && key.startsWith("brown-zone-ai-")) keys.push(key);
+    }
+    keys.forEach((key) => storage.removeItem(key));
+  }
 }
 
 function upsertGuestSession(sessions: AiChatSession[], nextSession: AiChatSession) {
@@ -423,7 +442,8 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               void refreshAuthHistory();
             }
           }}
-          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center rounded-full bg-[#2f3848] text-white shadow-[0_20px_50px_rgba(15,23,42,0.35)] sm:h-16 sm:w-16"
+          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#2f3848] text-white shadow-[0_20px_50px_rgba(15,23,42,0.35)] sm:h-16 sm:w-16"
+          data-allow-overflow="true"
           aria-label="打开 KeyAI"
         >
           <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(240,138,56,0.28)_0%,transparent_62%)]" />

@@ -7,11 +7,12 @@ import { buildAiSessionTitle } from "@/lib/assistant-config";
 import { buildAssistantContextBundle } from "@/lib/assistant-context";
 import { readSession } from "@/lib/auth";
 import {
-  appendAiMessage,
+  appendAiMessages,
   createAiSession,
   findUserById,
   getAiSessionById,
 } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import type { AiChatMessage, AiChatPageContext, Role } from "@/lib/types";
 import { createId } from "@/lib/utils";
 
@@ -45,16 +46,6 @@ const chatSchema = z.object({
   }),
 });
 
-function normalizeHistoryMessages(messages: Array<z.infer<typeof messageSchema>> = []): AiChatMessage[] {
-  return messages.map((message) => ({
-    id: createId(`history-${message.role}`),
-    role: message.role,
-    text: message.text,
-    createdAt: message.createdAt ?? new Date().toISOString(),
-    meta: message.meta,
-  }));
-}
-
 function createChatMessage(
   role: "user" | "assistant",
   text: string,
@@ -81,6 +72,13 @@ export async function POST(request: Request) {
     const session = await readSession();
     const user = session ? await findUserById(session.userId) : null;
 
+    // H4: per-user (or per-IP for guests) sliding window. 20 prompts/minute is
+    // generous for legitimate use but caps abuse / cost-bomb risk.
+    const rl = rateLimit(rateLimitKey("ai-chat", user?.id, request), 20, 60_000);
+    if (!rl.ok) {
+      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    }
+
     const contextBundle = await buildAssistantContextBundle({
       route: body.pageContext.route,
       user,
@@ -99,12 +97,13 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      const guestHistory = normalizeHistoryMessages(body.history ?? []);
+      // H5: guest mode ignores client-supplied history so a malicious caller
+      // cannot inject fake "assistant" turns to jailbreak the system prompt.
       const reply = await requestChatReply({
         mode: contextBundle.mode,
         prompt: body.prompt,
         contextBlock: contextBundle.contextBlock,
-        history: [...guestHistory, userMessage],
+        history: [userMessage],
         role: pageContext.role,
       });
 
@@ -131,26 +130,26 @@ export async function POST(request: Request) {
       });
     }
 
-    await appendAiMessage(activeSession.id, user.id, userMessage);
-    const latestSession = await getAiSessionById(activeSession.id, user.id);
+    // H9: call AI first, then commit user + assistant turns in a single
+    // transaction. A remote failure now leaves the session untouched instead
+    // of stranding an orphan user message with no reply.
+    const history = [...(activeSession.messages ?? []), userMessage];
 
     const reply = await requestChatReply({
       mode: contextBundle.mode,
       prompt: body.prompt,
       contextBlock: contextBundle.contextBlock,
-      history: latestSession?.messages ?? [userMessage],
+      history,
       role: user.role,
     });
 
-    await appendAiMessage(
-      activeSession.id,
-      user.id,
-      createChatMessage("assistant", reply.text, pageContext, {
-        provider: reply.provider,
-        baseUrl: reply.baseUrl,
-        mode: contextBundle.mode,
-      }),
-    );
+    const assistantMessage = createChatMessage("assistant", reply.text, pageContext, {
+      provider: reply.provider,
+      baseUrl: reply.baseUrl,
+      mode: contextBundle.mode,
+    });
+
+    await appendAiMessages(activeSession.id, user.id, [userMessage, assistantMessage]);
 
     return NextResponse.json({
       sessionId: activeSession.id,
