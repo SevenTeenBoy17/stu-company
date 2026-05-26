@@ -436,7 +436,7 @@ vercel --prod
 | subagent 跑出范围 | `Esc` 中断，重新发更窄的指令 |
 | migration 把表搞坏 | Supabase Dashboard → drop schema + 重跑阶段 1 |
 | 测试在 CI 过但本地 fail | 删 .next/ + node_modules/.cache/ 重试 |
-| AI 总是返回本地兜底 | 查 AI_API_KEY，查 gpt-agent.cc 余额 |
+| AI 总是返回本地兜底 | 查 AI_API_KEY + AI_BASE_URL_PRIMARY；空 URL 即视为禁用远端 AI |
 
 ## 附录 C — 不要做的事
 

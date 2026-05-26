@@ -33,8 +33,8 @@ Configure these variables for Production and Preview:
 - `APP_URL`: the final Vercel production URL, for example `https://brown-zone-web.vercel.app`
 - `SESSION_SECRET`: a long random string, at least 32 characters
 - `DATABASE_URL`: Supabase Postgres pooled connection string
-- `AI_BASE_URL_PRIMARY`: `https://gpt-agent.cc/v1`
-- `AI_BASE_URL_SECONDARY`: `https://gpt-agent.cc`
+- `AI_BASE_URL_PRIMARY`: your operator-supplied Anthropic-compatible endpoint. Leave empty to disable remote AI (local fallback narratives still work).
+- `AI_BASE_URL_SECONDARY`: optional second endpoint for failover.
 - `ALLTICK_STOCK_BASE_URL`: `https://quote.alltick.co/quote-stock-b-api`
 
 ## Pre-Deploy Checks
