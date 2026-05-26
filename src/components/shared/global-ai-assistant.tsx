@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -354,7 +354,11 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
     }
   }
 
-  const handleAssistantOpen = useEffectEvent((detail: AiAssistantLaunchDetail) => {
+  // M6: useEffectEvent is still experimental in React 19.2.4. Mirror it with a
+  // ref so the effect closure always sees the latest state callbacks without
+  // re-subscribing on every render.
+  const handleAssistantOpenRef = useRef<(detail: AiAssistantLaunchDetail) => void>(() => {});
+  handleAssistantOpenRef.current = (detail: AiAssistantLaunchDetail) => {
     setIsOpen(true);
     setIsHistoryOpen(false);
     setError(null);
@@ -371,7 +375,10 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
         void sendPrompt(detail.prompt, nextContext);
       }
     }
-  });
+  };
+  const handleAssistantOpen = useCallback((detail: AiAssistantLaunchDetail) => {
+    handleAssistantOpenRef.current(detail);
+  }, []);
 
   useEffect(() => {
     const handleWindowOpen = (event: Event) => {
@@ -382,7 +389,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
     return () => {
       window.removeEventListener(AI_ASSISTANT_OPEN_EVENT, handleWindowOpen);
     };
-  }, []);
+  }, [handleAssistantOpen]);
 
   useEffect(() => {
     if (viewerKey !== "guest") {

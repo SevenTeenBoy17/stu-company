@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx scripts/seed.ts",
     "db:apply-policies": "tsx scripts/apply-policies.ts"
@@ -18,7 +19,6 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
     "jose": "^6.2.2",
@@ -38,6 +38,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "jsdom": "^29.0.2",

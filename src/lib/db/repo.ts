@@ -8,8 +8,9 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import bcrypt from "bcryptjs";
 import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+
+import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
 import { getDb, isDatabaseConfigured } from "@/lib/db/client";
@@ -458,7 +459,7 @@ export async function authenticateUser(email: string, password: string) {
     async (db) => {
       const user = await selectUserByEmail(db, email);
       if (!user) return null;
-      return (await bcrypt.compare(password, user.passwordHash)) ? user : null;
+      return (await verifyPassword(password, user.passwordHash)) ? user : null;
     },
     () => store.authenticateUser(email, password),
   );
@@ -507,7 +508,7 @@ export async function registerUserByInvite(input: {
         const newUser: UserRecord = {
           id: createId("user"),
           email: input.email,
-          passwordHash: await bcrypt.hash(input.password, 10),
+          passwordHash: await hashPassword(input.password),
           role: invite.role,
           name: input.name,
           title:

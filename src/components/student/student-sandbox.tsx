@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
   Landmark,
@@ -114,7 +114,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     setMessage(payload.message ?? "操作已更新。");
   }
 
-  const refreshPortfolioIntel = useEffectEvent(async () => {
+  // M6: avoid React 19 experimental useEffectEvent; mirror the latest closure
+  // via a ref so effects can call the always-fresh implementation.
+  const refreshPortfolioIntelRef = useRef<() => Promise<void>>(async () => {});
+  refreshPortfolioIntelRef.current = async () => {
     if (!state) return;
 
     refreshControllerRef.current?.abort();
@@ -137,7 +140,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         setIntelPending(false);
       }
     }
-  });
+  };
+  const refreshPortfolioIntel = useCallback(() => refreshPortfolioIntelRef.current(), []);
 
   async function loadTutorRadarForState(currentState: SimulationState) {
     setRadarPending(true);
@@ -152,30 +156,35 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     }
   }
 
-  const refreshTutorRadarOnMount = useEffectEvent(async () => {
+  const refreshTutorRadarOnMountRef = useRef<() => Promise<void>>(async () => {});
+  refreshTutorRadarOnMountRef.current = async () => {
     if (state) {
       await loadTutorRadarForState(state);
     }
-  });
+  };
+  const refreshTutorRadarOnMount = useCallback(
+    () => refreshTutorRadarOnMountRef.current(),
+    [],
+  );
 
   useEffect(() => {
     if (!state) return;
     setPortfolioIntel(buildPortfolioIntel(state));
     setTutorRadar(buildTutorRadarPayload(state));
     void refreshPortfolioIntel();
-  }, [state]);
+  }, [state, refreshPortfolioIntel]);
 
   useEffect(() => {
     if (studentId) {
       void refreshTutorRadarOnMount();
     }
-  }, [studentId]);
+  }, [studentId, refreshTutorRadarOnMount]);
 
   useEffect(() => {
     if (!studentId) return;
     const timer = window.setInterval(() => void refreshPortfolioIntel(), MARKET_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [studentId]);
+  }, [studentId, refreshPortfolioIntel]);
 
   useEffect(() => {
     return () => refreshControllerRef.current?.abort();
@@ -244,23 +253,21 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   return (
     <div className="space-y-6 pb-24">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1780px]:grid-cols-5">
         {heroMetrics.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="panel min-w-0 rounded-[2rem] p-5 transition-transform hover:-translate-y-1 sm:p-6">
+            <div key={item.label} className="panel min-w-0 overflow-hidden rounded-[2rem] p-5 transition-transform hover:-translate-y-1 sm:p-6">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-base font-bold text-slate-500">{item.label}</p>
-                  <p className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                    {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
-                  </p>
-                </div>
-                <span className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
+                <p className="min-w-0 text-base font-bold text-slate-500">{item.label}</p>
+                <span className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <p className="mt-4 text-sm font-semibold text-slate-500">{item.meta}</p>
+              <p className="mt-4 max-w-full overflow-hidden text-[clamp(2.25rem,2.35vw,3.1rem)] font-black leading-none tracking-tight text-slate-950">
+                {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
+              </p>
+              <p className="mt-4 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
             </div>
           );
         })}
@@ -303,10 +310,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               const move = getMarketMoveClasses(asset.dayChange);
               const active = tradeForm.assetId === asset.id;
               return (
-                <button
+                <div
                   key={asset.id}
-                  type="button"
-                  onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
                   className={cn(
                     "min-w-0 rounded-[1.5rem] border p-4 text-left transition-all duration-200",
                     active
@@ -314,35 +319,39 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-white",
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-lg font-black text-slate-950">{asset.name}</p>
-                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
+                    className="block w-full rounded-[1.2rem] text-left focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-black text-slate-950">{asset.name}</p>
+                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
+                      </div>
+                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
+                        {formatPercent(asset.dayChange)}
+                      </span>
                     </div>
-                    <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
-                      {formatPercent(asset.dayChange)}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-2xl font-black text-slate-950">
-                    <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
-                  </p>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{asset.description}</p>
-                  <span
-                    onClick={(event) => {
-                      event.stopPropagation();
+                    <p className="mt-3 text-2xl font-black text-slate-950">
+                      <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
+                    </p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{asset.description}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       dispatchAssistantOpen({
                         prompt: `请帮我分析当前这只资产 ${asset.name}（${asset.symbol}）的风险、仓位和下一步观察点。`,
                         assetId: asset.id,
                       });
                     }}
-                    className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
-                    role="button"
-                    tabIndex={0}
+                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
                   >
                     <MessageSquareQuote className="h-4 w-4" />
                     询问 AI
-                  </span>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -566,7 +575,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   <div key={entry.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-base font-black text-slate-950">{entry.label}</p>
+                        <p className="line-clamp-2 break-words text-base font-black text-slate-950">{entry.label}</p>
                         <p className="mt-1 text-sm font-semibold text-slate-500">
                           第 {entry.round} 回合 · {actionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
                         </p>
@@ -579,7 +588,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                             actionLogId: entry.id,
                           })
                         }
-                        className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+                        className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
                       >
                         问 AI
                       </button>

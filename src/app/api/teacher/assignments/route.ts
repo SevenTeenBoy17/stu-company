@@ -5,21 +5,15 @@ import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { createAssignmentForTeacher, getTeacherOverview } from "@/lib/db/repo";
 
+// M5: strict boundary types. brief is required so teacher-authored copy is
+// never silently replaced by a system default; difficulty is an enum so the
+// schema rejects unknown values instead of falling through to "策略".
 const assignmentSchema = z.object({
-  title: z.string().min(2),
-  brief: z.string().min(10).optional(),
-  summary: z.string().min(10).optional(),
-  difficulty: z.string().min(1).optional(),
-  dueLabel: z.string().min(2),
+  title: z.string().min(2).max(160),
+  brief: z.string().min(10).max(2000),
+  difficulty: z.enum(["基础", "策略", "联赛"]).default("策略"),
+  dueLabel: z.string().min(2).max(64),
 });
-
-function normalizeDifficulty(value?: string) {
-  if (value === "基础" || value === "策略" || value === "联赛") {
-    return value;
-  }
-
-  return "策略";
-}
 
 export async function GET() {
   const auth = await requireUser("teacher");
@@ -41,8 +35,8 @@ export async function POST(request: Request) {
     const body = assignmentSchema.parse(await request.json());
     await createAssignmentForTeacher(auth.user.id, {
       title: body.title,
-      brief: body.brief ?? body.summary ?? "请围绕本周市场情景完成一次复盘与策略说明。",
-      difficulty: normalizeDifficulty(body.difficulty) as "基础" | "策略" | "联赛",
+      brief: body.brief,
+      difficulty: body.difficulty,
       dueLabel: body.dueLabel,
     });
 
