@@ -11,6 +11,8 @@ export interface SessionPayload extends JWTPayload {
   role: Role;
   email: string;
   classroomId?: string | null;
+  /** H2: matched against UserRecord.tokenVersion to support server-side revoke. */
+  tv: number;
 }
 
 function getSecret() {

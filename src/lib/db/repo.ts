@@ -14,6 +14,7 @@ import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { learningModules } from "@/lib/content";
 import { getDb, isDatabaseConfigured } from "@/lib/db/client";
 import {
+  aiMessages,
   aiSessions,
   assignments,
   classrooms,
@@ -141,6 +142,7 @@ function toUserRecord(row: DbUser, profile?: DbProfile | null): UserRecord {
     title: profile?.title ?? row.role,
     classroomId: maybeUndefined(row.classroomId),
     studentLinkId: maybeUndefined(row.studentLinkId),
+    tokenVersion: row.tokenVersion ?? 0,
   };
 }
 
@@ -323,29 +325,48 @@ async function syncGrowthReportForStudent(executor: DbExecutor, studentUserId: s
   if (!linkRow || !run) return;
 
   const report = buildGrowthReport(run, linkRow.studentUserId, linkRow.parentUserId);
-  const [existing] = await executor
-    .select()
-    .from(growthReports)
-    .where(eq(growthReports.studentUserId, studentUserId))
-    .limit(1);
 
-  if (existing) {
-    await executor
-      .update(growthReports)
-      .set({
+  // H8: atomic upsert. The unique index on student_user_id makes this race
+  // free, so concurrent applyAction calls can't produce duplicate reports.
+  await executor
+    .insert(growthReports)
+    .values({
+      id: createId("growth-report"),
+      studentUserId: linkRow.studentUserId,
+      parentUserId: linkRow.parentUserId,
+      payload: report,
+    })
+    .onConflictDoUpdate({
+      target: growthReports.studentUserId,
+      set: {
         parentUserId: linkRow.parentUserId,
         payload: report,
-      })
-      .where(eq(growthReports.id, existing.id));
-    return;
-  }
+      },
+    });
+}
 
-  await executor.insert(growthReports).values({
-    id: createId("growth-report"),
-    studentUserId: linkRow.studentUserId,
-    parentUserId: linkRow.parentUserId,
-    payload: report,
-  });
+type DbAiMessage = typeof aiMessages.$inferSelect;
+
+function toAiMessage(row: DbAiMessage): AiChatMessage {
+  return {
+    id: row.id,
+    role: row.role as AiChatMessage["role"],
+    text: row.text,
+    createdAt: row.createdAt.toISOString(),
+    meta: (row.meta ?? undefined) as AiChatMessage["meta"],
+  };
+}
+
+async function loadSessionMessages(executor: DbExecutor, sessionId: string) {
+  const rows = await executor
+    .select()
+    .from(aiMessages)
+    .where(eq(aiMessages.sessionId, sessionId))
+    .orderBy(desc(aiMessages.createdAt))
+    .limit(50);
+
+  // Reverse to oldest-first for downstream consumers.
+  return rows.reverse().map(toAiMessage);
 }
 
 async function listAiSessionRows(executor: DbExecutor, userId: string) {
@@ -353,11 +374,15 @@ async function listAiSessionRows(executor: DbExecutor, userId: string) {
     .select()
     .from(aiSessions)
     .where(eq(aiSessions.userId, userId))
-    .orderBy(desc(aiSessions.createdAt));
+    .orderBy(desc(aiSessions.updatedAt));
 
-  return rows
-    .map(toAiSession)
-    .sort((left, right) => +new Date(right.updatedAt) - +new Date(left.updatedAt));
+  // H7: session list excludes message bodies; callers load on demand via
+  // getAiSessionById. Keep the legacy AiChatSession shape (messages: []) so
+  // existing UI code paths continue to compile without churn.
+  return rows.map((row) => {
+    const session = toAiSession(row);
+    return { ...session, messages: [] as AiChatMessage[] };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -809,6 +834,7 @@ export async function createAiSession(input: {
   return withDb(
     "createAiSession",
     async (db) => {
+      const now = new Date();
       const session: AiChatSession = {
         id: createId("ai-session"),
         userId: input.userId,
@@ -816,13 +842,16 @@ export async function createAiSession(input: {
         title: input.title,
         mode: input.mode,
         messages: [],
-        updatedAt: new Date().toISOString(),
+        updatedAt: now.toISOString(),
       };
 
+      // H7: payload stores only session metadata; messages live in ai_messages.
       await db.insert(aiSessions).values({
         id: session.id,
         userId: input.userId,
-        payload: session,
+        payload: { ...session, messages: [] },
+        createdAt: now,
+        updatedAt: now,
       });
 
       const sessions = await listAiSessionRows(db, input.userId);
@@ -837,26 +866,58 @@ export async function createAiSession(input: {
   );
 }
 
-export async function appendAiMessage(sessionId: string, userId: string, message: AiChatMessage) {
+/**
+ * H9: write multiple chat messages in one transaction so a partial AI failure
+ * cannot leave an orphan user message without its assistant reply (or vice
+ * versa). Single-message callers use appendAiMessage which delegates here.
+ */
+export async function appendAiMessages(sessionId: string, userId: string, messages: AiChatMessage[]) {
+  if (messages.length === 0) {
+    return getAiSessionById(sessionId, userId);
+  }
+
   return withDb(
-    "appendAiMessage",
-    async (db) => {
-      const session = await getAiSessionByIdWithExecutor(db, sessionId, userId);
-      if (!session) {
-        throw new Error("未找到对应的 AI 会话。");
+    "appendAiMessages",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const session = await getAiSessionByIdWithExecutor(tx, sessionId, userId);
+        if (!session) {
+          throw new Error("未找到对应的 AI 会话。");
+        }
+
+        const latestAt = messages[messages.length - 1]?.createdAt ?? new Date().toISOString();
+
+        await tx.insert(aiMessages).values(
+          messages.map((message) => ({
+            id: message.id || createId("ai-msg"),
+            sessionId,
+            role: message.role,
+            text: message.text,
+            meta: message.meta ?? null,
+            createdAt: new Date(message.createdAt),
+          })),
+        );
+
+        await tx
+          .update(aiSessions)
+          .set({ updatedAt: new Date(latestAt) })
+          .where(eq(aiSessions.id, sessionId));
+
+        const reloaded = await loadSessionMessages(tx, sessionId);
+        return { ...session, messages: reloaded, updatedAt: latestAt };
+      }),
+    async () => {
+      let latest: AiChatSession | null = null;
+      for (const message of messages) {
+        latest = await store.appendAiMessage(sessionId, userId, message);
       }
-
-      const updated: AiChatSession = {
-        ...session,
-        messages: [...session.messages, message].slice(-20),
-        updatedAt: message.createdAt,
-      };
-
-      await db.update(aiSessions).set({ payload: updated }).where(eq(aiSessions.id, sessionId));
-      return updated;
+      return latest ?? (await store.getAiSessionById(sessionId, userId));
     },
-    () => store.appendAiMessage(sessionId, userId, message),
   );
+}
+
+export async function appendAiMessage(sessionId: string, userId: string, message: AiChatMessage) {
+  return appendAiMessages(sessionId, userId, [message]);
 }
 
 export async function listAiSessionsForUser(userId: string) {
@@ -868,7 +929,12 @@ export async function listAiSessionsForUser(userId: string) {
 export async function getAiSessionById(sessionId: string, userId: string) {
   return withDb(
     "getAiSessionById",
-    (db) => getAiSessionByIdWithExecutor(db, sessionId, userId),
+    async (db) => {
+      const session = await getAiSessionByIdWithExecutor(db, sessionId, userId);
+      if (!session) return null;
+      const messages = await loadSessionMessages(db, sessionId);
+      return { ...session, messages };
+    },
     () => store.getAiSessionById(sessionId, userId),
   );
 }
@@ -880,7 +946,26 @@ async function getAiSessionByIdWithExecutor(executor: DbExecutor, sessionId: str
     .where(and(eq(aiSessions.id, sessionId), eq(aiSessions.userId, userId)))
     .limit(1);
 
-  return row ? toAiSession(row) : null;
+  return row ? { ...toAiSession(row), messages: [] as AiChatMessage[] } : null;
+}
+
+/**
+ * H2: invalidate every outstanding JWT for this user by bumping tokenVersion.
+ * Called from /api/auth/logout (and should be called on password change).
+ */
+export async function bumpTokenVersion(userId: string) {
+  return withDb(
+    "bumpTokenVersion",
+    async (db) => {
+      const [updated] = await db
+        .update(users)
+        .set({ tokenVersion: sql`${users.tokenVersion} + 1` })
+        .where(eq(users.id, userId))
+        .returning({ tokenVersion: users.tokenVersion });
+      return updated?.tokenVersion ?? 0;
+    },
+    () => store.bumpTokenVersion(userId),
+  );
 }
 
 // ---------------------------------------------------------------------------

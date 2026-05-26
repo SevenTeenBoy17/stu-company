@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -21,6 +22,8 @@ export const users = pgTable("users", {
   studentLinkId: varchar("student_link_id", { length: 64 }).references(
     (): AnyPgColumn => studentParentLinks.id,
   ),
+  // H2: bumped on logout / password change to invalidate outstanding JWTs.
+  tokenVersion: integer("token_version").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("users_role_idx").on(table.role),
@@ -101,64 +104,11 @@ export const scenarioRuns = pgTable("scenario_runs", {
   index("scenario_runs_classroom_id_idx").on(table.classroomId),
 ]);
 
-export const portfolioSnapshots = pgTable("portfolio_snapshots", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id),
-  round: integer("round").notNull(),
-  netWorth: integer("net_worth").notNull(),
-  payload: jsonb("payload").notNull(),
-}, (table) => [
-  index("portfolio_snapshots_run_id_idx").on(table.runId),
-]);
-
-export const holdings = pgTable("holdings", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id),
-  assetId: varchar("asset_id", { length: 64 }).notNull(),
-  quantity: integer("quantity").notNull(),
-  averageCost: integer("average_cost").notNull(),
-}, (table) => [
-  index("holdings_run_id_idx").on(table.runId),
-  index("holdings_asset_id_idx").on(table.assetId),
-]);
-
-export const cashLedger = pgTable("cash_ledger", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id),
-  type: varchar("type", { length: 32 }).notNull(),
-  amount: integer("amount").notNull(),
-  meta: jsonb("meta").notNull(),
-}, (table) => [
-  index("cash_ledger_run_id_idx").on(table.runId),
-  index("cash_ledger_type_idx").on(table.type),
-]);
-
-export const propertyPositions = pgTable("property_positions", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id),
-  units: integer("units").notNull(),
-  basis: integer("basis").notNull(),
-}, (table) => [
-  index("property_positions_run_id_idx").on(table.runId),
-]);
-
-export const venturePositions = pgTable("venture_positions", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id),
-  stake: integer("stake").notNull(),
-  basis: integer("basis").notNull(),
-}, (table) => [
-  index("venture_positions_run_id_idx").on(table.runId),
-]);
-
-export const eventCards = pgTable("event_cards", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  title: varchar("title", { length: 160 }).notNull(),
-  category: varchar("category", { length: 32 }).notNull(),
-  signal: varchar("signal", { length: 16 }).notNull(),
-  description: text("description").notNull(),
-  coachingCue: text("coaching_cue").notNull(),
-});
+// H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,
+// property_positions, venture_positions, event_cards, leaderboards) were
+// defined but never written to. Their data lives in scenario_runs JSONB
+// columns. Removed from schema; drizzle/0001_drop_zombie_tables.sql drops
+// them from the database.
 
 export const assignments = pgTable("assignments", {
   id: varchar("id", { length: 64 }).primaryKey(),
@@ -179,8 +129,24 @@ export const aiSessions = pgTable("ai_sessions", {
   userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
   payload: jsonb("payload").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("ai_sessions_user_id_idx").on(table.userId),
+]);
+
+// H7: messages live in their own table so appends don't rewrite the whole
+// session blob. Cascade-deletes when the parent session goes.
+export const aiMessages = pgTable("ai_messages", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("session_id", { length: 64 })
+    .notNull()
+    .references(() => aiSessions.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 16 }).notNull(),
+  text: text("text").notNull(),
+  meta: jsonb("meta"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ai_messages_session_created_idx").on(table.sessionId, table.createdAt),
 ]);
 
 export const growthReports = pgTable("growth_reports", {
@@ -189,14 +155,8 @@ export const growthReports = pgTable("growth_reports", {
   parentUserId: varchar("parent_user_id", { length: 64 }).notNull().references(() => users.id),
   payload: jsonb("payload").notNull(),
 }, (table) => [
-  index("growth_reports_student_user_id_idx").on(table.studentUserId),
+  // H8: a student has exactly one current growth report; enforce so the
+  // syncGrowthReportForStudent race can use onConflictDoUpdate.
+  uniqueIndex("growth_reports_student_unique").on(table.studentUserId),
   index("growth_reports_parent_user_id_idx").on(table.parentUserId),
-]);
-
-export const leaderboards = pgTable("leaderboards", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  scope: varchar("scope", { length: 32 }).notNull(),
-  payload: jsonb("payload").notNull(),
-}, (table) => [
-  index("leaderboards_scope_idx").on(table.scope),
 ]);

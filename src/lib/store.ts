@@ -374,6 +374,13 @@ export function findUserById(id: string) {
   return getStore().users.find((user) => user.id === id) ?? null;
 }
 
+export function bumpTokenVersion(userId: string) {
+  const user = getStore().users.find((candidate) => candidate.id === userId);
+  if (!user) return 0;
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  return user.tokenVersion;
+}
+
 export function findProfileByUserId(userId: string) {
   return getStore().profiles.find((profile) => profile.userId === userId) ?? null;
 }

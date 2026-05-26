@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRouteError } from "@/lib/api-response";
+import { apiError, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestTutorInsight } from "@/lib/ai";
 import { getSimulationStateForUser } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 const tutorSchema = z.object({
   mode: z.enum(["welcome", "action-review", "round-review", "parent-summary"]).default("round-review"),
@@ -14,6 +15,12 @@ const tutorSchema = z.object({
 export async function POST(request: Request) {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
+
+  // H4: tutor is cheaper per call than chat but still hits the AI gateway.
+  const rl = rateLimit(rateLimitKey("ai-tutor", auth.user.id, request), 20, 60_000);
+  if (!rl.ok) {
+    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+  }
 
   try {
     const body = tutorSchema.parse(await request.json());

@@ -8,6 +8,13 @@
       "when": 1779701041939,
       "tag": "0000_minor_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0001_h2_h6_h7_h8",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       role: user.role,
       email: user.email,
       classroomId: user.classroomId ?? null,
+      tv: user.tokenVersion ?? 0,
     });
 
     return NextResponse.json({

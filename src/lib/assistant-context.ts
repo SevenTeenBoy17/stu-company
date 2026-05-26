@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { resolveAiChatMode, getStarterPrompts } from "@/lib/assistant-config";
 import { findProfileByUserId, getSimulationStateForUser } from "@/lib/db/repo";
 import type {
@@ -9,6 +11,21 @@ import type {
   UserRecord,
 } from "@/lib/types";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+
+// H1: PII masking before context leaves the boundary to a third-party AI
+// vendor. Student names and classroom ids are minors' identifiers under
+// PIPL — replace with stable opaque tokens so the model still gets a
+// consistent identity per turn without learning the underlying values.
+function maskUser(user: { id: string }) {
+  const suffix = user.id.length >= 4 ? user.id.slice(-4) : user.id;
+  return `学生#${suffix}`;
+}
+
+function maskClassroom(classroomId?: string | null) {
+  if (!classroomId) return "未绑定班级";
+  const digest = createHash("sha256").update(classroomId).digest("hex").slice(0, 8);
+  return `班级#${digest}`;
+}
 
 interface AssistantContextBundle {
   mode: AiChatMode;
@@ -39,7 +56,8 @@ async function buildGenericRoleContext(route: string, user: UserRecord) {
     "当前模式：登录后通用问答。",
     `当前页面：${route}`,
     `当前角色：${user.role}`,
-    `当前用户：${user.name} / ${user.title}`,
+    `当前用户：${maskUser(user)}（${user.title}）`,
+    user.classroomId ? `所在班级：${maskClassroom(user.classroomId)}` : "",
     profile ? `个人简介：${profile.headline}` : "",
     roleFocus[user.role],
     "回答边界：强调教育模拟、风险意识和产品引导，不给真实交易指令。",
@@ -112,7 +130,8 @@ async function buildStudentContext(route: string, user: UserRecord, pageContext:
   return [
     "当前模式：学生强上下文问答。",
     `当前页面：${route}`,
-    `当前用户：${simulation.user.name} / ${simulation.user.title}`,
+    `当前用户：${maskUser(simulation.user)}（${simulation.user.title}）`,
+    `所在班级：${maskClassroom(user.classroomId)}`,
     `当前回合：${simulation.run.currentRound}/${simulation.run.totalRounds}`,
     `回合主题：${simulation.market.round.theme} - ${simulation.market.round.headline}`,
     `当前事件：${simulation.market.event.title} - ${simulation.market.event.description}`,

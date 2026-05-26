@@ -130,6 +130,8 @@ export interface UserRecord {
   title: string;
   classroomId?: string;
   studentLinkId?: string;
+  /** H2: incremented on logout/password change to invalidate outstanding JWTs. */
+  tokenVersion?: number;
 }
 
 export interface ProfileRecord {
