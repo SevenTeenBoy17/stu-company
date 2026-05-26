@@ -1,22 +1,15 @@
+import { redirect } from "next/navigation";
+
 import { PlatformLayout } from "@/components/platform/platform-layout";
-import { AccessGate } from "@/components/shared/access-gate";
 import { getCurrentUser } from "@/lib/session-user";
-import { getParentOverview } from "@/lib/db/repo";
+import { getParentOverview, roleHomePath } from "@/lib/db/repo";
 
 // UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
 export default async function ParentPage() {
+  // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
-
-  if (!user || user.role !== "parent") {
-    return (
-      <div className="page-shell py-10">
-        <AccessGate
-          title="家长成长报告需要家长账号登录"
-          description="请从试玩入口使用家长样例账号登录，或通过家长邀请码注册绑定。这里会展示学生净值趋势、能力雷达和老师总结。"
-        />
-      </div>
-    );
-  }
+  if (!user) redirect("/demo?reason=login_required");
+  if (user.role !== "parent") redirect(roleHomePath(user.role));
 
   const overview = await getParentOverview(user.id);
 

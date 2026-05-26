@@ -10,6 +10,13 @@
 
 import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
+import { z } from "zod";
+
+import {
+  ActionLogSchema,
+  HoldingSchema,
+  PortfolioSnapshotSchema,
+} from "@/lib/db/payload-schemas";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
@@ -181,7 +188,30 @@ function toInvite(row: DbInvite): InviteCode {
   };
 }
 
+// L2: structural validation at the JSONB boundary. Each schema only checks
+// the load-bearing fields (id/type/round/etc.); unknown extras pass through
+// via .passthrough(). Failures throw so a malformed row surfaces as a
+// caught DB error instead of crashing a React component downstream.
+function parseJsonbArray<S extends z.ZodTypeAny>(
+  schema: S,
+  raw: unknown,
+  fieldName: string,
+): unknown[] {
+  const parsed = z.array(schema).safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(`[repo] scenario_runs.${fieldName} JSONB is malformed`);
+  }
+  return parsed.data;
+}
+
+const EventHistorySchema = z.array(z.string());
+
 function toRun(row: DbRun): ScenarioRun {
+  const eventHistoryParsed = EventHistorySchema.safeParse(row.eventHistory);
+  if (!eventHistoryParsed.success) {
+    throw new Error(`[repo] scenario_runs.eventHistory JSONB is malformed`);
+  }
+
   return {
     id: row.id,
     userId: row.userId,
@@ -196,10 +226,14 @@ function toRun(row: DbRun): ScenarioRun {
     propertyBasis: row.propertyBasis,
     ventureStake: row.ventureStake,
     ventureBasis: row.ventureBasis,
-    holdings: row.holdings as ScenarioRun["holdings"],
-    eventHistory: row.eventHistory as ScenarioRun["eventHistory"],
-    actionLog: row.actionLog as ScenarioRun["actionLog"],
-    snapshots: row.snapshots as ScenarioRun["snapshots"],
+    holdings: parseJsonbArray(HoldingSchema, row.holdings, "holdings") as unknown as ScenarioRun["holdings"],
+    eventHistory: eventHistoryParsed.data,
+    actionLog: parseJsonbArray(ActionLogSchema, row.actionLog, "actionLog") as unknown as ScenarioRun["actionLog"],
+    snapshots: parseJsonbArray(
+      PortfolioSnapshotSchema,
+      row.snapshots,
+      "snapshots",
+    ) as unknown as ScenarioRun["snapshots"],
     lastInsight: maybeUndefined(row.lastInsight),
   };
 }

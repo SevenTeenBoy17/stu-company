@@ -15,6 +15,13 @@
       "when": 1780000000000,
       "tag": "0001_h2_h6_h7_h8",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780000010000,
+      "tag": "0002_rls_policies",
+      "breakpoints": true
     }
   ]
 }
