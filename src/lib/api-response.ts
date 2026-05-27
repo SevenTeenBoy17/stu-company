@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import { env } from "@/lib/env";
+
 type ApiErrorCode =
   | "invalid_input"
   | "unauthorized"
@@ -30,4 +32,16 @@ export function handleRouteError(error: unknown, fallbackMessage: string) {
   }
 
   return apiError("invalid_input", message || fallbackMessage, 400);
+}
+
+export function checkOrigin(request: Request): NextResponse | null {
+  if (process.env.NODE_ENV !== "production") return null;
+  const origin = request.headers.get("origin");
+  const appUrl = env.APP_URL;
+  if (!appUrl || !origin) return null;
+  const allowed = new URL(appUrl).origin;
+  if (origin !== allowed) {
+    return apiError("forbidden", "请求来源不被允许。", 403);
+  }
+  return null;
 }

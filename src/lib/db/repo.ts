@@ -698,12 +698,21 @@ export async function registerUserByEmail(input: {
         }
 
         if (newUser.role === "student" && !newUser.classroomId) {
-          const sandboxClassroom = await tx.select().from(classrooms).limit(1);
-          if (sandboxClassroom.length > 0) {
-            await tx.update(users).set({ classroomId: sandboxClassroom[0].id }).where(eq(users.id, newUser.id));
-            newUser.classroomId = sandboxClassroom[0].id;
-            await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, sandboxClassroom[0].id)));
+          const SANDBOX_CLASSROOM_ID = "sandbox-open";
+          const existing = await tx.select().from(classrooms).where(eq(classrooms.id, SANDBOX_CLASSROOM_ID)).limit(1);
+          if (existing.length === 0) {
+            await tx.insert(classrooms).values({
+              id: SANDBOX_CLASSROOM_ID,
+              name: "开放沙盘",
+              region: "线上",
+              teacherId: newUser.id,
+              challengeTheme: "自由探索",
+              schoolRank: 0,
+            }).onConflictDoNothing();
           }
+          await tx.update(users).set({ classroomId: SANDBOX_CLASSROOM_ID }).where(eq(users.id, newUser.id));
+          newUser.classroomId = SANDBOX_CLASSROOM_ID;
+          await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, SANDBOX_CLASSROOM_ID)));
         }
 
         return newUser;
