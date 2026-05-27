@@ -116,8 +116,8 @@ export function PlatformLayout({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/8",
-                      active ? "bg-white/10" : "bg-white/[0.04]",
+                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/12",
+                      active ? "bg-white/14 text-white" : "bg-white/[0.05] text-white/70",
                     )}
                   >
                     <span>{item.label}</span>

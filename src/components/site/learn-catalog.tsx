@@ -9,6 +9,13 @@ import { ModuleIllustration } from "@/components/site/module-illustration";
 
 const levelFilters = ["全部", "核心", "进阶", "运营", "家校"] as const;
 
+const levelTints: Record<string, string> = {
+  "核心": "bg-[var(--amber-50)]",
+  "进阶": "bg-[var(--info-50)]",
+  "运营": "bg-[var(--down-50)]",
+  "家校": "bg-[var(--warning-50)]",
+};
+
 export function LearnCatalog() {
   const [activeLevel, setActiveLevel] = useState<(typeof levelFilters)[number]>("全部");
   const [query, setQuery] = useState("");
@@ -61,8 +68,8 @@ export function LearnCatalog() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredModules.map((module) => (
-          <article key={module.key} className="panel overflow-hidden rounded-3xl">
-            <div className="bg-bg-muted p-4">
+          <article key={module.key} className="panel overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
+            <div className={`p-4 ${levelTints[module.level] ?? "bg-[var(--ink-50)]"}`}>
               <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
             </div>
             <div className="p-6">
