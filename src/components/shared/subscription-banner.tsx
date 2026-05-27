@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Role, SubscriptionTier } from "@/lib/types";
-import { resolveSubscriptionState, type SubscriptionState } from "@/lib/billing/subscription";
+import type { Role } from "@/lib/types";
+import type { SubscriptionState } from "@/lib/billing/subscription";
 
 interface Props {
-  tier: SubscriptionTier | undefined;
-  trialExpiresAt: string | undefined;
+  state: SubscriptionState;
   role?: Role;
 }
 
@@ -21,15 +19,7 @@ function studentSafeBannerMessage(state: SubscriptionState): string | null {
   return state.bannerMessage;
 }
 
-export function SubscriptionBanner({ tier, trialExpiresAt, role }: Props) {
-  const [state, setState] = useState<SubscriptionState>(() =>
-    resolveSubscriptionState(tier, trialExpiresAt),
-  );
-
-  useEffect(() => {
-    setState(resolveSubscriptionState(tier, trialExpiresAt));
-  }, [tier, trialExpiresAt]);
-
+export function SubscriptionBanner({ state, role }: Props) {
   if (!state.bannerMessage) return null;
 
   const isStudent = role === "student";

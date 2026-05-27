@@ -74,9 +74,10 @@ function detectNeverDiversified(run: ScenarioRun): DetectionResult {
 
 function detectCashHoarding(run: ScenarioRun): DetectionResult {
   if (run.currentRound < 5) return { triggered: false, confidence: "low" };
-  const totalAssets = run.cash + run.savings +
-    run.holdings.reduce((sum, h) => sum + h.quantity * h.averageCost, 0);
-  const cashRatio = (run.cash + run.savings) / Math.max(totalAssets, 1);
+  const latestSnapshot = run.snapshots.at(-1);
+  const netWorth = latestSnapshot?.netWorth ?? (run.cash + run.savings);
+  const cashLiquidity = run.cash + run.savings;
+  const cashRatio = cashLiquidity / Math.max(netWorth, 1);
   if (cashRatio > 0.85) return { triggered: true, confidence: "high" };
   if (cashRatio > 0.7) return { triggered: true, confidence: "medium" };
   return { triggered: false, confidence: "low" };

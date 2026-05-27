@@ -4,6 +4,7 @@ import { PlatformLayout } from "@/components/platform/platform-layout";
 import { StudentSandbox } from "@/components/student/student-sandbox";
 import { StudentOnboardingGate } from "@/components/student/student-onboarding-gate";
 import { SubscriptionBanner } from "@/components/shared/subscription-banner";
+import { resolveSubscriptionState } from "@/lib/billing/subscription";
 import { getCurrentUser } from "@/lib/session-user";
 import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 
@@ -14,6 +15,7 @@ export default async function StudentPage() {
 
   const initialState = await getSimulationStateForUser(user.id);
   const needsOnboarding = !user.onboardingCompleted;
+  const subState = resolveSubscriptionState(user.subscriptionTier, user.trialExpiresAt);
 
   return (
     <PlatformLayout
@@ -21,7 +23,7 @@ export default async function StudentPage() {
       heading="学生策略台"
       summary="围绕一名学生的一整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
-      <SubscriptionBanner tier={user.subscriptionTier} trialExpiresAt={user.trialExpiresAt} role={user.role} />
+      <SubscriptionBanner state={subState} role={user.role} />
       <StudentOnboardingGate userName={user.name} needsOnboarding={needsOnboarding}>
         <StudentSandbox initialState={initialState} />
       </StudentOnboardingGate>

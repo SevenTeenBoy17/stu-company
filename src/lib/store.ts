@@ -539,6 +539,8 @@ export async function registerUserByEmail(input: {
       role = inviteStatus.invite.role;
       classroomId = inviteStatus.invite.classroomId;
       inviteStatus.invite.usesRemaining -= 1;
+    } else {
+      throw new Error("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
     }
   }
 

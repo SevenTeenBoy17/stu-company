@@ -27,6 +27,7 @@ import {
   getSimulationStateForUser,
   getTeacherOverview,
   listAiSessionsForUser,
+  registerUserByEmail,
   registerUserByInvite,
   resetStoreForTests,
   roleHomePath,
@@ -143,5 +144,57 @@ describe("db repo fallback adapter", () => {
     expect(roleHomePath("student")).toBe("/student");
     expect(getQuickDemoCredentials()).toHaveLength(6);
     expect(buildTeacherLeaderboardCards([{ userId: "u", name: "A", classroomId: "c", netWorth: 1, disciplineScore: 1, rank: 1 }])[0]?.headline).toBeTruthy();
+  });
+
+  it("registers a new user by email without invite code", async () => {
+    const user = await registerUserByEmail({
+      name: "邮箱用户",
+      email: "email-only@brownzone.ai",
+      password: "BrownTest2026!",
+    });
+
+    expect(user.role).toBe("student");
+    expect(user.name).toBe("邮箱用户");
+    expect(user.email).toBe("email-only@brownzone.ai");
+    expect(user.trialExpiresAt).toBeDefined();
+    expect(user.subscriptionTier).toBe("free");
+    expect(user.onboardingCompleted).toBe(0);
+
+    await expect(authenticateUser("email-only@brownzone.ai", "BrownTest2026!")).resolves.toMatchObject({
+      id: user.id,
+    });
+  });
+
+  it("registers a user by email with valid invite code", async () => {
+    const user = await registerUserByEmail({
+      name: "邀请码用户",
+      email: "invited-email@brownzone.ai",
+      password: "BrownTest2026!",
+      inviteCode: "MRB-STUDENT-2026",
+    });
+
+    expect(user.role).toBe("student");
+    expect(user.classroomId).toBe("class-1");
+  });
+
+  it("rejects duplicate email in registerUserByEmail", async () => {
+    await expect(
+      registerUserByEmail({
+        name: "重复",
+        email: "student@brownzone.ai",
+        password: "BrownTest2026!",
+      }),
+    ).rejects.toThrow("已经被注册");
+  });
+
+  it("rejects invalid invite code in registerUserByEmail", async () => {
+    await expect(
+      registerUserByEmail({
+        name: "坏码",
+        email: "badcode@brownzone.ai",
+        password: "BrownTest2026!",
+        inviteCode: "INVALID-CODE-XXX",
+      }),
+    ).rejects.toThrow("邀请码无效");
   });
 });
