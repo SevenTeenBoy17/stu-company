@@ -55,7 +55,7 @@ describe("db repo fallback adapter", () => {
     });
 
     const leaderboard = await getLeaderboardSnapshot("classroom");
-    expect(leaderboard).toHaveLength(3);
+    expect(leaderboard).toHaveLength(4);
     expect(leaderboard[0]?.rank).toBe(1);
   });
 
@@ -141,7 +141,7 @@ describe("db repo fallback adapter", () => {
 
   it("re-exports pure store helpers", () => {
     expect(roleHomePath("student")).toBe("/student");
-    expect(getQuickDemoCredentials()).toHaveLength(4);
+    expect(getQuickDemoCredentials()).toHaveLength(6);
     expect(buildTeacherLeaderboardCards([{ userId: "u", name: "A", classroomId: "c", netWorth: 1, disciplineScore: 1, rank: 1 }])[0]?.headline).toBeTruthy();
   });
 });

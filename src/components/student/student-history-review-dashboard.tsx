@@ -433,7 +433,7 @@ export function StudentHistoryReviewDashboard({
                           className={cn("rounded-[1.4rem] border px-4 py-4 backdrop-blur", tone.surface)}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs uppercase tracking-[0.18em] text-white/42">R{highlight.round}</p>
                               <p className="mt-2 text-lg font-semibold text-white">{highlight.title}</p>
                             </div>
@@ -551,7 +551,7 @@ export function StudentHistoryReviewDashboard({
                                   {formatDateLabel(new Date(item.timestamp))}
                                 </span>
                               </div>
-                              <p className="mt-2 text-base font-semibold text-slate-950">{item.label}</p>
+                              <p className="mt-2 line-clamp-2 break-all text-base font-semibold text-slate-950">{item.label}</p>
                               <p className="mt-2 text-sm leading-7 text-slate-500">{item.impact}</p>
                             </div>
                             <div className="text-right">
@@ -576,7 +576,7 @@ export function StudentHistoryReviewDashboard({
                                     autoSend: true,
                                   })
                                 }
-                                className="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
+                                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
                               >
                                 <Bot className="h-3.5 w-3.5" />
                                 让 AI 继续解释

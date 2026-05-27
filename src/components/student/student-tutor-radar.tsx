@@ -57,7 +57,7 @@ export function StudentTutorRadar({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621] disabled:opacity-60"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621] disabled:opacity-60"
         >
           {loading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           一键更新雷达图
@@ -94,23 +94,6 @@ export function StudentTutorRadar({
               );
             })}
             <path d={radarPath} fill="rgba(240,138,56,0.24)" stroke="#f08a38" strokeWidth="3" />
-            {payload.metrics.map((metric, index) => {
-              const point = pointFor(index, payload.metrics.length, RADIUS + 28);
-              return (
-                <text
-                  key={metric.id}
-                  x={point.x}
-                  y={point.y}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="11"
-                  fontWeight="700"
-                  fill="#334155"
-                >
-                  {metric.label}
-                </text>
-              );
-            })}
             <circle cx={CENTER} cy={CENTER} r="4" fill="#f08a38" />
           </svg>
         </div>

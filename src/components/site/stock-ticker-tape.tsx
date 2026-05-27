@@ -57,12 +57,16 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
           <p className="mt-1 text-sm font-medium text-white/72">美股 AI / 科技观察池</p>
         </div>
 
-        <div className="group relative min-w-0 flex-1 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
+        <div
+          className="group relative min-w-0 flex-1 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]"
+          data-allow-overflow="true"
+        >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-[#0d1324] via-[#0d1324]/85 to-transparent sm:w-12" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-8 bg-gradient-to-l from-[#0d1324] via-[#0d1324]/85 to-transparent sm:w-12" />
 
           <div
             className="stock-ticker-marquee group-hover:[animation-play-state:paused]"
+            data-allow-overflow="true"
             style={{ ["--ticker-duration" as string]: "28s" }}
           >
             {marqueeItems.map((item, index) => {

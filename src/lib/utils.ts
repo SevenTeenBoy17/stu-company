@@ -1,6 +1,4 @@
 import { clsx, type ClassValue } from "clsx";
-import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -69,7 +67,11 @@ export function getMarketMoveClasses(value: number) {
 }
 
 export function formatDateLabel(date = new Date()) {
-  return format(date, "M月d日 HH:mm", { locale: zhCN });
+  const month = date.getUTCMonth() + 1;
+  const day = date.getUTCDate();
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${month}月${day}日 ${hour}:${minute}`;
 }
 
 export function createId(prefix: string) {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { AdminUserManager } from "@/components/admin/admin-user-manager";
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { MoneyText } from "@/components/shared/money-text";
 import { getCurrentUser } from "@/lib/session-user";
@@ -14,6 +15,7 @@ export default async function AdminPage() {
   if (user.role !== "admin") redirect(roleHomePath(user.role));
 
   const overview = await getAdminOverview();
+  const canManagePasswords = user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
 
   return (
     <PlatformLayout
@@ -29,6 +31,8 @@ export default async function AdminPage() {
           </div>
         ))}
       </div>
+
+      <AdminUserManager users={overview.users} canManagePasswords={canManagePasswords} />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="panel rounded-3xl p-6">

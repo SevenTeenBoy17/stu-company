@@ -56,7 +56,7 @@ export default async function HomePage() {
           </div>
         </SectionReveal>
 
-        <SectionReveal delay={0.08} className="bz-ink-panel relative min-h-96 overflow-hidden rounded-3xl sm:min-h-[520px]">
+        <SectionReveal delay={0.08} className="bz-ink-panel relative min-h-[440px] overflow-hidden rounded-3xl sm:min-h-[560px] lg:min-h-[620px]">
           <HeroStageArt className="absolute inset-0" />
           <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5">
             <p className="bz-eyebrow-inverse">Product Promise</p>

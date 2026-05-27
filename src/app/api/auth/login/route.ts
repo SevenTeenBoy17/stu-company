@@ -6,7 +6,7 @@ import { persistSession } from "@/lib/auth";
 import { authenticateUser, roleHomePath } from "@/lib/db/repo";
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().min(3).max(255),
   password: z.string().min(8),
 });
 

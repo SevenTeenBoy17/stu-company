@@ -47,7 +47,18 @@ declare global {
 
 function createSeedUsers() {
   const basePassword = bcrypt.hashSync("BrownZone2026!", 10);
+  const guestPassword = bcrypt.hashSync("Guest001!!!", 10);
+  const superPassword = bcrypt.hashSync("Super001!!!", 10);
   return [
+    {
+      id: "guest-student",
+      email: "guest@brownzone.ai",
+      passwordHash: guestPassword,
+      role: "student" as Role,
+      name: "游客体验",
+      title: "限时试玩学生",
+      classroomId: "class-1",
+    },
     {
       id: "teacher-1",
       email: "teacher@brownzone.ai",
@@ -101,11 +112,28 @@ function createSeedUsers() {
       name: "幕后之手运营台",
       title: "Demo 管理员",
     },
+    {
+      id: "superadmin",
+      email: "superadmin",
+      passwordHash: superPassword,
+      role: "admin" as Role,
+      name: "超级管理员",
+      title: "账号与权限总控",
+    },
   ] satisfies UserRecord[];
 }
 
 function createSeedProfiles() {
   return [
+    {
+      userId: "guest-student",
+      headline: "游客试玩账号，仅用于快速体验学生端流程。",
+      bio: "完成限定次数体验后，引导使用者注册或登录正式账号，避免多人长期共用同一进度。",
+      metrics: [
+        { label: "体验模式", value: "限时试玩" },
+        { label: "建议下一步", value: "注册/登录" },
+      ],
+    },
     {
       userId: "teacher-1",
       headline: "把课堂作业变成带反馈的模拟挑战赛。",
@@ -160,10 +188,20 @@ function createSeedProfiles() {
         { label: "内容模块", value: `${learningModules.length} 个` },
       ],
     },
+    {
+      userId: "superadmin",
+      headline: "拥有后台账号管理与密码重置权限。",
+      bio: "用于教师电脑或线上演示环境的最高权限维护，不参与学生沙盘排名。",
+      metrics: [
+        { label: "权限级别", value: "超级管理员" },
+        { label: "账号", value: "superadmin" },
+      ],
+    },
   ] satisfies ProfileRecord[];
 }
 
 function seedRuns() {
+  const guest = createInitialRun("guest-student", "class-1");
   const first = createInitialRun("student-1", "class-1");
   const second = createInitialRun("student-2", "class-1");
   const third = createInitialRun("student-3", "class-1");
@@ -264,7 +302,7 @@ function seedRuns() {
   studentThree = advanceSimulationRun(studentThree);
   studentThree = advanceSimulationRun(studentThree);
 
-  return [studentOne, studentTwo, studentThree];
+  return [guest, studentOne, studentTwo, studentThree];
 }
 
 export function createSeedStore(): Store {
@@ -381,6 +419,14 @@ export function bumpTokenVersion(userId: string) {
   if (!user) return 0;
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   return user.tokenVersion;
+}
+
+export async function updateUserPassword(userId: string, password: string) {
+  const user = getStore().users.find((candidate) => candidate.id === userId);
+  if (!user) throw new Error("用户不存在。");
+  user.passwordHash = await hashPassword(password);
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  return user;
 }
 
 export function findProfileByUserId(userId: string) {
@@ -631,6 +677,15 @@ export function getAdminOverview() {
     classrooms: store.classrooms,
     topUsers: leaderboard.slice(0, 5),
     assignments: store.assignments.slice(0, 4),
+    users: store.users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      title: user.title,
+      classroomId: user.classroomId,
+      tokenVersion: user.tokenVersion ?? 0,
+    })),
   };
 }
 
@@ -705,10 +760,12 @@ export function getAiSessionById(sessionId: string, userId: string) {
 
 export function getQuickDemoCredentials() {
   return [
+    { label: "游客试玩", email: "guest@brownzone.ai", password: "Guest001!!!", trial: true },
     { label: "学生端", email: "student@brownzone.ai", password: "BrownZone2026!" },
     { label: "教师端", email: "teacher@brownzone.ai", password: "BrownZone2026!" },
     { label: "家长端", email: "parent@brownzone.ai", password: "BrownZone2026!" },
     { label: "管理端", email: "admin@brownzone.ai", password: "BrownZone2026!" },
+    { label: "超级管理员", email: "superadmin", password: "Super001!!!" },
   ];
 }
 

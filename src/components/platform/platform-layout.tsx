@@ -75,7 +75,7 @@ export function PlatformLayout({
           </div>
 
           <div className="bz-surface-panel mt-4 rounded-3xl p-3">
-            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
+            <div className="flex flex-wrap gap-2 pb-1">
               {navMap[role].map((item, index) => {
                 const active = item.href === activeHref;
 

@@ -7,7 +7,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { count, eq } from "drizzle-orm";
+import { count, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -98,7 +98,14 @@ async function seedUsers() {
         role: user.role,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: users.id,
+      set: {
+        email: sql`excluded.email`,
+        passwordHash: sql`excluded.password_hash`,
+        role: sql`excluded.role`,
+      },
+    });
 
   await db
     .insert(profiles)
@@ -111,7 +118,16 @@ async function seedUsers() {
         metrics: profile.metrics,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: profiles.userId,
+      set: {
+        name: sql`excluded.name`,
+        title: sql`excluded.title`,
+        headline: sql`excluded.headline`,
+        bio: sql`excluded.bio`,
+        metrics: sql`excluded.metrics`,
+      },
+    });
 }
 
 async function seedClassrooms() {
@@ -185,6 +201,9 @@ async function seedAssignments() {
 async function seedScenarioRuns() {
   console.log("Seeding scenario runs...");
 
+  const seededRunUserIds = seed.runs.map((run) => run.userId);
+  await db.delete(scenarioRuns).where(inArray(scenarioRuns.userId, seededRunUserIds));
+
   await db
     .insert(scenarioRuns)
     .values(seed.runs)
@@ -227,11 +246,11 @@ async function verifySeedCounts() {
   console.log("Seed verification counts:", results);
 
   const expected = {
-    users: 6,
+    users: 8,
     classrooms: 1,
     invites: 3,
     assignments: 2,
-    runs: 3,
+    runs: 4,
     growthReports: 1,
   };
 

@@ -19,7 +19,7 @@ import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
 import type { MarketBoardPayload, MarketWatchlistSymbol } from "@/lib/types";
-import { cn, getMarketMoveClasses } from "@/lib/utils";
+import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
 
 const MINI_CHART_WIDTH = 720;
 const MINI_CHART_HEIGHT = 220;
@@ -159,12 +159,12 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="搜索股票或代码"
-                className="w-full bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400"
+                className="min-h-10 w-full bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400"
               />
             </label>
           </div>
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {filteredWatchlist.map((item) => {
               const active = item.symbol === selectedSymbol;
               return (
@@ -194,7 +194,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                         {item.monogram}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-base font-black text-slate-950">{item.name}</p>
+                        <p className="break-all text-base font-black leading-6 text-slate-950">{item.name}</p>
                         <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                           {item.symbol}
                         </p>
@@ -215,9 +215,9 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
         </div>
       </section>
 
-      <section className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
-          <div className="grid gap-0 xl:grid-cols-[minmax(0,1.14fr)_minmax(330px,0.86fr)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
             <div className="relative min-w-0 overflow-hidden p-5 sm:p-6 lg:p-7">
               <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
               <div
@@ -322,7 +322,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 </div>
                 <p className="mt-4 text-base leading-8 text-slate-600">{payload.note}</p>
                 <div className="mt-4 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-500">
-                  更新时间：{new Date(payload.asOf).toLocaleString("zh-CN", { hour12: false })}
+                  更新时间：{formatDateLabel(new Date(payload.asOf))}
                 </div>
               </div>
             </div>
@@ -332,7 +332,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
         <aside className="panel rounded-[2rem] p-5 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Snapshot</p>
           <h3 className="mt-3 text-2xl font-black text-slate-950">关键字段</h3>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {payload.selected.facts.map((fact) => (
               <div key={fact.label} className="rounded-[1.5rem] bg-slate-50 px-4 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{fact.label}</p>
@@ -343,7 +343,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
         <div className="panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -352,7 +352,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
             </div>
             <p className="text-sm font-bold text-slate-400">文字说明移到右侧，避免图内拥挤。</p>
           </div>
-          <div className="mt-5 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+          <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
             <div className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
               <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-72 w-full max-w-[300px]">
                 {[0.25, 0.5, 0.75, 1].map((ratio) => (
@@ -385,7 +385,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
               </svg>
             </div>
-            <div className="grid min-w-0 gap-3">
+            <div className="grid min-w-0 gap-3 md:grid-cols-2">
               {payload.selected.metrics.map((metric) => (
                 <div key={metric.id} className="rounded-[1.5rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">

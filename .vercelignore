@@ -1,0 +1,10 @@
+.env*
+!.env.example
+.claude/
+.codex-supervisor/
+test-results/
+coverage/
+.qa-screens/
+.tools/
+*.log
+*.tsbuildinfo

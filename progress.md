@@ -98,3 +98,17 @@
 - Integrated Stage 6 assets into `HeroStageArt`, `PlatformLayout`, and `SiteFooter`; platform sidebar labels were normalized to readable Simplified Chinese while preserving route behavior.
 - Stage 6 verification passed: `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build`, `npx playwright test`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
 - Redline audit still passed after Stage 6: no `.env.local` staging and no raw external AI fetch outside `src/lib/ai.ts`.
+- Completed a focused UI overflow and interaction audit for `/student`, `/student/market`, `/student/history`, `/`, `/learn`, and `/demo` across desktop, wide desktop, tablet, and phone sizes.
+- Fixed student dashboard metric-card overflow by moving to safer grid breakpoints, clamped large metric typography, and protected money values with stronger tabular styling.
+- Fixed cramped market/history/student action areas: reduced watchlist over-density, made long action labels clamp safely, enlarged AI/action buttons to touch-friendly heights, and made platform mobile nav wrap instead of hiding later items offscreen.
+- Added a 12 second DB adapter timeout before transparent fallback so login and dashboard reads do not hang indefinitely when Supabase/network is unstable.
+- Final visual audit returned `pageOverflow=0` and `issues=0` for `/student`, `/student/market`, and `/student/history` at desktop, wide desktop, and phone viewports.
+- Final interaction smoke verified KeyAI opens, student action tabs respond, market search/selection works, and history details toggle.
+- Fixed production student-entry crash by keeping server-only environment validation out of client bundles; `market-data.ts` now lazily imports AllTick only inside server-side payload functions.
+- Added `superadmin / Super001!!!`, guest trial credentials, admin password reset API/UI, and idempotent seed cleanup for duplicate demo scenario runs; reseeded Supabase to 8 users and 4 runs.
+- Reworked student dashboard/market/history density toward wider rectangular layouts, fixed leaderboard duplicate keys, enlarged market search input, and normalized deterministic date labels to avoid hydration text mismatch.
+- Re-deployed to Vercel production and verified `https://brown-zone-web.vercel.app` with student, guest, and superadmin login paths; `/student`, `/student/market`, `/student/history`, `/admin`, and password reset returned usable pages with zero horizontal overflow.
+- Fixed the public site header wrapping regression so homepage/demo/learn navigation labels stay horizontal at 1280px+ and collapse to the drawer below that width.
+- Fixed the homepage right hero artwork by switching it to contained rendering with a taller stage, so `AI 经济沙盘 · 课堂决策现场` is fully visible instead of being cropped.
+- Tightened the demo account-card grid so one-click role badges no longer overlap account labels on desktop widths.
+- Verified locally and in production with screenshots at 1280px, 1366px, 1536px, tablet, and phone widths; `/`, `/demo`, and `/learn` showed zero horizontal overflow, and production student login reached `/student`.

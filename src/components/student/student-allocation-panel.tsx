@@ -152,8 +152,8 @@ export function StudentAllocationPanel({
                       className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-4 backdrop-blur"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">{signal.label}</p>
+                        <div className="min-w-0">
+                          <p className="break-all text-xs font-semibold leading-5 text-white sm:text-sm">{signal.label}</p>
                           <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/42">
                             {signal.code} · {signal.region}
                           </p>
@@ -252,7 +252,7 @@ export function StudentAllocationPanel({
                 <button
                   type="button"
                   onClick={onAskAi}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
                 >
                   <Bot className="h-4 w-4" />
                   让 AI 解释配置

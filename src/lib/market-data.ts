@@ -6,7 +6,6 @@ import type {
   MarketWatchlistSymbol,
   TickerTapeItem,
 } from "@/lib/types";
-import { fetchMarketBoardSnapshot, fetchWatchlistSnapshot } from "@/lib/alltick";
 import { buildMarketBoardPayload, buildTickerTapeItems } from "@/lib/market-watchlist";
 
 export const marketAssets: MarketAsset[] = [
@@ -227,6 +226,7 @@ export type TickerTapePayload = {
 };
 
 export async function getTickerTapePayload(): Promise<TickerTapePayload> {
+  const { fetchWatchlistSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchWatchlistSnapshot();
 
   return {
@@ -240,6 +240,7 @@ export async function getTickerTapePayload(): Promise<TickerTapePayload> {
 export async function getMarketBoardPayload(
   symbol: MarketWatchlistSymbol = "MU",
 ): Promise<MarketBoardPayload> {
+  const { fetchMarketBoardSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchMarketBoardSnapshot(symbol);
 
   return buildMarketBoardPayload({

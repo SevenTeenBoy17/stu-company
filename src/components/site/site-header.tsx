@@ -49,7 +49,7 @@ export function SiteHeader() {
   const menuButtonClasses = useMemo(
     () =>
       cn(
-        "rounded-full border px-5 py-3 text-[16px] font-bold tracking-[0.01em] transition-all xl:px-6 xl:text-[17px]",
+        "inline-flex min-h-12 min-w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-4 py-3 text-[16px] font-bold leading-none tracking-[0.01em] transition-all 2xl:px-5 2xl:text-[17px]",
         "border-transparent !text-white visited:!text-white hover:border-white/18 hover:bg-white/[0.06] hover:!text-white focus-visible:!text-white active:!text-white",
       ),
     [],
@@ -65,12 +65,12 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <div className="hidden flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/45 xl:flex xl:max-w-[252px] 2xl:max-w-[280px]">
+        <div className="hidden flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/45 2xl:flex 2xl:max-w-[260px]">
           <Search className="size-4" />
           <span className="whitespace-nowrap text-sm">搜索场景、课程或报告</span>
         </div>
 
-        <nav className="hidden flex-1 items-center justify-center gap-2 lg:flex xl:gap-3">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 xl:flex 2xl:gap-2">
           {primaryLinks.map((item) => {
             const active = isLinkActive(pathname, item.href);
 
@@ -104,19 +104,22 @@ export function SiteHeader() {
           </button>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 text-white/70 md:gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2 text-white/70 md:gap-3">
           <div className="hidden items-center gap-3 md:flex">
             <MoonStar className="size-4" />
             <LaptopMinimal className="size-4" />
             <Globe className="size-4" />
-            <Link href="/demo" className="text-sm font-medium text-white/82 transition-colors hover:text-white">
+            <Link
+              href="/demo"
+              className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-medium text-white/82 transition-colors hover:text-white"
+            >
               登录
             </Link>
           </div>
 
           <Link
             href="/demo"
-            className="inline-flex items-center gap-2 rounded-full bg-[#f08a38] px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(240,138,56,0.35)] transition-transform hover:-translate-y-0.5 sm:px-5"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f08a38] px-4 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(240,138,56,0.35)] transition-transform hover:-translate-y-0.5 sm:px-5"
           >
             <Sparkles className="hidden size-4 sm:block" />
             立即体验
@@ -125,7 +128,7 @@ export function SiteHeader() {
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white transition-colors hover:bg-white/[0.08] lg:hidden"
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white transition-colors hover:bg-white/[0.08] xl:hidden"
             aria-label="打开导航菜单"
           >
             <Menu className="size-5" />
@@ -140,7 +143,7 @@ export function SiteHeader() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.24 }}
-            className="hidden border-t border-white/8 bg-[rgba(13,19,34,0.96)] lg:block"
+            className="hidden border-t border-white/8 bg-[rgba(13,19,34,0.96)] xl:block"
           >
             <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 lg:grid-cols-[280px_1fr] lg:px-8">
               <div className="max-w-sm">
@@ -199,7 +202,7 @@ export function SiteHeader() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 24 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-[#0d1324] px-5 pb-5 pt-4 text-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] lg:hidden"
+              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-[#0d1324] px-5 pb-5 pt-4 text-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] xl:hidden"
             >
               <div className="flex items-center justify-between gap-3">
                 <Logo />

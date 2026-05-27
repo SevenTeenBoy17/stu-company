@@ -253,21 +253,21 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   return (
     <div className="space-y-6 pb-24">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1780px]:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {heroMetrics.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="panel min-w-0 overflow-hidden rounded-[2rem] p-5 transition-transform hover:-translate-y-1 sm:p-6">
+            <div key={item.label} className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 transition-transform hover:-translate-y-1 sm:p-5">
               <div className="flex items-start justify-between gap-4">
                 <p className="min-w-0 text-base font-bold text-slate-500">{item.label}</p>
                 <span className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <p className="mt-4 max-w-full overflow-hidden text-[clamp(2.25rem,2.35vw,3.1rem)] font-black leading-none tracking-tight text-slate-950">
+              <p className="mt-3 max-w-full overflow-hidden text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950">
                 {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
               </p>
-              <p className="mt-4 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
+              <p className="mt-3 line-clamp-2 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
             </div>
           );
         })}
@@ -654,7 +654,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               const isCurrentUser = entry.userId === state.user.id;
               return (
                 <div
-                  key={entry.userId}
+                  key={`${entry.userId}-${entry.rank}`}
                   className={cn(
                     "rounded-[1.5rem] border p-4 transition-colors",
                     isCurrentUser ? "border-orange-400 bg-orange-50" : "border-slate-200 bg-slate-50",

@@ -3,7 +3,7 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Credentials = { label: string; email: string; password: string };
+type Credentials = { label: string; email: string; password: string; trial?: boolean };
 type InviteHint = { role: string; code: string; note: string };
 
 export function DemoPortal({
@@ -24,7 +24,7 @@ export function DemoPortal({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submitLogin() {
+  async function submitLogin(nextLogin = loginForm) {
     setBusy(true);
     setMessage(null);
 
@@ -32,7 +32,7 @@ export function DemoPortal({
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify(nextLogin),
       });
       const payload = (await response.json()) as { error?: string; redirectTo?: string };
       if (!response.ok) {
@@ -49,6 +49,22 @@ export function DemoPortal({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitCredential(item: Credentials) {
+    if (item.trial) {
+      const key = "brown-zone-guest-trial-count";
+      const nextCount = Number(window.localStorage.getItem(key) ?? "0") + 1;
+      if (nextCount > 3) {
+        setMessage("游客试玩次数已达上限。请使用邀请码注册，或登录学生/教师/家长账号继续体验完整沙盘。");
+        return;
+      }
+      window.localStorage.setItem(key, String(nextCount));
+    }
+
+    const nextLogin = { email: item.email, password: item.password };
+    setLoginForm(nextLogin);
+    await submitLogin(nextLogin);
   }
 
   async function submitInvite() {
@@ -83,24 +99,33 @@ export function DemoPortal({
       <section className="panel rounded-3xl p-6">
         <p className="bz-eyebrow">样例登录</p>
         <h2 className="mt-4 text-3xl font-semibold text-slate-950">一键进入不同角色视角</h2>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {credentials.map((item) => (
             <button
               key={item.label}
               type="button"
-              onClick={() => setLoginForm({ email: item.email, password: item.password })}
-              className="bz-muted-tile border border-slate-200 p-4 text-left transition-colors hover:border-border-brand hover:bg-brand-subtle"
+              onClick={() => void submitCredential(item)}
+              className="bz-muted-tile min-h-[88px] border border-slate-200 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-border-brand hover:bg-brand-subtle"
             >
-              <p className="text-lg font-semibold text-slate-950">{item.label}</p>
-              <p className="mt-2 text-sm text-slate-600">{item.email}</p>
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold text-slate-950">{item.label}</p>
+                  <p className="mt-2 truncate text-sm text-slate-600">{item.email}</p>
+                </div>
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
+                  {item.trial ? "限 3 次" : "一键进入"}
+                </span>
+              </div>
             </button>
           ))}
         </div>
 
         <div className="mt-6 space-y-4">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-600">邮箱</span>
+            <span className="mb-2 block text-sm font-medium text-slate-600">账号 / 邮箱</span>
             <input
+              name="email"
+              autoComplete="username"
               value={loginForm.email}
               onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
               className="bz-field"
@@ -109,7 +134,9 @@ export function DemoPortal({
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-600">密码</span>
             <input
+              name="password"
               type="password"
+              autoComplete="current-password"
               value={loginForm.password}
               onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
               className="bz-field"
@@ -117,7 +144,7 @@ export function DemoPortal({
           </label>
           <button
             type="button"
-            onClick={submitLogin}
+            onClick={() => void submitLogin()}
             disabled={busy}
             className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >

@@ -39,7 +39,7 @@ export function LearnCatalog() {
                 type="button"
                 onClick={() => setActiveLevel(filter)}
                 className={cn(
-                  "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                  "min-h-11 rounded-full px-4 text-sm font-semibold transition-colors",
                   activeLevel === filter
                     ? "bg-brand text-slate-950"
                     : "bg-slate-950/[0.04] text-slate-600 hover:bg-slate-950/[0.08]",
@@ -88,7 +88,7 @@ export function LearnCatalog() {
               </div>
               <Link
                 href="/demo"
-                className="mt-6 inline-flex items-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white"
+                className="mt-6 inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white"
               >
                 开始体验
               </Link>

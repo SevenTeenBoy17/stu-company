@@ -1,5 +1,5 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Logo } from "@/components/site/logo";
 import { learningModules, siteNavGroups } from "@/lib/content";
@@ -30,12 +30,22 @@ export function SiteFooter() {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white/48">核心页面</h3>
-            <div className="mt-5 space-y-3 text-sm text-white/74">
-              <Link href="/" className="block">首页</Link>
-              <Link href="/learn" className="block">投资课程</Link>
-              <Link href="/demo" className="block">试玩入口</Link>
-              <Link href="/student" className="block">学生策略台</Link>
-              <Link href="/teacher" className="block">教师指挥舱</Link>
+            <div className="mt-4 flex flex-col text-sm text-white/74">
+              <Link href="/" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                首页
+              </Link>
+              <Link href="/learn" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                投资课程
+              </Link>
+              <Link href="/demo" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                试玩入口
+              </Link>
+              <Link href="/student" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                学生策略台
+              </Link>
+              <Link href="/teacher" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                教师指挥舱
+              </Link>
             </div>
           </div>
 

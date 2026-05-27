@@ -69,7 +69,7 @@ type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
-const DB_QUERY_TIMEOUT_MS = 12000;
+const DB_QUERY_TIMEOUT_MS = 5000;
 
 // In production, default to NO memory fallback so DB outages surface as 5xx
 // rather than silently returning seed data. Set ALLOW_MEMORY_FALLBACK=true to
@@ -810,33 +810,47 @@ export async function getParentOverview(userId: string) {
 }
 
 export async function getAdminOverview() {
-  return withDb(
-    "getAdminOverview",
-    async (db) => {
-      const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows] = await Promise.all([
-        selectAllUsers(db),
-        selectAllRuns(db),
-        db.select().from(classrooms),
-        db.select().from(inviteCodes),
-        db.select().from(assignments).orderBy(desc(assignments.createdAt)),
-      ]);
-      const leaderboard = buildLeaderboard(allRuns, allUsers);
+  try {
+    return await withDb(
+      "getAdminOverview",
+      async (db) => {
+        const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows] = await Promise.all([
+          selectAllUsers(db),
+          selectAllRuns(db),
+          db.select().from(classrooms),
+          db.select().from(inviteCodes),
+          db.select().from(assignments).orderBy(desc(assignments.createdAt)),
+        ]);
+        const leaderboard = buildLeaderboard(allRuns, allUsers);
 
-      return {
-        metrics: [
-          { label: "演示班级", value: `${classroomRows.length}` },
-          { label: "模块总数", value: `${learningModules.length}` },
-          { label: "邀请码池", value: `${inviteRows.length}` },
-          { label: "活跃学生", value: `${allUsers.filter((item) => item.role === "student").length}` },
-        ],
-        invites: inviteRows.map(toInvite),
-        classrooms: classroomRows.map(toClassroom),
-        topUsers: leaderboard.slice(0, 5),
-        assignments: assignmentRows.map(toAssignment).slice(0, 4),
-      };
-    },
-    () => store.getAdminOverview(),
-  );
+        return {
+          metrics: [
+            { label: "演示班级", value: `${classroomRows.length}` },
+            { label: "模块总数", value: `${learningModules.length}` },
+            { label: "邀请码池", value: `${inviteRows.length}` },
+            { label: "活跃学生", value: `${allUsers.filter((item) => item.role === "student").length}` },
+          ],
+          invites: inviteRows.map(toInvite),
+          classrooms: classroomRows.map(toClassroom),
+          topUsers: leaderboard.slice(0, 5),
+          assignments: assignmentRows.map(toAssignment).slice(0, 4),
+          users: allUsers.map((user) => ({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            name: user.name,
+            title: user.title,
+            classroomId: user.classroomId,
+            tokenVersion: user.tokenVersion ?? 0,
+          })),
+        };
+      },
+      () => store.getAdminOverview(),
+    );
+  } catch (error) {
+    logFallback("getAdminOverview", "query_failed", error);
+    return store.getAdminOverview();
+  }
 }
 
 export async function getLeaderboardSnapshot(scope: "classroom" | "school" = "classroom") {
@@ -1000,6 +1014,28 @@ export async function bumpTokenVersion(userId: string) {
       return updated?.tokenVersion ?? 0;
     },
     () => store.bumpTokenVersion(userId),
+  );
+}
+
+export async function updateUserPassword(userId: string, password: string) {
+  return withDb(
+    "updateUserPassword",
+    async (db) => {
+      const passwordHash = await hashPassword(password);
+      const [updated] = await db
+        .update(users)
+        .set({
+          passwordHash,
+          tokenVersion: sql`${users.tokenVersion} + 1`,
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updated) throw new Error("用户不存在。");
+      const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+      return toUserRecord(updated, profile[0]);
+    },
+    () => store.updateUserPassword(userId, password),
   );
 }
 
