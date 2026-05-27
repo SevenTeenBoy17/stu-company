@@ -47,14 +47,14 @@ export function resolveSubscriptionState(
       canOperate: false,
       canViewHistory: true,
       aiTier: "none",
-      bannerMessage: "试用已结束。升级到标准版 (¥15/月) 即可继续操作沙盘、获取 AI 个性化诊断。",
+      bannerMessage: "试用已结束，升级后即可继续操作沙盘和获取 AI 个性化诊断。",
       daysRemaining: 0,
     };
   }
 
   const trialEnd = new Date(trialExpiresAt);
   const msRemaining = trialEnd.getTime() - now.getTime();
-  const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
 
   if (daysRemaining > TRIAL_DEGRADED_DAYS) {
     return {
@@ -76,7 +76,7 @@ export function resolveSubscriptionState(
       canOperate: true,
       canViewHistory: true,
       aiTier: inFullTrial ? "full" : "basic",
-      bannerMessage: `试用还剩 ${daysRemaining} 天${!inFullTrial ? "（AI 诊断已降级为通用版）" : ""}。¥15/月 即可解锁完整功能。`,
+      bannerMessage: `试用还剩 ${daysRemaining} 天${!inFullTrial ? "（AI 诊断已切换为通用版）" : ""}，升级后可解锁完整功能。`,
       daysRemaining,
     };
   }
@@ -87,7 +87,7 @@ export function resolveSubscriptionState(
     canOperate: false,
     canViewHistory: true,
     aiTier: "none",
-    bannerMessage: "试用已结束。升级到标准版 (¥15/月) 即可继续操作沙盘、获取 AI 个性化诊断。",
+    bannerMessage: "试用已结束，升级后即可继续操作沙盘和获取 AI 个性化诊断。",
     daysRemaining: 0,
   };
 }

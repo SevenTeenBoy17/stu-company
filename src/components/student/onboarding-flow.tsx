@@ -111,9 +111,21 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
         </div>
 
         <div className="px-6 pb-8 pt-6 sm:px-8">
-          <p className="text-xs font-medium uppercase tracking-widest text-[var(--ink-400)]">
-            Mr.Brown 的第一堂课 · {step + 1}/{STEPS.length}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-widest text-[var(--ink-400)]">
+              Mr.Brown 的第一堂课 · {step + 1}/{STEPS.length}
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                try { await fetch("/api/auth/onboarding", { method: "POST" }); } catch {}
+                onComplete();
+              }}
+              className="text-xs text-[var(--ink-400)] hover:text-[var(--ink-600)]"
+            >
+              跳过引导
+            </button>
+          </div>
 
           <AnimatePresence mode="wait">
             <motion.div

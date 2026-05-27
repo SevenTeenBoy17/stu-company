@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 
 export interface WechatPayConfig {
   mchId: string;
@@ -56,67 +56,29 @@ function getConfig(): WechatPayConfig | null {
   return { mchId, apiKeyV3, appId, notifyUrl };
 }
 
-function generateNonce(length = 32): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+export function generateNonce(): string {
+  return randomBytes(16).toString("hex");
 }
 
 export function isWechatPayConfigured(): boolean {
   return getConfig() !== null;
 }
 
-export async function createPrepayOrder(request: PrepayRequest): Promise<PrepayResult> {
+// SCAFFOLD: This function outlines the prepay flow but uses placeholder signing.
+// Before production use, monetization_wechat_engineer must:
+// 1. Replace HMAC with RSA-SHA256 using the merchant private key PEM
+// 2. Implement proper WECHATPAY2-SHA256-RSA2048 Authorization header
+// 3. Create an orders table to track outTradeNo -> userId mapping
+export async function createPrepayOrder(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  request: PrepayRequest,
+): Promise<PrepayResult> {
   const config = getConfig();
   if (!config) throw new Error("微信支付未配置，请联系管理员。");
 
-  const body = {
-    appid: config.appId,
-    mchid: config.mchId,
-    description: request.description,
-    out_trade_no: request.outTradeNo,
-    notify_url: config.notifyUrl,
-    amount: { total: request.amountFen, currency: "CNY" },
-    payer: { openid: request.payerOpenId },
-  };
-
-  const response = await fetch("https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      Authorization: `WECHATPAY2-SHA256-RSA2048 placeholder`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`微信支付创建订单失败: ${response.status} ${err}`);
-  }
-
-  const data = (await response.json()) as { prepay_id: string };
-
-  const timeStamp = String(Math.floor(Date.now() / 1000));
-  const nonceStr = generateNonce();
-  const packageStr = `prepay_id=${data.prepay_id}`;
-
-  const signMessage = `${config.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
-  const paySign = createHmac("sha256", config.apiKeyV3).update(signMessage).digest("hex");
-
-  return {
-    prepayId: data.prepay_id,
-    jsapiParams: {
-      appId: config.appId,
-      timeStamp,
-      nonceStr,
-      package: packageStr,
-      signType: "RSA",
-      paySign,
-    },
-  };
+  throw new Error(
+    "微信支付接口尚未完成 RSA 签名集成，暂时无法创建订单。请联系技术团队。",
+  );
 }
 
 export function verifyWechatSignature(

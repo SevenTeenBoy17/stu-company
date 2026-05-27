@@ -21,7 +21,7 @@ export default async function StudentPage() {
       heading="学生策略台"
       summary="围绕一名学生的一整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
-      <SubscriptionBanner tier={user.subscriptionTier} trialExpiresAt={user.trialExpiresAt} />
+      <SubscriptionBanner tier={user.subscriptionTier} trialExpiresAt={user.trialExpiresAt} role={user.role} />
       <StudentOnboardingGate userName={user.name} needsOnboarding={needsOnboarding}>
         <StudentSandbox initialState={initialState} />
       </StudentOnboardingGate>

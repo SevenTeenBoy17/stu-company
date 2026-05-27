@@ -82,6 +82,25 @@ function detectCashHoarding(run: ScenarioRun): DetectionResult {
   return { triggered: false, confidence: "low" };
 }
 
+function detectLossAnchoring(run: ScenarioRun): DetectionResult {
+  if (run.currentRound < 4 || run.holdings.length === 0) {
+    return { triggered: false, confidence: "low" };
+  }
+  const losingHoldings = run.holdings.filter((h) => {
+    const latestSnapshot = run.snapshots.at(-1);
+    if (!latestSnapshot) return false;
+    return h.averageCost > 0 && latestSnapshot.netWorth < 120_000;
+  });
+  const roundsHeld = run.actionLog.filter(
+    (a) => a.type === "trade" && a.label.includes("卖出"),
+  ).length;
+  const totalTrades = run.actionLog.filter((a) => a.type === "trade").length;
+  if (losingHoldings.length > 0 && totalTrades > 3 && roundsHeld === 0) {
+    return { triggered: true, confidence: run.currentRound >= 6 ? "high" : "medium" };
+  }
+  return { triggered: false, confidence: "low" };
+}
+
 function detectPositiveStreak(run: ScenarioRun): DetectionResult {
   if (run.snapshots.length < 3) return { triggered: false, confidence: "low" };
   const recent = run.snapshots.slice(-3);
@@ -159,6 +178,7 @@ export function detectAdaptiveEvents(run: ScenarioRun): AdaptiveEvent[] {
     ["never_diversified", () => detectNeverDiversified(run)],
     ["bond_avoidance", () => detectBondAvoidance(run)],
     ["cash_hoarding", () => detectCashHoarding(run)],
+    ["loss_anchoring", () => detectLossAnchoring(run)],
     ["streak_positive", () => detectPositiveStreak(run)],
   ];
 

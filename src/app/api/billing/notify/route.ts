@@ -15,15 +15,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // TODO(monetization_wechat_engineer): decrypt resource.ciphertext with
-  // AES-256-GCM using WECHAT_API_KEY_V3, parse DecryptedNotify, then:
-  // 1. Find order by out_trade_no
-  // 2. Verify amount matches expected
-  // 3. Update users.subscription_tier to the purchased tier
-  // 4. Set trial_expires_at to null (no longer on trial)
-  // 5. Log the transaction to billing audit table
-  //
-  // For now, acknowledge receipt so WeChat stops retrying.
-
-  return NextResponse.json({ code: "SUCCESS", message: "成功" });
+  // Payment fulfillment not yet implemented — return FAIL so WeChat retries
+  // until monetization_wechat_engineer completes the decrypt + fulfill logic.
+  return NextResponse.json(
+    { code: "FAIL", message: "支付处理尚未上线，请联系客服。" },
+    { status: 500 },
+  );
 }

@@ -546,6 +546,9 @@ export async function registerUserByEmail(input: {
     classroomId = store.classrooms[0].id;
   }
 
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 4);
+
   const newUser: UserRecord = {
     id: createId("user"),
     email: input.email,
@@ -554,6 +557,8 @@ export async function registerUserByEmail(input: {
     name: input.name,
     title: "沙盘新玩家",
     classroomId,
+    trialExpiresAt: trialEnd.toISOString(),
+    subscriptionTier: "free",
     onboardingCompleted: 0,
   };
 

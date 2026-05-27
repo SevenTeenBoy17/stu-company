@@ -27,14 +27,23 @@ describe("resolveSubscriptionState", () => {
     expect(state.aiTier).toBe("full");
   });
 
-  it("returns trial_degraded when in degraded window", () => {
+  it("returns trial_degraded when in degraded window (2 days left)", () => {
     const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + 1);
+    trialEnd.setDate(trialEnd.getDate() + 2);
     const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
     expect(state.status).toBe("trial_degraded");
     expect(state.canOperate).toBe(true);
     expect(state.aiTier).toBe("basic");
     expect(state.bannerMessage).toContain("试用还剩");
+  });
+
+  it("returns trial for the full trial window (4 days left)", () => {
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + 4);
+    const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
+    expect(state.status).toBe("trial");
+    expect(state.aiTier).toBe("full");
+    expect(state.bannerMessage).toBeNull();
   });
 
   it("returns expired when trial has passed", () => {

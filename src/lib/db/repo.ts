@@ -152,7 +152,7 @@ function toUserRecord(row: DbUser, profile?: DbProfile | null): UserRecord {
     studentLinkId: maybeUndefined(row.studentLinkId),
     tokenVersion: row.tokenVersion ?? 0,
     trialExpiresAt: row.trialExpiresAt?.toISOString(),
-    subscriptionTier: (row.subscriptionTier as UserRecord["subscriptionTier"]) ?? "free",
+    subscriptionTier: (["free", "standard", "premium"].includes(row.subscriptionTier) ? row.subscriptionTier : "free") as UserRecord["subscriptionTier"],
     onboardingCompleted: row.onboardingCompleted ?? 0,
   };
 }
@@ -647,11 +647,13 @@ export async function registerUserByEmail(input: {
             role = invite.role;
             classroomId = invite.classroomId;
             studentLinkId = invite.studentLinkId;
+          } else {
+            throw new Error("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
           }
         }
 
         const trialEnd = new Date();
-        trialEnd.setDate(trialEnd.getDate() + 1);
+        trialEnd.setDate(trialEnd.getDate() + 4);
 
         const newUser: UserRecord = {
           id: createId("user"),
