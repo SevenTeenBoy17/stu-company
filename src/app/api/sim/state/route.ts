@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
+import { detectAdaptiveEvents } from "@/lib/adaptive-events";
 import { getSimulationStateForUser } from "@/lib/db/repo";
 
 export async function GET() {
@@ -10,7 +11,8 @@ export async function GET() {
 
   try {
     const state = await getSimulationStateForUser(auth.user.id);
-    return NextResponse.json({ state });
+    const adaptiveEvents = detectAdaptiveEvents(state.run);
+    return NextResponse.json({ state, adaptiveEvents });
   } catch (error) {
     return handleRouteError(error, "无法读取当前沙盘，请稍后再试。");
   }
