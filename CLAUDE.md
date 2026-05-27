@@ -58,7 +58,15 @@ Drizzle migrations live in `drizzle/`. RLS policies in `drizzle/policies.sql` ar
 
 ### Simulation Engine
 
-`src/lib/simulation.ts` — pure functions for the 12-round economic sandbox. Actions: trade (buy/sell assets), bank (deposit/withdraw/loan/repay), property (buy/sell), venture (invest/exit). Starting cash: 120,000. Market assets and rounds defined in `src/lib/market-data.ts`.
+`src/lib/simulation.ts` — pure functions for the 12-round economic sandbox. Actions: trade (buy/sell assets), bank (deposit/withdraw/loan/repay), property (buy/sell), venture (invest/exit). Starting cash: 120,000. Market assets and 24 event cards defined in `src/lib/market-data.ts`.
+
+### Adaptive Events
+
+`src/lib/adaptive-events.ts` — behavior-triggered teaching interventions. Detects: overtrading, revenge trading, bond avoidance, concentration, cash hoarding, positive streaks. Returns max 2 events per round (CLT constraint: 1 warning + 1 info). Integrated into `/api/sim/state`, `/api/sim/actions`, `/api/sim/advance-round` responses.
+
+### Subscription & Billing
+
+`src/lib/billing/subscription.ts` — trial/subscription state machine. States: trial → trial_degraded → expired (free), active (standard/premium). `canUserOperate()` gates simulation actions and round advances. WeChat Pay scaffold in `src/lib/billing/wechat-pay.ts` (requires WECHAT_MCH_ID env vars).
 
 ### AI Gateway
 

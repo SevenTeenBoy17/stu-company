@@ -42,6 +42,8 @@ yarn-error.log*
 .qa-screens/
 .tools/
 .codex-supervisor/
+/test-results/
+/agency-agents-review/
 
 # typescript
 *.tsbuildinfo

@@ -39,6 +39,11 @@ Use subagents only for bounded work. Always state the exact write scope and forb
 | `ui_implementer` | `src/components/**`, `src/app/**/page.tsx`, `src/app/globals.css` | API routes, db, auth, AI |
 | `qa_engineer` | `tests/**`, `*.test.ts`, verification docs | Feature code unless explicitly approved |
 | `reviewer` | Read-only repository audit | Any write operation |
+| `education_narrative_designer` | `src/lib/market-data.ts`, `src/lib/content.ts`, `src/lib/simulation.ts`, `docs/curriculum-*` | API routes, components, db, auth |
+| `monetization_wechat_engineer` | `src/app/api/billing/**`, `src/app/api/wechat/**`, `src/lib/billing/**`, `drizzle/billing-*` | Educational API routes, components, public schema |
+| `teen_ux_specialist` | `src/components/student/**`, `src/components/shared/**`, `docs/ui-spec/gamification-*` | API routes, db, auth, AI gateway |
+| `finance_event_simulator` | `src/lib/market-data.ts`, `src/lib/simulation.ts`, `scripts/simulate-*` | API routes, components, db schema |
+| `behavior_ai_analyst` | `src/lib/ai.ts`, `src/lib/tutor-radar.ts`, `src/lib/history-review.ts`, `src/app/api/ai/**` | Components, db schema, auth, payment |
 
 Red lines:
 
