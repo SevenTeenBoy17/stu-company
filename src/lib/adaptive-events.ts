@@ -101,6 +101,23 @@ function detectLossAnchoring(run: ScenarioRun): DetectionResult {
   return { triggered: false, confidence: "low" };
 }
 
+function detectHerdFollowing(run: ScenarioRun): DetectionResult {
+  if (run.currentRound < 4 || run.holdings.length === 0) {
+    return { triggered: false, confidence: "low" };
+  }
+  const stockHolding = run.holdings.find((h) => h.assetId === "asset-stock");
+  const totalValue = run.holdings.reduce((s, h) => s + h.quantity * h.averageCost, 0);
+  if (!stockHolding || totalValue === 0) return { triggered: false, confidence: "low" };
+  const stockWeight = (stockHolding.quantity * stockHolding.averageCost) / totalValue;
+  if (stockWeight > 0.7 && run.currentRound >= 5) {
+    return { triggered: true, confidence: "high" };
+  }
+  if (stockWeight > 0.6) {
+    return { triggered: true, confidence: "medium" };
+  }
+  return { triggered: false, confidence: "low" };
+}
+
 function detectPositiveStreak(run: ScenarioRun): DetectionResult {
   if (run.snapshots.length < 3) return { triggered: false, confidence: "low" };
   const recent = run.snapshots.slice(-3);
@@ -178,6 +195,7 @@ export function detectAdaptiveEvents(run: ScenarioRun): AdaptiveEvent[] {
     ["never_diversified", () => detectNeverDiversified(run)],
     ["bond_avoidance", () => detectBondAvoidance(run)],
     ["cash_hoarding", () => detectCashHoarding(run)],
+    ["herd_following", () => detectHerdFollowing(run)],
     ["loss_anchoring", () => detectLossAnchoring(run)],
     ["streak_positive", () => detectPositiveStreak(run)],
   ];

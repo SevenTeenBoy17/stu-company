@@ -69,11 +69,11 @@ export const eventCards: EventCard[] = [
   },
   {
     id: "event-inflation-pressure",
-    title: "物价上涨压力显现",
+    title: "东西变贵了：物价在涨",
     category: "macro",
     signal: "利空",
     description:
-      "食品和能源价格走高推动整体物价上升，生活成本增加会挤压企业利润。",
+      "菜价和油价都涨了，大家生活成本变高，企业赚的钱也被成本吃掉一部分。",
     coachingCue: "通胀来了债券价格会跌，想想商品类资产能不能对冲。",
   },
   {
@@ -82,7 +82,7 @@ export const eventCards: EventCard[] = [
     category: "macro",
     signal: "利好",
     description:
-      "利率降低意味着借钱更便宜，企业投资意愿上升，股市估值空间打开。",
+      "利率降低意味着借钱更便宜，企业更愿意投资扩张，股票价格可能会涨。",
     coachingCue: "降息利好股票和债券，但汇率可能走弱，注意平衡。",
   },
   {
@@ -91,7 +91,7 @@ export const eventCards: EventCard[] = [
     category: "macro",
     signal: "利空",
     description:
-      "多国制造业数据走弱，国际贸易订单下降，市场担心经济进入下行周期。",
+      "很多国家的工厂订单在减少，全球经济可能要变差一段时间。",
     coachingCue: "衰退预警时防御先行，先看债券和现金能不能稳住。",
   },
   {
@@ -116,11 +116,11 @@ export const eventCards: EventCard[] = [
   // policy (6)
   {
     id: "event-regulatory-tightening",
-    title: "监管口径趋于收紧",
+    title: "政府要求企业更守规矩",
     category: "policy",
     signal: "利空",
     description:
-      "监管部门要求行业合规整改，企业短期利润空间受压，市场情绪变得谨慎。",
+      "政府出了新规定，企业要花更多钱去合规，短期内赚的钱会变少，大家变得谨慎。",
     coachingCue: "监管收紧时先守住回撤，等政策落地后再考虑布局。",
   },
   {
@@ -138,7 +138,7 @@ export const eventCards: EventCard[] = [
     category: "policy",
     signal: "中性",
     description:
-      "限购和贷款门槛提高压制了地产热度，但多余的资金可能转向股票和基金。",
+      "政府让买房变难了，想买房的人变少，但省下来的钱可能去买股票和基金。",
     coachingCue: "地产降温时留意资金搬家方向，股市可能接到溢出。",
   },
   {
@@ -199,20 +199,20 @@ export const eventCards: EventCard[] = [
   },
   {
     id: "event-value-rotation",
-    title: "资金从成长转向价值",
+    title: "投资人开始喜欢便宜稳定的东西",
     category: "sentiment",
     signal: "中性",
     description:
-      "高估值品种开始回落，便宜又稳定的资产重新获得资金关注，风格发生切换。",
+      "之前涨太多的东西开始跌了，大家转向去买便宜又稳定的资产，市场风格在变。",
     coachingCue: "风格轮动时不要追着跑，分散持有更能抗住切换。",
   },
   {
     id: "event-info-cocoon",
-    title: "信息茧房效应加剧",
+    title: "只看想看的消息，判断容易出错",
     category: "sentiment",
     signal: "利空",
     description:
-      "投资者只看自己想看的消息，忽略了风险警告，导致仓位过于集中在单一方向。",
+      "很多人只关注支持自己想法的消息，忽略了危险信号，结果仓位偏到了一个方向。",
     coachingCue: "主动找反面观点，打破信息茧房才能做出更冷静的判断。",
   },
   {
@@ -221,7 +221,7 @@ export const eventCards: EventCard[] = [
     category: "sentiment",
     signal: "中性",
     description:
-      "指数看起来稳定，但多数个股下跌，只有少数龙头在涨，赚钱效应变差。",
+      "大盘指数看着还行，但大多数公司其实在跌，只有少数大公司在涨。",
     coachingCue: "指数骗人时看持仓的实际表现，别被大盘数字迷惑。",
   },
 
@@ -279,6 +279,26 @@ export const eventCards: EventCard[] = [
     description:
       "风险投资大量涌入初创企业，新商业模式层出不穷，创新活力带动市场预期。",
     coachingCue: "创业热潮中找到有真实收入的项目，比追概念靠谱。",
+  },
+
+  // black swan (2) — extreme low-probability events for R9-12
+  {
+    id: "event-liquidity-crisis",
+    title: "突发流动性危机",
+    category: "macro",
+    signal: "利空",
+    description:
+      "一家大型金融机构突然出问题，银行之间不敢互相借钱了，所有资产都在跌。这就像考试前一天全班突然集体感冒 — 不管你准备得多好，都会受影响。",
+    coachingCue: "危机时现金和债券是救命稻草，先活下来再说。",
+  },
+  {
+    id: "event-surprise-policy-pivot",
+    title: "意外政策大转向",
+    category: "policy",
+    signal: "利好",
+    description:
+      "政府突然宣布了一个谁都没预料到的大利好政策，市场一下子兴奋起来，几乎所有资产都在涨。这就像老师突然说今天的考试取消了 — 大家瞬间开心。",
+    coachingCue: "意外利好时别急着全押，先想想利好能持续多久。",
   },
 ];
 

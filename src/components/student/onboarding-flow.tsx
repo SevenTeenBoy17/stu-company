@@ -14,15 +14,16 @@ const STEPS = [
   {
     id: "capital",
     title: "你有 12 万启动资金",
-    mrBrown: "想象这是你的班费基金。你的任务是在 12 个回合内，通过买卖、储蓄和投资让它增长。怎么分配，全由你说了算。",
+    mrBrown: "这是你的班级基金，12 万块！你的目标很简单：12 周之后，让它变多。怎么做到？接下来我一步一步教你。",
     visual: "cash",
     highlight: "cash",
-    action: "继续",
+    interactive: true,
+    action: "我觉得能涨到这个数 →",
   },
   {
     id: "assets",
     title: "先认识两个朋友",
-    mrBrown: "股票像坐过山车 — 可能涨很多也可能跌；债券像存储蓄罐 — 稳定但收益慢。大多数聪明的投资者会两个都用。",
+    mrBrown: "股票像坐过山车 — 刺激但不确定；债券像储蓄罐 — 安全但慢。先记住这两个就够了。",
     visual: "compare",
     concepts: [
       { term: "风险", emoji: "🎢", desc: "可能亏钱的程度" },
@@ -41,9 +42,10 @@ const STEPS = [
   {
     id: "time-skip",
     title: "时间快进！",
-    mrBrown: "看！市场动了，你的组合发生了变化。涨还是跌？这就是市场 — 没有人能100%预测它，但你可以学会应对。",
+    mrBrown: "市场动了！你觉得你的组合是涨了还是跌了？先猜一下，然后看看答案。",
     visual: "chart",
-    action: "继续",
+    interactive: true,
+    action: "揭晓结果",
   },
   {
     id: "event-card",
@@ -73,11 +75,19 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(0);
   const [tradeExecuted, setTradeExecuted] = useState(false);
+  const [targetGuess, setTargetGuess] = useState(150_000);
+  const [marketGuess, setMarketGuess] = useState<"up" | "down" | null>(null);
+  const [marketRevealed, setMarketRevealed] = useState(false);
   const current = STEPS[step];
 
   const handleNext = useCallback(async () => {
     if (step === 3 && !tradeExecuted) {
       setTradeExecuted(true);
+      return;
+    }
+
+    if (step === 4 && !marketRevealed) {
+      setMarketRevealed(true);
       return;
     }
 
@@ -90,7 +100,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
     }
 
     setStep((s) => s + 1);
-  }, [step, tradeExecuted, onComplete]);
+  }, [step, tradeExecuted, marketRevealed, onComplete]);
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
@@ -173,22 +183,70 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
               )}
 
               {current.id === "capital" && (
-                <div className="mt-4 flex items-center gap-4 rounded-xl bg-[var(--amber-50)] px-5 py-4">
-                  <span className="font-mono text-3xl font-bold text-[var(--amber-700)]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    ¥120,000
-                  </span>
-                  <span className="text-xs text-[var(--ink-500)]">初始资金</span>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center gap-4 rounded-xl bg-[var(--amber-50)] px-5 py-4">
+                    <span className="font-mono text-3xl font-bold text-[var(--amber-700)]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      ¥120,000
+                    </span>
+                    <span className="text-xs text-[var(--ink-500)]">初始资金</span>
+                  </div>
+                  <div className="rounded-xl border border-[var(--ink-200)] px-4 py-3">
+                    <p className="text-xs text-[var(--ink-500)]">你觉得 12 周后能变成多少？拖动试试：</p>
+                    <input
+                      type="range"
+                      min={80000}
+                      max={200000}
+                      step={5000}
+                      value={targetGuess}
+                      onChange={(e) => setTargetGuess(Number(e.target.value))}
+                      className="mt-2 w-full accent-[var(--brand)]"
+                    />
+                    <p className="mt-1 text-center font-mono text-lg font-bold text-[var(--amber-600)]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      ¥{targetGuess.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {current.id === "time-skip" && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl bg-[var(--up-50)] px-5 py-4">
-                  <span className="font-mono text-2xl font-bold text-[var(--up-600)]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    ¥120,672
-                  </span>
-                  <span className="text-sm text-[var(--up-500)]">+0.56%</span>
-                  <span className="text-xs text-[var(--ink-400)]">第 2 回合净值</span>
+              {current.id === "time-skip" && !marketRevealed && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMarketGuess("up")}
+                    className={`rounded-xl border-2 px-4 py-4 text-center transition-colors ${marketGuess === "up" ? "border-[var(--up-400)] bg-[var(--up-50)]" : "border-[var(--ink-200)]"}`}
+                  >
+                    <span className="text-2xl">📈</span>
+                    <p className="mt-1 text-sm font-semibold">我觉得涨了</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarketGuess("down")}
+                    className={`rounded-xl border-2 px-4 py-4 text-center transition-colors ${marketGuess === "down" ? "border-[var(--down-400)] bg-[var(--down-50)]" : "border-[var(--ink-200)]"}`}
+                  >
+                    <span className="text-2xl">📉</span>
+                    <p className="mt-1 text-sm font-semibold">我觉得跌了</p>
+                  </button>
                 </div>
+              )}
+
+              {current.id === "time-skip" && marketRevealed && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 space-y-2"
+                >
+                  <div className="flex items-center gap-2 rounded-xl bg-[var(--up-50)] px-5 py-4">
+                    <span className="font-mono text-2xl font-bold text-[var(--up-600)]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      ¥120,672
+                    </span>
+                    <span className="text-sm text-[var(--up-500)]">+0.56%</span>
+                  </div>
+                  <p className="text-xs text-[var(--ink-500)]">
+                    {marketGuess === "up"
+                      ? "猜对了！但别高兴太早 — 下一回合可能就会变。"
+                      : "这次涨了，但你的谨慎也没有错 — 市场随时可能反转。"}
+                  </p>
+                </motion.div>
               )}
 
               {current.id === "event-card" && (

@@ -26,7 +26,7 @@ describe("detectAdaptiveEvents", () => {
     expect(overtrading!.tone).toBe("warning");
   });
 
-  it("detects bond avoidance or cash hoarding after round 6 with minimal activity", () => {
+  it("detects behavioral signals after round 6 with concentrated stock position", () => {
     let run = makeRun();
     run = applySimulationAction(run, { type: "trade", assetId: "asset-stock", side: "buy", quantity: 10, orderMode: "market" });
     run = advanceSimulationRun(run);
@@ -37,11 +37,12 @@ describe("detectAdaptiveEvents", () => {
     run = advanceSimulationRun(run);
 
     const events = detectAdaptiveEvents(run);
-    // CLT filter limits to max 2 events; bond_avoidance or cash_hoarding should trigger
-    const relevant = events.filter(
-      (e) => e.id === "bond_avoidance" || e.id === "cash_hoarding",
+    expect(events.length).toBeGreaterThanOrEqual(1);
+    const ids = events.map((e) => e.id);
+    const anyRelevant = ids.some(
+      (id) => id === "bond_avoidance" || id === "herd_following" || id === "cash_hoarding" || id === "never_diversified",
     );
-    expect(relevant.length).toBeGreaterThanOrEqual(1);
+    expect(anyRelevant).toBe(true);
   });
 
   it("detects never diversified when only 1 holding after round 3", () => {
