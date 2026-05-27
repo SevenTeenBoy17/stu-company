@@ -518,6 +518,63 @@ export async function registerUserByInvite(input: {
   return newUser;
 }
 
+export async function registerUserByEmail(input: {
+  name: string;
+  email: string;
+  password: string;
+  inviteCode?: string;
+}) {
+  const store = getStore();
+
+  if (findUserByEmail(input.email)) {
+    throw new Error("这个邮箱已经被注册过了。");
+  }
+
+  let role: UserRecord["role"] = "student";
+  let classroomId: string | undefined;
+
+  if (input.inviteCode) {
+    const inviteStatus = validateInviteCode(input.inviteCode);
+    if (inviteStatus.valid && inviteStatus.invite) {
+      role = inviteStatus.invite.role;
+      classroomId = inviteStatus.invite.classroomId;
+      inviteStatus.invite.usesRemaining -= 1;
+    }
+  }
+
+  if (!classroomId && store.classrooms.length > 0) {
+    classroomId = store.classrooms[0].id;
+  }
+
+  const newUser: UserRecord = {
+    id: createId("user"),
+    email: input.email,
+    passwordHash: await hashPassword(input.password),
+    role,
+    name: input.name,
+    title: "沙盘新玩家",
+    classroomId,
+    onboardingCompleted: 0,
+  };
+
+  store.users.push(newUser);
+  store.profiles.push({
+    userId: newUser.id,
+    headline: "刚刚注册，准备开始 Mr.Brown 经济沙盘之旅。",
+    bio: "新用户，享受试用期。",
+    metrics: [
+      { label: "角色", value: newUser.role },
+      { label: "加入方式", value: "邮箱注册" },
+    ],
+  });
+
+  if (newUser.role === "student" && newUser.classroomId) {
+    store.runs.push(createInitialRun(newUser.id, newUser.classroomId));
+  }
+
+  return newUser;
+}
+
 export function getClassroomById(classroomId?: string) {
   return getStore().classrooms.find((classroom) => classroom.id === classroomId) ?? null;
 }

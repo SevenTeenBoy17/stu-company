@@ -21,6 +21,13 @@ export function DemoPortal({
     password: "BrownZone2026!",
     inviteCode: inviteHints[0]?.code ?? "",
   });
+  const [registerForm, setRegisterForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    inviteCode: "",
+  });
+  const [activeTab, setActiveTab] = useState<"login" | "register">("register");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -94,6 +101,38 @@ export function DemoPortal({
     }
   }
 
+  async function submitRegister() {
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: registerForm.name,
+          email: registerForm.email,
+          password: registerForm.password,
+          inviteCode: registerForm.inviteCode || undefined,
+        }),
+      });
+      const payload = (await response.json()) as { error?: string; message?: string; redirectTo?: string };
+      if (!response.ok) {
+        throw new Error(payload.message ?? payload.error ?? "注册失败。");
+      }
+
+      setMessage(payload.message ?? "注册成功！");
+      startTransition(() => {
+        router.push(payload.redirectTo ?? "/student");
+        router.refresh();
+      });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "注册失败。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
       <section className="panel rounded-3xl p-6">
@@ -154,66 +193,143 @@ export function DemoPortal({
       </section>
 
       <section className="panel rounded-3xl p-6">
-        <p className="bz-eyebrow">邀请码注册</p>
-        <h2 className="mt-4 text-3xl font-semibold text-slate-950">模拟真实试点开通流程</h2>
-        <div className="mt-6 grid gap-3">
-          {inviteHints.map((item) => (
-            <div key={item.code} className="bz-muted-tile border border-slate-200 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-lg font-semibold text-slate-950">{item.role}</p>
-                <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
-                  {item.code}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{item.note}</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("register")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${activeTab === "register" ? "bg-slate-950 text-white" : "text-slate-500 hover:text-slate-800"}`}
+          >
+            邮箱注册
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("login")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${activeTab === "login" ? "bg-slate-950 text-white" : "text-slate-500 hover:text-slate-800"}`}
+          >
+            邀请码注册
+          </button>
+        </div>
+
+        {activeTab === "register" ? (
+          <>
+            <h2 className="mt-4 text-3xl font-semibold text-slate-950">免费注册，立即体验</h2>
+            <p className="mt-2 text-sm text-slate-500">注册后享受 1 天全功能试用，一个邮箱只能注册一个账号。</p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">昵称</span>
+                <input
+                  placeholder="2-16 个字符"
+                  value={registerForm.name}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">邮箱</span>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  autoComplete="email"
+                  value={registerForm.email}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">密码</span>
+                <input
+                  type="password"
+                  placeholder="至少 8 位"
+                  autoComplete="new-password"
+                  value={registerForm.password}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">邀请码 <span className="text-slate-400">(可选)</span></span>
+                <input
+                  placeholder="有码填写可加入班级"
+                  value={registerForm.inviteCode}
+                  onChange={(event) => setRegisterForm((current) => ({ ...current, inviteCode: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
             </div>
-          ))}
-        </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-600">姓名</span>
-            <input
-              value={inviteForm.name}
-              onChange={(event) => setInviteForm((current) => ({ ...current, name: event.target.value }))}
-              className="bz-field"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-600">邮箱</span>
-            <input
-              value={inviteForm.email}
-              onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-              className="bz-field"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-600">密码</span>
-            <input
-              type="password"
-              value={inviteForm.password}
-              onChange={(event) => setInviteForm((current) => ({ ...current, password: event.target.value }))}
-              className="bz-field"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-600">邀请码</span>
-            <input
-              value={inviteForm.inviteCode}
-              onChange={(event) => setInviteForm((current) => ({ ...current, inviteCode: event.target.value }))}
-              className="bz-field"
-            />
-          </label>
-        </div>
+            <button
+              type="button"
+              onClick={submitRegister}
+              disabled={busy}
+              className="bz-primary-action mt-6 px-6 py-3 text-sm disabled:opacity-60"
+            >
+              {busy ? "处理中..." : "注册并开始体验"}
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="mt-4 text-3xl font-semibold text-slate-950">模拟真实试点开通流程</h2>
+            <div className="mt-6 grid gap-3">
+              {inviteHints.map((item) => (
+                <div key={item.code} className="bz-muted-tile border border-slate-200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-lg font-semibold text-slate-950">{item.role}</p>
+                    <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
+                      {item.code}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{item.note}</p>
+                </div>
+              ))}
+            </div>
 
-        <button
-          type="button"
-          onClick={submitInvite}
-          disabled={busy}
-          className="bz-primary-action mt-6 px-6 py-3 text-sm disabled:opacity-60"
-        >
-          {busy ? "处理中..." : "邀请码注册并进入"}
-        </button>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">姓名</span>
+                <input
+                  value={inviteForm.name}
+                  onChange={(event) => setInviteForm((current) => ({ ...current, name: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">邮箱</span>
+                <input
+                  value={inviteForm.email}
+                  onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">密码</span>
+                <input
+                  type="password"
+                  value={inviteForm.password}
+                  onChange={(event) => setInviteForm((current) => ({ ...current, password: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-600">邀请码</span>
+                <input
+                  value={inviteForm.inviteCode}
+                  onChange={(event) => setInviteForm((current) => ({ ...current, inviteCode: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={submitInvite}
+              disabled={busy}
+              className="bz-primary-action mt-6 px-6 py-3 text-sm disabled:opacity-60"
+            >
+              {busy ? "处理中..." : "邀请码注册并进入"}
+            </button>
+          </>
+        )}
       </section>
 
       {message ? (

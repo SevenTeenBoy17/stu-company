@@ -104,6 +104,8 @@ async function seedUsers() {
         email: sql`excluded.email`,
         passwordHash: sql`excluded.password_hash`,
         role: sql`excluded.role`,
+        onboardingCompleted: sql`1`,
+        subscriptionTier: sql`'standard'`,
       },
     });
 

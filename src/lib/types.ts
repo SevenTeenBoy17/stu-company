@@ -121,6 +121,8 @@ export interface ScenarioRun {
   lastInsight?: string;
 }
 
+export type SubscriptionTier = "free" | "standard" | "premium";
+
 export interface UserRecord {
   id: string;
   email: string;
@@ -132,6 +134,9 @@ export interface UserRecord {
   studentLinkId?: string;
   /** H2: incremented on logout/password change to invalidate outstanding JWTs. */
   tokenVersion?: number;
+  trialExpiresAt?: string;
+  subscriptionTier?: SubscriptionTier;
+  onboardingCompleted?: number;
 }
 
 export interface ProfileRecord {

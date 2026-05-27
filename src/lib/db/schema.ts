@@ -24,6 +24,9 @@ export const users = pgTable("users", {
   ),
   // H2: bumped on logout / password change to invalidate outstanding JWTs.
   tokenVersion: integer("token_version").notNull().default(0),
+  trialExpiresAt: timestamp("trial_expires_at"),
+  subscriptionTier: varchar("subscription_tier", { length: 20 }).notNull().default("free"),
+  onboardingCompleted: integer("onboarding_completed").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("users_role_idx").on(table.role),

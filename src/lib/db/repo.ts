@@ -151,6 +151,9 @@ function toUserRecord(row: DbUser, profile?: DbProfile | null): UserRecord {
     classroomId: maybeUndefined(row.classroomId),
     studentLinkId: maybeUndefined(row.studentLinkId),
     tokenVersion: row.tokenVersion ?? 0,
+    trialExpiresAt: row.trialExpiresAt?.toISOString(),
+    subscriptionTier: (row.subscriptionTier as UserRecord["subscriptionTier"]) ?? "free",
+    onboardingCompleted: row.onboardingCompleted ?? 0,
   };
 }
 
@@ -606,6 +609,114 @@ export async function registerUserByInvite(input: {
         return newUser;
       }),
     () => store.registerUserByInvite(input),
+  );
+}
+
+export async function registerUserByEmail(input: {
+  name: string;
+  email: string;
+  password: string;
+  inviteCode?: string;
+}) {
+  return withDb(
+    "registerUserByEmail",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const existingUser = await selectUserByEmail(tx, input.email);
+        if (existingUser) throw new Error("这个邮箱已经被注册过了。");
+
+        let role: UserRecord["role"] = "student";
+        let classroomId: string | undefined;
+        let studentLinkId: string | undefined;
+
+        if (input.inviteCode) {
+          const reservedRows = await tx
+            .update(inviteCodes)
+            .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
+            .where(
+              and(
+                ilike(inviteCodes.code, input.inviteCode),
+                sql`${inviteCodes.usesRemaining} > 0`,
+                sql`${inviteCodes.expiresAt} > now()`,
+              ),
+            )
+            .returning();
+
+          if (reservedRows.length > 0) {
+            const invite = toInvite(reservedRows[0]);
+            role = invite.role;
+            classroomId = invite.classroomId;
+            studentLinkId = invite.studentLinkId;
+          }
+        }
+
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 1);
+
+        const newUser: UserRecord = {
+          id: createId("user"),
+          email: input.email,
+          passwordHash: await hashPassword(input.password),
+          role,
+          name: input.name,
+          title: role === "student" ? "沙盘新玩家" : role === "teacher" ? "教师账号" : role === "parent" ? "家长账号" : "管理员",
+          classroomId,
+          studentLinkId,
+          trialExpiresAt: trialEnd.toISOString(),
+          subscriptionTier: "free",
+          onboardingCompleted: 0,
+        };
+
+        await tx.insert(users).values({
+          id: newUser.id,
+          email: newUser.email,
+          passwordHash: newUser.passwordHash,
+          role: newUser.role,
+          classroomId: newUser.classroomId ?? null,
+          studentLinkId: newUser.studentLinkId ?? null,
+          trialExpiresAt: trialEnd,
+          subscriptionTier: "free",
+          onboardingCompleted: 0,
+        });
+
+        await tx.insert(profiles).values({
+          userId: newUser.id,
+          name: newUser.name,
+          title: newUser.title,
+          headline: "刚刚注册，准备开始 Mr.Brown 经济沙盘之旅。",
+          bio: "新用户，享受 1 天全功能试用期。",
+          metrics: [
+            { label: "角色", value: newUser.role },
+            { label: "加入方式", value: input.inviteCode ? "邀请码+邮箱" : "邮箱注册" },
+          ],
+        });
+
+        if (newUser.role === "student" && newUser.classroomId) {
+          await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, newUser.classroomId)));
+        }
+
+        if (newUser.role === "student" && !newUser.classroomId) {
+          const sandboxClassroom = await tx.select().from(classrooms).limit(1);
+          if (sandboxClassroom.length > 0) {
+            await tx.update(users).set({ classroomId: sandboxClassroom[0].id }).where(eq(users.id, newUser.id));
+            newUser.classroomId = sandboxClassroom[0].id;
+            await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, sandboxClassroom[0].id)));
+          }
+        }
+
+        return newUser;
+      }),
+    () => store.registerUserByEmail(input),
+  );
+}
+
+export async function markOnboardingCompleted(userId: string) {
+  return withDb(
+    "markOnboardingCompleted",
+    async (db) => {
+      await db.update(users).set({ onboardingCompleted: 1 }).where(eq(users.id, userId));
+    },
+    () => {},
   );
 }
 
