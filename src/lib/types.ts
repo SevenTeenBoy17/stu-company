@@ -377,6 +377,12 @@ export interface TutorRadarMetric {
   note: string;
 }
 
+/** Premium deep-report investor-personality card (see deriveInvestorPersona). */
+export interface InvestorPersona {
+  label: string;
+  summary: string;
+}
+
 export interface TutorRadarPayload {
   asOf: string;
   provider: "remote" | "fallback";

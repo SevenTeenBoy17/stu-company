@@ -19,7 +19,13 @@ import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
-import type { ActionLog, PortfolioIntel, SimulationState, TutorRadarPayload } from "@/lib/types";
+import type {
+  ActionLog,
+  InvestorPersona,
+  PortfolioIntel,
+  SimulationState,
+  TutorRadarPayload,
+} from "@/lib/types";
 import { cn, formatCurrency, formatPercent, getMarketMoveClasses } from "@/lib/utils";
 
 type TradeForm = {
@@ -72,6 +78,9 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const [tutorRadar, setTutorRadar] = useState<TutorRadarPayload>(() =>
     buildTutorRadarPayload(initialState),
   );
+  // Premium surfacing: investor-personality card (deepAiReport) + season replay.
+  const [persona, setPersona] = useState<InvestorPersona | null>(null);
+  const [canReplay, setCanReplay] = useState(false);
   const [activeTab, setActiveTab] = useState<ActionTab>("trade");
   const [intelPending, setIntelPending] = useState(false);
   const [radarPending, setRadarPending] = useState(false);
@@ -148,10 +157,20 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     setRadarPending(true);
     try {
       const response = await fetch("/api/ai/radar-chart", { method: "POST", cache: "no-store" });
-      const payload = (await response.json()) as TutorRadarPayload & { error?: string };
-      setTutorRadar(response.ok && !payload.error ? payload : buildTutorRadarPayload(currentState));
+      const payload = (await response.json()) as TutorRadarPayload & {
+        error?: string;
+        persona?: InvestorPersona | null;
+      };
+      if (response.ok && !payload.error) {
+        setTutorRadar(payload);
+        setPersona(payload.persona ?? null);
+      } else {
+        setTutorRadar(buildTutorRadarPayload(currentState));
+        setPersona(null);
+      }
     } catch {
       setTutorRadar(buildTutorRadarPayload(currentState));
+      setPersona(null);
     } finally {
       setRadarPending(false);
     }
@@ -174,6 +193,21 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     setTutorRadar(buildTutorRadarPayload(state));
     void refreshPortfolioIntel();
   }, [state, refreshPortfolioIntel]);
+
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/billing/status", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { features?: { seasonReplay?: boolean } } | null) => {
+        if (alive && data?.features) setCanReplay(Boolean(data.features.seasonReplay));
+      })
+      .catch(() => {
+        // Replay is a premium extra; absence just hides the button.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (studentId) {
@@ -352,15 +386,33 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                 })()
               ) : null}
             </div>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => submitAction(undefined, "/api/sim/advance-round")}
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-            >
-              推进下一回合
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
+            <div className="flex flex-col items-stretch gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => submitAction(undefined, "/api/sim/advance-round")}
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+              >
+                推进下一回合
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+              {canReplay ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (
+                      window.confirm("开启新赛季会用全新行情重新开局，当前进度将被替换。确定吗？")
+                    ) {
+                      submitAction(undefined, "/api/sim/replay");
+                    }
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-sm font-bold text-[#b96621] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
+                >
+                  🔄 新赛季（高级版）
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -696,6 +748,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           <div className="mt-5">
             <StudentTutorRadar
               payload={tutorRadar}
+              persona={persona}
               loading={radarPending}
               onRefresh={() => {
                 void loadTutorRadarForState(state);

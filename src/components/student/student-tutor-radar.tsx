@@ -2,7 +2,7 @@
 
 import { LoaderCircle, Radar, RefreshCw } from "lucide-react";
 
-import type { TutorRadarPayload } from "@/lib/types";
+import type { InvestorPersona, TutorRadarPayload } from "@/lib/types";
 import { cn, formatDateLabel } from "@/lib/utils";
 
 const RADAR_SIZE = 260;
@@ -30,10 +30,12 @@ function buildRadarPath(scores: number[]) {
 
 export function StudentTutorRadar({
   payload,
+  persona = null,
   loading = false,
   onRefresh,
 }: {
   payload: TutorRadarPayload;
+  persona?: InvestorPersona | null;
   loading?: boolean;
   onRefresh: () => void;
 }) {
@@ -99,6 +101,17 @@ export function StudentTutorRadar({
         </div>
 
         <div className="min-w-0">
+          {persona ? (
+            <div className="mb-3 rounded-[1.35rem] border border-[#f0c89a] bg-gradient-to-br from-[#fff7ee] to-[#ffeede] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#f08a38] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                  高级版 · 投资人格
+                </span>
+                <span className="text-base font-black text-[#7a4717]">{persona.label}</span>
+              </div>
+              <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
+            </div>
+          ) : null}
           <p className="rounded-[1.35rem] bg-[#fff4e9] px-4 py-3 text-sm font-semibold leading-7 text-[#7a4717]">
             {payload.summary}
           </p>
