@@ -5,26 +5,39 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   buildBehaviorSignals,
   buildGrowthReport,
   buildLeaderboard,
   buildSimulationState,
   createInitialRun,
+  deriveInvestorPersona,
 } from "@/lib/simulation";
+import {
+  canAddFamilyMember,
+  resolveSubscriptionState,
+} from "@/lib/billing/subscription";
 import type {
   AiChatMessage,
   AiChatMode,
   AiChatSession,
   Assignment,
   Classroom,
+  FamilyDigest,
+  FamilyMember,
   GrowthReport,
   InviteCode,
   LeaderboardEntry,
+  PaymentChannel,
+  PaymentOrder,
+  PaymentStatus,
   ProfileRecord,
   Role,
   ScenarioRun,
   StudentParentLink,
+  SubscriptionGrant,
+  SubscriptionTier,
   UserRecord,
 } from "@/lib/types";
 import { createId } from "@/lib/utils";
@@ -39,6 +52,9 @@ type Store = {
   parentLinks: StudentParentLink[];
   growthReports: GrowthReport[];
   aiSessions: AiChatSession[];
+  paymentOrders: PaymentOrder[];
+  subscriptionGrants: SubscriptionGrant[];
+  familyMembers: FamilyMember[];
 };
 
 declare global {
@@ -49,7 +65,9 @@ function createSeedUsers() {
   const basePassword = bcrypt.hashSync("BrownZone2026!", 10);
   const guestPassword = bcrypt.hashSync("Guest001!!!", 10);
   const superPassword = bcrypt.hashSync("Super001!!!", 10);
-  return [
+  const guestTrialEnd = new Date();
+  guestTrialEnd.setDate(guestTrialEnd.getDate() + 3);
+  const users = [
     {
       id: "guest-student",
       email: "guest@brownzone.ai",
@@ -121,6 +139,23 @@ function createSeedUsers() {
       title: "账号与权限总控",
     },
   ] satisfies UserRecord[];
+
+  return users.map((user) => {
+    if (user.id === "guest-student") {
+      return {
+        ...user,
+        trialExpiresAt: guestTrialEnd.toISOString(),
+        subscriptionTier: "free" as const,
+        onboardingCompleted: 0,
+      };
+    }
+
+    return {
+      ...user,
+      subscriptionTier: "standard" as const,
+      onboardingCompleted: 1,
+    };
+  }) satisfies UserRecord[];
 }
 
 function createSeedProfiles() {
@@ -386,6 +421,9 @@ export function createSeedStore(): Store {
     ],
     growthReports: [buildGrowthReport(runs[0], "student-1", "parent-1")],
     aiSessions: [],
+    paymentOrders: [],
+    subscriptionGrants: [],
+    familyMembers: [],
   };
 }
 
@@ -396,6 +434,12 @@ export function getStore() {
 
   if (!globalThis.__brownZoneStore__.aiSessions) {
     globalThis.__brownZoneStore__.aiSessions = [];
+  }
+  if (!globalThis.__brownZoneStore__.paymentOrders) {
+    globalThis.__brownZoneStore__.paymentOrders = [];
+  }
+  if (!globalThis.__brownZoneStore__.subscriptionGrants) {
+    globalThis.__brownZoneStore__.subscriptionGrants = [];
   }
 
   return globalThis.__brownZoneStore__;
@@ -421,12 +465,425 @@ export function bumpTokenVersion(userId: string) {
   return user.tokenVersion;
 }
 
+export function markEmailVerified(userId: string) {
+  const user = getStore().users.find((candidate) => candidate.id === userId);
+  if (!user) return false;
+  user.emailVerifiedAt = new Date().toISOString();
+  return true;
+}
+
+function isOwnerPremiumActive(owner: UserRecord) {
+  const state = resolveSubscriptionState(
+    owner.subscriptionTier,
+    owner.trialExpiresAt,
+    owner.subscriptionExpiresAt,
+  );
+  return state.status === "active" && owner.subscriptionTier === "premium"
+    ? state
+    : null;
+}
+
+export function findFamilyOwnerForStudent(studentUserId: string): string | null {
+  return getStore().familyMembers.find((m) => m.studentUserId === studentUserId)?.ownerUserId ?? null;
+}
+
+export function listFamilyMembers(ownerUserId: string) {
+  return getStore()
+    .familyMembers.filter((m) => m.ownerUserId === ownerUserId)
+    .map((m) => {
+      const student = findUserById(m.studentUserId);
+      return { ...m, studentName: student?.name ?? "", studentEmail: student?.email ?? "" };
+    });
+}
+
+export function addFamilyMember(ownerUserId: string, studentUserId: string): FamilyMember {
+  const store = getStore();
+  const owner = findUserById(ownerUserId);
+  const student = findUserById(studentUserId);
+  if (!owner || !student) throw new Error("用户不存在。");
+  if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+
+  const ownerState = isOwnerPremiumActive(owner);
+  if (!ownerState) throw new Error("只有高级版家长才能创建家庭组。");
+  if (!canUserPayForTarget(ownerUserId, studentUserId)) {
+    throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+  }
+  if (store.familyMembers.some((m) => m.studentUserId === studentUserId)) {
+    throw new Error("该学生已在一个家庭组中。");
+  }
+  const currentCount = store.familyMembers.filter((m) => m.ownerUserId === ownerUserId).length;
+  if (!canAddFamilyMember(currentCount, ownerState.features.maxStudents)) {
+    throw new Error(`家庭名额已满（上限 ${ownerState.features.maxStudents} 名）。`);
+  }
+
+  const member: FamilyMember = {
+    id: createId("fam"),
+    ownerUserId,
+    studentUserId,
+    createdAt: new Date().toISOString(),
+  };
+  store.familyMembers.push(member);
+  return member;
+}
+
+export function removeFamilyMember(ownerUserId: string, studentUserId: string): boolean {
+  const store = getStore();
+  const before = store.familyMembers.length;
+  store.familyMembers = store.familyMembers.filter(
+    (m) => !(m.ownerUserId === ownerUserId && m.studentUserId === studentUserId),
+  );
+  return store.familyMembers.length < before;
+}
+
+/** Upgrade a student to Premium while their family owner's subscription is active. */
+export function applyFamilyEntitlement(user: UserRecord): UserRecord {
+  if (user.role !== "student") return user;
+  const ownerId = findFamilyOwnerForStudent(user.id);
+  if (!ownerId) return user;
+  const owner = findUserById(ownerId);
+  if (!owner || !isOwnerPremiumActive(owner)) return user;
+  return {
+    ...user,
+    subscriptionTier: "premium",
+    subscriptionExpiresAt: owner.subscriptionExpiresAt,
+  };
+}
+
+/** Weekly digests for the Premium family report email cron. */
+export function listPremiumFamilyDigests(): FamilyDigest[] {
+  const store = getStore();
+  const digests: FamilyDigest[] = [];
+  for (const member of store.familyMembers) {
+    const owner = findUserById(member.ownerUserId);
+    if (!owner || !isOwnerPremiumActive(owner)) continue;
+    const student = findUserById(member.studentUserId);
+    const run = store.runs.find((item) => item.userId === member.studentUserId);
+    if (!student || !run) continue;
+    digests.push({
+      ownerEmail: owner.email,
+      ownerName: owner.name,
+      studentName: student.name,
+      netWorth: run.snapshots.at(-1)?.netWorth ?? 0,
+      round: run.currentRound,
+      persona: deriveInvestorPersona(run).label,
+    });
+  }
+  return digests;
+}
+
 export async function updateUserPassword(userId: string, password: string) {
   const user = getStore().users.find((candidate) => candidate.id === userId);
   if (!user) throw new Error("用户不存在。");
   user.passwordHash = await hashPassword(password);
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   return user;
+}
+
+export async function updateUserEmail(userId: string, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = getStore().users.find((candidate) => candidate.id === userId);
+  if (!user) throw new Error("用户不存在。");
+
+  const duplicate = getStore().users.find(
+    (candidate) =>
+      candidate.id !== userId && candidate.email.toLowerCase() === normalizedEmail,
+  );
+  if (duplicate) throw new Error("这个邮箱已经被注册过了。");
+
+  user.email = normalizedEmail;
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  return user;
+}
+
+function getDefaultClassroomId() {
+  const store = getStore();
+  return store.classrooms[0]?.id ?? "class-1";
+}
+
+function ensureScenarioRunForUser(user: UserRecord) {
+  const store = getStore();
+  if (user.role !== "student") return;
+  const classroomId = user.classroomId ?? getDefaultClassroomId();
+  user.classroomId = classroomId;
+  const hasRun = store.runs.some((run) => run.userId === user.id);
+  if (!hasRun) {
+    store.runs.push(createInitialRun(user.id, classroomId));
+  }
+}
+
+function adminUserSummary(user: UserRecord) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    name: user.name,
+    title: user.title,
+    classroomId: user.classroomId,
+    tokenVersion: user.tokenVersion ?? 0,
+    trialExpiresAt: user.trialExpiresAt,
+    subscriptionTier: user.subscriptionTier ?? "free",
+    subscriptionExpiresAt: user.subscriptionExpiresAt,
+    onboardingCompleted: user.onboardingCompleted ?? 0,
+  };
+}
+
+export async function listAdminUsers(filters: {
+  query?: string;
+  role?: Role | "all";
+  subscription?: SubscriptionTier | "trial" | "all";
+} = {}) {
+  const query = filters.query?.trim().toLowerCase();
+  const now = Date.now();
+  return getStore()
+    .users.filter((user) => {
+      const matchesQuery =
+        !query ||
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.title.toLowerCase().includes(query);
+      const matchesRole = !filters.role || filters.role === "all" || user.role === filters.role;
+      const tier = user.subscriptionTier ?? "free";
+      const inTrial =
+        user.trialExpiresAt && new Date(user.trialExpiresAt).getTime() > now && tier === "free";
+      const matchesSubscription =
+        !filters.subscription ||
+        filters.subscription === "all" ||
+        (filters.subscription === "trial" ? inTrial : tier === filters.subscription);
+      return matchesQuery && matchesRole && matchesSubscription;
+    })
+    .map(adminUserSummary);
+}
+
+export async function createAdminManagedUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  title?: string;
+  subscriptionTier?: SubscriptionTier;
+  trialDays?: number | null;
+  subscriptionDays?: number | null;
+}) {
+  const store = getStore();
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (findUserByEmail(normalizedEmail)) {
+    throw new Error("这个邮箱已经注册过了。");
+  }
+
+  const now = new Date();
+  const trialExpiresAt =
+    typeof input.trialDays === "number" && input.trialDays > 0
+      ? new Date(now.getTime() + input.trialDays * 86_400_000).toISOString()
+      : undefined;
+  const subscriptionTier = input.subscriptionTier ?? "free";
+  const subscriptionExpiresAt =
+    subscriptionTier !== "free" && typeof input.subscriptionDays === "number" && input.subscriptionDays > 0
+      ? new Date(now.getTime() + input.subscriptionDays * 86_400_000).toISOString()
+      : undefined;
+
+  const user: UserRecord = {
+    id: createId("user"),
+    email: normalizedEmail,
+    passwordHash: await hashPassword(input.password),
+    role: input.role,
+    name: input.name.trim(),
+    title: input.title?.trim() || (input.role === "admin" ? "运营管理员" : input.role === "teacher" ? "教师账号" : input.role === "parent" ? "家长账号" : "沙盘体验用户"),
+    classroomId: input.role === "student" || input.role === "teacher" ? getDefaultClassroomId() : undefined,
+    tokenVersion: 0,
+    trialExpiresAt,
+    subscriptionTier,
+    subscriptionExpiresAt,
+    onboardingCompleted: input.role === "student" ? 0 : 1,
+  };
+
+  store.users.push(user);
+  store.profiles.push({
+    userId: user.id,
+    headline: "由超级管理员创建的 Brown Zone 账号。",
+    bio: "该账号可按角色进入对应工作台，权限与试用状态由后台统一管理。",
+    metrics: [
+      { label: "角色", value: user.role },
+      { label: "创建方式", value: "超级管理员创建" },
+    ],
+  });
+  ensureScenarioRunForUser(user);
+  return adminUserSummary(user);
+}
+
+export async function updateAdminManagedUser(
+  userId: string,
+  input: {
+    name?: string;
+    title?: string;
+    role?: Role;
+    subscriptionTier?: SubscriptionTier;
+    trialDays?: number | null;
+    subscriptionDays?: number | null;
+    onboardingCompleted?: boolean;
+  },
+) {
+  const store = getStore();
+  const user = store.users.find((candidate) => candidate.id === userId);
+  if (!user) throw new Error("用户不存在。");
+
+  if (input.name !== undefined) user.name = input.name.trim();
+  if (input.title !== undefined) user.title = input.title.trim();
+  if (input.role !== undefined) {
+    user.role = input.role;
+    if ((input.role === "student" || input.role === "teacher") && !user.classroomId) {
+      user.classroomId = getDefaultClassroomId();
+    }
+  }
+
+  if (input.trialDays !== undefined) {
+    user.trialExpiresAt =
+      input.trialDays && input.trialDays > 0
+        ? new Date(Date.now() + input.trialDays * 86_400_000).toISOString()
+        : undefined;
+  }
+
+  if (input.subscriptionTier !== undefined) {
+    user.subscriptionTier = input.subscriptionTier;
+    if (input.subscriptionTier === "free") {
+      user.subscriptionExpiresAt = undefined;
+    }
+  }
+
+  if (input.subscriptionDays !== undefined) {
+    user.subscriptionExpiresAt =
+      input.subscriptionDays && input.subscriptionDays > 0
+        ? new Date(Date.now() + input.subscriptionDays * 86_400_000).toISOString()
+        : undefined;
+    if (input.subscriptionDays && input.subscriptionDays > 0 && (!user.subscriptionTier || user.subscriptionTier === "free")) {
+      user.subscriptionTier = "standard";
+    }
+  }
+
+  if (input.onboardingCompleted !== undefined) {
+    user.onboardingCompleted = input.onboardingCompleted ? 1 : 0;
+  }
+
+  const profile = store.profiles.find((candidate) => candidate.userId === userId);
+  if (profile) {
+    profile.headline = `${user.name} 的 Brown Zone 账号`;
+  }
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  ensureScenarioRunForUser(user);
+  return adminUserSummary(user);
+}
+
+export async function createPaymentOrder(input: {
+  userId: string;
+  targetUserId: string;
+  tier: Exclude<SubscriptionTier, "free">;
+  channel: PaymentChannel;
+  amountFen: number;
+  description: string;
+  outTradeNo: string;
+  expiresAt: Date;
+  codeUrl?: string;
+  prepayId?: string;
+}) {
+  const now = new Date().toISOString();
+  const order: PaymentOrder = {
+    id: createId("pay"),
+    outTradeNo: input.outTradeNo,
+    userId: input.userId,
+    targetUserId: input.targetUserId,
+    tier: input.tier,
+    channel: input.channel,
+    amountFen: input.amountFen,
+    description: input.description,
+    status: "pending",
+    codeUrl: input.codeUrl,
+    prepayId: input.prepayId,
+    expiresAt: input.expiresAt.toISOString(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  getStore().paymentOrders.push(order);
+  return order;
+}
+
+export async function updatePaymentOrderProviderFields(
+  outTradeNo: string,
+  fields: { codeUrl?: string; prepayId?: string },
+) {
+  const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
+  if (!order) throw new Error("支付订单不存在。");
+  order.codeUrl = fields.codeUrl ?? order.codeUrl;
+  order.prepayId = fields.prepayId ?? order.prepayId;
+  order.updatedAt = new Date().toISOString();
+  return order;
+}
+
+export async function getPaymentOrderByOutTradeNo(outTradeNo: string) {
+  return getStore().paymentOrders.find((order) => order.outTradeNo === outTradeNo) ?? null;
+}
+
+export async function fulfillPaymentOrder(input: {
+  outTradeNo: string;
+  transactionId: string;
+  paidAt?: string;
+  rawNotify?: unknown;
+}) {
+  const store = getStore();
+  const order = store.paymentOrders.find((candidate) => candidate.outTradeNo === input.outTradeNo);
+  if (!order) throw new Error("支付订单不存在。");
+
+  if (order.status === "paid") {
+    return {
+      order,
+      grant:
+        store.subscriptionGrants.find((grant) => grant.orderId === order.id) ??
+        null,
+      alreadyFulfilled: true,
+    };
+  }
+
+  const user = store.users.find((candidate) => candidate.id === order.targetUserId);
+  if (!user) throw new Error("订阅目标账号不存在。");
+
+  const now = input.paidAt ? new Date(input.paidAt) : new Date();
+  const currentExpiry = user.subscriptionExpiresAt
+    ? new Date(user.subscriptionExpiresAt)
+    : now;
+  const startsAt = currentExpiry.getTime() > now.getTime() ? currentExpiry : now;
+  const expiresAt = new Date(startsAt);
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
+  order.status = "paid";
+  order.transactionId = input.transactionId;
+  order.paidAt = now.toISOString();
+  order.updatedAt = now.toISOString();
+
+  user.subscriptionTier = order.tier;
+  user.subscriptionExpiresAt = expiresAt.toISOString();
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+
+  const grant: SubscriptionGrant = {
+    id: createId("grant"),
+    userId: user.id,
+    orderId: order.id,
+    tier: order.tier,
+    startsAt: startsAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    createdAt: now.toISOString(),
+  };
+  store.subscriptionGrants.push(grant);
+
+  return { order, grant, alreadyFulfilled: false };
+}
+
+export async function markPaymentOrderStatus(
+  outTradeNo: string,
+  status: Exclude<PaymentStatus, "pending" | "paid">,
+) {
+  const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
+  if (!order) throw new Error("支付订单不存在。");
+  order.status = status;
+  order.updatedAt = new Date().toISOString();
+  return order;
 }
 
 export function findProfileByUserId(userId: string) {
@@ -465,13 +922,15 @@ export async function registerUserByInvite(input: {
     throw new Error(inviteStatus.reason ?? "邀请码无效。");
   }
 
-  if (findUserByEmail(input.email)) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (findUserByEmail(normalizedEmail)) {
     throw new Error("这个邮箱已经被注册过了。");
   }
 
   const newUser: UserRecord = {
     id: createId("user"),
-    email: input.email,
+    email: normalizedEmail,
     passwordHash: await hashPassword(input.password),
     role: inviteStatus.invite.role,
     name: input.name,
@@ -526,7 +985,9 @@ export async function registerUserByEmail(input: {
 }) {
   const store = getStore();
 
-  if (findUserByEmail(input.email)) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (findUserByEmail(normalizedEmail)) {
     throw new Error("这个邮箱已经被注册过了。");
   }
 
@@ -549,11 +1010,11 @@ export async function registerUserByEmail(input: {
   }
 
   const trialEnd = new Date();
-  trialEnd.setDate(trialEnd.getDate() + 4);
+  trialEnd.setDate(trialEnd.getDate() + 3);
 
   const newUser: UserRecord = {
     id: createId("user"),
-    email: input.email,
+    email: normalizedEmail,
     passwordHash: await hashPassword(input.password),
     role,
     name: input.name,
@@ -561,6 +1022,7 @@ export async function registerUserByEmail(input: {
     classroomId,
     trialExpiresAt: trialEnd.toISOString(),
     subscriptionTier: "free",
+    subscriptionExpiresAt: undefined,
     onboardingCompleted: 0,
   };
 
@@ -620,6 +1082,35 @@ export function applyActionForUser(userId: string, input: Parameters<typeof appl
   store.runs[index] = updated;
   syncGrowthReports(userId);
   return updated;
+}
+
+export function applyEventChoiceForUser(userId: string, choiceId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const updated = applyEventChoice(run, choiceId);
+  const index = store.runs.findIndex((item) => item.id === updated.id);
+  store.runs[index] = updated;
+  syncGrowthReports(userId);
+  return updated;
+}
+
+export function replayRunForUser(userId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const fresh = createInitialRun(userId, run.classroomId, run.scenarioName);
+  fresh.id = run.id;
+  const index = store.runs.findIndex((item) => item.id === run.id);
+  store.runs[index] = fresh;
+  syncGrowthReports(userId);
+  return fresh;
 }
 
 export function advanceRunForUser(userId: string) {
@@ -727,29 +1218,98 @@ export function getParentOverview(userId: string) {
   };
 }
 
+function isSuperAdminUser(user?: UserRecord | null) {
+  return user?.id === "superadmin" || user?.email.toLowerCase() === "superadmin";
+}
+
+export function canUserPayForTarget(payerId: string, targetUserId: string) {
+  const store = getStore();
+  const payer = findUserById(payerId);
+  const target = findUserById(targetUserId);
+  if (!payer || !target) return false;
+
+  if (payer.id === target.id) {
+    return payer.role !== "student";
+  }
+
+  if (isSuperAdminUser(payer)) return true;
+
+  if (payer.role === "teacher") {
+    return target.role === "student" && Boolean(payer.classroomId) && target.classroomId === payer.classroomId;
+  }
+
+  if (payer.role === "parent") {
+    return store.parentLinks.some(
+      (link) => link.parentUserId === payer.id && link.studentUserId === target.id,
+    );
+  }
+
+  return false;
+}
+
+export function listSubscriptionTargetsForUser(userId: string) {
+  const store = getStore();
+  const payer = findUserById(userId);
+  if (!payer) return [];
+
+  let targets: UserRecord[] = [];
+  if (isSuperAdminUser(payer)) {
+    targets = store.users.filter((user) => user.role === "student");
+  } else if (payer.role === "teacher" && payer.classroomId) {
+    targets = store.users.filter(
+      (user) => user.role === "student" && user.classroomId === payer.classroomId,
+    );
+  } else if (payer.role === "parent") {
+    const studentIds = new Set(
+      store.parentLinks
+        .filter((link) => link.parentUserId === payer.id)
+        .map((link) => link.studentUserId),
+    );
+    targets = store.users.filter((user) => studentIds.has(user.id));
+  }
+
+  return targets.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    classroomId: user.classroomId,
+    subscriptionTier: user.subscriptionTier,
+    subscriptionExpiresAt: user.subscriptionExpiresAt,
+  }));
+}
+
 export function getAdminOverview() {
   const store = getStore();
   const leaderboard = buildLeaderboard(store.runs, store.users);
+  const now = Date.now();
+  const standardUsers = store.users.filter((user) => user.subscriptionTier === "standard" || user.subscriptionTier === "premium");
+  const trialUsers = store.users.filter(
+    (user) => user.subscriptionTier === "free" && user.trialExpiresAt && new Date(user.trialExpiresAt).getTime() > now,
+  );
+  const paidOrders = store.paymentOrders.filter((order) => order.status === "paid");
   return {
     metrics: [
-      { label: "演示班级", value: `${store.classrooms.length}` },
-      { label: "模块总数", value: `${learningModules.length}` },
-      { label: "邀请码池", value: `${store.invites.length}` },
-      { label: "活跃学生", value: `${store.users.filter((item) => item.role === "student").length}` },
+      { label: "账号席位", value: `${store.users.length}` },
+      { label: "试用中", value: `${trialUsers.length}` },
+      { label: "标准订阅", value: `${standardUsers.length}` },
+      { label: "已支付订单", value: `${paidOrders.length}` },
     ],
+    business: {
+      seats: store.users.length,
+      trialUsers: trialUsers.length,
+      standardUsers: standardUsers.length,
+      schoolLicenses: store.classrooms.length,
+      paidOrders: paidOrders.length,
+      pendingOrders: store.paymentOrders.filter((order) => order.status === "pending").length,
+      revenueFen: paidOrders.reduce((sum, order) => sum + order.amountFen, 0),
+      modules: learningModules.length,
+    },
     invites: store.invites,
     classrooms: store.classrooms,
     topUsers: leaderboard.slice(0, 5),
     assignments: store.assignments.slice(0, 4),
-    users: store.users.map((user) => ({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      title: user.title,
-      classroomId: user.classroomId,
-      tokenVersion: user.tokenVersion ?? 0,
-    })),
+    users: store.users.map(adminUserSummary),
   };
 }
 
@@ -829,7 +1389,6 @@ export function getQuickDemoCredentials() {
     { label: "教师端", email: "teacher@brownzone.ai", password: "BrownZone2026!" },
     { label: "家长端", email: "parent@brownzone.ai", password: "BrownZone2026!" },
     { label: "管理端", email: "admin@brownzone.ai", password: "BrownZone2026!" },
-    { label: "超级管理员", email: "superadmin", password: "Super001!!!" },
   ];
 }
 

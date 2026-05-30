@@ -26,12 +26,55 @@ export const users = pgTable("users", {
   tokenVersion: integer("token_version").notNull().default(0),
   trialExpiresAt: timestamp("trial_expires_at"),
   subscriptionTier: varchar("subscription_tier", { length: 20 }).notNull().default("free"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
   onboardingCompleted: integer("onboarding_completed").notNull().default(0),
+  // A1: null until the user confirms their email. Capability is tracked now;
+  // enforcement (gating AI behind verification) is deferred until an email
+  // provider is wired so unverified real users are not locked out.
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("users_role_idx").on(table.role),
   index("users_classroom_id_idx").on(table.classroomId),
   index("users_student_link_id_idx").on(table.studentLinkId),
+]);
+
+export const paymentOrders = pgTable("payment_orders", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  outTradeNo: varchar("out_trade_no", { length: 96 }).notNull().unique(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id", { length: 64 }).notNull().references(() => users.id),
+  tier: varchar("tier", { length: 20 }).notNull(),
+  channel: varchar("channel", { length: 16 }).notNull(),
+  amountFen: integer("amount_fen").notNull(),
+  description: varchar("description", { length: 180 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  codeUrl: text("code_url"),
+  prepayId: varchar("prepay_id", { length: 128 }),
+  transactionId: varchar("transaction_id", { length: 128 }),
+  rawNotify: jsonb("raw_notify"),
+  paidAt: timestamp("paid_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("payment_orders_user_id_idx").on(table.userId),
+  index("payment_orders_target_user_id_idx").on(table.targetUserId),
+  index("payment_orders_out_trade_no_idx").on(table.outTradeNo),
+  index("payment_orders_status_idx").on(table.status),
+]);
+
+export const subscriptionGrants = pgTable("subscription_grants", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
+  orderId: varchar("order_id", { length: 64 }).notNull().references(() => paymentOrders.id),
+  tier: varchar("tier", { length: 20 }).notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("subscription_grants_user_id_idx").on(table.userId),
+  index("subscription_grants_order_id_idx").on(table.orderId),
 ]);
 
 export const profiles = pgTable("profiles", {
@@ -83,6 +126,17 @@ export const studentParentLinks = pgTable("student_parent_links", {
   index("student_parent_links_bond_code_idx").on(table.bondCode),
 ]);
 
+// Family group membership (Option B). A student belongs to at most one family
+// (studentUserId unique); the group is identified by ownerUserId (the parent).
+export const familyMembers = pgTable("family_members", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  ownerUserId: varchar("owner_user_id", { length: 64 }).notNull().references(() => users.id),
+  studentUserId: varchar("student_user_id", { length: 64 }).notNull().unique().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("family_members_owner_user_id_idx").on(table.ownerUserId),
+]);
+
 export const scenarioRuns = pgTable("scenario_runs", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
@@ -102,6 +156,10 @@ export const scenarioRuns = pgTable("scenario_runs", {
   actionLog: jsonb("action_log").notNull(),
   snapshots: jsonb("snapshots").notNull(),
   lastInsight: text("last_insight"),
+  // Seeded random-event engine (src/lib/event-engine.ts). Nullable for legacy
+  // runs created before the engine existed — those fall back to the fixed script.
+  seed: integer("seed"),
+  eventTimeline: jsonb("event_timeline"),
 }, (table) => [
   index("scenario_runs_user_id_idx").on(table.userId),
   index("scenario_runs_classroom_id_idx").on(table.classroomId),

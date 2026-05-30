@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { LoaderCircle, Radar, RefreshCw } from "lucide-react";
 
-import type { TutorRadarPayload } from "@/lib/types";
+import type { InvestorPersona, TutorRadarPayload } from "@/lib/types";
 import { cn, formatDateLabel } from "@/lib/utils";
 
 const RADAR_SIZE = 260;
@@ -30,15 +31,30 @@ function buildRadarPath(scores: number[]) {
 
 export function StudentTutorRadar({
   payload,
+  persona = null,
+  personaShareText,
   loading = false,
   onRefresh,
 }: {
   payload: TutorRadarPayload;
+  persona?: InvestorPersona | null;
+  personaShareText?: string;
   loading?: boolean;
   onRefresh: () => void;
 }) {
   const scores = payload.metrics.map((metric) => metric.score);
   const radarPath = buildRadarPath(scores);
+  const [shared, setShared] = useState(false);
+
+  async function sharePersona() {
+    if (!personaShareText) return;
+    try {
+      await navigator.clipboard.writeText(personaShareText);
+      setShared(true);
+    } catch {
+      setShared(false);
+    }
+  }
 
   return (
     <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
@@ -99,6 +115,26 @@ export function StudentTutorRadar({
         </div>
 
         <div className="min-w-0">
+          {persona ? (
+            <div className="mb-3 rounded-[1.35rem] border border-[#f0c89a] bg-gradient-to-br from-[#fff7ee] to-[#ffeede] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#f08a38] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                  高级版 · 投资人格
+                </span>
+                <span className="text-base font-black text-[#7a4717]">{persona.label}</span>
+              </div>
+              <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
+              {personaShareText ? (
+                <button
+                  type="button"
+                  onClick={sharePersona}
+                  className="mt-3 rounded-full border border-[#f0c89a] bg-white px-3 py-1.5 text-xs font-bold text-[#b96621] transition-colors hover:bg-[#fff7ee]"
+                >
+                  {shared ? "已复制，去分享吧" : "复制分享我的投资人格"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <p className="rounded-[1.35rem] bg-[#fff4e9] px-4 py-3 text-sm font-semibold leading-7 text-[#7a4717]">
             {payload.summary}
           </p>

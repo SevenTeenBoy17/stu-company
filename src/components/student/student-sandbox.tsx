@@ -18,8 +18,16 @@ import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
+import type { AdaptiveEvent } from "@/lib/adaptive-events";
+import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
-import type { ActionLog, PortfolioIntel, SimulationState, TutorRadarPayload } from "@/lib/types";
+import type {
+  ActionLog,
+  InvestorPersona,
+  PortfolioIntel,
+  SimulationState,
+  TutorRadarPayload,
+} from "@/lib/types";
 import { cn, formatCurrency, formatPercent, getMarketMoveClasses } from "@/lib/utils";
 
 type TradeForm = {
@@ -51,6 +59,7 @@ const actionTypeLabel: Record<ActionLog["type"], string> = {
   property: "房产",
   venture: "创业",
   advance: "回合推进",
+  event: "事件决策",
 };
 
 function actionDirection(amount: number) {
@@ -71,6 +80,11 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const [tutorRadar, setTutorRadar] = useState<TutorRadarPayload>(() =>
     buildTutorRadarPayload(initialState),
   );
+  // Premium surfacing: investor-personality card (deepAiReport) + season replay.
+  const [persona, setPersona] = useState<InvestorPersona | null>(null);
+  const [canReplay, setCanReplay] = useState(false);
+  // Behavior-bias overlay cards (adaptive-events) surfaced after each action.
+  const [adaptiveEvents, setAdaptiveEvents] = useState<AdaptiveEvent[]>([]);
   const [activeTab, setActiveTab] = useState<ActionTab>("trade");
   const [intelPending, setIntelPending] = useState(false);
   const [radarPending, setRadarPending] = useState(false);
@@ -84,11 +98,17 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   async function loadState() {
     const response = await fetch("/api/sim/state", { cache: "no-store" });
-    const payload = (await response.json()) as { error?: string; state?: SimulationState };
+    const payload = (await response.json()) as {
+      error?: string;
+      message?: string;
+      state?: SimulationState;
+      adaptiveEvents?: AdaptiveEvent[];
+    };
     if (!response.ok || !payload.state) {
-      throw new Error(payload.error ?? "无法读取当前沙盘。");
+      throw new Error(payload.message ?? payload.error ?? "无法读取当前沙盘。");
     }
     setState(payload.state);
+    setAdaptiveEvents(payload.adaptiveEvents ?? []);
   }
 
   const selectedAsset = useMemo(
@@ -102,12 +122,18 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       headers: { "content-type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const payload = (await response.json()) as { error?: string; state?: SimulationState; message?: string };
+    const payload = (await response.json()) as {
+      error?: string;
+      state?: SimulationState;
+      message?: string;
+      adaptiveEvents?: AdaptiveEvent[];
+    };
     if (!response.ok) {
-      throw new Error(payload.error ?? "提交失败。");
+      throw new Error(payload.message ?? payload.error ?? "提交失败。");
     }
     if (payload.state) {
       setState(payload.state);
+      setAdaptiveEvents(payload.adaptiveEvents ?? []);
     } else {
       await loadState();
     }
@@ -147,10 +173,20 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     setRadarPending(true);
     try {
       const response = await fetch("/api/ai/radar-chart", { method: "POST", cache: "no-store" });
-      const payload = (await response.json()) as TutorRadarPayload & { error?: string };
-      setTutorRadar(response.ok && !payload.error ? payload : buildTutorRadarPayload(currentState));
+      const payload = (await response.json()) as TutorRadarPayload & {
+        error?: string;
+        persona?: InvestorPersona | null;
+      };
+      if (response.ok && !payload.error) {
+        setTutorRadar(payload);
+        setPersona(payload.persona ?? null);
+      } else {
+        setTutorRadar(buildTutorRadarPayload(currentState));
+        setPersona(null);
+      }
     } catch {
       setTutorRadar(buildTutorRadarPayload(currentState));
+      setPersona(null);
     } finally {
       setRadarPending(false);
     }
@@ -173,6 +209,21 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     setTutorRadar(buildTutorRadarPayload(state));
     void refreshPortfolioIntel();
   }, [state, refreshPortfolioIntel]);
+
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/billing/status", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { features?: { seasonReplay?: boolean } } | null) => {
+        if (alive && data?.features) setCanReplay(Boolean(data.features.seasonReplay));
+      })
+      .catch(() => {
+        // Replay is a premium extra; absence just hides the button.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (studentId) {
@@ -288,22 +339,124 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         <section id="student-action-panel" className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 xl:sticky xl:top-6 xl:self-start">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+                {computeStreak(state.run).current > 0 ? (
+                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                    🔥 连胜 {computeStreak(state.run).current} 回合
+                  </span>
+                ) : null}
+              </div>
               <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">
                 {state.market.round.headline}
               </h2>
               <p className="mt-3 text-base leading-8 text-slate-600">{state.market.event.description}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    state.market.event.signal === "利好"
+                      ? "bg-rose-100 text-rose-700"
+                      : state.market.event.signal === "利空"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {state.market.event.signal}
+                </span>
+                <span className="text-sm font-bold text-slate-900">{state.market.event.title}</span>
+                {state.market.event.teachingConcept && (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                    本回合知识点 · {state.market.event.teachingConcept}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-sm leading-7 text-slate-500">{state.market.event.coachingCue}</p>
+              {state.market.event.choices?.length ? (
+                (() => {
+                  const decided = state.run.actionLog.find(
+                    (entry) => entry.type === "event" && entry.round === state.run.currentRound,
+                  );
+                  if (decided) {
+                    return (
+                      <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3">
+                        <p className="text-sm font-semibold text-slate-800">{decided.label}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          现金变化 {decided.amount >= 0 ? "+" : ""}
+                          {decided.amount.toLocaleString()} · 推进回合后会进入新的局面。
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="mt-4 rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4">
+                      <p className="text-sm font-bold text-amber-800">这是一个决策时刻 — 你会怎么选？</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {state.market.event.choices.map((choice) => (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            disabled={pending}
+                            onClick={() => submitAction({ choiceId: choice.id }, "/api/sim/event-choice")}
+                            className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-left transition hover:border-amber-400 disabled:opacity-60"
+                          >
+                            <span className="block text-sm font-bold text-slate-900">{choice.label}</span>
+                            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{choice.detail}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : null}
             </div>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => submitAction(undefined, "/api/sim/advance-round")}
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-            >
-              推进下一回合
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
+            <div className="flex flex-col items-stretch gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => submitAction(undefined, "/api/sim/advance-round")}
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+              >
+                推进下一回合
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+              {canReplay ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (
+                      window.confirm("开启新赛季会用全新行情重新开局，当前进度将被替换。确定吗？")
+                    ) {
+                      submitAction(undefined, "/api/sim/replay");
+                    }
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-sm font-bold text-[#b96621] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
+                >
+                  🔄 新赛季（高级版）
+                </button>
+              ) : null}
+            </div>
           </div>
+
+          {adaptiveEvents.length > 0 ? (
+            <div className="mt-5 space-y-2">
+              {adaptiveEvents.map((adaptive) => {
+                const tone =
+                  adaptive.tone === "warning"
+                    ? "border-amber-300 bg-amber-50"
+                    : adaptive.tone === "positive"
+                      ? "border-emerald-300 bg-emerald-50"
+                      : "border-sky-300 bg-sky-50";
+                return (
+                  <div key={adaptive.id} className={`rounded-2xl border px-4 py-3 ${tone}`}>
+                    <p className="text-sm font-bold text-slate-900">{adaptive.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{adaptive.message}</p>
+                    <p className="mt-1.5 text-xs leading-5 text-slate-500">💡 {adaptive.teachingPoint}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {state.market.assets.map((asset) => {
@@ -638,6 +791,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           <div className="mt-5">
             <StudentTutorRadar
               payload={tutorRadar}
+              persona={persona}
+              personaShareText={persona ? buildPersonaShareText(persona, state.run) : undefined}
               loading={radarPending}
               onRefresh={() => {
                 void loadTutorRadarForState(state);

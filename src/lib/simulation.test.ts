@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { advanceSimulationRun, applySimulationAction, createInitialRun, evaluateRun } from "@/lib/simulation";
+import {
+  advanceSimulationRun,
+  applyEventChoice,
+  applySimulationAction,
+  buildPersonaShareText,
+  computeStreak,
+  createInitialRun,
+  deriveInvestorPersona,
+  evaluateRun,
+  getRoundQuotes,
+  getRoundQuotesForRun,
+} from "@/lib/simulation";
+import type { ScenarioRun } from "@/lib/types";
 
 describe("simulation", () => {
   it("updates holdings and cash after a buy action", () => {
@@ -36,5 +48,144 @@ describe("simulation", () => {
     const evaluated = evaluateRun(run);
     expect(evaluated.netWorth).toBeGreaterThan(80_000);
     expect(evaluated.riskScore).toBeGreaterThanOrEqual(24);
+  });
+
+  it("allows exiting an existing venture without a manual amount", () => {
+    let run = createInitialRun("student-test", "class-test");
+    run = applySimulationAction(run, {
+      type: "venture",
+      action: "invest",
+      amount: 8_000,
+    });
+
+    const exited = applySimulationAction(run, {
+      type: "venture",
+      action: "exit",
+    });
+
+    expect(exited.ventureStake).toBe(0);
+    expect(exited.cash).toBeGreaterThan(run.cash);
+    expect(exited.actionLog[0]?.label).toContain("退出创业项目");
+  });
+});
+
+describe("seeded random events", () => {
+  it("assigns a reproducible 12-round event timeline from a seed", () => {
+    const a = createInitialRun("student-test", "class-test", "试点", 2024);
+    const b = createInitialRun("student-test", "class-test", "试点", 2024);
+    expect(a.eventTimeline).toHaveLength(12);
+    expect(a.eventTimeline).toEqual(b.eventTimeline);
+  });
+
+  it("varies the event timeline across different seeds", () => {
+    const a = createInitialRun("student-test", "class-test", "试点", 1);
+    const b = createInitialRun("student-test", "class-test", "试点", 2);
+    expect(a.eventTimeline).not.toEqual(b.eventTimeline);
+  });
+
+  it("lets a bearish event pull an impacted asset below its event-free baseline", () => {
+    const run = createInitialRun("student-test", "class-test", "试点", 1);
+    run.eventTimeline = ["event-liquidity-crisis", ...(run.eventTimeline ?? []).slice(1)];
+
+    const withEvent = getRoundQuotesForRun(run, 1).find((q) => q.id === "asset-stock");
+    const baseline = getRoundQuotes(1).find((q) => q.id === "asset-stock");
+
+    expect(withEvent && baseline).toBeTruthy();
+    expect(withEvent!.currentPrice).toBeLessThan(baseline!.currentPrice);
+  });
+});
+
+describe("event decision cards (E3)", () => {
+  function decisionRun() {
+    const run = createInitialRun("student-test", "class-test", "试点", 1);
+    // liquidity-crisis is a decision card with protect/gamble/hold choices.
+    run.eventTimeline = ["event-liquidity-crisis", ...(run.eventTimeline ?? []).slice(1)];
+    return run;
+  }
+
+  it("applies a 'protect' choice as a cash cost and logs an event action", () => {
+    const run = decisionRun();
+    const next = applyEventChoice(run, "lc-protect");
+    expect(next.cash).toBeLessThan(run.cash);
+    expect(next.actionLog[0]?.type).toBe("event");
+  });
+
+  it("rejects choosing twice in the same round", () => {
+    const once = applyEventChoice(decisionRun(), "lc-protect");
+    expect(() => applyEventChoice(once, "lc-protect")).toThrow();
+  });
+
+  it("rejects an unknown choice id", () => {
+    expect(() => applyEventChoice(decisionRun(), "no-such-choice")).toThrow();
+  });
+});
+
+function runWithNetWorths(values: number[]): ScenarioRun {
+  const run = createInitialRun("s", "c", "试点", 1);
+  run.snapshots = values.map((netWorth, index) => ({
+    round: index + 1,
+    netWorth,
+    cash: netWorth,
+    savings: 0,
+    debt: 0,
+    riskScore: 40,
+    disciplineScore: 70,
+    reflection: "",
+  }));
+  return run;
+}
+
+describe("computeStreak (retention)", () => {
+  it("counts consecutive net-worth gains", () => {
+    const streak = computeStreak(runWithNetWorths([100, 110, 120, 130]));
+    expect(streak.current).toBe(3);
+    expect(streak.best).toBe(3);
+  });
+
+  it("resets the current streak on a dip but remembers the best", () => {
+    const streak = computeStreak(runWithNetWorths([100, 110, 120, 90, 95]));
+    expect(streak.current).toBe(1);
+    expect(streak.best).toBe(2);
+  });
+
+  it("is zero for a single-snapshot run", () => {
+    expect(computeStreak(runWithNetWorths([100]))).toEqual({ current: 0, best: 0 });
+  });
+});
+
+describe("buildPersonaShareText (shareable card)", () => {
+  it("includes the persona label and key stats", () => {
+    const run = runWithNetWorths([120_000, 130_000, 140_000]);
+    const text = buildPersonaShareText(deriveInvestorPersona(run), run);
+    expect(text).toContain(deriveInvestorPersona(run).label);
+    expect(text).toContain("140,000");
+    expect(text).toContain("连胜");
+  });
+});
+
+describe("investor persona (premium deep report)", () => {
+  it("labels a brand-new, untraded run as a cautious observer", () => {
+    const persona = deriveInvestorPersona(createInitialRun("s", "c", "试点", 1));
+    expect(persona.label).toBe("谨慎观望者");
+    expect(persona.summary.length).toBeGreaterThan(0);
+  });
+
+  it("is deterministic for the same run", () => {
+    const run = createInitialRun("s", "c", "试点", 1);
+    expect(deriveInvestorPersona(run)).toEqual(deriveInvestorPersona(run));
+  });
+
+  it("moves off 'cautious observer' once the student trades actively", () => {
+    let run = createInitialRun("s", "c", "试点", 1);
+    for (let i = 0; i < 3; i++) {
+      run = applySimulationAction(run, {
+        type: "trade",
+        assetId: "asset-etf",
+        side: "buy",
+        quantity: 5,
+        orderMode: "market",
+      });
+    }
+    expect(deriveInvestorPersona(run).label).not.toBe("谨慎观望者");
   });
 });

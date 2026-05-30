@@ -1,3 +1,10 @@
+import {
+  buildEventTimeline,
+  eventIdForRound,
+  eventMarketEffect,
+  makeRng,
+  resolveEventChoice,
+} from "@/lib/event-engine";
 import { eventCards, marketAssets, marketRounds } from "@/lib/market-data";
 import type {
   ActionLog,
@@ -30,8 +37,13 @@ type SimulationActionInput =
     }
   | {
       type: "venture";
-      action: "invest" | "exit";
+      action: "invest";
       amount: number;
+    }
+  | {
+      type: "venture";
+      action: "exit";
+      amount?: number;
     };
 
 const STARTING_CASH = 120_000;
@@ -45,12 +57,34 @@ export function getEventCard(eventId: string): EventCard {
   return eventCards.find((event) => event.id === eventId) ?? eventCards[0];
 }
 
-export function getAssetQuote(asset: MarketAsset, roundNumber: number) {
+/**
+ * Event multiplier a run's timeline applies to an asset category in a given round.
+ * Returns 1 (neutral) for legacy runs with no `eventTimeline`, preserving the
+ * original deterministic market for backward compatibility.
+ */
+function runEventMultiplier(
+  run: ScenarioRun | undefined,
+  roundNumber: number,
+  category: MarketAsset["category"],
+): number {
+  if (!run?.eventTimeline) return 1;
+  const fallbackEventId = getRound(roundNumber).eventId;
+  const eventId = eventIdForRound(run.eventTimeline, roundNumber, fallbackEventId);
+  return eventMarketEffect(getEventCard(eventId), category);
+}
+
+function quoteAsset(asset: MarketAsset, roundNumber: number, run?: ScenarioRun) {
   const round = getRound(roundNumber);
-  const multiplier = round.assetMultipliers[asset.category];
-  const previousRound = getRound(Math.max(1, roundNumber - 1));
-  const currentPrice = Math.round(asset.basePrice * multiplier);
-  const previousPrice = Math.round(asset.basePrice * previousRound.assetMultipliers[asset.category]);
+  const previousRoundNumber = Math.max(1, roundNumber - 1);
+  const previousRound = getRound(previousRoundNumber);
+  const eventMultiplier = runEventMultiplier(run, roundNumber, asset.category);
+  const previousEventMultiplier = runEventMultiplier(run, previousRoundNumber, asset.category);
+  const currentPrice = Math.round(
+    asset.basePrice * round.assetMultipliers[asset.category] * eventMultiplier,
+  );
+  const previousPrice = Math.round(
+    asset.basePrice * previousRound.assetMultipliers[asset.category] * previousEventMultiplier,
+  );
   const dayChange = ((currentPrice - previousPrice) / previousPrice) * 100;
 
   return {
@@ -60,12 +94,21 @@ export function getAssetQuote(asset: MarketAsset, roundNumber: number) {
   };
 }
 
+export function getAssetQuote(asset: MarketAsset, roundNumber: number) {
+  return quoteAsset(asset, roundNumber);
+}
+
 export function getRoundQuotes(roundNumber: number) {
   return marketAssets.map((asset) => getAssetQuote(asset, roundNumber));
 }
 
+/** Run-aware quotes: identical to {@link getRoundQuotes} but applies the run's seeded event effects. */
+export function getRoundQuotesForRun(run: ScenarioRun, roundNumber: number) {
+  return marketAssets.map((asset) => quoteAsset(asset, roundNumber, run));
+}
+
 function getHoldingValue(run: ScenarioRun, roundNumber: number) {
-  const quotes = getRoundQuotes(roundNumber);
+  const quotes = getRoundQuotesForRun(run, roundNumber);
 
   return run.holdings.reduce((total, holding) => {
     const quote = quotes.find((item) => item.id === holding.assetId);
@@ -118,7 +161,7 @@ export function evaluateRun(run: ScenarioRun, roundNumber = run.currentRound) {
   const ventureValue = getVentureValue(run, roundNumber);
   const totalAssets = run.cash + run.savings + holdingsValue + propertyValue + ventureValue;
   const netWorth = totalAssets - run.debt;
-  const quotes = getRoundQuotes(roundNumber);
+  const quotes = getRoundQuotesForRun(run, roundNumber);
   const concentration = run.holdings.length
     ? Math.max(
         ...run.holdings.map((holding) => {
@@ -210,14 +253,23 @@ function commitSnapshot(run: ScenarioRun) {
   run.lastInsight = evaluated.reflection;
 }
 
-export function createInitialRun(userId: string, classroomId: string, scenarioName = "春季校内试点") {
+export function createInitialRun(
+  userId: string,
+  classroomId: string,
+  scenarioName = "春季校内试点",
+  seed: number = (Math.floor(Math.random() * 0x7fffffff) >>> 0) || 1,
+) {
+  const totalRounds = 12;
+  const eventTimeline = buildEventTimeline(seed, totalRounds);
+  const firstEventId = eventIdForRound(eventTimeline, 1, getRound(1).eventId);
+
   const run: ScenarioRun = {
     id: createId("run"),
     userId,
     classroomId,
     scenarioName,
     currentRound: 1,
-    totalRounds: 12,
+    totalRounds,
     cash: STARTING_CASH,
     savings: 0,
     debt: 0,
@@ -226,10 +278,12 @@ export function createInitialRun(userId: string, classroomId: string, scenarioNa
     ventureStake: 0,
     ventureBasis: 0,
     holdings: [],
-    eventHistory: [getRound(1).eventId],
+    eventHistory: [firstEventId],
     actionLog: [],
     snapshots: [],
     lastInsight: "欢迎来到 Mr.Brown 经济沙盘，先建立有呼吸感的组合，再逐步扩大胜率。",
+    seed,
+    eventTimeline,
   };
 
   commitSnapshot(run);
@@ -238,7 +292,7 @@ export function createInitialRun(userId: string, classroomId: string, scenarioNa
 
 export function applySimulationAction(run: ScenarioRun, action: SimulationActionInput) {
   const nextRun = structuredClone(run);
-  const roundQuotes = getRoundQuotes(nextRun.currentRound);
+  const roundQuotes = getRoundQuotesForRun(nextRun, nextRun.currentRound);
 
   if (action.type === "trade") {
     const quote = roundQuotes.find((asset) => asset.id === action.assetId);
@@ -358,8 +412,8 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
   }
 
   if (action.type === "venture") {
-    const amount = Math.max(2_000, Math.round(action.amount));
     if (action.action === "invest") {
+      const amount = Math.max(2_000, Math.round(action.amount));
       if (nextRun.cash < amount) throw new Error("现金不足，无法投入创业项目。");
       nextRun.cash -= amount;
       nextRun.ventureStake += amount;
@@ -372,6 +426,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
       });
     } else {
       if (!nextRun.ventureStake) throw new Error("当前没有创业项目可退出。");
+      const amount = Math.max(2_000, Math.round(action.amount ?? nextRun.ventureStake));
       const currentValue = Math.min(getVentureValue(nextRun, nextRun.currentRound), amount);
       nextRun.cash += currentValue;
       nextRun.ventureStake = Math.max(0, nextRun.ventureStake - amount);
@@ -388,6 +443,57 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
   return nextRun;
 }
 
+/** E3: the decision card (if any) the run is currently facing. */
+export function getActiveDecisionCard(run: ScenarioRun): EventCard | null {
+  const round = getRound(run.currentRound);
+  const eventId = eventIdForRound(run.eventTimeline, run.currentRound, round.eventId);
+  const event = getEventCard(eventId);
+  if (!event.choices?.length) return null;
+  const alreadyChose = run.actionLog.some(
+    (entry) => entry.type === "event" && entry.round === run.currentRound,
+  );
+  return alreadyChose ? null : event;
+}
+
+/**
+ * E3: apply a decision-card choice. The chosen outcome is resolved into a cash
+ * consequence (seeded → reproducible) and logged. One decision per round.
+ */
+export function applyEventChoice(run: ScenarioRun, choiceId: string): ScenarioRun {
+  const nextRun = structuredClone(run);
+  const round = getRound(nextRun.currentRound);
+  const eventId = eventIdForRound(nextRun.eventTimeline, nextRun.currentRound, round.eventId);
+  const event = getEventCard(eventId);
+
+  if (!event.choices?.length) {
+    throw new Error("当前事件没有可做的选择。");
+  }
+  const alreadyChose = nextRun.actionLog.some(
+    (entry) => entry.type === "event" && entry.round === nextRun.currentRound,
+  );
+  if (alreadyChose) {
+    throw new Error("本回合的事件选择已经做过了。");
+  }
+  const choice = event.choices.find((item) => item.id === choiceId);
+  if (!choice) {
+    throw new Error("无效的事件选择。");
+  }
+
+  const netWorth = evaluateRun(nextRun, nextRun.currentRound).netWorth;
+  const rng = makeRng((nextRun.seed ?? 1) + nextRun.currentRound * 1000);
+  const { cashDelta } = resolveEventChoice(netWorth, choice.outcome, rng);
+
+  nextRun.cash = Math.max(0, nextRun.cash + cashDelta);
+  appendAction(nextRun, {
+    round: nextRun.currentRound,
+    type: "event",
+    label: `事件决策：${choice.label} — ${choice.teachingPoint}`,
+    amount: cashDelta,
+  });
+  commitSnapshot(nextRun);
+  return nextRun;
+}
+
 export function advanceSimulationRun(run: ScenarioRun) {
   const nextRun = structuredClone(run);
 
@@ -400,7 +506,9 @@ export function advanceSimulationRun(run: ScenarioRun) {
   nextRun.savings = Math.round(nextRun.savings * (1.012 + currentRound.liquidityBoost / 100));
   nextRun.debt = Math.round(nextRun.debt * 1.018);
   nextRun.currentRound += 1;
-  nextRun.eventHistory.unshift(getRound(nextRun.currentRound).eventId);
+  nextRun.eventHistory.unshift(
+    eventIdForRound(nextRun.eventTimeline, nextRun.currentRound, getRound(nextRun.currentRound).eventId),
+  );
   appendAction(nextRun, {
     round: nextRun.currentRound,
     type: "advance",
@@ -428,6 +536,65 @@ export function buildLeaderboard(runs: ScenarioRun[], users: UserRecord[]): Lead
     })
     .sort((left, right) => right.netWorth - left.netWorth)
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
+}
+
+/**
+ * Premium "deep report": a deterministic investor-personality label derived from
+ * the run's behaviour (risk, discipline, activity, concentration). Pure — no AI
+ * call — so it is reproducible and gated to Premium via features.deepAiReport.
+ */
+export function deriveInvestorPersona(run: ScenarioRun): { label: string; summary: string } {
+  const { riskScore, disciplineScore } = evaluateRun(run);
+  const trades = run.actionLog.filter((entry) => entry.type === "trade").length;
+  const holdings = run.holdings.length;
+
+  if (riskScore >= 70) {
+    return { label: "进取冒险家", summary: "你偏好高风险高回报，记得用分散和现金垫守住下行风险。" };
+  }
+  if (trades <= 2) {
+    return { label: "谨慎观望者", summary: "你出手谨慎，适度尝试小仓位能更快积累判断经验。" };
+  }
+  if (holdings <= 1) {
+    return { label: "集中押注者", summary: "你倾向集中持有，注意「鸡蛋别放一个篮子」的分散原则。" };
+  }
+  if (disciplineScore >= 70) {
+    return { label: "稳健规划者", summary: "你纪律性强、回撤可控，继续保持复盘和止盈止损的习惯。" };
+  }
+  return { label: "均衡成长型", summary: "你的攻守较为平衡，可在不同市场环境里继续打磨节奏。" };
+}
+
+/**
+ * P2 retention: the current and best run of consecutive net-worth gains across
+ * snapshots. Drives a "🔥 连胜 N 回合" badge.
+ */
+export function computeStreak(run: ScenarioRun): { current: number; best: number } {
+  const snapshots = [...run.snapshots].sort((a, b) => a.round - b.round);
+  let current = 0;
+  let best = 0;
+  for (let i = 1; i < snapshots.length; i++) {
+    if (snapshots[i].netWorth > snapshots[i - 1].netWorth) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 0;
+    }
+  }
+  return { current, best };
+}
+
+/** P2 growth: a copyable share card built from the student's investor persona. */
+export function buildPersonaShareText(
+  persona: { label: string; summary: string },
+  run: ScenarioRun,
+): string {
+  const netWorth = run.snapshots.at(-1)?.netWorth ?? 0;
+  const streak = computeStreak(run).current;
+  return [
+    `我在 Mr.Brown 经济沙盘的投资人格是「${persona.label}」！`,
+    persona.summary,
+    `第 ${run.currentRound} 回合 · 模拟净值 ￥${netWorth.toLocaleString()} · 连胜 ${streak} 回合`,
+    "来挑战你的财商，看看你是哪种投资人格 👉",
+  ].join("\n");
 }
 
 export function buildBehaviorSignals(run: ScenarioRun) {
@@ -464,6 +631,7 @@ export function buildSimulationState(
   users: UserRecord[],
 ): SimulationState {
   const round = getRound(run.currentRound);
+  const eventId = eventIdForRound(run.eventTimeline, run.currentRound, round.eventId);
   return {
     user: {
       id: user.id,
@@ -475,8 +643,8 @@ export function buildSimulationState(
     run,
     market: {
       round,
-      assets: getRoundQuotes(run.currentRound),
-      event: getEventCard(round.eventId),
+      assets: getRoundQuotesForRun(run, run.currentRound),
+      event: getEventCard(eventId),
     },
     leaderboard: buildLeaderboard(runs, users).filter((entry) => entry.classroomId === classroom.id),
   };

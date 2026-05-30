@@ -18,6 +18,12 @@ const envSchema = z.object({
   BROWN_AGENT_FALLBACK_BASE_URL: z.string().url().optional(),
   ALLTICK_API_KEY: z.string().optional(),
   ALLTICK_STOCK_BASE_URL: z.string().url().optional(),
+  // Transactional email (Resend) for verification + password reset. Optional:
+  // when absent, those flows degrade to dev-surfaced links.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  // Shared secret for the Vercel Cron weekly-report endpoint.
+  CRON_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -35,4 +41,7 @@ export const env = envSchema.parse({
   BROWN_AGENT_FALLBACK_BASE_URL: process.env.BROWN_AGENT_FALLBACK_BASE_URL,
   ALLTICK_API_KEY: process.env.ALLTICK_API_KEY,
   ALLTICK_STOCK_BASE_URL: process.env.ALLTICK_STOCK_BASE_URL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+  CRON_SECRET: process.env.CRON_SECRET,
 });

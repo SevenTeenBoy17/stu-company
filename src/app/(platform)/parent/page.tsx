@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { FamilyManager } from "@/components/parent/family-manager";
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { getCurrentUser } from "@/lib/session-user";
 import { getParentOverview, roleHomePath } from "@/lib/db/repo";
@@ -72,6 +73,10 @@ export default async function ParentPage() {
             <p className="mt-3 text-sm leading-7 text-fg-muted">{overview.run.lastInsight}</p>
           </div>
         </section>
+      </div>
+
+      <div className="mt-6">
+        <FamilyManager />
       </div>
     </PlatformLayout>
   );
