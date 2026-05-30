@@ -56,7 +56,7 @@ export const marketAssets: MarketAsset[] = [
   },
 ];
 
-export const eventCards: EventCard[] = [
+const baseEventCards: EventCard[] = [
   // macro (6)
   {
     id: "event-consumer-recovery",
@@ -285,7 +285,7 @@ export const eventCards: EventCard[] = [
   {
     id: "event-liquidity-crisis",
     title: "突发流动性危机",
-    category: "macro",
+    category: "black_swan",
     signal: "利空",
     description:
       "一家大型金融机构突然出问题，银行之间不敢互相借钱了，所有资产都在跌。这就像考试前一天全班突然集体感冒 — 不管你准备得多好，都会受影响。",
@@ -294,13 +294,314 @@ export const eventCards: EventCard[] = [
   {
     id: "event-surprise-policy-pivot",
     title: "意外政策大转向",
-    category: "policy",
+    category: "black_swan",
     signal: "利好",
     description:
       "政府突然宣布了一个谁都没预料到的大利好政策，市场一下子兴奋起来，几乎所有资产都在涨。这就像老师突然说今天的考试取消了 — 大家瞬间开心。",
     coachingCue: "意外利好时别急着全押，先想想利好能持续多久。",
   },
+
+  // E4 expansion — tier 1 (basics: total return, money illusion)
+  {
+    id: "event-dividend-payout",
+    title: "分红到账：公司把利润分给你",
+    category: "macro",
+    signal: "利好",
+    description:
+      "你持有的公司赚钱后，把一部分利润以现金分给股东，这叫分红。涨跌之外，分红也是你的真实回报。",
+    coachingCue: "看一笔投资别只盯价格，分红+价格才是「总回报」。",
+  },
+  {
+    id: "event-stock-split",
+    title: "股票拆分：切成更多份，但蛋糕没变大",
+    category: "sentiment",
+    signal: "中性",
+    description:
+      "一股拆成两股，价格减半、数量翻倍，你的总市值其实没变。就像把一块披萨切成更多片，披萨还是那一块。",
+    coachingCue: "拆股不会让你更有钱，别被「变便宜了」的错觉骗到。",
+  },
+
+  // E4 expansion — tier 2 (rates, leverage, FX, fraud literacy)
+  {
+    id: "event-rate-hike",
+    title: "央行宣布加息",
+    category: "macro",
+    signal: "利空",
+    description:
+      "利率上调后借钱更贵，企业扩张变谨慎；而且利率涨了，之前发行的低息债券就变得不值钱。",
+    coachingCue: "加息时债券价格会跌，杠杆成本也变高，先看看自己借了多少。",
+  },
+  {
+    id: "event-leverage-temptation",
+    title: "杠杆诱惑：借钱炒，赢加倍输也加倍",
+    category: "macro",
+    signal: "中性",
+    description:
+      "有人提醒你可以借钱放大仓位。杠杆能放大盈利，但同样会放大亏损，行情一反向就可能爆掉。",
+    coachingCue: "杠杆是双刃剑，先想清楚最坏情况你扛不扛得住，再决定用不用。",
+  },
+  {
+    id: "event-currency-devaluation",
+    title: "本币贬值：钱在国外变「不值钱」了",
+    category: "macro",
+    signal: "利空",
+    description:
+      "本国货币相对外币贬值，进口的东西变贵，持有外币资产的人反而占了便宜。价值取决于你用什么来衡量。",
+    coachingCue: "汇率也是一种风险，别忘了你的钱是用什么货币计价的。",
+  },
+  {
+    id: "event-ponzi-scheme",
+    title: "「保证高收益」的项目找上门",
+    category: "sentiment",
+    signal: "利空",
+    description:
+      "一个号称「稳赚不赔、保证 20% 收益」的项目在流传。它其实是用新人的钱付老人的利息，迟早会崩。",
+    coachingCue: "承诺「高收益+零风险」的，基本都是骗局，转身就走。",
+  },
+
+  // E4 expansion — tier 3 (advanced: squeeze, runs, default, crash & recovery)
+  {
+    id: "event-short-squeeze",
+    title: "逼空行情：散户把做空的人逼到墙角",
+    category: "sentiment",
+    signal: "利好",
+    description:
+      "一只被大量做空的股票突然暴涨，做空的人被迫高价买回，价格被进一步推高，随后往往又急速回落。",
+    coachingCue: "逼空又猛又险，追进去很可能是最后接棒的人。",
+  },
+  {
+    id: "event-bank-run",
+    title: "银行挤兑：大家同时去取钱",
+    category: "black_swan",
+    signal: "利空",
+    description:
+      "银行并没把所有存款放在金库里。一旦大家恐慌性同时取钱，再健康的银行也可能因为没有足够现金而出问题。",
+    coachingCue: "这考验的是「流动性」，不是「赚不赚钱」，危机时现金最金贵。",
+  },
+  {
+    id: "event-regulation-hammer",
+    title: "监管重锤：一纸新规改变行业价值",
+    category: "policy",
+    signal: "利空",
+    description:
+      "政府对某个行业突然出台严厉新规，相关公司的价值可能一夜之间被重估。规则并不是一成不变的。",
+    coachingCue: "政策风险很难预测，别把全部筹码压在单一行业上。",
+  },
+  {
+    id: "event-corporate-default",
+    title: "公司违约：借的钱还不上了",
+    category: "competition",
+    signal: "利空",
+    description:
+      "一家公司无法按期偿还债务，它发行的债券大幅缩水。收益率越高的债券，往往意味着违约风险也越高。",
+    coachingCue: "高收益的另一面是高风险，借钱给谁要先看它还不还得起。",
+  },
+  {
+    id: "event-bankruptcy-zero",
+    title: "破产清零：股票可能真的归零",
+    category: "competition",
+    signal: "利空",
+    description:
+      "一家持续亏损的公司宣告破产，股票价值清零。清算时债权人优先受偿，股东往往什么都拿不到。",
+    coachingCue: "「跌无可跌」是错觉，归零之前都还能再跌。",
+  },
+  {
+    id: "event-geopolitical-shock",
+    title: "地缘冲击：世界变乱，资金找避风港",
+    category: "black_swan",
+    signal: "利空",
+    description:
+      "突发的地缘冲突让市场充满不确定性，风险资产普遍下跌，资金涌向黄金和政府债券等避险品种。",
+    coachingCue: "恐慌时黄金、债券常常和股票反向走，这就是对冲的价值。",
+  },
+  {
+    id: "event-capital-gains-tax",
+    title: "资本利得税：你的盈利要交一部分",
+    category: "policy",
+    signal: "利空",
+    description:
+      "对已实现的投资收益开始征税，你最终拿到手的没有账面那么多。算回报要算「税后」，不是「税前」。",
+    coachingCue: "别只看赚了多少，扣完税和成本之后才是你真正赚到的。",
+  },
+  {
+    id: "event-v-recovery",
+    title: "V 型反弹：暴跌之后的快速回升",
+    category: "macro",
+    signal: "利好",
+    description:
+      "经历一轮急跌后，市场情绪修复，价格快速反弹。在底部恐慌割肉的人，往往刚好卖在了最低点。",
+    coachingCue: "崩盘常常孕育机会，在低点慌乱卖出只会把亏损变成现实。",
+  },
 ];
+
+function enrichEventCard(event: EventCard): EventCard {
+  const categoryDefaults: Record<
+    EventCard["category"],
+    Pick<EventCard, "teachingConcept" | "impactAssets" | "impactRange" | "stage">
+  > = {
+    macro: {
+      teachingConcept: "宏观周期会改变不同资产的风险偏好。",
+      impactAssets: ["stock", "etf", "bond", "commodity", "fx"],
+      impactRange: "medium",
+      stage: "early",
+    },
+    policy: {
+      teachingConcept: "政策会改变资金流向，但落地需要时间验证。",
+      impactAssets: ["stock", "etf", "bond"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    sentiment: {
+      teachingConcept: "情绪会放大短期波动，复盘时要区分价格和价值。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    competition: {
+      teachingConcept: "行业竞争会让同一板块里的公司出现分化。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    black_swan: {
+      teachingConcept: "小概率高冲击事件要求组合保留安全垫。",
+      impactAssets: ["stock", "etf", "bond", "commodity", "fx"],
+      impactRange: "high",
+      stage: "late",
+    },
+    behavior: {
+      teachingConcept: "个人行为偏差会影响决策质量。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "low",
+      stage: "middle",
+    },
+  };
+
+  const idOverrides: Record<
+    string,
+    Partial<Pick<EventCard, "teachingConcept" | "impactAssets" | "impactRange" | "stage">>
+  > = {
+    "event-consumer-recovery": {
+      teachingConcept: "消费信心改善通常会推高成长资产预期。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "low",
+      stage: "early",
+    },
+    "event-inflation-pressure": {
+      teachingConcept: "通胀会挤压利润，也会改变债券和商品表现。",
+      impactAssets: ["bond", "commodity", "stock"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    "event-liquidity-crisis": {
+      teachingConcept: "流动性危机里，现金和防守资产的价值会变得更明显。",
+      impactAssets: ["stock", "etf", "bond", "fx"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-surprise-policy-pivot": {
+      teachingConcept: "突发利好也需要验证持续性，不能把好运误当能力。",
+      impactAssets: ["stock", "etf", "bond", "commodity"],
+      impactRange: "high",
+      stage: "late",
+    },
+    // E4 — tier 1 (early)
+    "event-dividend-payout": {
+      teachingConcept: "分红是「总回报」的一部分，回报不只看价格涨跌。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "low",
+      stage: "early",
+    },
+    "event-stock-split": {
+      teachingConcept: "拆股只是数字变化，公司价值和你的财富并没有改变。",
+      impactAssets: ["stock"],
+      impactRange: "low",
+      stage: "early",
+    },
+    // E4 — tier 2 (middle)
+    "event-rate-hike": {
+      teachingConcept: "利率上升会压低债券价格，并抬高借钱（杠杆）的成本。",
+      impactAssets: ["bond", "stock", "etf"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    "event-leverage-temptation": {
+      teachingConcept: "杠杆同时放大盈亏，是一把需要敬畏的双刃剑。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "low",
+      stage: "middle",
+    },
+    "event-currency-devaluation": {
+      teachingConcept: "汇率波动会改变以本币计价的资产价值，这是一种 FX 风险。",
+      impactAssets: ["fx", "commodity"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    "event-ponzi-scheme": {
+      teachingConcept: "识别「高收益+零风险」骗局，是最具现实保护价值的一课。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "medium",
+      stage: "middle",
+    },
+    // E4 — tier 3 (late)
+    "event-short-squeeze": {
+      teachingConcept: "做空、羊群与反身性如何制造剧烈而危险的波动。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-bank-run": {
+      teachingConcept: "流动性不等于偿付能力，信心崩塌会自我实现。",
+      impactAssets: ["stock", "etf", "bond", "fx"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-regulation-hammer": {
+      teachingConcept: "政策风险会在一夜之间重估某个行业的资产价值。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-corporate-default": {
+      teachingConcept: "信用违约风险，以及「收益越高、风险通常越高」。",
+      impactAssets: ["stock", "etf", "bond"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-bankruptcy-zero": {
+      teachingConcept: "股票可能真的归零，清算时债权优先于股权。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-geopolitical-shock": {
+      teachingConcept: "不确定性溢价，以及避险资产在危机中的对冲作用。",
+      impactAssets: ["stock", "etf", "fx"],
+      impactRange: "high",
+      stage: "late",
+    },
+    "event-capital-gains-tax": {
+      teachingConcept: "税后回报与税前回报的差别，盈利不会全归你。",
+      impactAssets: ["stock", "etf"],
+      impactRange: "low",
+      stage: "late",
+    },
+    "event-v-recovery": {
+      teachingConcept: "暴跌之后常有修复，别在底部恐慌中把亏损变成现实。",
+      impactAssets: ["stock", "etf", "commodity"],
+      impactRange: "high",
+      stage: "late",
+    },
+  };
+
+  return {
+    ...categoryDefaults[event.category],
+    ...event,
+    ...idOverrides[event.id],
+  };
+}
+
+export const eventCards: EventCard[] = baseEventCards.map(enrichEventCard);
 
 export const marketRounds: MarketRound[] = [
   // R1-R4: Simple / Low Volatility (spread <= +/-8%)
