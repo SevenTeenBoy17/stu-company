@@ -563,6 +563,40 @@ export function deriveInvestorPersona(run: ScenarioRun): { label: string; summar
   return { label: "均衡成长型", summary: "你的攻守较为平衡，可在不同市场环境里继续打磨节奏。" };
 }
 
+/**
+ * P2 retention: the current and best run of consecutive net-worth gains across
+ * snapshots. Drives a "🔥 连胜 N 回合" badge.
+ */
+export function computeStreak(run: ScenarioRun): { current: number; best: number } {
+  const snapshots = [...run.snapshots].sort((a, b) => a.round - b.round);
+  let current = 0;
+  let best = 0;
+  for (let i = 1; i < snapshots.length; i++) {
+    if (snapshots[i].netWorth > snapshots[i - 1].netWorth) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 0;
+    }
+  }
+  return { current, best };
+}
+
+/** P2 growth: a copyable share card built from the student's investor persona. */
+export function buildPersonaShareText(
+  persona: { label: string; summary: string },
+  run: ScenarioRun,
+): string {
+  const netWorth = run.snapshots.at(-1)?.netWorth ?? 0;
+  const streak = computeStreak(run).current;
+  return [
+    `我在 Mr.Brown 经济沙盘的投资人格是「${persona.label}」！`,
+    persona.summary,
+    `第 ${run.currentRound} 回合 · 模拟净值 ￥${netWorth.toLocaleString()} · 连胜 ${streak} 回合`,
+    "来挑战你的财商，看看你是哪种投资人格 👉",
+  ].join("\n");
+}
+
 export function buildBehaviorSignals(run: ScenarioRun) {
   const trades = run.actionLog.filter((entry) => entry.type === "trade").length;
   const bankActions = run.actionLog.filter((entry) => entry.type === "bank").length;

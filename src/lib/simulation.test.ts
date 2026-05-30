@@ -4,12 +4,15 @@ import {
   advanceSimulationRun,
   applyEventChoice,
   applySimulationAction,
+  buildPersonaShareText,
+  computeStreak,
   createInitialRun,
   deriveInvestorPersona,
   evaluateRun,
   getRoundQuotes,
   getRoundQuotesForRun,
 } from "@/lib/simulation";
+import type { ScenarioRun } from "@/lib/types";
 
 describe("simulation", () => {
   it("updates holdings and cash after a buy action", () => {
@@ -114,6 +117,49 @@ describe("event decision cards (E3)", () => {
 
   it("rejects an unknown choice id", () => {
     expect(() => applyEventChoice(decisionRun(), "no-such-choice")).toThrow();
+  });
+});
+
+function runWithNetWorths(values: number[]): ScenarioRun {
+  const run = createInitialRun("s", "c", "试点", 1);
+  run.snapshots = values.map((netWorth, index) => ({
+    round: index + 1,
+    netWorth,
+    cash: netWorth,
+    savings: 0,
+    debt: 0,
+    riskScore: 40,
+    disciplineScore: 70,
+    reflection: "",
+  }));
+  return run;
+}
+
+describe("computeStreak (retention)", () => {
+  it("counts consecutive net-worth gains", () => {
+    const streak = computeStreak(runWithNetWorths([100, 110, 120, 130]));
+    expect(streak.current).toBe(3);
+    expect(streak.best).toBe(3);
+  });
+
+  it("resets the current streak on a dip but remembers the best", () => {
+    const streak = computeStreak(runWithNetWorths([100, 110, 120, 90, 95]));
+    expect(streak.current).toBe(1);
+    expect(streak.best).toBe(2);
+  });
+
+  it("is zero for a single-snapshot run", () => {
+    expect(computeStreak(runWithNetWorths([100]))).toEqual({ current: 0, best: 0 });
+  });
+});
+
+describe("buildPersonaShareText (shareable card)", () => {
+  it("includes the persona label and key stats", () => {
+    const run = runWithNetWorths([120_000, 130_000, 140_000]);
+    const text = buildPersonaShareText(deriveInvestorPersona(run), run);
+    expect(text).toContain(deriveInvestorPersona(run).label);
+    expect(text).toContain("140,000");
+    expect(text).toContain("连胜");
   });
 });
 

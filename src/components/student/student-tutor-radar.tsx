@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { LoaderCircle, Radar, RefreshCw } from "lucide-react";
 
 import type { InvestorPersona, TutorRadarPayload } from "@/lib/types";
@@ -31,16 +32,29 @@ function buildRadarPath(scores: number[]) {
 export function StudentTutorRadar({
   payload,
   persona = null,
+  personaShareText,
   loading = false,
   onRefresh,
 }: {
   payload: TutorRadarPayload;
   persona?: InvestorPersona | null;
+  personaShareText?: string;
   loading?: boolean;
   onRefresh: () => void;
 }) {
   const scores = payload.metrics.map((metric) => metric.score);
   const radarPath = buildRadarPath(scores);
+  const [shared, setShared] = useState(false);
+
+  async function sharePersona() {
+    if (!personaShareText) return;
+    try {
+      await navigator.clipboard.writeText(personaShareText);
+      setShared(true);
+    } catch {
+      setShared(false);
+    }
+  }
 
   return (
     <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
@@ -110,6 +124,15 @@ export function StudentTutorRadar({
                 <span className="text-base font-black text-[#7a4717]">{persona.label}</span>
               </div>
               <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
+              {personaShareText ? (
+                <button
+                  type="button"
+                  onClick={sharePersona}
+                  className="mt-3 rounded-full border border-[#f0c89a] bg-white px-3 py-1.5 text-xs font-bold text-[#b96621] transition-colors hover:bg-[#fff7ee]"
+                >
+                  {shared ? "已复制，去分享吧" : "复制分享我的投资人格"}
+                </button>
+              ) : null}
             </div>
           ) : null}
           <p className="rounded-[1.35rem] bg-[#fff4e9] px-4 py-3 text-sm font-semibold leading-7 text-[#7a4717]">

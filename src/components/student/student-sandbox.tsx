@@ -18,6 +18,7 @@ import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
+import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
 import type {
   ActionLog,
@@ -323,7 +324,14 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         <section id="student-action-panel" className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 xl:sticky xl:top-6 xl:self-start">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+                {computeStreak(state.run).current > 0 ? (
+                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                    🔥 连胜 {computeStreak(state.run).current} 回合
+                  </span>
+                ) : null}
+              </div>
               <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">
                 {state.market.round.headline}
               </h2>
@@ -749,6 +757,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
             <StudentTutorRadar
               payload={tutorRadar}
               persona={persona}
+              personaShareText={persona ? buildPersonaShareText(persona, state.run) : undefined}
               loading={radarPending}
               onRefresh={() => {
                 void loadTutorRadarForState(state);
