@@ -5,6 +5,7 @@ import {
   applyEventChoice,
   applySimulationAction,
   createInitialRun,
+  deriveInvestorPersona,
   evaluateRun,
   getRoundQuotes,
   getRoundQuotesForRun,
@@ -113,5 +114,32 @@ describe("event decision cards (E3)", () => {
 
   it("rejects an unknown choice id", () => {
     expect(() => applyEventChoice(decisionRun(), "no-such-choice")).toThrow();
+  });
+});
+
+describe("investor persona (premium deep report)", () => {
+  it("labels a brand-new, untraded run as a cautious observer", () => {
+    const persona = deriveInvestorPersona(createInitialRun("s", "c", "试点", 1));
+    expect(persona.label).toBe("谨慎观望者");
+    expect(persona.summary.length).toBeGreaterThan(0);
+  });
+
+  it("is deterministic for the same run", () => {
+    const run = createInitialRun("s", "c", "试点", 1);
+    expect(deriveInvestorPersona(run)).toEqual(deriveInvestorPersona(run));
+  });
+
+  it("moves off 'cautious observer' once the student trades actively", () => {
+    let run = createInitialRun("s", "c", "试点", 1);
+    for (let i = 0; i < 3; i++) {
+      run = applySimulationAction(run, {
+        type: "trade",
+        assetId: "asset-etf",
+        side: "buy",
+        quantity: 5,
+        orderMode: "market",
+      });
+    }
+    expect(deriveInvestorPersona(run).label).not.toBe("谨慎观望者");
   });
 });

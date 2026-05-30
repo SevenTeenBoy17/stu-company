@@ -1,22 +1,50 @@
 import { NextResponse } from "next/server";
 
 import { handleRouteError } from "@/lib/api-response";
+import { requireUser } from "@/lib/api-guard";
 import { requestHistoryReviewInsight } from "@/lib/ai";
-import { readSession } from "@/lib/auth";
+import { evaluatePersonalAiAccess, resolveSubscriptionState } from "@/lib/billing/subscription";
 import { getSimulationStateForUser } from "@/lib/db/repo";
+import { isEmailVerificationRequired } from "@/lib/email-verification";
 import { buildHistoryReviewAiContext, buildHistoryReviewPayload } from "@/lib/history-review";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const session = await readSession();
-    if (!session || session.role !== "student") {
-      return NextResponse.json({ error: "unauthorized", message: "需要学生账号登录。" }, { status: 401 });
+    const auth = await requireUser("student");
+    if (auth.error) return auth.error;
+
+    const state = await getSimulationStateForUser(auth.user.id);
+    const basePayload = buildHistoryReviewPayload(state);
+    const subscription = resolveSubscriptionState(
+      auth.user.subscriptionTier,
+      auth.user.trialExpiresAt,
+      auth.user.subscriptionExpiresAt,
+    );
+    const access = evaluatePersonalAiAccess(subscription, {
+      emailVerified: Boolean(auth.user.emailVerifiedAt),
+      requireVerification: isEmailVerificationRequired(),
+    });
+    if (!access.ok) {
+      const gateNote =
+        access.reason === "verify"
+          ? "请先验证邮箱即可解锁完整 AI 历史复盘，当前展示本地教学版总结。"
+          : "当前账号暂未开通完整 AI 历史复盘，已展示本地教学版总结。";
+      return NextResponse.json(
+        buildHistoryReviewPayload(state, {
+          ...basePayload.aiReview,
+          provider: "fallback",
+          summary: `${basePayload.aiReview.summary} ${gateNote}`,
+        }),
+        {
+          headers: {
+            "cache-control": "no-store",
+          },
+        },
+      );
     }
 
-    const state = await getSimulationStateForUser(session.userId);
-    const basePayload = buildHistoryReviewPayload(state);
     const aiReview = await requestHistoryReviewInsight({
       state,
       contextBlock: buildHistoryReviewAiContext(state, basePayload),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canUserOperate, resolveSubscriptionState } from "./subscription";
+import { canUserOperate, evaluatePersonalAiAccess, resolveSubscriptionState } from "./subscription";
 
 describe("resolveSubscriptionState", () => {
   const now = new Date("2026-05-27T10:00:00Z");
@@ -101,6 +101,53 @@ describe("resolveSubscriptionState", () => {
     const state = resolveSubscriptionState(undefined, undefined, now);
     expect(state.tier).toBe("free");
     expect(state.status).toBe("expired");
+  });
+});
+
+describe("evaluatePersonalAiAccess (A1 verification gate)", () => {
+  const now = new Date("2026-05-27T10:00:00Z");
+  function trialState() {
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + 3);
+    return resolveSubscriptionState("free", trialEnd.toISOString(), now);
+  }
+
+  it("allows trial users when verification is not required", () => {
+    const access = evaluatePersonalAiAccess(trialState(), {
+      emailVerified: false,
+      requireVerification: false,
+    });
+    expect(access.ok).toBe(true);
+  });
+
+  it("blocks unverified trial users with a 'verify' reason when required", () => {
+    const access = evaluatePersonalAiAccess(trialState(), {
+      emailVerified: false,
+      requireVerification: true,
+    });
+    expect(access.ok).toBe(false);
+    expect(access.reason).toBe("verify");
+  });
+
+  it("allows verified trial users when verification is required", () => {
+    const access = evaluatePersonalAiAccess(trialState(), {
+      emailVerified: true,
+      requireVerification: true,
+    });
+    expect(access.ok).toBe(true);
+  });
+
+  it("never gates paid subscribers on verification", () => {
+    const paid = resolveSubscriptionState("standard", undefined, now);
+    const access = evaluatePersonalAiAccess(paid, { emailVerified: false, requireVerification: true });
+    expect(access.ok).toBe(true);
+  });
+
+  it("blocks expired users with an 'upgrade' reason regardless of verification", () => {
+    const expired = resolveSubscriptionState("free", undefined, now);
+    const access = evaluatePersonalAiAccess(expired, { emailVerified: true, requireVerification: false });
+    expect(access.ok).toBe(false);
+    expect(access.reason).toBe("upgrade");
   });
 });
 

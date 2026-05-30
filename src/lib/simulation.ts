@@ -538,6 +538,31 @@ export function buildLeaderboard(runs: ScenarioRun[], users: UserRecord[]): Lead
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
+/**
+ * Premium "deep report": a deterministic investor-personality label derived from
+ * the run's behaviour (risk, discipline, activity, concentration). Pure — no AI
+ * call — so it is reproducible and gated to Premium via features.deepAiReport.
+ */
+export function deriveInvestorPersona(run: ScenarioRun): { label: string; summary: string } {
+  const { riskScore, disciplineScore } = evaluateRun(run);
+  const trades = run.actionLog.filter((entry) => entry.type === "trade").length;
+  const holdings = run.holdings.length;
+
+  if (riskScore >= 70) {
+    return { label: "进取冒险家", summary: "你偏好高风险高回报，记得用分散和现金垫守住下行风险。" };
+  }
+  if (trades <= 2) {
+    return { label: "谨慎观望者", summary: "你出手谨慎，适度尝试小仓位能更快积累判断经验。" };
+  }
+  if (holdings <= 1) {
+    return { label: "集中押注者", summary: "你倾向集中持有，注意「鸡蛋别放一个篮子」的分散原则。" };
+  }
+  if (disciplineScore >= 70) {
+    return { label: "稳健规划者", summary: "你纪律性强、回撤可控，继续保持复盘和止盈止损的习惯。" };
+  }
+  return { label: "均衡成长型", summary: "你的攻守较为平衡，可在不同市场环境里继续打磨节奏。" };
+}
+
 export function buildBehaviorSignals(run: ScenarioRun) {
   const trades = run.actionLog.filter((entry) => entry.type === "trade").length;
   const bankActions = run.actionLog.filter((entry) => entry.type === "bank").length;

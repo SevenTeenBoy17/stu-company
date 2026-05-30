@@ -164,6 +164,23 @@ export function resolveSubscriptionState(
   return expiredState("试用已结束，升级后即可继续操作沙盘并获取 AI 个性化评定。", subscriptionExpiresAt);
 }
 
+/**
+ * A1 enforcement: decide whether a user may use the personalized AI assessment,
+ * factoring email verification when it is required (gray-launch). Paid
+ * subscribers are never gated on verification (they are real users); only
+ * trial/free users are, which is the trial-farming surface.
+ */
+export function evaluatePersonalAiAccess(
+  state: SubscriptionState,
+  opts: { emailVerified: boolean; requireVerification: boolean },
+): { ok: boolean; reason: "ok" | "upgrade" | "verify" } {
+  if (!state.canUsePersonalAiAssessment) return { ok: false, reason: "upgrade" };
+  if (opts.requireVerification && state.status !== "active" && !opts.emailVerified) {
+    return { ok: false, reason: "verify" };
+  }
+  return { ok: true, reason: "ok" };
+}
+
 export function canUserOperate(
   tier: SubscriptionTier | undefined,
   trialExpiresAt: string | undefined,

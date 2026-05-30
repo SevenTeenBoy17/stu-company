@@ -990,6 +990,21 @@ export function applyEventChoiceForUser(userId: string, choiceId: string) {
   return updated;
 }
 
+export function replayRunForUser(userId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const fresh = createInitialRun(userId, run.classroomId, run.scenarioName);
+  fresh.id = run.id;
+  const index = store.runs.findIndex((item) => item.id === run.id);
+  store.runs[index] = fresh;
+  syncGrowthReports(userId);
+  return fresh;
+}
+
 export function advanceRunForUser(userId: string) {
   const store = getStore();
   const run = getRunForUser(userId);

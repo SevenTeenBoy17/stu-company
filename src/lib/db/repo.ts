@@ -964,6 +964,25 @@ export async function applyEventChoiceForUser(userId: string, choiceId: string) 
   );
 }
 
+/** Premium season replay: reset the user's run to a fresh seed (same row id). */
+export async function replayRunForUser(userId: string) {
+  return withDb(
+    "replayRunForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const fresh = createInitialRun(userId, run.classroomId, run.scenarioName);
+        fresh.id = run.id;
+        await tx.update(scenarioRuns).set(toRunUpdate(fresh)).where(eq(scenarioRuns.id, run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return fresh;
+      }),
+    () => store.replayRunForUser(userId),
+  );
+}
+
 export async function advanceRunForUser(userId: string) {
   return withDb(
     "advanceRunForUser",
