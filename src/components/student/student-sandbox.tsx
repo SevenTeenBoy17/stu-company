@@ -18,6 +18,7 @@ import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
+import type { AdaptiveEvent } from "@/lib/adaptive-events";
 import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
 import type {
@@ -82,6 +83,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   // Premium surfacing: investor-personality card (deepAiReport) + season replay.
   const [persona, setPersona] = useState<InvestorPersona | null>(null);
   const [canReplay, setCanReplay] = useState(false);
+  // Behavior-bias overlay cards (adaptive-events) surfaced after each action.
+  const [adaptiveEvents, setAdaptiveEvents] = useState<AdaptiveEvent[]>([]);
   const [activeTab, setActiveTab] = useState<ActionTab>("trade");
   const [intelPending, setIntelPending] = useState(false);
   const [radarPending, setRadarPending] = useState(false);
@@ -95,11 +98,17 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   async function loadState() {
     const response = await fetch("/api/sim/state", { cache: "no-store" });
-    const payload = (await response.json()) as { error?: string; message?: string; state?: SimulationState };
+    const payload = (await response.json()) as {
+      error?: string;
+      message?: string;
+      state?: SimulationState;
+      adaptiveEvents?: AdaptiveEvent[];
+    };
     if (!response.ok || !payload.state) {
       throw new Error(payload.message ?? payload.error ?? "无法读取当前沙盘。");
     }
     setState(payload.state);
+    setAdaptiveEvents(payload.adaptiveEvents ?? []);
   }
 
   const selectedAsset = useMemo(
@@ -113,12 +122,18 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       headers: { "content-type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const payload = (await response.json()) as { error?: string; state?: SimulationState; message?: string };
+    const payload = (await response.json()) as {
+      error?: string;
+      state?: SimulationState;
+      message?: string;
+      adaptiveEvents?: AdaptiveEvent[];
+    };
     if (!response.ok) {
       throw new Error(payload.message ?? payload.error ?? "提交失败。");
     }
     if (payload.state) {
       setState(payload.state);
+      setAdaptiveEvents(payload.adaptiveEvents ?? []);
     } else {
       await loadState();
     }
@@ -422,6 +437,26 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               ) : null}
             </div>
           </div>
+
+          {adaptiveEvents.length > 0 ? (
+            <div className="mt-5 space-y-2">
+              {adaptiveEvents.map((adaptive) => {
+                const tone =
+                  adaptive.tone === "warning"
+                    ? "border-amber-300 bg-amber-50"
+                    : adaptive.tone === "positive"
+                      ? "border-emerald-300 bg-emerald-50"
+                      : "border-sky-300 bg-sky-50";
+                return (
+                  <div key={adaptive.id} className={`rounded-2xl border px-4 py-3 ${tone}`}>
+                    <p className="text-sm font-bold text-slate-900">{adaptive.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{adaptive.message}</p>
+                    <p className="mt-1.5 text-xs leading-5 text-slate-500">💡 {adaptive.teachingPoint}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {state.market.assets.map((asset) => {
