@@ -4,6 +4,7 @@ import { z } from "zod";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { registerUserByEmail, roleHomePath } from "@/lib/db/repo";
+import { sendEmail, verificationEmail } from "@/lib/email";
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
@@ -40,24 +41,25 @@ export async function POST(request: Request) {
       tv: user.tokenVersion ?? 0,
     });
 
-    // A1: mint an email-verification link. TODO(email-provider): deliver this to
-    // user.email via a provider (Resend/SMTP/阿里云邮件). Verification is NOT yet
-    // enforced, so unverified users are not blocked. The link is surfaced in the
-    // response only outside production until a provider is wired (avoids leaking a
-    // self-verify link once enforcement is turned on).
+    // A1: mint an email-verification link and deliver it via Resend. When email
+    // is not configured (dev), the link is returned in the response so the user
+    // can still self-confirm. Verification is not enforced, so users are never
+    // blocked if email delivery is unavailable.
     const verificationToken = await createEmailVerificationToken(user.id, user.email);
-    const verifyUrl =
-      process.env.NODE_ENV !== "production"
-        ? new URL(
-            `/api/auth/verify?token=${encodeURIComponent(verificationToken)}`,
-            request.url,
-          ).toString()
-        : undefined;
+    const verifyUrl = new URL(
+      `/api/auth/verify?token=${encodeURIComponent(verificationToken)}`,
+      request.url,
+    ).toString();
+    const mail = verificationEmail(user.name, verifyUrl);
+    const delivery = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html });
 
     return NextResponse.json({
       redirectTo: roleHomePath(user.role),
-      message: "注册成功，欢迎加入 Mr.Brown 经济沙盘。",
-      verifyUrl,
+      message: delivery.delivered
+        ? "注册成功，验证邮件已发送，请查收邮箱。"
+        : "注册成功，欢迎加入 Mr.Brown 经济沙盘。",
+      // Only surface the raw link when we could not deliver it (dev / unconfigured).
+      verifyUrl: delivery.delivered ? undefined : verifyUrl,
     });
   } catch (error) {
     return handleRouteError(error, "注册失败。");

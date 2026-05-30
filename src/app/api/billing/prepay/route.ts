@@ -18,17 +18,17 @@ import {
 import { createId } from "@/lib/utils";
 
 const prepaySchema = z.object({
-  tier: z.enum(["standard"]),
+  tier: z.enum(["standard", "premium"]),
   channel: z.enum(["native", "jsapi"]).default("native"),
   targetUserId: z.string().min(1).optional(),
   openId: z.string().min(8).optional(),
   billingIntentToken: z.string().min(20).optional(),
 });
 
-const STANDARD_MONTHLY = {
-  amountFen: 1500,
-  label: "Mr.Brown AI 经济沙盘标准版月卡",
-};
+const PLANS = {
+  standard: { amountFen: 1500, label: "Mr.Brown AI 经济沙盘 · 标准版月卡" },
+  premium: { amountFen: 3000, label: "Mr.Brown AI 经济沙盘 · 高级版月卡" },
+} as const;
 
 function buildOrderExpiry() {
   const expiresAt = new Date();
@@ -115,13 +115,15 @@ export async function POST(request: Request) {
     let prepayId: string | undefined;
     let jsapiParams: unknown;
 
+    const plan = PLANS[body.tier];
+
     await createPaymentOrder({
       userId: auth.user.id,
       targetUserId,
       tier: body.tier,
       channel: mock ? "mock" : body.channel,
-      amountFen: STANDARD_MONTHLY.amountFen,
-      description: STANDARD_MONTHLY.label,
+      amountFen: plan.amountFen,
+      description: plan.label,
       outTradeNo,
       expiresAt,
     });
@@ -131,8 +133,8 @@ export async function POST(request: Request) {
     } else {
       const result = await createPrepayOrder({
         outTradeNo,
-        description: STANDARD_MONTHLY.label,
-        amountFen: STANDARD_MONTHLY.amountFen,
+        description: plan.label,
+        amountFen: plan.amountFen,
         channel: body.channel,
         payerOpenId: body.openId,
       });

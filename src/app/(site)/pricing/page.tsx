@@ -22,19 +22,37 @@ const plans = [
   },
   {
     id: "standard",
-    name: "个人月卡",
+    name: "标准版 · 个人",
     price: "¥15",
     period: "/月",
-    description: "适合个人学生和家庭使用，开通后恢复完整 AI 财商教练能力。",
+    description: "适合单个学生自学，开通后恢复完整 AI 财商教练能力。",
     features: [
       "12 回合完整沙盘",
-      "AI 个性化行为评定",
-      "6 维能力雷达图",
-      "历史复盘看板",
-      "排行榜与挑战记录",
+      "AI 个性化行为评定 + 6 维雷达",
+      "随机事件 + 决策卡全开",
+      "历史复盘看板 + 排行榜",
+      "1 名学生账号",
       "月度成长报告",
     ],
-    cta: "开通月卡",
+    cta: "开通标准版",
+    href: "/demo",
+    highlight: false,
+  },
+  {
+    id: "premium",
+    name: "高级版 · 家庭",
+    price: "¥30",
+    period: "/月",
+    description: "适合家庭或进阶学习，多孩子、深度 AI 复盘与每周家长报告。",
+    features: [
+      "标准版全部能力",
+      "家庭多账号（最多 3 名学生）",
+      "AI 深度复盘 + 投资人格报告（可分享）",
+      "家长成长周报 · 邮件自动推送",
+      "多局存档 + 赛季重玩（换种子）",
+      "满血 AI 优先，高峰不降级",
+    ],
+    cta: "开通高级版",
     href: "/demo",
     highlight: true,
   },
@@ -91,7 +109,7 @@ export default function PricingPage() {
       </section>
 
       <section className="page-shell -mt-8 sm:-mt-10">
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan, index) => (
             <SectionReveal
               key={plan.id}
@@ -129,8 +147,8 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              {plan.id === "standard" ? (
-                <WechatCheckoutButton />
+              {plan.id === "standard" || plan.id === "premium" ? (
+                <WechatCheckoutButton tier={plan.id as "standard" | "premium"} />
               ) : (
                 <Link
                   href={plan.href}

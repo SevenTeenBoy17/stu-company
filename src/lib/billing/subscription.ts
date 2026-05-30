@@ -8,6 +8,37 @@ export type SubscriptionStatus =
   | "expired"
   | "cancelled";
 
+/** Capability differences between Standard (¥15) and Premium (¥30) tiers. */
+export interface TierFeatures {
+  /** Number of student accounts the payer can keep active (Premium = family). */
+  maxStudents: number;
+  /** Deep AI review + shareable investor-personality report (Premium only). */
+  deepAiReport: boolean;
+  /** Weekly parent growth report delivered by email (Premium only). */
+  weeklyParentEmail: boolean;
+  /** Multi-run archive + replay with new seeds / seasons (Premium only). */
+  seasonReplay: boolean;
+}
+
+const FEATURES_NONE: TierFeatures = {
+  maxStudents: 0,
+  deepAiReport: false,
+  weeklyParentEmail: false,
+  seasonReplay: false,
+};
+const FEATURES_STANDARD: TierFeatures = {
+  maxStudents: 1,
+  deepAiReport: false,
+  weeklyParentEmail: false,
+  seasonReplay: false,
+};
+const FEATURES_PREMIUM: TierFeatures = {
+  maxStudents: 3,
+  deepAiReport: true,
+  weeklyParentEmail: true,
+  seasonReplay: true,
+};
+
 export interface SubscriptionState {
   tier: SubscriptionTier;
   status: SubscriptionStatus;
@@ -20,6 +51,7 @@ export interface SubscriptionState {
   trialDaysRemaining: number | null;
   subscriptionExpiresAt: string | null;
   canUsePersonalAiAssessment: boolean;
+  features: TierFeatures;
 }
 
 // B2 (conversion): keep full AI for the bulk of the trial so teens experience the
@@ -46,6 +78,7 @@ function expiredState(message: string, subscriptionExpiresAt?: string): Subscrip
     trialDaysRemaining: 0,
     subscriptionExpiresAt: subscriptionExpiresAt ?? null,
     canUsePersonalAiAssessment: false,
+    features: FEATURES_NONE,
   };
 }
 
@@ -83,6 +116,7 @@ export function resolveSubscriptionState(
       trialDaysRemaining: null,
       subscriptionExpiresAt: subscriptionExpiresAt ?? null,
       canUsePersonalAiAssessment: true,
+      features: effectiveTier === "premium" ? FEATURES_PREMIUM : FEATURES_STANDARD,
     };
   }
 
@@ -106,6 +140,7 @@ export function resolveSubscriptionState(
       trialDaysRemaining: daysRemaining,
       subscriptionExpiresAt: subscriptionExpiresAt ?? null,
       canUsePersonalAiAssessment: true,
+      features: FEATURES_STANDARD,
     };
   }
 
@@ -122,6 +157,7 @@ export function resolveSubscriptionState(
       trialDaysRemaining: daysRemaining,
       subscriptionExpiresAt: subscriptionExpiresAt ?? null,
       canUsePersonalAiAssessment: false,
+      features: FEATURES_STANDARD,
     };
   }
 

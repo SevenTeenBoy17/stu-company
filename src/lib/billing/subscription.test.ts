@@ -29,6 +29,27 @@ describe("resolveSubscriptionState", () => {
     expect(state.canOperate).toBe(true);
   });
 
+  it("grants the premium feature set for premium tier", () => {
+    const features = resolveSubscriptionState("premium", undefined, now).features;
+    expect(features.maxStudents).toBe(3);
+    expect(features.deepAiReport).toBe(true);
+    expect(features.weeklyParentEmail).toBe(true);
+    expect(features.seasonReplay).toBe(true);
+  });
+
+  it("grants only the standard feature set for standard tier", () => {
+    const features = resolveSubscriptionState("standard", undefined, now).features;
+    expect(features.maxStudents).toBe(1);
+    expect(features.deepAiReport).toBe(false);
+    expect(features.weeklyParentEmail).toBe(false);
+  });
+
+  it("gives expired users no paid features", () => {
+    const features = resolveSubscriptionState("free", undefined, now).features;
+    expect(features.maxStudents).toBe(0);
+    expect(features.deepAiReport).toBe(false);
+  });
+
   it("returns full trial on day one of a three-day trial", () => {
     const trialEnd = new Date(now);
     trialEnd.setDate(trialEnd.getDate() + 3);

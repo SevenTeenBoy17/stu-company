@@ -25,7 +25,16 @@ type BillingStatusPayload = {
   eligibleTargets?: BillingTarget[];
 };
 
-export function WechatCheckoutButton() {
+const TIER_LABEL: Record<"standard" | "premium", string> = {
+  standard: "微信开通 15 元/月",
+  premium: "微信开通 30 元/月",
+};
+
+export function WechatCheckoutButton({
+  tier = "standard",
+}: {
+  tier?: "standard" | "premium";
+} = {}) {
   const [payload, setPayload] = useState<CheckoutPayload | null>(null);
   const [targets, setTargets] = useState<BillingTarget[]>([]);
   const [selectedTargetId, setSelectedTargetId] = useState("");
@@ -73,7 +82,7 @@ export function WechatCheckoutButton() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          tier: "standard",
+          tier,
           channel: "native",
           targetUserId: upgradeToken ? undefined : selectedTargetId || undefined,
           billingIntentToken: upgradeToken ?? undefined,
@@ -135,7 +144,7 @@ export function WechatCheckoutButton() {
         disabled={isPending}
         className="block w-full rounded-full bg-[var(--brand)] px-6 py-3 text-center text-sm font-semibold text-white shadow-md transition-all hover:bg-[var(--amber-600)] hover:shadow-lg disabled:opacity-60"
       >
-        {isPending ? "正在创建微信订单..." : "微信开通 15 元/月"}
+        {isPending ? "正在创建微信订单..." : TIER_LABEL[tier]}
       </button>
       {payload ? (
         <div className="rounded-2xl border border-[var(--amber-200)] bg-[var(--amber-50)] p-4 text-left">

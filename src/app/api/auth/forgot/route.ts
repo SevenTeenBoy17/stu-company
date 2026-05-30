@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { findUserByEmail } from "@/lib/db/repo";
+import { passwordResetEmail, sendEmail } from "@/lib/email";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
@@ -33,13 +34,14 @@ export async function POST(request: Request) {
     let resetUrl: string | undefined;
     if (user) {
       const token = await createPasswordResetToken(user.id, user.email);
-      if (process.env.NODE_ENV !== "production") {
-        resetUrl = new URL(
-          `/reset-password?token=${encodeURIComponent(token)}`,
-          request.url,
-        ).toString();
-      }
-      // TODO(email-provider): send the reset link to user.email here.
+      const link = new URL(
+        `/reset-password?token=${encodeURIComponent(token)}`,
+        request.url,
+      ).toString();
+      const mail = passwordResetEmail(user.name, link);
+      const delivery = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html });
+      // Surface the raw link only when delivery wasn't possible (dev / unconfigured).
+      if (!delivery.delivered) resetUrl = link;
     }
 
     return NextResponse.json({
