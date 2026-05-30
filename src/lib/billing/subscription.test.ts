@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { canUserOperate, evaluatePersonalAiAccess, resolveSubscriptionState } from "./subscription";
+import {
+  canAddFamilyMember,
+  canUserOperate,
+  evaluatePersonalAiAccess,
+  resolveSubscriptionState,
+} from "./subscription";
 
 describe("resolveSubscriptionState", () => {
   const now = new Date("2026-05-27T10:00:00Z");
@@ -148,6 +153,22 @@ describe("evaluatePersonalAiAccess (A1 verification gate)", () => {
     const access = evaluatePersonalAiAccess(expired, { emailVerified: true, requireVerification: false });
     expect(access.ok).toBe(false);
     expect(access.reason).toBe("upgrade");
+  });
+});
+
+describe("canAddFamilyMember (premium family seats)", () => {
+  it("allows adding while under the seat cap", () => {
+    expect(canAddFamilyMember(0, 3)).toBe(true);
+    expect(canAddFamilyMember(2, 3)).toBe(true);
+  });
+
+  it("blocks at or over the seat cap", () => {
+    expect(canAddFamilyMember(3, 3)).toBe(false);
+    expect(canAddFamilyMember(4, 3)).toBe(false);
+  });
+
+  it("blocks when the owner has no seats (non-premium)", () => {
+    expect(canAddFamilyMember(0, 0)).toBe(false);
   });
 });
 

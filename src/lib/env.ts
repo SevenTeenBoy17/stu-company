@@ -22,6 +22,8 @@ const envSchema = z.object({
   // when absent, those flows degrade to dev-surfaced links.
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  // Shared secret for the Vercel Cron weekly-report endpoint.
+  CRON_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -41,4 +43,5 @@ export const env = envSchema.parse({
   ALLTICK_STOCK_BASE_URL: process.env.ALLTICK_STOCK_BASE_URL,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
+  CRON_SECRET: process.env.CRON_SECRET,
 });

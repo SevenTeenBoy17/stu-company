@@ -26,6 +26,7 @@ import {
   aiSessions,
   assignments,
   classrooms,
+  familyMembers,
   growthReports,
   inviteCodes,
   paymentOrders,
@@ -36,6 +37,10 @@ import {
   users,
 } from "@/lib/db/schema";
 import {
+  canAddFamilyMember,
+  resolveSubscriptionState,
+} from "@/lib/billing/subscription";
+import {
   advanceSimulationRun,
   applyEventChoice,
   applySimulationAction,
@@ -44,6 +49,7 @@ import {
   buildLeaderboard,
   buildSimulationState,
   createInitialRun,
+  deriveInvestorPersona,
 } from "@/lib/simulation";
 import * as store from "@/lib/store";
 import type {
@@ -52,6 +58,7 @@ import type {
   AiChatSession,
   Assignment,
   Classroom,
+  FamilyDigest,
   GrowthReport,
   InviteCode,
   PaymentChannel,
@@ -961,6 +968,185 @@ export async function applyEventChoiceForUser(userId: string, choiceId: string) 
         return updated;
       }),
     () => store.applyEventChoiceForUser(userId, choiceId),
+  );
+}
+
+export async function findFamilyOwnerForStudent(studentUserId: string) {
+  return withDb(
+    "findFamilyOwnerForStudent",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(familyMembers)
+        .where(eq(familyMembers.studentUserId, studentUserId))
+        .limit(1);
+      return row?.ownerUserId ?? null;
+    },
+    () => store.findFamilyOwnerForStudent(studentUserId),
+  );
+}
+
+/** Upgrade a student to Premium while their family owner's subscription is active. */
+export async function applyFamilyEntitlement(user: UserRecord): Promise<UserRecord> {
+  if (user.role !== "student") return user;
+  return withDb(
+    "applyFamilyEntitlement",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(familyMembers)
+        .where(eq(familyMembers.studentUserId, user.id))
+        .limit(1);
+      if (!row) return user;
+      const owner = await selectUserById(db, row.ownerUserId);
+      if (!owner) return user;
+      const state = resolveSubscriptionState(
+        owner.subscriptionTier,
+        owner.trialExpiresAt,
+        owner.subscriptionExpiresAt,
+      );
+      if (state.status === "active" && owner.subscriptionTier === "premium") {
+        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt: owner.subscriptionExpiresAt };
+      }
+      return user;
+    },
+    () => store.applyFamilyEntitlement(user),
+  );
+}
+
+export async function listFamilyMembers(ownerUserId: string) {
+  return withDb(
+    "listFamilyMembers",
+    async (db) => {
+      const rows = await db
+        .select({ m: familyMembers, p: profiles, u: users })
+        .from(familyMembers)
+        .innerJoin(users, eq(users.id, familyMembers.studentUserId))
+        .leftJoin(profiles, eq(profiles.userId, familyMembers.studentUserId))
+        .where(eq(familyMembers.ownerUserId, ownerUserId));
+      return rows.map(({ m, p, u }) => ({
+        id: m.id,
+        ownerUserId: m.ownerUserId,
+        studentUserId: m.studentUserId,
+        createdAt: m.createdAt.toISOString(),
+        studentName: p?.name ?? u.email,
+        studentEmail: u.email,
+      }));
+    },
+    () => store.listFamilyMembers(ownerUserId),
+  );
+}
+
+export async function addFamilyMember(ownerUserId: string, studentUserId: string) {
+  return withDb(
+    "addFamilyMember",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const owner = await selectUserById(tx, ownerUserId);
+        const student = await selectUserById(tx, studentUserId);
+        if (!owner || !student) throw new Error("用户不存在。");
+        if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+
+        const state = resolveSubscriptionState(
+          owner.subscriptionTier,
+          owner.trialExpiresAt,
+          owner.subscriptionExpiresAt,
+        );
+        if (!(state.status === "active" && owner.subscriptionTier === "premium")) {
+          throw new Error("只有高级版家长才能创建家庭组。");
+        }
+
+        const [link] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(
+            and(
+              eq(studentParentLinks.parentUserId, ownerUserId),
+              eq(studentParentLinks.studentUserId, studentUserId),
+            ),
+          )
+          .limit(1);
+        if (!link) throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+
+        const [existing] = await tx
+          .select()
+          .from(familyMembers)
+          .where(eq(familyMembers.studentUserId, studentUserId))
+          .limit(1);
+        if (existing) throw new Error("该学生已在一个家庭组中。");
+
+        const current = await tx
+          .select()
+          .from(familyMembers)
+          .where(eq(familyMembers.ownerUserId, ownerUserId));
+        if (!canAddFamilyMember(current.length, state.features.maxStudents)) {
+          throw new Error(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
+        }
+
+        const id = createId("fam");
+        await tx.insert(familyMembers).values({ id, ownerUserId, studentUserId });
+        return { id, ownerUserId, studentUserId, createdAt: new Date().toISOString() };
+      }),
+    () => store.addFamilyMember(ownerUserId, studentUserId),
+  );
+}
+
+export async function removeFamilyMember(ownerUserId: string, studentUserId: string) {
+  return withDb(
+    "removeFamilyMember",
+    async (db) => {
+      const deleted = await db
+        .delete(familyMembers)
+        .where(
+          and(
+            eq(familyMembers.ownerUserId, ownerUserId),
+            eq(familyMembers.studentUserId, studentUserId),
+          ),
+        )
+        .returning();
+      return deleted.length > 0;
+    },
+    () => store.removeFamilyMember(ownerUserId, studentUserId),
+  );
+}
+
+/** Weekly digests for the Premium family report email cron. */
+export async function listPremiumFamilyDigests(): Promise<FamilyDigest[]> {
+  return withDb(
+    "listPremiumFamilyDigests",
+    async (db) => {
+      const members = await db.select().from(familyMembers);
+      const digests: FamilyDigest[] = [];
+      for (const member of members) {
+        const owner = await selectUserById(db, member.ownerUserId);
+        if (!owner) continue;
+        const state = resolveSubscriptionState(
+          owner.subscriptionTier,
+          owner.trialExpiresAt,
+          owner.subscriptionExpiresAt,
+        );
+        if (!(state.status === "active" && owner.subscriptionTier === "premium")) continue;
+
+        const student = await selectUserById(db, member.studentUserId);
+        const [runRow] = await db
+          .select()
+          .from(scenarioRuns)
+          .where(eq(scenarioRuns.userId, member.studentUserId))
+          .limit(1);
+        if (!student || !runRow) continue;
+        const run = toRun(runRow);
+        digests.push({
+          ownerEmail: owner.email,
+          ownerName: owner.name,
+          studentName: student.name,
+          netWorth: run.snapshots.at(-1)?.netWorth ?? 0,
+          round: run.currentRound,
+          persona: deriveInvestorPersona(run).label,
+        });
+      }
+      return digests;
+    },
+    () => store.listPremiumFamilyDigests(),
   );
 }
 

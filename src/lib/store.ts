@@ -12,13 +12,20 @@ import {
   buildLeaderboard,
   buildSimulationState,
   createInitialRun,
+  deriveInvestorPersona,
 } from "@/lib/simulation";
+import {
+  canAddFamilyMember,
+  resolveSubscriptionState,
+} from "@/lib/billing/subscription";
 import type {
   AiChatMessage,
   AiChatMode,
   AiChatSession,
   Assignment,
   Classroom,
+  FamilyDigest,
+  FamilyMember,
   GrowthReport,
   InviteCode,
   LeaderboardEntry,
@@ -47,6 +54,7 @@ type Store = {
   aiSessions: AiChatSession[];
   paymentOrders: PaymentOrder[];
   subscriptionGrants: SubscriptionGrant[];
+  familyMembers: FamilyMember[];
 };
 
 declare global {
@@ -415,6 +423,7 @@ export function createSeedStore(): Store {
     aiSessions: [],
     paymentOrders: [],
     subscriptionGrants: [],
+    familyMembers: [],
   };
 }
 
@@ -461,6 +470,105 @@ export function markEmailVerified(userId: string) {
   if (!user) return false;
   user.emailVerifiedAt = new Date().toISOString();
   return true;
+}
+
+function isOwnerPremiumActive(owner: UserRecord) {
+  const state = resolveSubscriptionState(
+    owner.subscriptionTier,
+    owner.trialExpiresAt,
+    owner.subscriptionExpiresAt,
+  );
+  return state.status === "active" && owner.subscriptionTier === "premium"
+    ? state
+    : null;
+}
+
+export function findFamilyOwnerForStudent(studentUserId: string): string | null {
+  return getStore().familyMembers.find((m) => m.studentUserId === studentUserId)?.ownerUserId ?? null;
+}
+
+export function listFamilyMembers(ownerUserId: string) {
+  return getStore()
+    .familyMembers.filter((m) => m.ownerUserId === ownerUserId)
+    .map((m) => {
+      const student = findUserById(m.studentUserId);
+      return { ...m, studentName: student?.name ?? "", studentEmail: student?.email ?? "" };
+    });
+}
+
+export function addFamilyMember(ownerUserId: string, studentUserId: string): FamilyMember {
+  const store = getStore();
+  const owner = findUserById(ownerUserId);
+  const student = findUserById(studentUserId);
+  if (!owner || !student) throw new Error("用户不存在。");
+  if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+
+  const ownerState = isOwnerPremiumActive(owner);
+  if (!ownerState) throw new Error("只有高级版家长才能创建家庭组。");
+  if (!canUserPayForTarget(ownerUserId, studentUserId)) {
+    throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+  }
+  if (store.familyMembers.some((m) => m.studentUserId === studentUserId)) {
+    throw new Error("该学生已在一个家庭组中。");
+  }
+  const currentCount = store.familyMembers.filter((m) => m.ownerUserId === ownerUserId).length;
+  if (!canAddFamilyMember(currentCount, ownerState.features.maxStudents)) {
+    throw new Error(`家庭名额已满（上限 ${ownerState.features.maxStudents} 名）。`);
+  }
+
+  const member: FamilyMember = {
+    id: createId("fam"),
+    ownerUserId,
+    studentUserId,
+    createdAt: new Date().toISOString(),
+  };
+  store.familyMembers.push(member);
+  return member;
+}
+
+export function removeFamilyMember(ownerUserId: string, studentUserId: string): boolean {
+  const store = getStore();
+  const before = store.familyMembers.length;
+  store.familyMembers = store.familyMembers.filter(
+    (m) => !(m.ownerUserId === ownerUserId && m.studentUserId === studentUserId),
+  );
+  return store.familyMembers.length < before;
+}
+
+/** Upgrade a student to Premium while their family owner's subscription is active. */
+export function applyFamilyEntitlement(user: UserRecord): UserRecord {
+  if (user.role !== "student") return user;
+  const ownerId = findFamilyOwnerForStudent(user.id);
+  if (!ownerId) return user;
+  const owner = findUserById(ownerId);
+  if (!owner || !isOwnerPremiumActive(owner)) return user;
+  return {
+    ...user,
+    subscriptionTier: "premium",
+    subscriptionExpiresAt: owner.subscriptionExpiresAt,
+  };
+}
+
+/** Weekly digests for the Premium family report email cron. */
+export function listPremiumFamilyDigests(): FamilyDigest[] {
+  const store = getStore();
+  const digests: FamilyDigest[] = [];
+  for (const member of store.familyMembers) {
+    const owner = findUserById(member.ownerUserId);
+    if (!owner || !isOwnerPremiumActive(owner)) continue;
+    const student = findUserById(member.studentUserId);
+    const run = store.runs.find((item) => item.userId === member.studentUserId);
+    if (!student || !run) continue;
+    digests.push({
+      ownerEmail: owner.email,
+      ownerName: owner.name,
+      studentName: student.name,
+      netWorth: run.snapshots.at(-1)?.netWorth ?? 0,
+      round: run.currentRound,
+      persona: deriveInvestorPersona(run).label,
+    });
+  }
+  return digests;
 }
 
 export async function updateUserPassword(userId: string, password: string) {

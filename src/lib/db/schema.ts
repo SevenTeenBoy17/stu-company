@@ -126,6 +126,17 @@ export const studentParentLinks = pgTable("student_parent_links", {
   index("student_parent_links_bond_code_idx").on(table.bondCode),
 ]);
 
+// Family group membership (Option B). A student belongs to at most one family
+// (studentUserId unique); the group is identified by ownerUserId (the parent).
+export const familyMembers = pgTable("family_members", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  ownerUserId: varchar("owner_user_id", { length: 64 }).notNull().references(() => users.id),
+  studentUserId: varchar("student_user_id", { length: 64 }).notNull().unique().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("family_members_owner_user_id_idx").on(table.ownerUserId),
+]);
+
 export const scenarioRuns = pgTable("scenario_runs", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),

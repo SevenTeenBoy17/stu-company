@@ -266,6 +266,28 @@ export interface StudentParentLink {
   bondCode: string;
 }
 
+/**
+ * Family group membership (Option B): a Premium owner (parent) hosts up to
+ * features.maxStudents students who inherit Premium while the owner is active.
+ * The group is identified by its ownerUserId.
+ */
+export interface FamilyMember {
+  id: string;
+  ownerUserId: string;
+  studentUserId: string;
+  createdAt: string;
+}
+
+/** A weekly parent-report digest row built for the Premium family email cron. */
+export interface FamilyDigest {
+  ownerEmail: string;
+  ownerName: string;
+  studentName: string;
+  netWorth: number;
+  round: number;
+  persona: string;
+}
+
 export interface LeaderboardEntry {
   userId: string;
   name: string;

@@ -181,6 +181,14 @@ export function evaluatePersonalAiAccess(
   return { ok: true, reason: "ok" };
 }
 
+/**
+ * Family seats (Option B): a Premium owner can host up to features.maxStudents
+ * members. Pure cap check used when adding a student to a family group.
+ */
+export function canAddFamilyMember(currentCount: number, maxSeats: number): boolean {
+  return currentCount < maxSeats;
+}
+
 export function canUserOperate(
   tier: SubscriptionTier | undefined,
   trialExpiresAt: string | undefined,
