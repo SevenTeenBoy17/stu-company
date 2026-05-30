@@ -107,6 +107,24 @@ export function eventMarketEffect(event: EventCard, category: AssetCategory): nu
   return 1 + direction * magnitude;
 }
 
+/**
+ * E3: resolve a decision-card choice into a cash consequence (the lesson made
+ * tangible). Deterministic given the rng so a run stays reproducible.
+ *  - hold: doing nothing is a choice — no change.
+ *  - protect: a small guaranteed cost (like buying insurance) that caps downside.
+ *  - gamble: high variance — a big win or a big loss, teaching risk/reward.
+ */
+export function resolveEventChoice(
+  netWorth: number,
+  outcome: "protect" | "hold" | "gamble",
+  rng: () => number,
+): { cashDelta: number; tone: "protect" | "hold" | "win" | "loss" } {
+  if (outcome === "hold") return { cashDelta: 0, tone: "hold" };
+  if (outcome === "protect") return { cashDelta: -Math.round(netWorth * 0.02), tone: "protect" };
+  const win = rng() >= 0.5;
+  return { cashDelta: Math.round(netWorth * (win ? 0.22 : -0.18)), tone: win ? "win" : "loss" };
+}
+
 /** Resolve the event id for a round from a run's timeline, falling back when absent/out-of-range. */
 export function eventIdForRound(
   timeline: string[] | undefined,

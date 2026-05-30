@@ -51,6 +51,7 @@ const actionTypeLabel: Record<ActionLog["type"], string> = {
   property: "房产",
   venture: "创业",
   advance: "回合推进",
+  event: "事件决策",
 };
 
 function actionDirection(amount: number) {
@@ -313,6 +314,43 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                 )}
               </div>
               <p className="mt-2 text-sm leading-7 text-slate-500">{state.market.event.coachingCue}</p>
+              {state.market.event.choices?.length ? (
+                (() => {
+                  const decided = state.run.actionLog.find(
+                    (entry) => entry.type === "event" && entry.round === state.run.currentRound,
+                  );
+                  if (decided) {
+                    return (
+                      <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3">
+                        <p className="text-sm font-semibold text-slate-800">{decided.label}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          现金变化 {decided.amount >= 0 ? "+" : ""}
+                          {decided.amount.toLocaleString()} · 推进回合后会进入新的局面。
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="mt-4 rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4">
+                      <p className="text-sm font-bold text-amber-800">这是一个决策时刻 — 你会怎么选？</p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {state.market.event.choices.map((choice) => (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            disabled={pending}
+                            onClick={() => submitAction({ choiceId: choice.id }, "/api/sim/event-choice")}
+                            className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-left transition hover:border-amber-400 disabled:opacity-60"
+                          >
+                            <span className="block text-sm font-bold text-slate-900">{choice.label}</span>
+                            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{choice.detail}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : null}
             </div>
             <button
               type="button"

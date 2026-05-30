@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   createInitialRun,
   evaluateRun,
@@ -87,5 +88,30 @@ describe("seeded random events", () => {
 
     expect(withEvent && baseline).toBeTruthy();
     expect(withEvent!.currentPrice).toBeLessThan(baseline!.currentPrice);
+  });
+});
+
+describe("event decision cards (E3)", () => {
+  function decisionRun() {
+    const run = createInitialRun("student-test", "class-test", "试点", 1);
+    // liquidity-crisis is a decision card with protect/gamble/hold choices.
+    run.eventTimeline = ["event-liquidity-crisis", ...(run.eventTimeline ?? []).slice(1)];
+    return run;
+  }
+
+  it("applies a 'protect' choice as a cash cost and logs an event action", () => {
+    const run = decisionRun();
+    const next = applyEventChoice(run, "lc-protect");
+    expect(next.cash).toBeLessThan(run.cash);
+    expect(next.actionLog[0]?.type).toBe("event");
+  });
+
+  it("rejects choosing twice in the same round", () => {
+    const once = applyEventChoice(decisionRun(), "lc-protect");
+    expect(() => applyEventChoice(once, "lc-protect")).toThrow();
+  });
+
+  it("rejects an unknown choice id", () => {
+    expect(() => applyEventChoice(decisionRun(), "no-such-choice")).toThrow();
   });
 });

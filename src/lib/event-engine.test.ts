@@ -6,6 +6,7 @@ import {
   eventMarketEffect,
   eventTier,
   makeRng,
+  resolveEventChoice,
 } from "@/lib/event-engine";
 import { eventCards } from "@/lib/market-data";
 import type { EventCard } from "@/lib/types";
@@ -113,6 +114,39 @@ describe("eventMarketEffect", () => {
     const high = eventMarketEffect(cardById("event-surprise-policy-pivot"), "stock"); // 利好 high
     const low = eventMarketEffect(cardById("event-consumer-recovery"), "stock"); // 利好 low
     expect(high - 1).toBeGreaterThan(low - 1);
+  });
+});
+
+describe("resolveEventChoice", () => {
+  it("a 'hold' choice changes nothing", () => {
+    const result = resolveEventChoice(120_000, "hold", makeRng(1));
+    expect(result.cashDelta).toBe(0);
+    expect(result.tone).toBe("hold");
+  });
+
+  it("a 'protect' choice costs a small, bounded amount", () => {
+    const result = resolveEventChoice(120_000, "protect", makeRng(1));
+    expect(result.cashDelta).toBeLessThan(0);
+    expect(Math.abs(result.cashDelta)).toBeLessThanOrEqual(120_000 * 0.05);
+    expect(result.tone).toBe("protect");
+  });
+
+  it("a 'gamble' choice is high-variance and bigger than protecting", () => {
+    const protect = Math.abs(resolveEventChoice(120_000, "protect", makeRng(1)).cashDelta);
+    const gamble = Math.abs(resolveEventChoice(120_000, "gamble", makeRng(1)).cashDelta);
+    expect(gamble).toBeGreaterThan(protect);
+  });
+
+  it("is reproducible for the same seed and varies across seeds", () => {
+    const a = resolveEventChoice(120_000, "gamble", makeRng(7));
+    const b = resolveEventChoice(120_000, "gamble", makeRng(7));
+    expect(a).toEqual(b);
+    // across many seeds a gamble produces both wins and losses
+    const tones = new Set(
+      Array.from({ length: 12 }, (_, i) => resolveEventChoice(120_000, "gamble", makeRng(i + 1)).tone),
+    );
+    expect(tones.has("win")).toBe(true);
+    expect(tones.has("loss")).toBe(true);
   });
 });
 

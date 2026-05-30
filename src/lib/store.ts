@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   buildBehaviorSignals,
   buildGrowthReport,
@@ -969,6 +970,20 @@ export function applyActionForUser(userId: string, input: Parameters<typeof appl
   }
 
   const updated = applySimulationAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === updated.id);
+  store.runs[index] = updated;
+  syncGrowthReports(userId);
+  return updated;
+}
+
+export function applyEventChoiceForUser(userId: string, choiceId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const updated = applyEventChoice(run, choiceId);
   const index = store.runs.findIndex((item) => item.id === updated.id);
   store.runs[index] = updated;
   syncGrowthReports(userId);

@@ -290,6 +290,11 @@ const baseEventCards: EventCard[] = [
     description:
       "一家大型金融机构突然出问题，银行之间不敢互相借钱了，所有资产都在跌。这就像考试前一天全班突然集体感冒 — 不管你准备得多好，都会受影响。",
     coachingCue: "危机时现金和债券是救命稻草，先活下来再说。",
+    choices: [
+      { id: "lc-protect", label: "抛售保命", detail: "把风险资产换成现金，先稳住阵脚", teachingPoint: "危机里保住流动性，宁可错过也别被迫贱卖", outcome: "protect" },
+      { id: "lc-gamble", label: "借机抄底", detail: "趁恐慌大举买入便宜资产", teachingPoint: "别人恐惧我贪婪，但也可能抄在半山腰", outcome: "gamble" },
+      { id: "lc-hold", label: "按兵不动", detail: "什么都不做，扛过这一轮", teachingPoint: "不行动也是一种选择，前提是你扛得住波动", outcome: "hold" },
+    ],
   },
   {
     id: "event-surprise-policy-pivot",
@@ -339,6 +344,10 @@ const baseEventCards: EventCard[] = [
     description:
       "有人提醒你可以借钱放大仓位。杠杆能放大盈利，但同样会放大亏损，行情一反向就可能爆掉。",
     coachingCue: "杠杆是双刃剑，先想清楚最坏情况你扛不扛得住，再决定用不用。",
+    choices: [
+      { id: "lev-borrow", label: "借钱加仓", detail: "用杠杆把仓位放大一倍", teachingPoint: "杠杆赢了翻倍、输了也翻倍，先想清最坏情况", outcome: "gamble" },
+      { id: "lev-skip", label: "不碰杠杆", detail: "维持现有仓位，稳为先", teachingPoint: "稳健者宁可少赚，也不让一次失误清盘", outcome: "hold" },
+    ],
   },
   {
     id: "event-currency-devaluation",
@@ -368,6 +377,10 @@ const baseEventCards: EventCard[] = [
     description:
       "一只被大量做空的股票突然暴涨，做空的人被迫高价买回，价格被进一步推高，随后往往又急速回落。",
     coachingCue: "逼空又猛又险，追进去很可能是最后接棒的人。",
+    choices: [
+      { id: "ss-chase", label: "追进去", detail: "跟着人群冲进暴涨的股票", teachingPoint: "逼空又猛又险，追高常常是接最后一棒", outcome: "gamble" },
+      { id: "ss-watch", label: "只看不追", detail: "保持观望，不参与狂热", teachingPoint: "看不懂的钱不赚，是一种纪律", outcome: "hold" },
+    ],
   },
   {
     id: "event-bank-run",

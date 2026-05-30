@@ -37,6 +37,7 @@ import {
 } from "@/lib/db/schema";
 import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   buildBehaviorSignals,
   buildGrowthReport,
@@ -943,6 +944,23 @@ export async function applyActionForUser(
         return updated;
       }),
     () => store.applyActionForUser(userId, input),
+  );
+}
+
+export async function applyEventChoiceForUser(userId: string, choiceId: string) {
+  return withDb(
+    "applyEventChoiceForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = applyEventChoice(run, choiceId);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.applyEventChoiceForUser(userId, choiceId),
   );
 }
 

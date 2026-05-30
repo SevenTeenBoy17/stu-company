@@ -71,6 +71,19 @@ export interface Holding {
   averageCost: number;
 }
 
+/**
+ * E3: an interactive choice on a decision-card event. `outcome` drives a
+ * deterministic (seeded) consequence resolved in the engine — see
+ * resolveEventChoice in src/lib/event-engine.ts.
+ */
+export interface EventChoice {
+  id: string;
+  label: string;
+  detail: string;
+  teachingPoint: string;
+  outcome: "protect" | "hold" | "gamble";
+}
+
 export interface EventCard {
   id: string;
   title: string;
@@ -82,6 +95,8 @@ export interface EventCard {
   impactAssets?: AssetCategory[];
   impactRange?: "low" | "medium" | "high";
   stage?: "early" | "middle" | "late";
+  /** E3: when present, the event is a decision-card the player must respond to. */
+  choices?: EventChoice[];
 }
 
 export type FinancialEventCard = EventCard;
@@ -89,7 +104,7 @@ export type FinancialEventCard = EventCard;
 export interface ActionLog {
   id: string;
   round: number;
-  type: "trade" | "bank" | "property" | "venture" | "advance";
+  type: "trade" | "bank" | "property" | "venture" | "advance" | "event";
   label: string;
   amount: number;
   timestamp: string;

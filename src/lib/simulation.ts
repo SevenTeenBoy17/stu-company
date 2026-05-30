@@ -1,4 +1,10 @@
-import { buildEventTimeline, eventIdForRound, eventMarketEffect } from "@/lib/event-engine";
+import {
+  buildEventTimeline,
+  eventIdForRound,
+  eventMarketEffect,
+  makeRng,
+  resolveEventChoice,
+} from "@/lib/event-engine";
 import { eventCards, marketAssets, marketRounds } from "@/lib/market-data";
 import type {
   ActionLog,
@@ -433,6 +439,57 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     }
   }
 
+  commitSnapshot(nextRun);
+  return nextRun;
+}
+
+/** E3: the decision card (if any) the run is currently facing. */
+export function getActiveDecisionCard(run: ScenarioRun): EventCard | null {
+  const round = getRound(run.currentRound);
+  const eventId = eventIdForRound(run.eventTimeline, run.currentRound, round.eventId);
+  const event = getEventCard(eventId);
+  if (!event.choices?.length) return null;
+  const alreadyChose = run.actionLog.some(
+    (entry) => entry.type === "event" && entry.round === run.currentRound,
+  );
+  return alreadyChose ? null : event;
+}
+
+/**
+ * E3: apply a decision-card choice. The chosen outcome is resolved into a cash
+ * consequence (seeded → reproducible) and logged. One decision per round.
+ */
+export function applyEventChoice(run: ScenarioRun, choiceId: string): ScenarioRun {
+  const nextRun = structuredClone(run);
+  const round = getRound(nextRun.currentRound);
+  const eventId = eventIdForRound(nextRun.eventTimeline, nextRun.currentRound, round.eventId);
+  const event = getEventCard(eventId);
+
+  if (!event.choices?.length) {
+    throw new Error("当前事件没有可做的选择。");
+  }
+  const alreadyChose = nextRun.actionLog.some(
+    (entry) => entry.type === "event" && entry.round === nextRun.currentRound,
+  );
+  if (alreadyChose) {
+    throw new Error("本回合的事件选择已经做过了。");
+  }
+  const choice = event.choices.find((item) => item.id === choiceId);
+  if (!choice) {
+    throw new Error("无效的事件选择。");
+  }
+
+  const netWorth = evaluateRun(nextRun, nextRun.currentRound).netWorth;
+  const rng = makeRng((nextRun.seed ?? 1) + nextRun.currentRound * 1000);
+  const { cashDelta } = resolveEventChoice(netWorth, choice.outcome, rng);
+
+  nextRun.cash = Math.max(0, nextRun.cash + cashDelta);
+  appendAction(nextRun, {
+    round: nextRun.currentRound,
+    type: "event",
+    label: `事件决策：${choice.label} — ${choice.teachingPoint}`,
+    amount: cashDelta,
+  });
   commitSnapshot(nextRun);
   return nextRun;
 }
