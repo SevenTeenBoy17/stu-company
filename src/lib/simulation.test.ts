@@ -5,6 +5,7 @@ import {
   applyEventChoice,
   applySimulationAction,
   buildPersonaShareText,
+  buildSeasonLeaderboard,
   computeStreak,
   createInitialRun,
   deriveInvestorPersona,
@@ -12,6 +13,7 @@ import {
   getRoundQuotes,
   getRoundQuotesForRun,
 } from "@/lib/simulation";
+import { currentSeasonSeed } from "@/lib/season";
 import type { ScenarioRun } from "@/lib/types";
 
 describe("simulation", () => {
@@ -160,6 +162,24 @@ describe("buildPersonaShareText (shareable card)", () => {
     expect(text).toContain(deriveInvestorPersona(run).label);
     expect(text).toContain("140,000");
     expect(text).toContain("连胜");
+  });
+});
+
+describe("buildSeasonLeaderboard (global weekly season)", () => {
+  it("ranks only runs that used the current season seed", () => {
+    const now = new Date("2026-05-25T00:00:00Z");
+    const seed = currentSeasonSeed(now);
+    const inSeason = createInitialRun("u1", "c", "x", seed);
+    const offSeason = createInitialRun("u2", "c", "x", seed + 1);
+
+    const board = buildSeasonLeaderboard([inSeason, offSeason], [], now);
+    expect(board.some((entry) => entry.userId === "u1")).toBe(true);
+    expect(board.some((entry) => entry.userId === "u2")).toBe(false);
+  });
+
+  it("defaults new runs into the current season", () => {
+    const run = createInitialRun("u3", "c", "x");
+    expect(run.seed).toBe(currentSeasonSeed());
   });
 });
 

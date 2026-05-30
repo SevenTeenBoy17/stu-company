@@ -6,6 +6,7 @@ import {
   resolveEventChoice,
 } from "@/lib/event-engine";
 import { eventCards, marketAssets, marketRounds } from "@/lib/market-data";
+import { currentSeasonSeed } from "@/lib/season";
 import type {
   ActionLog,
   EventCard,
@@ -257,7 +258,10 @@ export function createInitialRun(
   userId: string,
   classroomId: string,
   scenarioName = "春季校内试点",
-  seed: number = (Math.floor(Math.random() * 0x7fffffff) >>> 0) || 1,
+  // Default to the current weekly season seed so all new runs this week share the
+  // same market (fair global leaderboard). Pass an explicit seed for off-season
+  // practice (e.g. Premium replay) or deterministic tests.
+  seed: number = currentSeasonSeed(),
 ) {
   const totalRounds = 12;
   const eventTimeline = buildEventTimeline(seed, totalRounds);
@@ -595,6 +599,22 @@ export function buildPersonaShareText(
     `第 ${run.currentRound} 回合 · 模拟净值 ￥${netWorth.toLocaleString()} · 连胜 ${streak} 回合`,
     "来挑战你的财商，看看你是哪种投资人格 👉",
   ].join("\n");
+}
+
+/**
+ * P2 global weekly season leaderboard: rank only the runs that used this week's
+ * season seed (a fair, like-for-like market) by net worth.
+ */
+export function buildSeasonLeaderboard(
+  runs: ScenarioRun[],
+  users: UserRecord[],
+  now: Date = new Date(),
+): LeaderboardEntry[] {
+  const seed = currentSeasonSeed(now);
+  return buildLeaderboard(
+    runs.filter((run) => run.seed === seed),
+    users,
+  );
 }
 
 export function buildBehaviorSignals(run: ScenarioRun) {

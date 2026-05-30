@@ -10,6 +10,7 @@ import {
   buildBehaviorSignals,
   buildGrowthReport,
   buildLeaderboard,
+  buildSeasonLeaderboard,
   buildSimulationState,
   createInitialRun,
   deriveInvestorPersona,
@@ -547,6 +548,12 @@ export function applyFamilyEntitlement(user: UserRecord): UserRecord {
     subscriptionTier: "premium",
     subscriptionExpiresAt: owner.subscriptionExpiresAt,
   };
+}
+
+/** Global weekly season leaderboard across all runs that used this week's seed. */
+export function getSeasonLeaderboard() {
+  const store = getStore();
+  return buildSeasonLeaderboard(store.runs, store.users);
 }
 
 /** Weekly digests for the Premium family report email cron. */
@@ -1105,7 +1112,12 @@ export function replayRunForUser(userId: string) {
     throw new Error("未找到对应的学生沙盘。");
   }
 
-  const fresh = createInitialRun(userId, run.classroomId, run.scenarioName);
+  const fresh = createInitialRun(
+    userId,
+    run.classroomId,
+    run.scenarioName,
+    (Math.floor(Math.random() * 0x7fffffff) >>> 0) || 1,
+  );
   fresh.id = run.id;
   const index = store.runs.findIndex((item) => item.id === run.id);
   store.runs[index] = fresh;

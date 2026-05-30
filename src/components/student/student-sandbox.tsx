@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
+import { SeasonLeaderboard } from "@/components/student/season-leaderboard";
 import { StudentAllocationPanel } from "@/components/student/student-allocation-panel";
 import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
@@ -798,6 +799,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                 void loadTutorRadarForState(state);
               }}
             />
+            <SeasonLeaderboard />
           </div>
         </section>
 

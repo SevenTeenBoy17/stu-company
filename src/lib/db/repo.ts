@@ -47,6 +47,7 @@ import {
   buildBehaviorSignals,
   buildGrowthReport,
   buildLeaderboard,
+  buildSeasonLeaderboard,
   buildSimulationState,
   createInitialRun,
   deriveInvestorPersona,
@@ -1110,6 +1111,24 @@ export async function removeFamilyMember(ownerUserId: string, studentUserId: str
   );
 }
 
+/** Global weekly season leaderboard across all runs that used this week's seed. */
+export async function getSeasonLeaderboard() {
+  return withDb(
+    "getSeasonLeaderboard",
+    async (db) => {
+      const runRows = await db.select().from(scenarioRuns);
+      const runs = runRows.map(toRun);
+      const userRows = await db
+        .select({ user: users, profile: profiles })
+        .from(users)
+        .leftJoin(profiles, eq(profiles.userId, users.id));
+      const userRecords = userRows.map((row) => toUserRecord(row.user, row.profile));
+      return buildSeasonLeaderboard(runs, userRecords);
+    },
+    () => store.getSeasonLeaderboard(),
+  );
+}
+
 /** Weekly digests for the Premium family report email cron. */
 export async function listPremiumFamilyDigests(): Promise<FamilyDigest[]> {
   return withDb(
@@ -1159,7 +1178,14 @@ export async function replayRunForUser(userId: string) {
         const run = await selectRunForUser(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
-        const fresh = createInitialRun(userId, run.classroomId, run.scenarioName);
+        // Off-season practice seed (random) so a replay gives fresh variety and
+        // does not collide with the fair weekly-season leaderboard.
+        const fresh = createInitialRun(
+          userId,
+          run.classroomId,
+          run.scenarioName,
+          (Math.floor(Math.random() * 0x7fffffff) >>> 0) || 1,
+        );
         fresh.id = run.id;
         await tx.update(scenarioRuns).set(toRunUpdate(fresh)).where(eq(scenarioRuns.id, run.id));
         await syncGrowthReportForStudent(tx, userId);
