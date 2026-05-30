@@ -16,19 +16,61 @@ export interface SubscriptionState {
   aiTier: "full" | "basic" | "none";
   bannerMessage: string | null;
   daysRemaining: number | null;
+  trialMode: "full" | "basic" | "expired" | null;
+  trialDaysRemaining: number | null;
+  subscriptionExpiresAt: string | null;
+  canUsePersonalAiAssessment: boolean;
 }
 
-const TRIAL_FULL_DAYS = 1;
-const TRIAL_DEGRADED_DAYS = 3;
+// B2 (conversion): keep full AI for the bulk of the trial so teens experience the
+// real value and form a habit; only the final day degrades to basic as an upgrade
+// nudge. Full while daysRemaining > (TOTAL - FULL) = > 1.
+const TRIAL_FULL_DAYS = 2;
+const TRIAL_TOTAL_DAYS = 3;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+function daysUntil(date: Date, now: Date) {
+  return Math.max(0, Math.ceil((date.getTime() - now.getTime()) / MS_PER_DAY));
+}
+
+function expiredState(message: string, subscriptionExpiresAt?: string): SubscriptionState {
+  return {
+    tier: "free",
+    status: "expired",
+    canOperate: false,
+    canViewHistory: true,
+    aiTier: "none",
+    bannerMessage: message,
+    daysRemaining: 0,
+    trialMode: "expired",
+    trialDaysRemaining: 0,
+    subscriptionExpiresAt: subscriptionExpiresAt ?? null,
+    canUsePersonalAiAssessment: false,
+  };
+}
 
 export function resolveSubscriptionState(
   tier: SubscriptionTier | undefined,
   trialExpiresAt: string | undefined,
-  now = new Date(),
+  subscriptionExpiresAtOrNow?: string | Date | undefined,
+  maybeNow?: Date,
 ): SubscriptionState {
+  const subscriptionExpiresAt =
+    subscriptionExpiresAtOrNow instanceof Date ? undefined : subscriptionExpiresAtOrNow;
+  const now = subscriptionExpiresAtOrNow instanceof Date
+    ? subscriptionExpiresAtOrNow
+    : (maybeNow ?? new Date());
   const effectiveTier = tier ?? "free";
 
   if (effectiveTier === "standard" || effectiveTier === "premium") {
+    const expiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+    if (expiresAt && expiresAt.getTime() <= now.getTime()) {
+      return expiredState(
+        "订阅已到期，续费后即可继续操作沙盘并获取 AI 个性化评定。",
+        subscriptionExpiresAt,
+      );
+    }
+
     return {
       tier: effectiveTier,
       status: "active",
@@ -36,27 +78,22 @@ export function resolveSubscriptionState(
       canViewHistory: true,
       aiTier: "full",
       bannerMessage: null,
-      daysRemaining: null,
+      daysRemaining: expiresAt ? daysUntil(expiresAt, now) : null,
+      trialMode: null,
+      trialDaysRemaining: null,
+      subscriptionExpiresAt: subscriptionExpiresAt ?? null,
+      canUsePersonalAiAssessment: true,
     };
   }
 
   if (!trialExpiresAt) {
-    return {
-      tier: "free",
-      status: "expired",
-      canOperate: false,
-      canViewHistory: true,
-      aiTier: "none",
-      bannerMessage: "试用已结束，升级后即可继续操作沙盘和获取 AI 个性化诊断。",
-      daysRemaining: 0,
-    };
+    return expiredState("试用已结束，升级后即可继续操作沙盘并获取 AI 个性化评定。");
   }
 
   const trialEnd = new Date(trialExpiresAt);
-  const msRemaining = trialEnd.getTime() - now.getTime();
-  const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)));
+  const daysRemaining = daysUntil(trialEnd, now);
 
-  if (daysRemaining > TRIAL_DEGRADED_DAYS) {
+  if (daysRemaining > TRIAL_TOTAL_DAYS - TRIAL_FULL_DAYS) {
     return {
       tier: "free",
       status: "trial",
@@ -65,36 +102,36 @@ export function resolveSubscriptionState(
       aiTier: "full",
       bannerMessage: null,
       daysRemaining,
+      trialMode: "full",
+      trialDaysRemaining: daysRemaining,
+      subscriptionExpiresAt: subscriptionExpiresAt ?? null,
+      canUsePersonalAiAssessment: true,
     };
   }
 
-  if (daysRemaining > 0 && daysRemaining <= TRIAL_DEGRADED_DAYS) {
-    const inFullTrial = daysRemaining > (TRIAL_DEGRADED_DAYS - TRIAL_FULL_DAYS);
+  if (daysRemaining > 0) {
     return {
       tier: "free",
-      status: inFullTrial ? "trial" : "trial_degraded",
+      status: "trial_degraded",
       canOperate: true,
       canViewHistory: true,
-      aiTier: inFullTrial ? "full" : "basic",
-      bannerMessage: `试用还剩 ${daysRemaining} 天${!inFullTrial ? "（AI 诊断已切换为通用版）" : ""}，升级后可解锁完整功能。`,
+      aiTier: "basic",
+      bannerMessage: `基础 AI 试用还剩 ${daysRemaining} 天。升级后可解锁完整个性化评定，并继续推进沙盘。`,
       daysRemaining,
+      trialMode: "basic",
+      trialDaysRemaining: daysRemaining,
+      subscriptionExpiresAt: subscriptionExpiresAt ?? null,
+      canUsePersonalAiAssessment: false,
     };
   }
 
-  return {
-    tier: "free",
-    status: "expired",
-    canOperate: false,
-    canViewHistory: true,
-    aiTier: "none",
-    bannerMessage: "试用已结束，升级后即可继续操作沙盘和获取 AI 个性化诊断。",
-    daysRemaining: 0,
-  };
+  return expiredState("试用已结束，升级后即可继续操作沙盘并获取 AI 个性化评定。", subscriptionExpiresAt);
 }
 
 export function canUserOperate(
   tier: SubscriptionTier | undefined,
   trialExpiresAt: string | undefined,
+  subscriptionExpiresAtOrNow?: string | Date | undefined,
 ): boolean {
-  return resolveSubscriptionState(tier, trialExpiresAt).canOperate;
+  return resolveSubscriptionState(tier, trialExpiresAt, subscriptionExpiresAtOrNow).canOperate;
 }

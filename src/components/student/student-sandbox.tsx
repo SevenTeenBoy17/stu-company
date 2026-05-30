@@ -84,9 +84,9 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   async function loadState() {
     const response = await fetch("/api/sim/state", { cache: "no-store" });
-    const payload = (await response.json()) as { error?: string; state?: SimulationState };
+    const payload = (await response.json()) as { error?: string; message?: string; state?: SimulationState };
     if (!response.ok || !payload.state) {
-      throw new Error(payload.error ?? "无法读取当前沙盘。");
+      throw new Error(payload.message ?? payload.error ?? "无法读取当前沙盘。");
     }
     setState(payload.state);
   }
@@ -104,7 +104,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     });
     const payload = (await response.json()) as { error?: string; state?: SimulationState; message?: string };
     if (!response.ok) {
-      throw new Error(payload.error ?? "提交失败。");
+      throw new Error(payload.message ?? payload.error ?? "提交失败。");
     }
     if (payload.state) {
       setState(payload.state);
@@ -293,6 +293,26 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                 {state.market.round.headline}
               </h2>
               <p className="mt-3 text-base leading-8 text-slate-600">{state.market.event.description}</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    state.market.event.signal === "利好"
+                      ? "bg-rose-100 text-rose-700"
+                      : state.market.event.signal === "利空"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {state.market.event.signal}
+                </span>
+                <span className="text-sm font-bold text-slate-900">{state.market.event.title}</span>
+                {state.market.event.teachingConcept && (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                    本回合知识点 · {state.market.event.teachingConcept}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-sm leading-7 text-slate-500">{state.market.event.coachingCue}</p>
             </div>
             <button
               type="button"

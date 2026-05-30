@@ -1,71 +1,102 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
-const STEPS = [
+type StepId =
+  | "welcome"
+  | "capital"
+  | "assets"
+  | "first-trade"
+  | "risk"
+  | "event-card"
+  | "ready";
+
+interface OnboardingStep {
+  id: StepId;
+  title: string;
+  concept: string;
+  mrBrown: string;
+  action: string;
+  interactive?: "capital" | "trade" | "quiz" | "event";
+  concepts?: Array<{ term: string; desc: string }>;
+}
+
+const STEPS: OnboardingStep[] = [
   {
     id: "welcome",
-    title: "你好，新同学",
-    mrBrown: "我是 Mr.Brown，你的理财教练。接下来我会用 5 分钟带你认识这个沙盘 — 别担心，不用真钱。",
-    visual: "wave",
-    action: "开始探索",
+    title: "欢迎来到 Brown Zone",
+    concept: "教育模拟",
+    mrBrown:
+      "我是 Mr.Brown，你的财商导师。今天我们把一间教室变成 12 回合经济沙盘：不用真钱，也不追求一夜暴富，只练习如何做出更稳的判断。",
+    action: "开始第一步",
   },
   {
     id: "capital",
-    title: "你有 12 万启动资金",
-    mrBrown: "这是你的班级基金，12 万块！你的目标很简单：12 周之后，让它变多。怎么做到？接下来我一步一步教你。",
-    visual: "cash",
-    highlight: "cash",
-    interactive: true,
-    action: "我觉得能涨到这个数 →",
+    title: "你获得一笔班级启动资金",
+    concept: "本金",
+    mrBrown:
+      "本金就是你一开始能使用的资源。它不是用来一次性押上的筹码，而是要被分配到现金、储蓄、资产和机会里，帮助你穿过不同市场环境。",
+    action: "设定目标",
+    interactive: "capital",
   },
   {
     id: "assets",
-    title: "先认识两个朋友",
-    mrBrown: "股票像坐过山车 — 刺激但不确定；债券像储蓄罐 — 安全但慢。先记住这两个就够了。",
-    visual: "compare",
+    title: "认识两类基础资产",
+    concept: "风险与收益",
+    mrBrown:
+      "收益越高，不确定性通常也越高。股票像速度快的赛车，债券像更稳的安全车；青少年第一次学习投资时，先理解它们的差别就足够了。",
+    action: "我理解了",
     concepts: [
-      { term: "风险", emoji: "🎢", desc: "可能亏钱的程度" },
-      { term: "收益", emoji: "📈", desc: "可能赚钱的程度" },
+      { term: "股票", desc: "可能涨得快，也可能短期波动大。" },
+      { term: "债券", desc: "通常更稳，适合观察现金流和防守。" },
     ],
-    action: "我懂了",
   },
   {
     id: "first-trade",
-    title: "试试你的第一笔交易",
-    mrBrown: "点下面的按钮，买入 10 股「智造先锋股票」。不用怕，这是模拟的 — 先感受一下什么叫「下单」。",
-    visual: "trade",
-    interactive: true,
+    title: "完成第一笔模拟下单",
+    concept: "下单",
+    mrBrown:
+      "下单就是把你的判断变成一条可执行指令。先试着买入少量模拟股票，重点不是赚多少，而是看清楚价格、数量和现金会怎样变化。",
     action: "确认买入 10 股",
+    interactive: "trade",
   },
   {
-    id: "time-skip",
-    title: "时间快进！",
-    mrBrown: "市场动了！你觉得你的组合是涨了还是跌了？先猜一下，然后看看答案。",
-    visual: "chart",
-    interactive: true,
+    id: "risk",
+    title: "市场会改变结果",
+    concept: "波动",
+    mrBrown:
+      "波动指价格在一段时间内上下变化。一次上涨不代表永远正确，一次下跌也不代表彻底失败；真正重要的是你有没有留出应对变化的空间。",
     action: "揭晓结果",
+    interactive: "quiz",
   },
   {
     id: "event-card",
-    title: "你的第一张事件卡",
-    mrBrown: "市场不是随机的 — 有新闻、政策和经济数据在影响它。每回合你都会收到一张事件卡，帮你理解发生了什么。",
-    visual: "event",
+    title: "读懂第一张金融事件卡",
+    concept: "利好与利空",
+    mrBrown:
+      "市场不是凭空变化的。新闻、政策、行业竞争和情绪都会影响资产价格；事件卡会帮你把复杂信息拆成一句话、一个影响和一个行动提醒。",
+    action: "进入最后一步",
+    interactive: "event",
     concepts: [
-      { term: "利好", emoji: "🟢", desc: "对市场有正面影响的消息" },
-      { term: "利空", emoji: "🔴", desc: "对市场有负面影响的消息" },
+      { term: "利好", desc: "对某类资产可能产生正面影响。" },
+      { term: "利空", desc: "对某类资产可能产生压力或风险。" },
     ],
-    action: "我知道了",
   },
   {
     id: "ready",
-    title: "你的旅程开始了",
-    mrBrown: "接下来的 10 个回合，你可以自由决策。每几回合我会给你一份行为分析报告，帮你发现自己的投资「习惯」。加油！🎯",
-    visual: "launch",
-    action: "进入沙盘",
+    title: "你的决策旅程开始了",
+    concept: "复盘",
+    mrBrown:
+      "接下来你会在每个回合做选择、看结果、写下原因。复盘不是找借口，而是把一次次行动变成更清楚的判断规则。",
+    action: "进入学生策略台",
   },
 ];
+
+// Fixed teaching outcome for the prediction step. Deliberately a DOWN move so the
+// onboarding does not anchor teens on "markets always go up", and framed against
+// the learner's own guess so the predict→reveal loop actually closes.
+const MARKET_REVEAL = { direction: "down" as const, netWorth: 119_460, changePct: -0.45 };
 
 interface OnboardingFlowProps {
   userName: string;
@@ -78,38 +109,89 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
   const [targetGuess, setTargetGuess] = useState(150_000);
   const [marketGuess, setMarketGuess] = useState<"up" | "down" | null>(null);
   const [marketRevealed, setMarketRevealed] = useState(false);
+  const [aiTextByStep, setAiTextByStep] = useState<Record<string, string>>({});
+  const [aiProviderByStep, setAiProviderByStep] = useState<Record<string, "remote" | "fallback">>({});
   const current = STEPS[step];
 
+  useEffect(() => {
+    let cancelled = false;
+    if (aiTextByStep[current.id]) return;
+
+    fetch("/api/ai/onboarding", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        stepId: current.id,
+        stepTitle: current.title,
+        concept: current.concept,
+        fallbackText: current.mrBrown,
+        progressLabel: `${step + 1}/${STEPS.length}`,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("onboarding_ai_unavailable");
+        return (await response.json()) as { text?: string; provider?: "remote" | "fallback" };
+      })
+      .then((payload) => {
+        if (cancelled || !payload.text) return;
+        setAiTextByStep((value) => ({ ...value, [current.id]: payload.text ?? "" }));
+        setAiProviderByStep((value) => ({
+          ...value,
+          [current.id]: payload.provider ?? "fallback",
+        }));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAiTextByStep((value) => ({
+          ...value,
+          [current.id]: current.mrBrown.replace("新同学", userName),
+        }));
+        setAiProviderByStep((value) => ({ ...value, [current.id]: "fallback" }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aiTextByStep, current, step, userName]);
+
+  const completeOnboarding = useCallback(async () => {
+    try {
+      await fetch("/api/auth/onboarding", { method: "POST" });
+    } catch {
+      // Do not trap the student in onboarding if the completion write is delayed.
+    }
+    onComplete();
+  }, [onComplete]);
+
   const handleNext = useCallback(async () => {
-    if (step === 3 && !tradeExecuted) {
+    if (current.id === "first-trade" && !tradeExecuted) {
       setTradeExecuted(true);
       return;
     }
 
-    if (step === 4 && !marketRevealed) {
+    if (current.id === "risk" && !marketRevealed) {
       setMarketRevealed(true);
       return;
     }
 
     if (step >= STEPS.length - 1) {
-      try {
-        await fetch("/api/auth/onboarding", { method: "POST" });
-      } catch {}
-      onComplete();
+      await completeOnboarding();
       return;
     }
 
-    setStep((s) => s + 1);
-  }, [step, tradeExecuted, marketRevealed, onComplete]);
+    setStep((value) => value + 1);
+  }, [completeOnboarding, current.id, marketRevealed, step, tradeExecuted]);
 
   const progress = ((step + 1) / STEPS.length) * 100;
+  const aiText = aiTextByStep[current.id] ?? current.mrBrown.replace("新同学", userName);
+  const aiProvider = aiProviderByStep[current.id];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 p-4 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative mx-4 w-full max-w-lg overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl"
+        className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl"
       >
         <div className="h-1 bg-[var(--ink-100)]">
           <motion.div
@@ -120,168 +202,198 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
           />
         </div>
 
-        <div className="px-6 pb-8 pt-6 sm:px-8">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-widest text-[var(--ink-400)]">
-              Mr.Brown 的第一堂课 · {step + 1}/{STEPS.length}
+        <div className="grid gap-0 md:grid-cols-[0.95fr_1.35fr]">
+          <aside className="bg-[var(--ink-900)] px-6 py-7 text-white md:px-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[var(--brand)]">
+              Brown Zone 新手村
             </p>
-            <button
-              type="button"
-              onClick={async () => {
-                try { await fetch("/api/auth/onboarding", { method: "POST" }); } catch {}
-                onComplete();
-              }}
-              className="text-xs text-[var(--ink-400)] hover:text-[var(--ink-600)]"
-            >
-              跳过引导
-            </button>
-          </div>
+            <h2 className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
+            <p className="mt-3 text-sm leading-7 text-white/68">
+              每一步只学习一个概念，先做轻量选择，再进入正式沙盘。
+            </p>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/8 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-white/45">本步概念</p>
+              <p className="mt-2 text-xl font-semibold">{current.concept}</p>
+              <p className="mt-2 text-xs leading-6 text-white/58">进度 {step + 1}/{STEPS.length}</p>
+            </div>
+          </aside>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={current.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25 }}
-            >
-              <h2 className="font-display mt-4 text-2xl font-semibold text-[var(--ink-900)]">
-                {current.title}
-              </h2>
-
-              <div className="mt-5 flex gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--amber-100)] text-lg">
-                  🎓
-                </div>
-                <div className="rounded-2xl rounded-tl-md bg-[var(--ink-50)] px-4 py-3 text-sm leading-relaxed text-[var(--ink-700)]">
-                  {current.mrBrown.replace("新同学", userName)}
-                </div>
-              </div>
-
-              {current.concepts && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {current.concepts.map((c) => (
-                    <div key={c.term} className="rounded-xl border border-[var(--ink-200)] px-4 py-3">
-                      <span className="text-lg">{c.emoji}</span>
-                      <p className="mt-1 text-sm font-semibold text-[var(--ink-800)]">{c.term}</p>
-                      <p className="mt-0.5 text-xs text-[var(--ink-500)]">{c.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {current.id === "first-trade" && tradeExecuted && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 rounded-xl border border-[var(--down-200)] bg-[var(--down-50)] px-4 py-3"
-                >
-                  <p className="text-sm font-medium text-[var(--down-700)]">
-                    交易成功！你现在持有 10 股「智造先锋股票」，现金减少了 ¥1,120。
-                  </p>
-                </motion.div>
-              )}
-
-              {current.id === "capital" && (
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-center gap-4 rounded-xl bg-[var(--amber-50)] px-5 py-4">
-                    <span className="font-mono text-3xl font-bold text-[var(--amber-700)]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      ¥120,000
-                    </span>
-                    <span className="text-xs text-[var(--ink-500)]">初始资金</span>
-                  </div>
-                  <div className="rounded-xl border border-[var(--ink-200)] px-4 py-3">
-                    <p className="text-xs text-[var(--ink-500)]">你觉得 12 周后能变成多少？拖动试试：</p>
-                    <input
-                      type="range"
-                      min={80000}
-                      max={200000}
-                      step={5000}
-                      value={targetGuess}
-                      onChange={(e) => setTargetGuess(Number(e.target.value))}
-                      className="mt-2 w-full accent-[var(--brand)]"
-                    />
-                    <p className="mt-1 text-center font-mono text-lg font-bold text-[var(--amber-600)]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      ¥{targetGuess.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {current.id === "time-skip" && !marketRevealed && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMarketGuess("up")}
-                    className={`rounded-xl border-2 px-4 py-4 text-center transition-colors ${marketGuess === "up" ? "border-[var(--up-400)] bg-[var(--up-50)]" : "border-[var(--ink-200)]"}`}
-                  >
-                    <span className="text-2xl">📈</span>
-                    <p className="mt-1 text-sm font-semibold">我觉得涨了</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMarketGuess("down")}
-                    className={`rounded-xl border-2 px-4 py-4 text-center transition-colors ${marketGuess === "down" ? "border-[var(--down-400)] bg-[var(--down-50)]" : "border-[var(--ink-200)]"}`}
-                  >
-                    <span className="text-2xl">📉</span>
-                    <p className="mt-1 text-sm font-semibold">我觉得跌了</p>
-                  </button>
-                </div>
-              )}
-
-              {current.id === "time-skip" && marketRevealed && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 space-y-2"
-                >
-                  <div className="flex items-center gap-2 rounded-xl bg-[var(--up-50)] px-5 py-4">
-                    <span className="font-mono text-2xl font-bold text-[var(--up-600)]" style={{ fontVariantNumeric: "tabular-nums" }}>
-                      ¥120,672
-                    </span>
-                    <span className="text-sm text-[var(--up-500)]">+0.56%</span>
-                  </div>
-                  <p className="text-xs text-[var(--ink-500)]">
-                    {marketGuess === "up"
-                      ? "猜对了！但别高兴太早 — 下一回合可能就会变。"
-                      : "这次涨了，但你的谨慎也没有错 — 市场随时可能反转。"}
-                  </p>
-                </motion.div>
-              )}
-
-              {current.id === "event-card" && (
-                <div className="mt-4 rounded-xl border border-[var(--ink-200)] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded bg-[var(--up-100)] px-2 py-0.5 text-xs font-medium text-[var(--up-600)]">利好</span>
-                    <span className="text-sm font-medium text-[var(--ink-800)]">消费与科技订单共同回暖</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-relaxed text-[var(--ink-500)]">
-                    企业补库存与居民消费恢复同步出现，成长资产的风险偏好上升。
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
-          <div className="mt-6 flex items-center justify-between">
-            {step > 0 && (
+          <main className="px-6 pb-7 pt-6 sm:px-8">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-400)]">
+                Mr.Brown AI 教学
+              </p>
               <button
                 type="button"
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="text-sm text-[var(--ink-400)] hover:text-[var(--ink-600)]"
+                onClick={completeOnboarding}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
               >
-                ← 上一步
+                跳过引导
               </button>
-            )}
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={handleNext}
-              className="rounded-full bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--amber-600)]"
-            >
-              {current.id === "first-trade" && !tradeExecuted ? "确认买入 10 股" : current.action}
-            </button>
-          </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.section
+                key={current.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div className="mt-5 rounded-3xl border border-[var(--ink-100)] bg-[var(--ink-50)] p-5">
+                  <div className="flex gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--amber-100)] text-sm font-bold text-[var(--amber-700)]">
+                      AI
+                    </div>
+                    <div>
+                      <p className="text-sm leading-7 text-[var(--ink-700)]">{aiText}</p>
+                      <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--ink-400)]">
+                        {aiProvider === "remote" ? "AI 已参与生成" : "本地教学脚本兜底"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {current.concepts && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {current.concepts.map((concept) => (
+                      <div
+                        key={concept.term}
+                        className="rounded-2xl border border-[var(--ink-200)] bg-white px-4 py-3"
+                      >
+                        <p className="text-sm font-semibold text-[var(--ink-900)]">{concept.term}</p>
+                        <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">{concept.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {current.interactive === "capital" && (
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-2xl bg-[var(--amber-50)] px-5 py-4">
+                      <p className="text-xs font-medium text-[var(--ink-500)]">初始模拟本金</p>
+                      <p className="mt-1 font-mono text-3xl font-bold text-[var(--amber-700)]">
+                        ￥120,000
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--ink-200)] px-4 py-3">
+                      <p className="text-xs text-[var(--ink-500)]">你希望 12 回合后净值到哪里？</p>
+                      <input
+                        type="range"
+                        min={80_000}
+                        max={200_000}
+                        step={5_000}
+                        value={targetGuess}
+                        onChange={(event) => setTargetGuess(Number(event.target.value))}
+                        className="mt-3 w-full accent-[var(--brand)]"
+                      />
+                      <p className="mt-2 text-center font-mono text-lg font-bold text-[var(--amber-700)]">
+                        ￥{targetGuess.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {current.interactive === "trade" && tradeExecuted && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 rounded-2xl border border-[var(--up-200)] bg-[var(--up-50)] px-4 py-3"
+                  >
+                    <p className="text-sm font-semibold text-[var(--up-700)]">
+                      模拟交易成功：买入 10 股“智造先锋股票”，现金减少 ￥1,120。
+                    </p>
+                    <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">
+                      这不是投资建议，只是帮助你看懂下单后资产和现金如何变化。
+                    </p>
+                  </motion.div>
+                )}
+
+                {current.interactive === "quiz" && !marketRevealed && (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {(["up", "down"] as const).map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => setMarketGuess(choice)}
+                        className={`rounded-2xl border-2 px-4 py-4 text-left transition-colors ${
+                          marketGuess === choice
+                            ? "border-[var(--brand)] bg-[var(--amber-50)]"
+                            : "border-[var(--ink-200)] bg-white"
+                        }`}
+                      >
+                        <span className="text-sm font-semibold text-[var(--ink-900)]">
+                          {choice === "up" ? "我猜会上涨" : "我猜会下跌"}
+                        </span>
+                        <p className="mt-1 text-xs leading-5 text-[var(--ink-500)]">
+                          先形成判断，再看结果。
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {current.interactive === "quiz" && marketRevealed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 rounded-2xl bg-[var(--down-50)] px-5 py-4"
+                  >
+                    <p className="font-mono text-2xl font-bold text-[var(--down-700)]">
+                      ￥{MARKET_REVEAL.netWorth.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--down-600)]">
+                      {MARKET_REVEAL.changePct}%
+                    </p>
+                    <p className="mt-2 text-xs leading-6 text-[var(--ink-500)]">
+                      {marketGuess === MARKET_REVEAL.direction
+                        ? "这次市场确实下跌了，你猜对了方向。但请记住：猜对方向不代表你的理由一定对 —— 真正的高手复盘看的是逻辑，而不是这一次的输赢。"
+                        : marketGuess === "up"
+                          ? "这次和你猜的相反，市场下跌了。短期涨跌很难预测，猜错方向不代表你失败 —— 重要的是你有没有为「万一看错」留出应对空间。"
+                          : "结果揭晓了。市场短期充满不确定性，方向谁都说不准；与其押对一次，不如练习在任何方向下都能稳住组合。"}
+                    </p>
+                  </motion.div>
+                )}
+
+                {current.interactive === "event" && (
+                  <div className="mt-4 rounded-2xl border border-[var(--ink-200)] bg-white px-4 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[var(--up-100)] px-2.5 py-1 text-xs font-semibold text-[var(--up-700)]">
+                        利好
+                      </span>
+                      <span className="text-sm font-semibold text-[var(--ink-900)]">
+                        消费与科技订单回暖
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-6 text-[var(--ink-500)]">
+                      企业补库存与居民消费恢复同步出现，成长资产的风险偏好上升。先观察，不要一次性满仓。
+                    </p>
+                  </div>
+                )}
+              </motion.section>
+            </AnimatePresence>
+
+            <div className="mt-6 flex items-center justify-between gap-3">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setStep((value) => Math.max(0, value - 1))}
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
+                >
+                  上一步
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={handleNext}
+                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--amber-600)]"
+              >
+                {current.interactive === "trade" && !tradeExecuted ? "确认买入 10 股" : current.action}
+              </button>
+            </div>
+          </main>
         </div>
       </motion.div>
     </div>

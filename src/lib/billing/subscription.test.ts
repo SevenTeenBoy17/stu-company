@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveSubscriptionState, canUserOperate } from "./subscription";
+
+import { canUserOperate, resolveSubscriptionState } from "./subscription";
 
 describe("resolveSubscriptionState", () => {
   const now = new Date("2026-05-27T10:00:00Z");
@@ -10,6 +11,16 @@ describe("resolveSubscriptionState", () => {
     expect(state.canOperate).toBe(true);
     expect(state.aiTier).toBe("full");
     expect(state.bannerMessage).toBeNull();
+    expect(state.canUsePersonalAiAssessment).toBe(true);
+  });
+
+  it("expires a standard tier when subscriptionExpiresAt has passed", () => {
+    const expiredAt = new Date(now);
+    expiredAt.setDate(expiredAt.getDate() - 1);
+    const state = resolveSubscriptionState("standard", undefined, expiredAt.toISOString(), now);
+    expect(state.status).toBe("expired");
+    expect(state.canOperate).toBe(false);
+    expect(state.canUsePersonalAiAssessment).toBe(false);
   });
 
   it("returns active for premium tier", () => {
@@ -18,32 +29,34 @@ describe("resolveSubscriptionState", () => {
     expect(state.canOperate).toBe(true);
   });
 
-  it("returns trial for free tier within full trial window", () => {
+  it("returns full trial on day one of a three-day trial", () => {
     const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + 5);
+    trialEnd.setDate(trialEnd.getDate() + 3);
     const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
     expect(state.status).toBe("trial");
     expect(state.canOperate).toBe(true);
     expect(state.aiTier).toBe("full");
+    expect(state.canUsePersonalAiAssessment).toBe(true);
   });
 
-  it("returns trial_degraded when in degraded window (2 days left)", () => {
+  it("keeps full AI while more than one day of the trial remains", () => {
     const trialEnd = new Date(now);
     trialEnd.setDate(trialEnd.getDate() + 2);
+    const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
+    expect(state.status).toBe("trial");
+    expect(state.aiTier).toBe("full");
+    expect(state.canUsePersonalAiAssessment).toBe(true);
+  });
+
+  it("degrades to basic AI only on the final trial day", () => {
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + 1);
     const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
     expect(state.status).toBe("trial_degraded");
     expect(state.canOperate).toBe(true);
     expect(state.aiTier).toBe("basic");
-    expect(state.bannerMessage).toContain("试用还剩");
-  });
-
-  it("returns trial for the full trial window (4 days left)", () => {
-    const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + 4);
-    const state = resolveSubscriptionState("free", trialEnd.toISOString(), now);
-    expect(state.status).toBe("trial");
-    expect(state.aiTier).toBe("full");
-    expect(state.bannerMessage).toBeNull();
+    expect(state.canUsePersonalAiAssessment).toBe(false);
+    expect(state.bannerMessage).toContain("基础 AI 试用还剩");
   });
 
   it("returns expired when trial has passed", () => {
@@ -83,7 +96,7 @@ describe("canUserOperate", () => {
 
   it("allows active trial users", () => {
     const future = new Date();
-    future.setDate(future.getDate() + 5);
+    future.setDate(future.getDate() + 3);
     expect(canUserOperate("free", future.toISOString())).toBe(true);
   });
 });

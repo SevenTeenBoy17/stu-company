@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { WechatCheckoutButton } from "@/components/billing/wechat-checkout-button";
 import { SectionReveal } from "@/components/site/section-reveal";
 
 const plans = [
@@ -8,12 +9,12 @@ const plans = [
     name: "游客体验",
     price: "免费",
     period: "",
-    description: "注册即可体验，快速了解 Mr.Brown 经济沙盘。",
+    description: "适合第一次了解 Mr.Brown 经济沙盘，先体验核心叙事与基础 AI 反馈。",
     features: [
-      "1 天全功能试用",
-      "2 天 AI 基础版诊断",
-      "12 回合沙盘体验",
-      "基础行为信号检测",
+      "2 天完整 AI 评定",
+      "最后 1 天基础 AI 提示",
+      "可体验 12 回合沙盘框架",
+      "试用结束后仍可查看历史",
     ],
     cta: "立即注册",
     href: "/demo",
@@ -21,48 +22,57 @@ const plans = [
   },
   {
     id: "standard",
-    name: "标准版",
+    name: "个人月卡",
     price: "¥15",
     period: "/月",
-    description: "适合个人学生和家庭，完整的 AI 财商教练体验。",
+    description: "适合个人学生和家庭使用，开通后恢复完整 AI 财商教练能力。",
     features: [
       "12 回合完整沙盘",
-      "AI 个性化行为诊断",
+      "AI 个性化行为评定",
       "6 维能力雷达图",
       "历史复盘看板",
-      "排行榜参与",
+      "排行榜与挑战记录",
       "月度成长报告",
     ],
-    cta: "开通标准版",
+    cta: "开通月卡",
     href: "/demo",
     highlight: true,
   },
   {
-    id: "premium",
-    name: "校园旗舰版",
-    price: "¥299",
-    period: "/学期/班级",
-    description: "适合学校和教育机构，包含教师端与家长端完整功能。",
+    id: "school",
+    name: "学校授权",
+    price: "按班级",
+    period: "/学期",
+    description: "适合学校和教育机构，包含批量账号、教师后台、课堂数据和阶段报告。",
     features: [
-      "标准版全部功能",
-      "教师指挥舱",
-      "多班级管理",
-      "班际排行与挑战赛",
-      "家长成长报告推送",
-      "行为分析报告导出",
-      "定制赛事主题",
-      "优先客服支持",
+      "个人月卡全部能力",
+      "教师任务与班级管理",
+      "批量账号与邀请码",
+      "班际排行榜和挑战赛",
+      "家长成长报告视图",
+      "行为分析与导出",
+      "定制课堂主题",
+      "优先支持与培训",
     ],
-    cta: "联系我们",
+    cta: "联系开通",
     href: "/demo",
     highlight: false,
   },
 ];
 
 const faqs = [
-  { q: "试用结束后我的数据会丢失吗？", a: "不会。试用结束后你仍然可以查看历史记录和复盘报告，只是无法进行新的操作。升级后立即恢复完整功能。" },
-  { q: "学生可以自己付款吗？", a: "不可以。所有支付必须由家长或教师账号完成，学生端不显示任何价格信息。" },
-  { q: "校园版可以先试用再采购吗？", a: "可以。教师可以先用免费版带一个班级体验，确认效果后再升级到校园旗舰版。" },
+  {
+    q: "试用结束后数据会丢失吗？",
+    a: "不会。试用结束后仍可查看历史记录和复盘报告，只是不能继续推进新回合或获取完整个性化 AI 评定。",
+  },
+  {
+    q: "学生端会直接展示付款金额吗？",
+    a: "不会。学生端保持教育模拟语境，付款入口主要由家长、教师或管理员完成。",
+  },
+  {
+    q: "学校授权能先试点再采购吗？",
+    a: "可以。教师可先带一个班级体验，确认课堂效果后再升级到学校授权。",
+  },
 ];
 
 export default function PricingPage() {
@@ -72,10 +82,10 @@ export default function PricingPage() {
         <SectionReveal className="bz-ink-panel rounded-3xl px-6 py-10 text-center sm:px-10 sm:py-14">
           <p className="bz-eyebrow-inverse">订阅方案</p>
           <h1 className="font-display mx-auto mt-5 max-w-3xl text-display-lg font-semibold leading-tight sm:text-display-xl">
-            一杯奶茶的价格，给孩子一学期的财商课
+            个人月卡 + 学校授权，兼顾自助体验和课堂规模化。
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/70">
-            不接触真实交易，不做开户导流。纯教育属性，家长放心，学校合规。30 天无理由退款。
+            不接触真实交易，不做开户导流。产品以教育模拟、AI 复盘和家校共育为核心。
           </p>
         </SectionReveal>
       </section>
@@ -92,19 +102,17 @@ export default function PricingPage() {
                   : "border border-[var(--ink-200)] bg-[var(--surface)]"
               }`}
             >
-              {plan.highlight && (
+              {plan.highlight ? (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--brand)] px-4 py-1 text-xs font-bold text-white shadow-md">
-                  最受欢迎
+                  推荐体验
                 </span>
-              )}
+              ) : null}
               <h2 className="text-xl font-semibold text-[var(--ink-900)]">{plan.name}</h2>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="font-display text-5xl font-bold text-[var(--ink-900)]" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <span className="font-display text-5xl font-bold text-[var(--ink-900)] tabular-nums">
                   {plan.price}
                 </span>
-                {plan.period && (
-                  <span className="text-sm text-[var(--ink-500)]">{plan.period}</span>
-                )}
+                {plan.period ? <span className="text-sm text-[var(--ink-500)]">{plan.period}</span> : null}
               </div>
               <p className="mt-3 text-sm leading-6 text-[var(--ink-500)]">{plan.description}</p>
 
@@ -114,23 +122,27 @@ export default function PricingPage() {
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5 text-sm text-[var(--ink-700)]">
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--amber-100)] text-xs text-[var(--amber-700)]">
-                      &#10003;
+                      ✓
                     </span>
                     {feature}
                   </li>
                 ))}
               </ul>
 
-              <Link
-                href={plan.href}
-                className={`mt-8 block rounded-full px-6 py-3 text-center text-sm font-semibold transition-all ${
-                  plan.highlight
-                    ? "bg-[var(--brand)] text-white shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
-                    : "border border-[var(--ink-200)] text-[var(--ink-700)] hover:border-[var(--ink-300)] hover:bg-[var(--ink-50)]"
-                }`}
-              >
-                {plan.cta}
-              </Link>
+              {plan.id === "standard" ? (
+                <WechatCheckoutButton />
+              ) : (
+                <Link
+                  href={plan.href}
+                  className={`mt-8 block rounded-full px-6 py-3 text-center text-sm font-semibold transition-all ${
+                    plan.highlight
+                      ? "bg-[var(--brand)] text-white shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
+                      : "border border-[var(--ink-200)] text-[var(--ink-700)] hover:border-[var(--ink-300)] hover:bg-[var(--ink-50)]"
+                  }`}
+                >
+                  {plan.cta}
+                </Link>
+              )}
             </SectionReveal>
           ))}
         </div>
@@ -143,7 +155,11 @@ export default function PricingPage() {
         </SectionReveal>
         <div className="mx-auto mt-8 max-w-2xl space-y-4">
           {faqs.map((faq, index) => (
-            <SectionReveal key={faq.q} delay={index * 0.05} className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-5">
+            <SectionReveal
+              key={faq.q}
+              delay={index * 0.05}
+              className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-5"
+            >
               <p className="text-sm font-semibold text-[var(--ink-900)]">{faq.q}</p>
               <p className="mt-2 text-sm leading-relaxed text-[var(--ink-500)]">{faq.a}</p>
             </SectionReveal>
@@ -153,7 +169,7 @@ export default function PricingPage() {
 
       <section className="page-shell mt-12 text-center">
         <p className="text-xs text-[var(--ink-400)]">
-          所有方案支持 30 天无理由退款 · 学生端不显示价格信息 · 支付由家长或教师完成
+          个人月卡用于自助体验 · 学校授权用于批量账号和课堂管理 · 学生端不直接展示付款金额
         </p>
       </section>
     </div>

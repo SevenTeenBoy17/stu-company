@@ -74,11 +74,17 @@ export interface Holding {
 export interface EventCard {
   id: string;
   title: string;
-  category: "macro" | "policy" | "sentiment" | "competition";
+  category: "macro" | "policy" | "sentiment" | "competition" | "black_swan" | "behavior";
   signal: "利好" | "利空" | "中性";
   description: string;
   coachingCue: string;
+  teachingConcept?: string;
+  impactAssets?: AssetCategory[];
+  impactRange?: "low" | "medium" | "high";
+  stage?: "early" | "middle" | "late";
 }
+
+export type FinancialEventCard = EventCard;
 
 export interface ActionLog {
   id: string;
@@ -119,9 +125,56 @@ export interface ScenarioRun {
   actionLog: ActionLog[];
   snapshots: PortfolioSnapshot[];
   lastInsight?: string;
+  /**
+   * Seed for the per-run random-event engine (src/lib/event-engine.ts).
+   * Stored so a run is reproducible (a teacher can replay an identical scenario).
+   * Optional for backward compatibility: legacy runs without a seed fall back to
+   * the fixed `marketRounds` script and an event-free (deterministic) market.
+   */
+  seed?: number;
+  /** Per-round event ids chosen from `seed`; index 0 = round 1. */
+  eventTimeline?: string[];
 }
 
 export type SubscriptionTier = "free" | "standard" | "premium";
+export type PaymentChannel = "native" | "jsapi" | "mock";
+export type PaymentStatus = "pending" | "paid" | "closed" | "failed";
+
+export interface PaymentOrder {
+  id: string;
+  outTradeNo: string;
+  userId: string;
+  targetUserId: string;
+  tier: Exclude<SubscriptionTier, "free">;
+  channel: PaymentChannel;
+  amountFen: number;
+  description: string;
+  status: PaymentStatus;
+  codeUrl?: string;
+  prepayId?: string;
+  transactionId?: string;
+  paidAt?: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionGrant {
+  id: string;
+  userId: string;
+  orderId: string;
+  tier: Exclude<SubscriptionTier, "free">;
+  startsAt: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface BillingIntent {
+  purpose: "guest-upgrade";
+  userId: string;
+  tier: Exclude<SubscriptionTier, "free">;
+  expiresAt: string;
+}
 
 export interface UserRecord {
   id: string;
@@ -136,7 +189,20 @@ export interface UserRecord {
   tokenVersion?: number;
   trialExpiresAt?: string;
   subscriptionTier?: SubscriptionTier;
+  subscriptionExpiresAt?: string;
   onboardingCompleted?: number;
+  /** A1: ISO timestamp when the user confirmed their email; undefined = unverified. */
+  emailVerifiedAt?: string;
+}
+
+export interface GuestUpgradeResult {
+  redirectTo: "/student";
+  billingIntentToken: string;
+  billingIntent: BillingIntent;
+  user: Pick<
+    UserRecord,
+    "id" | "email" | "name" | "role" | "trialExpiresAt" | "subscriptionTier"
+  >;
 }
 
 export interface ProfileRecord {
