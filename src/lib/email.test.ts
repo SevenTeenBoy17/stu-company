@@ -5,6 +5,7 @@ import {
   passwordResetEmail,
   sendEmail,
   verificationEmail,
+  weeklyReportEmail,
 } from "@/lib/email";
 
 describe("email seam", () => {
@@ -34,5 +35,19 @@ describe("email seam", () => {
     const { html } = verificationEmail("<script>", "https://app.test/v");
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("escapes hostile values in the weekly report email body", () => {
+    const { html } = weeklyReportEmail({
+      ownerName: "<script>alert(1)</script>",
+      studentName: "<img src=x onerror=alert(1)>",
+      netWorth: 123_456,
+      round: 5,
+      persona: "<b>x</b>",
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("123,456");
   });
 });

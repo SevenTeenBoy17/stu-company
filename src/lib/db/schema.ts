@@ -163,6 +163,8 @@ export const scenarioRuns = pgTable("scenario_runs", {
 }, (table) => [
   index("scenario_runs_user_id_idx").on(table.userId),
   index("scenario_runs_classroom_id_idx").on(table.classroomId),
+  // Weekly season leaderboard filters by seed (current-season runs only).
+  index("scenario_runs_seed_idx").on(table.seed),
 ]);
 
 // H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,

@@ -120,9 +120,13 @@ export function resolveEventChoice(
   rng: () => number,
 ): { cashDelta: number; tone: "protect" | "hold" | "win" | "loss" } {
   if (outcome === "hold") return { cashDelta: 0, tone: "hold" };
-  if (outcome === "protect") return { cashDelta: -Math.round(netWorth * 0.02), tone: "protect" };
+  // Stake floor: an indebted (negative net-worth) student still has a meaningful,
+  // correctly-signed consequence — without it, a negative net worth would invert
+  // the sign and reward the wrong behaviour.
+  const stake = Math.max(netWorth, 20_000);
+  if (outcome === "protect") return { cashDelta: -Math.round(stake * 0.02), tone: "protect" };
   const win = rng() >= 0.5;
-  return { cashDelta: Math.round(netWorth * (win ? 0.22 : -0.18)), tone: win ? "win" : "loss" };
+  return { cashDelta: Math.round(stake * (win ? 0.22 : -0.18)), tone: win ? "win" : "loss" };
 }
 
 /** Resolve the event id for a round from a run's timeline, falling back when absent/out-of-range. */

@@ -52,31 +52,45 @@ export default function ResetPasswordPage() {
             </a>
           </div>
         ) : (
-          <div className="mt-4 space-y-4">
-            <p className="text-sm leading-6 text-[var(--ink-500)]">
-              {token ? "请设置一个新密码（至少 8 位，含字母和数字）。" : "缺少有效的重置令牌，请重新从邮件链接进入。"}
-            </p>
-            <label className="block">
-              <span className="text-xs font-semibold text-[var(--ink-500)]">新密码</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="new-password"
-                className="mt-2 w-full rounded-xl border border-[var(--ink-200)] bg-[var(--ink-50)] px-3 py-2.5 text-sm text-[var(--ink-900)] outline-none focus:border-[var(--brand)]"
-                placeholder="设置新密码"
-              />
-            </label>
-            {error ? <p className="text-sm font-medium text-[var(--error-500)]">{error}</p> : null}
-            <button
-              type="button"
-              onClick={submit}
-              disabled={isPending || !token || password.length < 8}
-              className="w-full rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
-            >
-              {isPending ? "正在重置…" : "确认重置密码"}
-            </button>
-          </div>
+          token ? (
+            <div className="mt-4 space-y-4">
+              <p className="text-sm leading-6 text-[var(--ink-500)]">
+                请设置一个新密码（至少 8 位，含字母和数字）。
+              </p>
+              <label className="block">
+                <span className="text-xs font-semibold text-[var(--ink-500)]">新密码</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
+                  className="mt-2 w-full rounded-xl border border-[var(--ink-200)] bg-[var(--ink-50)] px-3 py-2.5 text-sm text-[var(--ink-900)] outline-none focus:border-[var(--brand)]"
+                  placeholder="设置新密码"
+                />
+              </label>
+              {error ? <p className="text-sm font-medium text-[var(--error-500)]">{error}</p> : null}
+              <button
+                type="button"
+                onClick={submit}
+                disabled={isPending || password.length < 8}
+                className="w-full rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
+              >
+                {isPending ? "正在重置…" : "确认重置密码"}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <p className="text-sm leading-6 text-[var(--ink-500)]">
+                这个链接缺少有效的重置令牌，可能已过期。请重新发起找回密码。
+              </p>
+              <a
+                href="/demo"
+                className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
+              >
+                去登录页重新发起
+              </a>
+            </div>
+          )
         )}
       </div>
     </div>

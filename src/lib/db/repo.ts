@@ -40,6 +40,7 @@ import {
   canAddFamilyMember,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
+import { currentSeasonSeed } from "@/lib/season";
 import {
   advanceSimulationRun,
   applyEventChoice,
@@ -47,7 +48,6 @@ import {
   buildBehaviorSignals,
   buildGrowthReport,
   buildLeaderboard,
-  buildSeasonLeaderboard,
   buildSimulationState,
   createInitialRun,
   deriveInvestorPersona,
@@ -1116,14 +1116,24 @@ export async function getSeasonLeaderboard() {
   return withDb(
     "getSeasonLeaderboard",
     async (db) => {
-      const runRows = await db.select().from(scenarioRuns);
+      // Filter to the current season's runs in SQL (indexed) instead of scanning
+      // every historical run, then only load the users who own those runs.
+      const seed = currentSeasonSeed();
+      const runRows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(eq(scenarioRuns.seed, seed));
       const runs = runRows.map(toRun);
+      if (runs.length === 0) return [];
+
+      const ownerIds = [...new Set(runs.map((run) => run.userId))];
       const userRows = await db
         .select({ user: users, profile: profiles })
         .from(users)
-        .leftJoin(profiles, eq(profiles.userId, users.id));
+        .leftJoin(profiles, eq(profiles.userId, users.id))
+        .where(inArray(users.id, ownerIds));
       const userRecords = userRows.map((row) => toUserRecord(row.user, row.profile));
-      return buildSeasonLeaderboard(runs, userRecords);
+      return buildLeaderboard(runs, userRecords);
     },
     () => store.getSeasonLeaderboard(),
   );

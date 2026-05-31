@@ -154,6 +154,19 @@ describe("evaluatePersonalAiAccess (A1 verification gate)", () => {
     expect(access.ok).toBe(false);
     expect(access.reason).toBe("upgrade");
   });
+
+  it("returns 'upgrade' (not 'verify') for a trial_degraded user even when unverified", () => {
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + 1); // final trial day → trial_degraded
+    const degraded = resolveSubscriptionState("free", trialEnd.toISOString(), now);
+    expect(degraded.status).toBe("trial_degraded");
+    const access = evaluatePersonalAiAccess(degraded, {
+      emailVerified: false,
+      requireVerification: true,
+    });
+    expect(access.ok).toBe(false);
+    expect(access.reason).toBe("upgrade");
+  });
 });
 
 describe("canAddFamilyMember (premium family seats)", () => {

@@ -120,6 +120,16 @@ describe("event decision cards (E3)", () => {
   it("rejects an unknown choice id", () => {
     expect(() => applyEventChoice(decisionRun(), "no-such-choice")).toThrow();
   });
+
+  it("never drives cash negative on a losing choice and logs the cash delta", () => {
+    const run = createInitialRun("student-test", "class-test", "试点", 1);
+    run.eventTimeline = ["event-leverage-temptation", ...(run.eventTimeline ?? []).slice(1)];
+    run.cash = 3_000; // less than any gamble loss → must floor at 0, never go negative
+    const next = applyEventChoice(run, "lev-borrow");
+    expect(next.cash).toBeGreaterThanOrEqual(0);
+    expect(next.actionLog[0]?.type).toBe("event");
+    expect(typeof next.actionLog[0]?.amount).toBe("number");
+  });
 });
 
 function runWithNetWorths(values: number[]): ScenarioRun {

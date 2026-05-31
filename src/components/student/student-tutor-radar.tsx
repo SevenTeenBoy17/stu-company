@@ -44,15 +44,20 @@ export function StudentTutorRadar({
 }) {
   const scores = payload.metrics.map((metric) => metric.score);
   const radarPath = buildRadarPath(scores);
-  const [shared, setShared] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
 
   async function sharePersona() {
     if (!personaShareText) return;
+    if (!navigator.clipboard?.writeText) {
+      setShareState("failed");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(personaShareText);
-      setShared(true);
+      setShareState("copied");
+      window.setTimeout(() => setShareState("idle"), 2000);
     } catch {
-      setShared(false);
+      setShareState("failed");
     }
   }
 
@@ -125,13 +130,26 @@ export function StudentTutorRadar({
               </div>
               <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
               {personaShareText ? (
-                <button
-                  type="button"
-                  onClick={sharePersona}
-                  className="mt-3 rounded-full border border-[#f0c89a] bg-white px-3 py-1.5 text-xs font-bold text-[#b96621] transition-colors hover:bg-[#fff7ee]"
-                >
-                  {shared ? "已复制，去分享吧" : "复制分享我的投资人格"}
-                </button>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={sharePersona}
+                    className="rounded-full border border-brand-warm bg-white px-3 py-1.5 text-xs font-bold text-brand-ink transition-colors hover:bg-brand-subtle"
+                  >
+                    {shareState === "copied" ? "已复制，去分享吧" : "复制分享我的投资人格"}
+                  </button>
+                  {shareState === "failed" ? (
+                    <div className="mt-2">
+                      <p className="text-xs text-fg-muted">复制失败，请长按下方文字手动复制：</p>
+                      <textarea
+                        readOnly
+                        value={personaShareText}
+                        onFocus={(event) => event.currentTarget.select()}
+                        className="mt-1 min-h-20 w-full rounded-lg border border-border bg-bg-muted p-2 text-xs text-fg-default"
+                      />
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -143,11 +161,11 @@ export function StudentTutorRadar({
               <div key={metric.id} className="rounded-[1.2rem] bg-slate-950/[0.03] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-slate-950">{metric.label}</p>
-                  <p className="text-lg font-bold text-[#d43c33]">{metric.score}</p>
+                  <p className="text-lg font-bold text-brand-ink">{metric.score}</p>
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-white">
                   <div
-                    className={cn("h-full rounded-full", metric.score >= 70 ? "bg-[#d43c33]" : "bg-[#f08a38]")}
+                    className={cn("h-full rounded-full", metric.score >= 70 ? "bg-brand" : "bg-brand-warm")}
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>

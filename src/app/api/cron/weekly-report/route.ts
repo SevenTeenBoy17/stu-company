@@ -13,8 +13,11 @@ export const dynamic = "force-dynamic";
  * Premium family owner a digest of their student(s) via Resend.
  */
 export async function GET(request: Request) {
-  // When CRON_SECRET is set, require it (Vercel Cron sends it). If unset (local),
-  // allow so the endpoint can be exercised in development.
+  // In production CRON_SECRET is mandatory — never expose this endpoint
+  // unauthenticated. Locally it may be unset for manual testing.
+  if (process.env.NODE_ENV === "production" && !env.CRON_SECRET) {
+    return apiError("service_unavailable", "Cron 未配置密钥，已拒绝。", 503);
+  }
   if (env.CRON_SECRET) {
     const authorization = request.headers.get("authorization");
     if (authorization !== `Bearer ${env.CRON_SECRET}`) {

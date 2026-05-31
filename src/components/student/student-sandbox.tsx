@@ -378,10 +378,17 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     (entry) => entry.type === "event" && entry.round === state.run.currentRound,
                   );
                   if (decided) {
+                    // red=up positive, green=down negative (Chinese market convention).
+                    const tone =
+                      decided.amount > 0
+                        ? "bg-up-soft text-up"
+                        : decided.amount < 0
+                          ? "bg-down-soft text-down"
+                          : "bg-slate-100 text-slate-800";
                     return (
-                      <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-800">{decided.label}</p>
-                        <p className="mt-1 text-xs text-slate-500">
+                      <div className={`mt-4 rounded-2xl px-4 py-3 ${tone}`}>
+                        <p className="text-sm font-semibold">{decided.label}</p>
+                        <p className="mt-1 text-xs opacity-80">
                           现金变化 {decided.amount >= 0 ? "+" : ""}
                           {decided.amount.toLocaleString()} · 推进回合后会进入新的局面。
                         </p>

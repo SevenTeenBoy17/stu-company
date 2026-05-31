@@ -148,6 +148,23 @@ describe("resolveEventChoice", () => {
     expect(tones.has("win")).toBe(true);
     expect(tones.has("loss")).toBe(true);
   });
+
+  it("never rewards an indebted (negative net worth) player — protect stays a cost", () => {
+    const protectNeg = resolveEventChoice(-50_000, "protect", makeRng(1));
+    expect(protectNeg.cashDelta).toBeLessThanOrEqual(0);
+    const protectZero = resolveEventChoice(0, "protect", makeRng(1));
+    expect(protectZero.cashDelta).toBeLessThanOrEqual(0);
+  });
+
+  it("keeps a gamble's cash delta sign aligned with its tone for any net worth", () => {
+    for (const nw of [-80_000, 0, 50_000, 200_000]) {
+      for (let s = 1; s <= 6; s++) {
+        const result = resolveEventChoice(nw, "gamble", makeRng(s));
+        if (result.tone === "win") expect(result.cashDelta).toBeGreaterThan(0);
+        if (result.tone === "loss") expect(result.cashDelta).toBeLessThan(0);
+      }
+    }
+  });
 });
 
 describe("eventIdForRound", () => {

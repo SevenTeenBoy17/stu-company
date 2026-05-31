@@ -1,6 +1,6 @@
 // @vitest-environment node
 // jose's webapi build needs Node's Uint8Array realm; jsdom's differs.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import {
@@ -26,5 +26,18 @@ describe("password reset token", () => {
   it("rejects a token minted for a different purpose (no cross-use)", async () => {
     const emailToken = await createEmailVerificationToken("user-9", "teen@example.com");
     expect(await verifyPasswordResetToken(emailToken)).toBeNull();
+  });
+
+  it("rejects a token after its 1-hour TTL has elapsed", async () => {
+    const token = await createPasswordResetToken("user-9", "teen@example.com");
+    vi.useFakeTimers();
+    // Advance past the 1h TTL.
+    vi.setSystemTime(new Date(Date.now() + 2 * 60 * 60 * 1000));
+    const result = await verifyPasswordResetToken(token);
+    expect(result).toBeNull();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 });

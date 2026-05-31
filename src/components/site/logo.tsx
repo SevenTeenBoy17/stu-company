@@ -13,8 +13,8 @@ export function Logo({ className }: { className?: string }) {
         <span className="font-display text-xl font-semibold tracking-tight text-white">
           Brown Zone
         </span>
-        <span className="text-[0.68rem] uppercase tracking-[0.28em] text-white/45">
-          Mr.Brown Sandbox
+        <span className="text-[0.68rem] tracking-[0.12em] text-white/45">
+          Mr.Brown 经济沙盘
         </span>
       </div>
     </div>
