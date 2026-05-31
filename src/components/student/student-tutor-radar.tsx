@@ -138,6 +138,13 @@ export function StudentTutorRadar({
                   >
                     {shareState === "copied" ? "已复制，去分享吧" : "复制分享我的投资人格"}
                   </button>
+                  <span role="status" aria-live="polite" className="sr-only">
+                    {shareState === "copied"
+                      ? "已复制到剪贴板"
+                      : shareState === "failed"
+                        ? "复制失败，请手动复制下方文字"
+                        : ""}
+                  </span>
                   {shareState === "failed" ? (
                     <div className="mt-2">
                       <p className="text-xs text-fg-muted">复制失败，请长按下方文字手动复制：</p>

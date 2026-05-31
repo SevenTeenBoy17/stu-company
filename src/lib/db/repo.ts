@@ -2038,7 +2038,11 @@ export async function fulfillPaymentOrder(input: {
           .set({
             subscriptionTier: order.tier,
             subscriptionExpiresAt: expiresAt,
-            tokenVersion: sql`${users.tokenVersion} + 1`,
+            // NB: do NOT bump tokenVersion here. Tier is read fresh from the DB on
+            // every request, so the new subscription takes effect immediately
+            // without a session refresh — and bumping it would invalidate the
+            // payer's own live session when they buy Premium for themselves
+            // (family self-purchase), 401-ing the very next status fetch.
           })
           .where(eq(users.id, order.targetUserId));
 

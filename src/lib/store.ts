@@ -866,7 +866,8 @@ export async function fulfillPaymentOrder(input: {
 
   user.subscriptionTier = order.tier;
   user.subscriptionExpiresAt = expiresAt.toISOString();
-  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  // Do NOT bump tokenVersion on fulfillment — see repo.ts: tier is read fresh per
+  // request, and bumping kills the payer's own session on family self-purchase.
 
   const grant: SubscriptionGrant = {
     id: createId("grant"),

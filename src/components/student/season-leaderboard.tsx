@@ -78,7 +78,7 @@ export function SeasonLeaderboard() {
                   }`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="w-6 shrink-0 text-center text-xs font-bold text-fg-subtle">
+                    <span className="w-6 shrink-0 text-center text-xs font-bold text-fg-muted">
                       #{entry.rank}
                     </span>
                     <span className="truncate text-sm">
@@ -96,7 +96,7 @@ export function SeasonLeaderboard() {
         </>
       )}
 
-      <p className="mt-3 text-[11px] leading-4 text-fg-subtle">
+      <p className="mt-3 text-[11px] leading-4 text-fg-muted">
         排名只反映教育模拟里的决策表现，不构成任何投资建议。
       </p>
     </section>
