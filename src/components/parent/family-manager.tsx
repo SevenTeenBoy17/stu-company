@@ -190,12 +190,16 @@ export function FamilyManager() {
             ) : null}
           </div>
           {seatsLeft > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4">
+              <p className="mb-2 text-xs leading-5 text-fg-muted">
+                只能添加已与你的家长账号绑定的孩子。若还没绑定，请让孩子在注册时使用你的家长邀请码，或联系老师/管理员完成亲子绑定后再添加。
+              </p>
+              <div className="flex flex-wrap gap-2">
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="孩子的注册邮箱"
+                placeholder="已绑定孩子的注册邮箱"
                 className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
               />
               <button
@@ -206,6 +210,7 @@ export function FamilyManager() {
               >
                 添加孩子
               </button>
+              </div>
             </div>
           ) : null}
         </div>
