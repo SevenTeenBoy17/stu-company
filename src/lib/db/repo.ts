@@ -333,6 +333,7 @@ function toRun(row: DbRun): ScenarioRun {
     eventTimeline: Array.isArray(row.eventTimeline)
       ? (row.eventTimeline as string[])
       : undefined,
+    netWorth: row.netWorth ?? undefined,
   };
 }
 
@@ -358,6 +359,7 @@ function toRunInsert(run: ScenarioRun): typeof scenarioRuns.$inferInsert {
     lastInsight: run.lastInsight,
     seed: run.seed ?? null,
     eventTimeline: run.eventTimeline ?? null,
+    netWorth: run.netWorth ?? null,
   };
 }
 
@@ -380,6 +382,7 @@ function toRunUpdate(run: ScenarioRun) {
     lastInsight: run.lastInsight,
     seed: run.seed ?? null,
     eventTimeline: run.eventTimeline ?? null,
+    netWorth: run.netWorth ?? null,
   };
 }
 
@@ -994,21 +997,26 @@ export async function applyFamilyEntitlement(user: UserRecord): Promise<UserReco
   return withDb(
     "applyFamilyEntitlement",
     async (db) => {
+      // Single join (1 query on the hot per-request student auth path) instead of
+      // a familyMembers lookup + a separate owner fetch.
       const [row] = await db
-        .select()
+        .select({
+          tier: users.subscriptionTier,
+          trialExpiresAt: users.trialExpiresAt,
+          subscriptionExpiresAt: users.subscriptionExpiresAt,
+        })
         .from(familyMembers)
+        .innerJoin(users, eq(users.id, familyMembers.ownerUserId))
         .where(eq(familyMembers.studentUserId, user.id))
         .limit(1);
       if (!row) return user;
-      const owner = await selectUserById(db, row.ownerUserId);
-      if (!owner) return user;
-      const state = resolveSubscriptionState(
-        owner.subscriptionTier,
-        owner.trialExpiresAt,
-        owner.subscriptionExpiresAt,
-      );
-      if (state.status === "active" && owner.subscriptionTier === "premium") {
-        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt: owner.subscriptionExpiresAt };
+      const tier = (["free", "standard", "premium"].includes(row.tier)
+        ? row.tier
+        : "free") as UserRecord["subscriptionTier"];
+      const subscriptionExpiresAt = maybeIso(row.subscriptionExpiresAt);
+      const state = resolveSubscriptionState(tier, maybeIso(row.trialExpiresAt), subscriptionExpiresAt);
+      if (state.status === "active" && tier === "premium") {
+        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt };
       }
       return user;
     },
@@ -1123,10 +1131,14 @@ export async function getSeasonLeaderboard() {
       // Filter to the current season's runs in SQL (indexed) instead of scanning
       // every historical run, then only load the users who own those runs.
       const seed = currentSeasonSeed();
+      // Rank in SQL (composite index seed, net_worth) and take only the top N,
+      // instead of loading every season run and sorting in the app.
       const runRows = await db
         .select()
         .from(scenarioRuns)
-        .where(eq(scenarioRuns.seed, seed));
+        .where(eq(scenarioRuns.seed, seed))
+        .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
+        .limit(20);
       const runs = runRows.map(toRun);
       if (runs.length === 0) return [];
 

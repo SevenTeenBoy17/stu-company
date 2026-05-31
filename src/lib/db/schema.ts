@@ -160,11 +160,14 @@ export const scenarioRuns = pgTable("scenario_runs", {
   // runs created before the engine existed — those fall back to the fixed script.
   seed: integer("seed"),
   eventTimeline: jsonb("event_timeline"),
+  // Materialized latest net worth so the weekly season leaderboard can rank in SQL.
+  netWorth: integer("net_worth"),
 }, (table) => [
   index("scenario_runs_user_id_idx").on(table.userId),
   index("scenario_runs_classroom_id_idx").on(table.classroomId),
-  // Weekly season leaderboard filters by seed (current-season runs only).
-  index("scenario_runs_seed_idx").on(table.seed),
+  // Weekly season leaderboard: filter by seed, rank by net worth — composite index
+  // serves the ORDER BY net_worth DESC LIMIT N top-N query.
+  index("scenario_runs_seed_net_worth_idx").on(table.seed, table.netWorth),
 ]);
 
 // H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,

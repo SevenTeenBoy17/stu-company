@@ -252,6 +252,8 @@ function commitSnapshot(run: ScenarioRun) {
   }
 
   run.lastInsight = evaluated.reflection;
+  // Materialized for the SQL season leaderboard (ORDER BY net_worth ... LIMIT).
+  run.netWorth = evaluated.netWorth;
 }
 
 export function createInitialRun(

@@ -149,6 +149,9 @@ export interface ScenarioRun {
   seed?: number;
   /** Per-round event ids chosen from `seed`; index 0 = round 1. */
   eventTimeline?: string[];
+  /** Materialized latest net worth (kept in sync in commitSnapshot) so the weekly
+   * season leaderboard can ORDER BY ... LIMIT in SQL instead of loading every run. */
+  netWorth?: number;
 }
 
 export type SubscriptionTier = "free" | "standard" | "premium";

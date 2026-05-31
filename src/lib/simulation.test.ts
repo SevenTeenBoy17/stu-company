@@ -191,6 +191,13 @@ describe("buildSeasonLeaderboard (global weekly season)", () => {
     const run = createInitialRun("u3", "c", "x");
     expect(run.seed).toBe(currentSeasonSeed());
   });
+
+  it("materializes run.netWorth (for the SQL season ranking) in sync with the latest snapshot", () => {
+    let run = createInitialRun("u4", "c", "x", 1);
+    expect(run.netWorth).toBe(run.snapshots.at(-1)?.netWorth);
+    run = advanceSimulationRun(run);
+    expect(run.netWorth).toBe(run.snapshots.at(-1)?.netWorth);
+  });
 });
 
 describe("investor persona (premium deep report)", () => {
