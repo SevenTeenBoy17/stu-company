@@ -26,21 +26,31 @@ import {
   aiSessions,
   assignments,
   classrooms,
+  familyMembers,
   growthReports,
   inviteCodes,
+  paymentOrders,
   profiles,
   scenarioRuns,
   studentParentLinks,
+  subscriptionGrants,
   users,
 } from "@/lib/db/schema";
 import {
+  canAddFamilyMember,
+  resolveSubscriptionState,
+} from "@/lib/billing/subscription";
+import { currentSeasonSeed } from "@/lib/season";
+import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   buildBehaviorSignals,
   buildGrowthReport,
   buildLeaderboard,
   buildSimulationState,
   createInitialRun,
+  deriveInvestorPersona,
 } from "@/lib/simulation";
 import * as store from "@/lib/store";
 import type {
@@ -49,11 +59,17 @@ import type {
   AiChatSession,
   Assignment,
   Classroom,
+  FamilyDigest,
   GrowthReport,
   InviteCode,
+  PaymentChannel,
+  PaymentOrder,
+  PaymentStatus,
   ProfileRecord,
   Role,
   ScenarioRun,
+  SubscriptionGrant,
+  SubscriptionTier,
   UserRecord,
 } from "@/lib/types";
 import { createId } from "@/lib/utils";
@@ -67,9 +83,11 @@ type DbClassroom = typeof classrooms.$inferSelect;
 type DbRun = typeof scenarioRuns.$inferSelect;
 type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
+type DbPaymentOrder = typeof paymentOrders.$inferSelect;
+type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
-const DB_QUERY_TIMEOUT_MS = 5000;
+const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 
 // In production, default to NO memory fallback so DB outages surface as 5xx
 // rather than silently returning seed data. Set ALLOW_MEMORY_FALLBACK=true to
@@ -140,6 +158,13 @@ function maybeUndefined<T>(value: T | null | undefined) {
   return value === null ? undefined : value;
 }
 
+function maybeIso(value: Date | string | number | null | undefined) {
+  if (value === null || value === undefined) return undefined;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
 function toUserRecord(row: DbUser, profile?: DbProfile | null): UserRecord {
   return {
     id: row.id,
@@ -151,9 +176,60 @@ function toUserRecord(row: DbUser, profile?: DbProfile | null): UserRecord {
     classroomId: maybeUndefined(row.classroomId),
     studentLinkId: maybeUndefined(row.studentLinkId),
     tokenVersion: row.tokenVersion ?? 0,
-    trialExpiresAt: row.trialExpiresAt?.toISOString(),
+    trialExpiresAt: maybeIso(row.trialExpiresAt),
     subscriptionTier: (["free", "standard", "premium"].includes(row.subscriptionTier) ? row.subscriptionTier : "free") as UserRecord["subscriptionTier"],
+    subscriptionExpiresAt: maybeIso(row.subscriptionExpiresAt),
     onboardingCompleted: row.onboardingCompleted ?? 0,
+    emailVerifiedAt: maybeIso(row.emailVerifiedAt),
+  };
+}
+
+function toAdminUserSummary(user: UserRecord) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    name: user.name,
+    title: user.title,
+    classroomId: user.classroomId,
+    tokenVersion: user.tokenVersion ?? 0,
+    trialExpiresAt: user.trialExpiresAt,
+    subscriptionTier: user.subscriptionTier ?? "free",
+    subscriptionExpiresAt: user.subscriptionExpiresAt,
+    onboardingCompleted: user.onboardingCompleted ?? 0,
+  };
+}
+
+function toPaymentOrder(row: DbPaymentOrder): PaymentOrder {
+  return {
+    id: row.id,
+    outTradeNo: row.outTradeNo,
+    userId: row.userId,
+    targetUserId: row.targetUserId,
+    tier: row.tier as Exclude<SubscriptionTier, "free">,
+    channel: row.channel as PaymentChannel,
+    amountFen: row.amountFen,
+    description: row.description,
+    status: row.status as PaymentStatus,
+    codeUrl: maybeUndefined(row.codeUrl),
+    prepayId: maybeUndefined(row.prepayId),
+    transactionId: maybeUndefined(row.transactionId),
+    paidAt: maybeIso(row.paidAt),
+    expiresAt: maybeIso(row.expiresAt) ?? new Date().toISOString(),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+function toSubscriptionGrant(row: DbSubscriptionGrant): SubscriptionGrant {
+  return {
+    id: row.id,
+    userId: row.userId,
+    orderId: row.orderId,
+    tier: row.tier as Exclude<SubscriptionTier, "free">,
+    startsAt: maybeIso(row.startsAt) ?? new Date().toISOString(),
+    expiresAt: maybeIso(row.expiresAt) ?? new Date().toISOString(),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
   };
 }
 
@@ -207,13 +283,28 @@ function parseJsonbArray<S extends z.ZodTypeAny>(
   return parsed.data;
 }
 
-const EventHistorySchema = z.array(z.string());
-
-function toRun(row: DbRun): ScenarioRun {
-  const eventHistoryParsed = EventHistorySchema.safeParse(row.eventHistory);
-  if (!eventHistoryParsed.success) {
+function parseEventHistory(raw: unknown): string[] {
+  const parsed = z.array(z.unknown()).safeParse(raw);
+  if (!parsed.success) {
     throw new Error(`[repo] scenario_runs.eventHistory JSONB is malformed`);
   }
+
+  return parsed.data
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (entry && typeof entry === "object") {
+        const record = entry as Record<string, unknown>;
+        const readable =
+          record.title ?? record.name ?? record.label ?? record.id ?? record.type;
+        if (typeof readable === "string" && readable.trim()) return readable;
+      }
+      return null;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+}
+
+function toRun(row: DbRun): ScenarioRun {
+  const eventHistory = parseEventHistory(row.eventHistory);
 
   return {
     id: row.id,
@@ -230,7 +321,7 @@ function toRun(row: DbRun): ScenarioRun {
     ventureStake: row.ventureStake,
     ventureBasis: row.ventureBasis,
     holdings: parseJsonbArray(HoldingSchema, row.holdings, "holdings") as unknown as ScenarioRun["holdings"],
-    eventHistory: eventHistoryParsed.data,
+    eventHistory,
     actionLog: parseJsonbArray(ActionLogSchema, row.actionLog, "actionLog") as unknown as ScenarioRun["actionLog"],
     snapshots: parseJsonbArray(
       PortfolioSnapshotSchema,
@@ -238,6 +329,11 @@ function toRun(row: DbRun): ScenarioRun {
       "snapshots",
     ) as unknown as ScenarioRun["snapshots"],
     lastInsight: maybeUndefined(row.lastInsight),
+    seed: row.seed ?? undefined,
+    eventTimeline: Array.isArray(row.eventTimeline)
+      ? (row.eventTimeline as string[])
+      : undefined,
+    netWorth: row.netWorth ?? undefined,
   };
 }
 
@@ -261,6 +357,9 @@ function toRunInsert(run: ScenarioRun): typeof scenarioRuns.$inferInsert {
     actionLog: run.actionLog,
     snapshots: run.snapshots,
     lastInsight: run.lastInsight,
+    seed: run.seed ?? null,
+    eventTimeline: run.eventTimeline ?? null,
+    netWorth: run.netWorth ?? null,
   };
 }
 
@@ -281,6 +380,9 @@ function toRunUpdate(run: ScenarioRun) {
     actionLog: run.actionLog,
     snapshots: run.snapshots,
     lastInsight: run.lastInsight,
+    seed: run.seed ?? null,
+    eventTimeline: run.eventTimeline ?? null,
+    netWorth: run.netWorth ?? null,
   };
 }
 
@@ -336,6 +438,60 @@ async function selectClassroomById(executor: DbExecutor, classroomId?: string) {
   if (!classroomId) return null;
   const [row] = await executor.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
   return row ? toClassroom(row) : null;
+}
+
+async function selectDefaultClassroomId(executor: DbExecutor, fallbackTeacherId: string) {
+  const [existing] = await executor.select().from(classrooms).limit(1);
+  if (existing) return existing.id;
+
+  const classroomId = "sandbox-open";
+  await executor
+    .insert(classrooms)
+    .values({
+      id: classroomId,
+      name: "开放沙盘",
+      region: "线上",
+      teacherId: fallbackTeacherId,
+      challengeTheme: "自由探索",
+      schoolRank: 0,
+    })
+    .onConflictDoNothing();
+  return classroomId;
+}
+
+async function ensureStudentSandbox(executor: DbExecutor, user: UserRecord) {
+  if (user.role !== "student") {
+    throw new Error("当前账号不是学生账号。");
+  }
+
+  let classroomId = user.classroomId;
+  if (!classroomId) {
+    classroomId = await selectDefaultClassroomId(executor, user.id);
+    await executor.update(users).set({ classroomId }).where(eq(users.id, user.id));
+    user.classroomId = classroomId;
+  }
+
+  let classroom = await selectClassroomById(executor, classroomId);
+  if (!classroom) {
+    const fallbackClassroomId = await selectDefaultClassroomId(executor, user.id);
+    await executor.update(users).set({ classroomId: fallbackClassroomId }).where(eq(users.id, user.id));
+    user.classroomId = fallbackClassroomId;
+    classroomId = fallbackClassroomId;
+    classroom = await selectClassroomById(executor, fallbackClassroomId);
+  }
+
+  if (!classroom) {
+    throw new Error("沙盘课堂暂时不可用，请稍后重试。");
+  }
+
+  let run = await selectRunForUser(executor, user.id);
+  if (!run) {
+    const initialRun = createInitialRun(user.id, classroomId);
+    await executor.insert(scenarioRuns).values(toRunInsert(initialRun)).onConflictDoNothing();
+    run = (await selectRunForUser(executor, user.id)) ?? initialRun;
+  }
+
+  return { user, classroom, run };
 }
 
 async function selectAllUsers(executor: DbExecutor) {
@@ -490,6 +646,17 @@ async function findInviteByCodeWithExecutor(executor: DbExecutor, code: string) 
   return row ? toInvite(row) : null;
 }
 
+export async function markEmailVerified(userId: string) {
+  return withDb(
+    "markEmailVerified",
+    async (db) => {
+      await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
+      return true;
+    },
+    () => store.markEmailVerified(userId),
+  );
+}
+
 export async function authenticateUser(email: string, password: string) {
   return withDb(
     "authenticateUser",
@@ -508,6 +675,7 @@ export async function registerUserByInvite(input: {
   email: string;
   password: string;
 }) {
+  const normalizedEmail = input.email.trim().toLowerCase();
   return withDb(
     "registerUserByInvite",
     async (db) =>
@@ -539,12 +707,12 @@ export async function registerUserByInvite(input: {
 
         const invite = toInvite(reservedRows[0]);
 
-        const existingUser = await selectUserByEmail(tx, input.email);
+        const existingUser = await selectUserByEmail(tx, normalizedEmail);
         if (existingUser) throw new Error("这个邮箱已经被注册过了。");
 
         const newUser: UserRecord = {
           id: createId("user"),
-          email: input.email,
+          email: normalizedEmail,
           passwordHash: await hashPassword(input.password),
           role: invite.role,
           name: input.name,
@@ -608,7 +776,7 @@ export async function registerUserByInvite(input: {
 
         return newUser;
       }),
-    () => store.registerUserByInvite(input),
+    () => store.registerUserByInvite({ ...input, email: normalizedEmail }),
   );
 }
 
@@ -618,11 +786,12 @@ export async function registerUserByEmail(input: {
   password: string;
   inviteCode?: string;
 }) {
+  const normalizedEmail = input.email.trim().toLowerCase();
   return withDb(
     "registerUserByEmail",
     async (db) =>
       db.transaction(async (tx) => {
-        const existingUser = await selectUserByEmail(tx, input.email);
+        const existingUser = await selectUserByEmail(tx, normalizedEmail);
         if (existingUser) throw new Error("这个邮箱已经被注册过了。");
 
         let role: UserRecord["role"] = "student";
@@ -653,11 +822,11 @@ export async function registerUserByEmail(input: {
         }
 
         const trialEnd = new Date();
-        trialEnd.setDate(trialEnd.getDate() + 4);
+        trialEnd.setDate(trialEnd.getDate() + 3);
 
         const newUser: UserRecord = {
           id: createId("user"),
-          email: input.email,
+          email: normalizedEmail,
           passwordHash: await hashPassword(input.password),
           role,
           name: input.name,
@@ -717,7 +886,7 @@ export async function registerUserByEmail(input: {
 
         return newUser;
       }),
-    () => store.registerUserByEmail(input),
+    () => store.registerUserByEmail({ ...input, email: normalizedEmail }),
   );
 }
 
@@ -726,8 +895,9 @@ export async function markOnboardingCompleted(userId: string) {
     "markOnboardingCompleted",
     async (db) => {
       await db.update(users).set({ onboardingCompleted: 1 }).where(eq(users.id, userId));
+      return true;
     },
-    () => {},
+    () => store.markOnboardingCompleted(userId),
   );
 }
 
@@ -750,23 +920,19 @@ export async function getSimulationStateForUser(userId: string) {
     "getSimulationStateForUser",
     async (db) => {
       const user = await selectUserById(db, userId);
-      if (!user || user.role !== "student" || !user.classroomId) {
+      if (!user || user.role !== "student") {
         throw new Error("当前账号没有可用的学生沙盘。");
       }
 
-      const classroom = await selectClassroomById(db, user.classroomId);
-      const run = await selectRunForUser(db, userId);
-      if (!classroom || !run) {
-        throw new Error("未找到对应的班级或沙盘进度。");
-      }
+      const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
 
       const [allUsers, allRuns] = await Promise.all([selectAllUsers(db), selectAllRuns(db)]);
       return buildSimulationState(
-        user,
-        classroom,
-        run,
-        allRuns.filter((item) => item.classroomId === user.classroomId),
-        allUsers.filter((item) => item.classroomId === user.classroomId),
+        ready.user,
+        ready.classroom,
+        ready.run,
+        allRuns.filter((item) => item.classroomId === ready.user.classroomId),
+        allUsers.filter((item) => item.classroomId === ready.user.classroomId),
       );
     },
     () => store.getSimulationStateForUser(userId),
@@ -790,6 +956,268 @@ export async function applyActionForUser(
         return updated;
       }),
     () => store.applyActionForUser(userId, input),
+  );
+}
+
+export async function applyEventChoiceForUser(userId: string, choiceId: string) {
+  return withDb(
+    "applyEventChoiceForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = applyEventChoice(run, choiceId);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.applyEventChoiceForUser(userId, choiceId),
+  );
+}
+
+export async function findFamilyOwnerForStudent(studentUserId: string) {
+  return withDb(
+    "findFamilyOwnerForStudent",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(familyMembers)
+        .where(eq(familyMembers.studentUserId, studentUserId))
+        .limit(1);
+      return row?.ownerUserId ?? null;
+    },
+    () => store.findFamilyOwnerForStudent(studentUserId),
+  );
+}
+
+/** Upgrade a student to Premium while their family owner's subscription is active. */
+export async function applyFamilyEntitlement(user: UserRecord): Promise<UserRecord> {
+  if (user.role !== "student") return user;
+  return withDb(
+    "applyFamilyEntitlement",
+    async (db) => {
+      // Single join (1 query on the hot per-request student auth path) instead of
+      // a familyMembers lookup + a separate owner fetch.
+      const [row] = await db
+        .select({
+          tier: users.subscriptionTier,
+          trialExpiresAt: users.trialExpiresAt,
+          subscriptionExpiresAt: users.subscriptionExpiresAt,
+        })
+        .from(familyMembers)
+        .innerJoin(users, eq(users.id, familyMembers.ownerUserId))
+        .where(eq(familyMembers.studentUserId, user.id))
+        .limit(1);
+      if (!row) return user;
+      const tier = (["free", "standard", "premium"].includes(row.tier)
+        ? row.tier
+        : "free") as UserRecord["subscriptionTier"];
+      const subscriptionExpiresAt = maybeIso(row.subscriptionExpiresAt);
+      const state = resolveSubscriptionState(tier, maybeIso(row.trialExpiresAt), subscriptionExpiresAt);
+      if (state.status === "active" && tier === "premium") {
+        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt };
+      }
+      return user;
+    },
+    () => store.applyFamilyEntitlement(user),
+  );
+}
+
+export async function listFamilyMembers(ownerUserId: string) {
+  return withDb(
+    "listFamilyMembers",
+    async (db) => {
+      const rows = await db
+        .select({ m: familyMembers, p: profiles, u: users })
+        .from(familyMembers)
+        .innerJoin(users, eq(users.id, familyMembers.studentUserId))
+        .leftJoin(profiles, eq(profiles.userId, familyMembers.studentUserId))
+        .where(eq(familyMembers.ownerUserId, ownerUserId));
+      return rows.map(({ m, p, u }) => ({
+        id: m.id,
+        ownerUserId: m.ownerUserId,
+        studentUserId: m.studentUserId,
+        createdAt: m.createdAt.toISOString(),
+        studentName: p?.name ?? u.email,
+        studentEmail: u.email,
+      }));
+    },
+    () => store.listFamilyMembers(ownerUserId),
+  );
+}
+
+export async function addFamilyMember(ownerUserId: string, studentUserId: string) {
+  return withDb(
+    "addFamilyMember",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const owner = await selectUserById(tx, ownerUserId);
+        const student = await selectUserById(tx, studentUserId);
+        if (!owner || !student) throw new Error("用户不存在。");
+        if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+
+        const state = resolveSubscriptionState(
+          owner.subscriptionTier,
+          owner.trialExpiresAt,
+          owner.subscriptionExpiresAt,
+        );
+        if (!(state.status === "active" && owner.subscriptionTier === "premium")) {
+          throw new Error("只有高级版家长才能创建家庭组。");
+        }
+
+        const [link] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(
+            and(
+              eq(studentParentLinks.parentUserId, ownerUserId),
+              eq(studentParentLinks.studentUserId, studentUserId),
+            ),
+          )
+          .limit(1);
+        if (!link) throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+
+        const [existing] = await tx
+          .select()
+          .from(familyMembers)
+          .where(eq(familyMembers.studentUserId, studentUserId))
+          .limit(1);
+        if (existing) throw new Error("该学生已在一个家庭组中。");
+
+        // Lock this owner's existing family rows so concurrent adds serialize and
+        // cannot both pass the seat-cap check (TOCTOU over-subscription).
+        const current = await tx
+          .select()
+          .from(familyMembers)
+          .where(eq(familyMembers.ownerUserId, ownerUserId))
+          .for("update");
+        if (!canAddFamilyMember(current.length, state.features.maxStudents)) {
+          throw new Error(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
+        }
+
+        const id = createId("fam");
+        await tx.insert(familyMembers).values({ id, ownerUserId, studentUserId });
+        return { id, ownerUserId, studentUserId, createdAt: new Date().toISOString() };
+      }),
+    () => store.addFamilyMember(ownerUserId, studentUserId),
+  );
+}
+
+export async function removeFamilyMember(ownerUserId: string, studentUserId: string) {
+  return withDb(
+    "removeFamilyMember",
+    async (db) => {
+      const deleted = await db
+        .delete(familyMembers)
+        .where(
+          and(
+            eq(familyMembers.ownerUserId, ownerUserId),
+            eq(familyMembers.studentUserId, studentUserId),
+          ),
+        )
+        .returning();
+      return deleted.length > 0;
+    },
+    () => store.removeFamilyMember(ownerUserId, studentUserId),
+  );
+}
+
+/** Global weekly season leaderboard across all runs that used this week's seed. */
+export async function getSeasonLeaderboard() {
+  return withDb(
+    "getSeasonLeaderboard",
+    async (db) => {
+      // Filter to the current season's runs in SQL (indexed) instead of scanning
+      // every historical run, then only load the users who own those runs.
+      const seed = currentSeasonSeed();
+      // Rank in SQL (composite index seed, net_worth) and take only the top N,
+      // instead of loading every season run and sorting in the app.
+      const runRows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(eq(scenarioRuns.seed, seed))
+        .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
+        .limit(20);
+      const runs = runRows.map(toRun);
+      if (runs.length === 0) return [];
+
+      const ownerIds = [...new Set(runs.map((run) => run.userId))];
+      const userRows = await db
+        .select({ user: users, profile: profiles })
+        .from(users)
+        .leftJoin(profiles, eq(profiles.userId, users.id))
+        .where(inArray(users.id, ownerIds));
+      const userRecords = userRows.map((row) => toUserRecord(row.user, row.profile));
+      return buildLeaderboard(runs, userRecords);
+    },
+    () => store.getSeasonLeaderboard(),
+  );
+}
+
+/** Weekly digests for the Premium family report email cron. */
+export async function listPremiumFamilyDigests(): Promise<FamilyDigest[]> {
+  return withDb(
+    "listPremiumFamilyDigests",
+    async (db) => {
+      const members = await db.select().from(familyMembers);
+      const digests: FamilyDigest[] = [];
+      for (const member of members) {
+        const owner = await selectUserById(db, member.ownerUserId);
+        if (!owner) continue;
+        const state = resolveSubscriptionState(
+          owner.subscriptionTier,
+          owner.trialExpiresAt,
+          owner.subscriptionExpiresAt,
+        );
+        if (!(state.status === "active" && owner.subscriptionTier === "premium")) continue;
+
+        const student = await selectUserById(db, member.studentUserId);
+        const [runRow] = await db
+          .select()
+          .from(scenarioRuns)
+          .where(eq(scenarioRuns.userId, member.studentUserId))
+          .limit(1);
+        if (!student || !runRow) continue;
+        const run = toRun(runRow);
+        digests.push({
+          ownerEmail: owner.email,
+          ownerName: owner.name,
+          studentName: student.name,
+          netWorth: run.snapshots.at(-1)?.netWorth ?? 0,
+          round: run.currentRound,
+          persona: deriveInvestorPersona(run).label,
+        });
+      }
+      return digests;
+    },
+    () => store.listPremiumFamilyDigests(),
+  );
+}
+
+/** Premium season replay: reset the user's run to a fresh seed (same row id). */
+export async function replayRunForUser(userId: string) {
+  return withDb(
+    "replayRunForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        // Off-season practice seed (random) so a replay gives fresh variety and
+        // does not collide with the fair weekly-season leaderboard.
+        const fresh = createInitialRun(
+          userId,
+          run.classroomId,
+          run.scenarioName,
+          (Math.floor(Math.random() * 0x7fffffff) >>> 0) || 1,
+        );
+        fresh.id = run.id;
+        await tx.update(scenarioRuns).set(toRunUpdate(fresh)).where(eq(scenarioRuns.id, run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return fresh;
+      }),
+    () => store.replayRunForUser(userId),
   );
 }
 
@@ -931,40 +1359,139 @@ export async function getParentOverview(userId: string) {
   );
 }
 
+function isSuperAdminUser(user?: UserRecord | null) {
+  return user?.id === "superadmin" || user?.email.toLowerCase() === "superadmin";
+}
+
+export async function canUserPayForTarget(payerId: string, targetUserId: string) {
+  return withDb(
+    "canUserPayForTarget",
+    async (db) => {
+      const [payer, target] = await Promise.all([
+        selectUserById(db, payerId),
+        selectUserById(db, targetUserId),
+      ]);
+      if (!payer || !target) return false;
+
+      if (payer.id === target.id) {
+        return payer.role !== "student";
+      }
+
+      if (isSuperAdminUser(payer)) return true;
+
+      if (payer.role === "teacher") {
+        return target.role === "student" && Boolean(payer.classroomId) && target.classroomId === payer.classroomId;
+      }
+
+      if (payer.role === "parent") {
+        const [link] = await db
+          .select()
+          .from(studentParentLinks)
+          .where(
+            and(
+              eq(studentParentLinks.parentUserId, payer.id),
+              eq(studentParentLinks.studentUserId, target.id),
+            ),
+          )
+          .limit(1);
+        return Boolean(link);
+      }
+
+      return false;
+    },
+    () => store.canUserPayForTarget(payerId, targetUserId),
+  );
+}
+
+export async function listSubscriptionTargetsForUser(userId: string) {
+  return withDb(
+    "listSubscriptionTargetsForUser",
+    async (db) => {
+      const payer = await selectUserById(db, userId);
+      if (!payer) return [];
+
+      let targets: UserRecord[] = [];
+      if (isSuperAdminUser(payer)) {
+        targets = (await selectAllUsers(db)).filter((user) => user.role === "student");
+      } else if (payer.role === "teacher" && payer.classroomId) {
+        targets = (await selectAllUsers(db)).filter(
+          (user) => user.role === "student" && user.classroomId === payer.classroomId,
+        );
+      } else if (payer.role === "parent") {
+        const links = await db
+          .select()
+          .from(studentParentLinks)
+          .where(eq(studentParentLinks.parentUserId, payer.id));
+        const studentIds = links.map((link) => link.studentUserId);
+        if (studentIds.length > 0) {
+          const rows = await db.select({ user: users, profile: profiles })
+            .from(users)
+            .leftJoin(profiles, eq(profiles.userId, users.id))
+            .where(inArray(users.id, studentIds));
+          targets = rows.map((row) => toUserRecord(row.user, row.profile));
+        }
+      }
+
+      return targets.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        classroomId: user.classroomId,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionExpiresAt: user.subscriptionExpiresAt,
+      }));
+    },
+    () => store.listSubscriptionTargetsForUser(userId),
+  );
+}
+
 export async function getAdminOverview() {
   try {
     return await withDb(
       "getAdminOverview",
       async (db) => {
-        const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows] = await Promise.all([
+        const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows, orderRows] = await Promise.all([
           selectAllUsers(db),
           selectAllRuns(db),
           db.select().from(classrooms),
           db.select().from(inviteCodes),
           db.select().from(assignments).orderBy(desc(assignments.createdAt)),
+          db.select().from(paymentOrders),
         ]);
         const leaderboard = buildLeaderboard(allRuns, allUsers);
+        const now = Date.now();
+        const standardUsers = allUsers.filter((user) => user.subscriptionTier === "standard" || user.subscriptionTier === "premium");
+        const trialUsers = allUsers.filter(
+          (user) =>
+            user.subscriptionTier === "free" &&
+            user.trialExpiresAt &&
+            new Date(user.trialExpiresAt).getTime() > now,
+        );
+        const paidOrders = orderRows.filter((order) => order.status === "paid");
 
         return {
           metrics: [
-            { label: "演示班级", value: `${classroomRows.length}` },
-            { label: "模块总数", value: `${learningModules.length}` },
-            { label: "邀请码池", value: `${inviteRows.length}` },
-            { label: "活跃学生", value: `${allUsers.filter((item) => item.role === "student").length}` },
+            { label: "账号席位", value: `${allUsers.length}` },
+            { label: "试用中", value: `${trialUsers.length}` },
+            { label: "标准订阅", value: `${standardUsers.length}` },
+            { label: "已支付订单", value: `${paidOrders.length}` },
           ],
+          business: {
+            seats: allUsers.length,
+            trialUsers: trialUsers.length,
+            standardUsers: standardUsers.length,
+            schoolLicenses: classroomRows.length,
+            paidOrders: paidOrders.length,
+            pendingOrders: orderRows.filter((order) => order.status === "pending").length,
+            revenueFen: paidOrders.reduce((sum, order) => sum + order.amountFen, 0),
+            modules: learningModules.length,
+          },
           invites: inviteRows.map(toInvite),
           classrooms: classroomRows.map(toClassroom),
           topUsers: leaderboard.slice(0, 5),
           assignments: assignmentRows.map(toAssignment).slice(0, 4),
-          users: allUsers.map((user) => ({
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            name: user.name,
-            title: user.title,
-            classroomId: user.classroomId,
-            tokenVersion: user.tokenVersion ?? 0,
-          })),
+          users: allUsers.map(toAdminUserSummary),
         };
       },
       () => store.getAdminOverview(),
@@ -1158,6 +1685,433 @@ export async function updateUserPassword(userId: string, password: string) {
       return toUserRecord(updated, profile[0]);
     },
     () => store.updateUserPassword(userId, password),
+  );
+}
+
+export async function updateUserEmail(userId: string, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return withDb(
+    "updateUserEmail",
+    async (db) => {
+      const existing = await selectUserByEmail(db, normalizedEmail);
+      if (existing && existing.id !== userId) {
+        throw new Error("这个邮箱已经被注册过了。");
+      }
+
+      const [updated] = await db
+        .update(users)
+        .set({
+          email: normalizedEmail,
+          tokenVersion: sql`${users.tokenVersion} + 1`,
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updated) throw new Error("用户不存在。");
+      const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+      return toUserRecord(updated, profile[0]);
+    },
+    () => store.updateUserEmail(userId, normalizedEmail),
+  );
+}
+
+export async function listAdminUsers(filters: {
+  query?: string;
+  role?: Role | "all";
+  subscription?: SubscriptionTier | "trial" | "all";
+} = {}) {
+  return withDb(
+    "listAdminUsers",
+    async (db) => {
+      const allUsers = await selectAllUsers(db);
+      const query = filters.query?.trim().toLowerCase();
+      const now = Date.now();
+      return allUsers
+        .filter((user) => {
+          const matchesQuery =
+            !query ||
+            user.name.toLowerCase().includes(query) ||
+            user.email.toLowerCase().includes(query) ||
+            user.title.toLowerCase().includes(query);
+          const matchesRole = !filters.role || filters.role === "all" || user.role === filters.role;
+          const tier = user.subscriptionTier ?? "free";
+          const inTrial =
+            Boolean(user.trialExpiresAt) &&
+            new Date(user.trialExpiresAt as string).getTime() > now &&
+            tier === "free";
+          const matchesSubscription =
+            !filters.subscription ||
+            filters.subscription === "all" ||
+            (filters.subscription === "trial" ? inTrial : tier === filters.subscription);
+          return matchesQuery && matchesRole && matchesSubscription;
+        })
+        .map(toAdminUserSummary);
+    },
+    () => store.listAdminUsers(filters),
+  );
+}
+
+export async function createAdminManagedUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+  title?: string;
+  subscriptionTier?: SubscriptionTier;
+  trialDays?: number | null;
+  subscriptionDays?: number | null;
+}) {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  return withDb(
+    "createAdminManagedUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const existing = await selectUserByEmail(tx, normalizedEmail);
+        if (existing) throw new Error("这个邮箱已经注册过了。");
+
+        const now = new Date();
+        const trialExpiresAt =
+          typeof input.trialDays === "number" && input.trialDays > 0
+            ? new Date(now.getTime() + input.trialDays * 86_400_000)
+            : null;
+        const subscriptionTier = input.subscriptionTier ?? "free";
+        const subscriptionExpiresAt =
+          subscriptionTier !== "free" && typeof input.subscriptionDays === "number" && input.subscriptionDays > 0
+            ? new Date(now.getTime() + input.subscriptionDays * 86_400_000)
+            : null;
+        const userId = createId("user");
+        const classroomId =
+          input.role === "student" || input.role === "teacher"
+            ? await selectDefaultClassroomId(tx, userId)
+            : null;
+        const title =
+          input.title?.trim() ||
+          (input.role === "admin"
+            ? "运营管理员"
+            : input.role === "teacher"
+              ? "教师账号"
+              : input.role === "parent"
+                ? "家长账号"
+                : "沙盘体验用户");
+
+        const [created] = await tx
+          .insert(users)
+          .values({
+            id: userId,
+            email: normalizedEmail,
+            passwordHash: await hashPassword(input.password),
+            role: input.role,
+            classroomId,
+            trialExpiresAt,
+            subscriptionTier,
+            subscriptionExpiresAt,
+            onboardingCompleted: input.role === "student" ? 0 : 1,
+          })
+          .returning();
+
+        await tx.insert(profiles).values({
+          userId,
+          name: input.name.trim(),
+          title,
+          headline: "由超级管理员创建的 Brown Zone 账号。",
+          bio: "该账号可按角色进入对应工作台，权限与试用状态由后台统一管理。",
+          metrics: [
+            { label: "角色", value: input.role },
+            { label: "创建方式", value: "超级管理员创建" },
+          ],
+        });
+
+        if (input.role === "student" && classroomId) {
+          await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(userId, classroomId)));
+        }
+
+        return toAdminUserSummary(
+          toUserRecord(created, {
+            userId,
+            name: input.name.trim(),
+            title,
+            headline: "",
+            bio: "",
+            metrics: [],
+          }),
+        );
+      }),
+    () => store.createAdminManagedUser({ ...input, email: normalizedEmail }),
+  );
+}
+
+export async function updateAdminManagedUser(
+  userId: string,
+  input: {
+    name?: string;
+    title?: string;
+    role?: Role;
+    subscriptionTier?: SubscriptionTier;
+    trialDays?: number | null;
+    subscriptionDays?: number | null;
+    onboardingCompleted?: boolean;
+  },
+) {
+  return withDb(
+    "updateAdminManagedUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const current = await selectUserById(tx, userId);
+        if (!current) throw new Error("用户不存在。");
+
+        const nextRole = input.role ?? current.role;
+        const classroomId =
+          (nextRole === "student" || nextRole === "teacher") && !current.classroomId
+            ? await selectDefaultClassroomId(tx, userId)
+            : current.classroomId ?? null;
+        const patch: Partial<typeof users.$inferInsert> = {
+          role: nextRole,
+          classroomId,
+          tokenVersion: sql`${users.tokenVersion} + 1` as unknown as number,
+        };
+
+        if (input.trialDays !== undefined) {
+          patch.trialExpiresAt =
+            input.trialDays && input.trialDays > 0
+              ? new Date(Date.now() + input.trialDays * 86_400_000)
+              : null;
+        }
+
+        if (input.subscriptionTier !== undefined) {
+          patch.subscriptionTier = input.subscriptionTier;
+          if (input.subscriptionTier === "free") {
+            patch.subscriptionExpiresAt = null;
+          }
+        }
+
+        if (input.subscriptionDays !== undefined) {
+          patch.subscriptionExpiresAt =
+            input.subscriptionDays && input.subscriptionDays > 0
+              ? new Date(Date.now() + input.subscriptionDays * 86_400_000)
+              : null;
+          if (input.subscriptionDays && input.subscriptionDays > 0 && (!input.subscriptionTier || input.subscriptionTier === "free")) {
+            patch.subscriptionTier = "standard";
+          }
+        }
+
+        if (input.onboardingCompleted !== undefined) {
+          patch.onboardingCompleted = input.onboardingCompleted ? 1 : 0;
+        }
+
+        const [updated] = await tx.update(users).set(patch).where(eq(users.id, userId)).returning();
+        if (!updated) throw new Error("用户不存在。");
+
+        const profilePatch: Partial<typeof profiles.$inferInsert> = {};
+        if (input.name !== undefined) profilePatch.name = input.name.trim();
+        if (input.title !== undefined) profilePatch.title = input.title.trim();
+        if (Object.keys(profilePatch).length > 0) {
+          await tx.update(profiles).set(profilePatch).where(eq(profiles.userId, userId));
+        }
+
+        if (nextRole === "student" && classroomId) {
+          const existingRun = await selectRunForUser(tx, userId);
+          if (!existingRun) {
+            await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(userId, classroomId)));
+          }
+        }
+
+        const [profile] = await tx.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
+        return toAdminUserSummary(toUserRecord(updated, profile));
+      }),
+    () => store.updateAdminManagedUser(userId, input),
+  );
+}
+
+export async function createPaymentOrder(input: {
+  userId: string;
+  targetUserId: string;
+  tier: Exclude<SubscriptionTier, "free">;
+  channel: PaymentChannel;
+  amountFen: number;
+  description: string;
+  outTradeNo: string;
+  expiresAt: Date;
+  codeUrl?: string;
+  prepayId?: string;
+}) {
+  return withDb(
+    "createPaymentOrder",
+    async (db) => {
+      const [order] = await db
+        .insert(paymentOrders)
+        .values({
+          id: createId("pay"),
+          outTradeNo: input.outTradeNo,
+          userId: input.userId,
+          targetUserId: input.targetUserId,
+          tier: input.tier,
+          channel: input.channel,
+          amountFen: input.amountFen,
+          description: input.description,
+          status: "pending",
+          codeUrl: input.codeUrl ?? null,
+          prepayId: input.prepayId ?? null,
+          expiresAt: input.expiresAt,
+        })
+        .returning();
+      return toPaymentOrder(order);
+    },
+    () => store.createPaymentOrder(input),
+  );
+}
+
+export async function updatePaymentOrderProviderFields(
+  outTradeNo: string,
+  fields: { codeUrl?: string; prepayId?: string },
+) {
+  return withDb(
+    "updatePaymentOrderProviderFields",
+    async (db) => {
+      const [order] = await db
+        .update(paymentOrders)
+        .set({
+          codeUrl: fields.codeUrl,
+          prepayId: fields.prepayId,
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .returning();
+      if (!order) throw new Error("支付订单不存在。");
+      return toPaymentOrder(order);
+    },
+    () => store.updatePaymentOrderProviderFields(outTradeNo, fields),
+  );
+}
+
+export async function getPaymentOrderByOutTradeNo(outTradeNo: string) {
+  return withDb(
+    "getPaymentOrderByOutTradeNo",
+    async (db) => {
+      const [order] = await db
+        .select()
+        .from(paymentOrders)
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .limit(1);
+      return order ? toPaymentOrder(order) : null;
+    },
+    () => store.getPaymentOrderByOutTradeNo(outTradeNo),
+  );
+}
+
+export async function fulfillPaymentOrder(input: {
+  outTradeNo: string;
+  transactionId: string;
+  paidAt?: string;
+  rawNotify?: unknown;
+  paidAmountFen?: number;
+}) {
+  return withDb(
+    "fulfillPaymentOrder",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const [order] = await tx
+          .select()
+          .from(paymentOrders)
+          .where(eq(paymentOrders.outTradeNo, input.outTradeNo))
+          .limit(1);
+        if (!order) throw new Error("支付订单不存在。");
+
+        // Defense-in-depth: a SUCCESS callback must report the amount we charged.
+        // Tier is server-set from order.tier (not the payload), so this only guards
+        // against an under/over-paid amount fulfilling the full subscription.
+        if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
+          throw new Error(
+            `支付金额不一致（订单 ${order.amountFen} 分，回调 ${input.paidAmountFen} 分），已拒绝履约。`,
+          );
+        }
+
+        const existingGrantRows = await tx
+          .select()
+          .from(subscriptionGrants)
+          .where(eq(subscriptionGrants.orderId, order.id))
+          .limit(1);
+        // Idempotency: gate on status alone so a paid order never double-extends,
+        // even if its grant row is missing.
+        if (order.status === "paid") {
+          return {
+            order: toPaymentOrder(order),
+            grant: existingGrantRows[0] ? toSubscriptionGrant(existingGrantRows[0]) : null,
+            alreadyFulfilled: true,
+          };
+        }
+
+        const [targetUser] = await tx.select().from(users).where(eq(users.id, order.targetUserId)).limit(1);
+        if (!targetUser) throw new Error("订阅目标账号不存在。");
+
+        const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
+        const currentExpiry = targetUser.subscriptionExpiresAt ?? paidAt;
+        const startsAt = currentExpiry.getTime() > paidAt.getTime() ? currentExpiry : paidAt;
+        const expiresAt = new Date(startsAt);
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        const [updatedOrder] = await tx
+          .update(paymentOrders)
+          .set({
+            status: "paid",
+            transactionId: input.transactionId,
+            rawNotify: input.rawNotify ?? null,
+            paidAt,
+            updatedAt: paidAt,
+          })
+          .where(eq(paymentOrders.id, order.id))
+          .returning();
+
+        await tx
+          .update(users)
+          .set({
+            subscriptionTier: order.tier,
+            subscriptionExpiresAt: expiresAt,
+            // NB: do NOT bump tokenVersion here. Tier is read fresh from the DB on
+            // every request, so the new subscription takes effect immediately
+            // without a session refresh — and bumping it would invalidate the
+            // payer's own live session when they buy Premium for themselves
+            // (family self-purchase), 401-ing the very next status fetch.
+          })
+          .where(eq(users.id, order.targetUserId));
+
+        const [grant] = await tx
+          .insert(subscriptionGrants)
+          .values({
+            id: createId("grant"),
+            userId: order.targetUserId,
+            orderId: order.id,
+            tier: order.tier,
+            startsAt,
+            expiresAt,
+          })
+          .returning();
+
+        return {
+          order: toPaymentOrder(updatedOrder),
+          grant: toSubscriptionGrant(grant),
+          alreadyFulfilled: false,
+        };
+      }),
+    () => store.fulfillPaymentOrder(input),
+  );
+}
+
+export async function markPaymentOrderStatus(
+  outTradeNo: string,
+  status: Exclude<PaymentStatus, "pending" | "paid">,
+) {
+  return withDb(
+    "markPaymentOrderStatus",
+    async (db) => {
+      const [order] = await db
+        .update(paymentOrders)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .returning();
+      if (!order) throw new Error("支付订单不存在。");
+      return toPaymentOrder(order);
+    },
+    () => store.markPaymentOrderStatus(outTradeNo, status),
   );
 }
 

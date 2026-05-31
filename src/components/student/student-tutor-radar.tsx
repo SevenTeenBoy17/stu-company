@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { LoaderCircle, Radar, RefreshCw } from "lucide-react";
 
-import type { TutorRadarPayload } from "@/lib/types";
+import type { InvestorPersona, TutorRadarPayload } from "@/lib/types";
 import { cn, formatDateLabel } from "@/lib/utils";
 
 const RADAR_SIZE = 260;
@@ -30,15 +31,35 @@ function buildRadarPath(scores: number[]) {
 
 export function StudentTutorRadar({
   payload,
+  persona = null,
+  personaShareText,
   loading = false,
   onRefresh,
 }: {
   payload: TutorRadarPayload;
+  persona?: InvestorPersona | null;
+  personaShareText?: string;
   loading?: boolean;
   onRefresh: () => void;
 }) {
   const scores = payload.metrics.map((metric) => metric.score);
   const radarPath = buildRadarPath(scores);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
+
+  async function sharePersona() {
+    if (!personaShareText) return;
+    if (!navigator.clipboard?.writeText) {
+      setShareState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(personaShareText);
+      setShareState("copied");
+      window.setTimeout(() => setShareState("idle"), 2000);
+    } catch {
+      setShareState("failed");
+    }
+  }
 
   return (
     <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
@@ -99,6 +120,46 @@ export function StudentTutorRadar({
         </div>
 
         <div className="min-w-0">
+          {persona ? (
+            <div className="mb-3 rounded-[1.35rem] border border-[#f0c89a] bg-gradient-to-br from-[#fff7ee] to-[#ffeede] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-[#f08a38] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                  高级版 · 投资人格
+                </span>
+                <span className="text-base font-black text-[#7a4717]">{persona.label}</span>
+              </div>
+              <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
+              {personaShareText ? (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={sharePersona}
+                    className="rounded-full border border-brand-warm bg-white px-3 py-1.5 text-xs font-bold text-brand-ink transition-colors hover:bg-brand-subtle"
+                  >
+                    {shareState === "copied" ? "已复制，去分享吧" : "复制分享我的投资人格"}
+                  </button>
+                  <span role="status" aria-live="polite" className="sr-only">
+                    {shareState === "copied"
+                      ? "已复制到剪贴板"
+                      : shareState === "failed"
+                        ? "复制失败，请手动复制下方文字"
+                        : ""}
+                  </span>
+                  {shareState === "failed" ? (
+                    <div className="mt-2">
+                      <p className="text-xs text-fg-muted">复制失败，请长按下方文字手动复制：</p>
+                      <textarea
+                        readOnly
+                        value={personaShareText}
+                        onFocus={(event) => event.currentTarget.select()}
+                        className="mt-1 min-h-20 w-full rounded-lg border border-border bg-bg-muted p-2 text-xs text-fg-default"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <p className="rounded-[1.35rem] bg-[#fff4e9] px-4 py-3 text-sm font-semibold leading-7 text-[#7a4717]">
             {payload.summary}
           </p>
@@ -107,11 +168,11 @@ export function StudentTutorRadar({
               <div key={metric.id} className="rounded-[1.2rem] bg-slate-950/[0.03] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-slate-950">{metric.label}</p>
-                  <p className="text-lg font-bold text-[#d43c33]">{metric.score}</p>
+                  <p className="text-lg font-bold text-brand-ink">{metric.score}</p>
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-white">
                   <div
-                    className={cn("h-full rounded-full", metric.score >= 70 ? "bg-[#d43c33]" : "bg-[#f08a38]")}
+                    className={cn("h-full rounded-full", metric.score >= 70 ? "bg-brand" : "bg-brand-warm")}
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>

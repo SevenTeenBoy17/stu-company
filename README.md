@@ -60,6 +60,14 @@ npm run dev -- -p 3100
 - `ALLTICK_API_KEY`
 - `ALLTICK_STOCK_BASE_URL`
 
+可选（用于邮件 / 验证 / 定时任务，缺省时优雅降级）：
+
+- `RESEND_API_KEY` / `EMAIL_FROM` — 邮件发送（验证邮件、找回密码、家长周报）。缺省时验证/重置链接在开发环境直接返回，不发邮件。
+- `REQUIRE_EMAIL_VERIFICATION` — 灰度开关，默认 `false`；确认 Resend 发信正常后再设 `true` 强制邮箱验证。
+- `CRON_SECRET` — 生产环境必填，用于 Vercel Cron 周报接口鉴权（详见 `docs/VERCEL-ENV.md`）。
+
+激活顺序：先配 `RESEND_API_KEY`+`EMAIL_FROM` → 验证发信正常 → 再设 `REQUIRE_EMAIL_VERIFICATION=true`；并在首个周一前配好 `CRON_SECRET`。
+
 不要提交 `.env.local`。AI 网关密钥、Supabase service role key 和数据库连接串只能放在本地或部署平台的加密环境变量中。
 
 ## Supabase 设置步骤
