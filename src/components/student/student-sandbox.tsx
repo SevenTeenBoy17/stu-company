@@ -116,6 +116,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     () => state?.market.assets.find((asset) => asset.id === tradeForm.assetId) ?? state?.market.assets[0],
     [state, tradeForm.assetId],
   );
+  const streak = useMemo(
+    () => (state ? computeStreak(state.run) : { current: 0, best: 0 }),
+    [state],
+  );
 
   async function mutate(url: string, body?: object) {
     const response = await fetch(url, {
@@ -342,9 +346,9 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
-                {computeStreak(state.run).current > 0 ? (
+                {streak.current > 0 ? (
                   <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
-                    🔥 连胜 {computeStreak(state.run).current} 回合
+                    🔥 连胜 {streak.current} 回合
                   </span>
                 ) : null}
               </div>

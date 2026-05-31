@@ -487,12 +487,16 @@ export function applyEventChoice(run: ScenarioRun, choiceId: string): ScenarioRu
   const rng = makeRng((nextRun.seed ?? 1) + nextRun.currentRound * 1000);
   const { cashDelta } = resolveEventChoice(netWorth, choice.outcome, rng);
 
+  const cashBefore = nextRun.cash;
   nextRun.cash = Math.max(0, nextRun.cash + cashDelta);
+  // Log the REALIZED change (cash is floored at 0), so history/AI narratives
+  // don't overstate a loss larger than the student's available cash.
+  const realized = nextRun.cash - cashBefore;
   appendAction(nextRun, {
     round: nextRun.currentRound,
     type: "event",
     label: `事件决策：${choice.label} — ${choice.teachingPoint}`,
-    amount: cashDelta,
+    amount: realized,
   });
   commitSnapshot(nextRun);
   return nextRun;

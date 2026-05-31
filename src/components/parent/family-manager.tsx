@@ -9,11 +9,14 @@ type Member = {
   studentEmail: string;
 };
 
+type EligibleTarget = { id: string; name: string; email: string };
+
 type BillingStatus = {
   viewer?: { id: string; name: string };
   tier?: string;
   status?: string;
   features?: { maxStudents?: number };
+  eligibleTargets?: EligibleTarget[];
 };
 
 type Order = { outTradeNo: string; codeUrl?: string; mock?: boolean };
@@ -25,7 +28,7 @@ type Order = { outTradeNo: string; codeUrl?: string; mock?: boolean };
 export function FamilyManager() {
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [email, setEmail] = useState("");
+  const [selectedId, setSelectedId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [pending, startTransition] = useTransition();
@@ -54,21 +57,25 @@ export function FamilyManager() {
   const isPremium = status?.status === "active" && status?.tier === "premium";
   const maxSeats = status?.features?.maxStudents ?? 0;
   const seatsLeft = Math.max(0, maxSeats - members.length);
+  // Bound children not yet in the family — the only ones a parent can add.
+  const memberIds = new Set(members.map((m) => m.studentUserId));
+  const addable = (status?.eligibleTargets ?? []).filter((t) => !memberIds.has(t.id));
 
   function addMember() {
+    if (!selectedId) return;
     startTransition(async () => {
       setMessage(null);
       const response = await fetch("/api/family/members", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ studentEmail: email.trim() }),
+        body: JSON.stringify({ studentUserId: selectedId }),
       });
       const data = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) {
         setMessage(data.message ?? data.error ?? "添加失败，请稍后再试。");
         return;
       }
-      setEmail("");
+      setSelectedId("");
       setMessage(data.message ?? "已加入家庭组。");
       await loadMembers();
     });
@@ -114,7 +121,7 @@ export function FamilyManager() {
       if (response.ok) {
         setOrder(null);
         setMessage("高级版已开通，现在可以添加孩子了。");
-        await loadStatus();
+        await Promise.all([loadStatus(), loadMembers()]);
       }
     });
   }
@@ -186,32 +193,38 @@ export function FamilyManager() {
               </div>
             ))}
             {members.length === 0 ? (
-              <p className="text-sm text-fg-muted">还没有添加孩子。输入已与你绑定的孩子邮箱即可加入。</p>
+              <p className="text-sm text-fg-muted">还没有添加孩子。从下方选择已与你绑定的孩子即可加入家庭组。</p>
             ) : null}
           </div>
           {seatsLeft > 0 ? (
-            <div className="mt-4">
-              <p className="mb-2 text-xs leading-5 text-fg-muted">
-                只能添加已与你的家长账号绑定的孩子。若还没绑定，请让孩子在注册时使用你的家长邀请码，或联系老师/管理员完成亲子绑定后再添加。
-              </p>
-              <div className="flex flex-wrap gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="已绑定孩子的注册邮箱"
-                className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={addMember}
-                disabled={pending || !email.trim()}
-                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
-              >
-                添加孩子
-              </button>
+            addable.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <select
+                  value={selectedId}
+                  onChange={(event) => setSelectedId(event.target.value)}
+                  className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">选择要加入家庭的孩子…</option>
+                  {addable.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.name} · {target.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={addMember}
+                  disabled={pending || !selectedId}
+                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
+                >
+                  添加孩子
+                </button>
               </div>
-            </div>
+            ) : (
+              <p className="mt-4 rounded-2xl bg-bg-muted px-4 py-3 text-sm leading-6 text-fg-muted">
+                你还没有可添加的已绑定孩子。请让孩子在注册时使用你的家长邀请码，或联系老师/管理员完成亲子绑定后，再回来添加。
+              </p>
+            )
           ) : null}
         </div>
       )}

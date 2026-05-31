@@ -58,8 +58,11 @@ export async function POST(request: Request) {
       message: delivery.delivered
         ? "注册成功，验证邮件已发送，请查收邮箱。"
         : "注册成功，欢迎加入 Mr.Brown 经济沙盘。",
-      // Only surface the raw link when we could not deliver it (dev / unconfigured).
-      verifyUrl: delivery.delivered ? undefined : verifyUrl,
+      // Surface the raw link ONLY in non-production AND when delivery failed.
+      // Never in production, even if email is misconfigured — returning a working
+      // token in the response body would be an account-takeover vector.
+      verifyUrl:
+        process.env.NODE_ENV !== "production" && !delivery.delivered ? verifyUrl : undefined,
     });
   } catch (error) {
     return handleRouteError(error, "注册失败。");

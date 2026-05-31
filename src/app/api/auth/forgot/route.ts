@@ -40,8 +40,10 @@ export async function POST(request: Request) {
       ).toString();
       const mail = passwordResetEmail(user.name, link);
       const delivery = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html });
-      // Surface the raw link only when delivery wasn't possible (dev / unconfigured).
-      if (!delivery.delivered) resetUrl = link;
+      // Surface the raw link ONLY in non-production AND when delivery failed.
+      // In production we never return a working reset token in the body, even if
+      // email is misconfigured — that would be an account-takeover vector.
+      if (process.env.NODE_ENV !== "production" && !delivery.delivered) resetUrl = link;
     }
 
     return NextResponse.json({
