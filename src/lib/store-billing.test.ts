@@ -39,4 +39,24 @@ describe("fulfillPaymentOrder session safety", () => {
     expect(after?.tokenVersion ?? 0).toBe(before);
     expect(after?.subscriptionTier).toBe("premium");
   });
+
+  it("rejects a callback whose amount does not match the order", async () => {
+    await createPaymentOrder({
+      userId: "parent-1",
+      targetUserId: "parent-1",
+      tier: "standard",
+      channel: "mock",
+      amountFen: 1500,
+      description: "标准版月卡",
+      outTradeNo: "wxtest-amount-mismatch",
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+    });
+    await expect(
+      fulfillPaymentOrder({
+        outTradeNo: "wxtest-amount-mismatch",
+        transactionId: "tx-bad",
+        paidAmountFen: 1, // attacker/underpay: 1 fen vs 1500
+      }),
+    ).rejects.toThrow();
+  });
 });

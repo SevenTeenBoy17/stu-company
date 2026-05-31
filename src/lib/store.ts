@@ -840,10 +840,18 @@ export async function fulfillPaymentOrder(input: {
   transactionId: string;
   paidAt?: string;
   rawNotify?: unknown;
+  paidAmountFen?: number;
 }) {
   const store = getStore();
   const order = store.paymentOrders.find((candidate) => candidate.outTradeNo === input.outTradeNo);
   if (!order) throw new Error("支付订单不存在。");
+
+  // Defense-in-depth: the callback amount must match what we charged.
+  if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
+    throw new Error(
+      `支付金额不一致（订单 ${order.amountFen} 分，回调 ${input.paidAmountFen} 分），已拒绝履约。`,
+    );
+  }
 
   if (order.status === "paid") {
     return {

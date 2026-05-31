@@ -1077,10 +1077,13 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
           .limit(1);
         if (existing) throw new Error("该学生已在一个家庭组中。");
 
+        // Lock this owner's existing family rows so concurrent adds serialize and
+        // cannot both pass the seat-cap check (TOCTOU over-subscription).
         const current = await tx
           .select()
           .from(familyMembers)
-          .where(eq(familyMembers.ownerUserId, ownerUserId));
+          .where(eq(familyMembers.ownerUserId, ownerUserId))
+          .for("update");
         if (!canAddFamilyMember(current.length, state.features.maxStudents)) {
           throw new Error(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
         }
@@ -1988,6 +1991,7 @@ export async function fulfillPaymentOrder(input: {
   transactionId: string;
   paidAt?: string;
   rawNotify?: unknown;
+  paidAmountFen?: number;
 }) {
   return withDb(
     "fulfillPaymentOrder",
@@ -2000,15 +2004,26 @@ export async function fulfillPaymentOrder(input: {
           .limit(1);
         if (!order) throw new Error("支付订单不存在。");
 
+        // Defense-in-depth: a SUCCESS callback must report the amount we charged.
+        // Tier is server-set from order.tier (not the payload), so this only guards
+        // against an under/over-paid amount fulfilling the full subscription.
+        if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
+          throw new Error(
+            `支付金额不一致（订单 ${order.amountFen} 分，回调 ${input.paidAmountFen} 分），已拒绝履约。`,
+          );
+        }
+
         const existingGrantRows = await tx
           .select()
           .from(subscriptionGrants)
           .where(eq(subscriptionGrants.orderId, order.id))
           .limit(1);
-        if (order.status === "paid" && existingGrantRows[0]) {
+        // Idempotency: gate on status alone so a paid order never double-extends,
+        // even if its grant row is missing.
+        if (order.status === "paid") {
           return {
             order: toPaymentOrder(order),
-            grant: toSubscriptionGrant(existingGrantRows[0]),
+            grant: existingGrantRows[0] ? toSubscriptionGrant(existingGrantRows[0]) : null,
             alreadyFulfilled: true,
           };
         }

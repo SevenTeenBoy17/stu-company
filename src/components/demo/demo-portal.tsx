@@ -70,9 +70,18 @@ export function DemoPortal({
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   useEffect(() => {
-    const mode = new URLSearchParams(window.location.search).get("auth");
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("auth");
     if (mode === "login" || mode === "register" || mode === "invite") {
       setActiveModal(mode);
+    }
+    const verify = params.get("verify");
+    if (verify === "success") {
+      setMessage({ tone: "success", text: "邮箱验证成功，已激活完整功能。" });
+    } else if (verify === "invalid") {
+      setMessage({ tone: "error", text: "验证链接无效或已过期，请重新发起。" });
+    } else if (verify === "error") {
+      setMessage({ tone: "error", text: "邮箱验证失败，请稍后重试。" });
     }
   }, []);
 
