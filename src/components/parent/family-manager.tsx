@@ -202,6 +202,7 @@ export function FamilyManager() {
                 <select
                   value={selectedId}
                   onChange={(event) => setSelectedId(event.target.value)}
+                  aria-label="选择要加入家庭组的孩子"
                   className="min-w-0 flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
                 >
                   <option value="">选择要加入家庭的孩子…</option>
@@ -229,7 +230,11 @@ export function FamilyManager() {
         </div>
       )}
 
-      {message ? <p className="mt-3 text-sm font-medium text-fg-default">{message}</p> : null}
+      {message ? (
+        <p role="status" aria-live="polite" className="mt-3 text-sm font-medium text-fg-default">
+          {message}
+        </p>
+      ) : null}
     </section>
   );
 }
