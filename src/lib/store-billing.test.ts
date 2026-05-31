@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { createPaymentOrder, findUserById, fulfillPaymentOrder } from "@/lib/store";
+import {
+  createPaymentOrder,
+  findUserById,
+  fulfillPaymentOrder,
+  markOnboardingCompleted,
+} from "@/lib/store";
+
+describe("markOnboardingCompleted (store fallback)", () => {
+  it("persists onboardingCompleted=1 so onboarding can actually be skipped offline", () => {
+    expect(markOnboardingCompleted("student-1")).toBe(true);
+    expect(findUserById("student-1")?.onboardingCompleted).toBe(1);
+  });
+
+  it("returns false for an unknown user", () => {
+    expect(markOnboardingCompleted("nope")).toBe(false);
+  });
+});
 
 describe("fulfillPaymentOrder session safety", () => {
   it("does not invalidate the payer's session on a family self-purchase", async () => {

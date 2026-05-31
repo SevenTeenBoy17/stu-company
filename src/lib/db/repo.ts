@@ -892,8 +892,9 @@ export async function markOnboardingCompleted(userId: string) {
     "markOnboardingCompleted",
     async (db) => {
       await db.update(users).set({ onboardingCompleted: 1 }).where(eq(users.id, userId));
+      return true;
     },
-    () => {},
+    () => store.markOnboardingCompleted(userId),
   );
 }
 

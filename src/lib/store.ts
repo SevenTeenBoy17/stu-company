@@ -473,6 +473,13 @@ export function markEmailVerified(userId: string) {
   return true;
 }
 
+export function markOnboardingCompleted(userId: string) {
+  const user = getStore().users.find((candidate) => candidate.id === userId);
+  if (!user) return false;
+  user.onboardingCompleted = 1;
+  return true;
+}
+
 function isOwnerPremiumActive(owner: UserRecord) {
   const state = resolveSubscriptionState(
     owner.subscriptionTier,
