@@ -226,3 +226,77 @@ export const growthReports = pgTable("growth_reports", {
   uniqueIndex("growth_reports_student_unique").on(table.studentUserId),
   index("growth_reports_parent_user_id_idx").on(table.parentUserId),
 ]);
+
+// ── Financial Power leaderboard (V1) ────────────────────────────────────────
+// Self-input schools (decision 2: no classroom binding). Deduped per city on
+// the normalized name (src/lib/leaderboard/school-normalize.ts). New rows are
+// approved by default; `pending`/`merged` exist for moderation without a code
+// change.
+export const schools = pgTable("schools", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  normalizedName: varchar("normalized_name", { length: 160 }).notNull(),
+  provinceCode: varchar("province_code", { length: 8 }).notNull(),
+  cityCode: varchar("city_code", { length: 8 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("approved"),
+  mergedInto: varchar("merged_into", { length: 64 }),
+  createdBy: varchar("created_by", { length: 64 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  // dedup key (city_code, normalized_name) — findOrCreateSchool relies on this.
+  uniqueIndex("schools_city_normalized_unique").on(table.cityCode, table.normalizedName),
+  index("schools_city_idx").on(table.cityCode),
+  index("schools_province_idx").on(table.provinceCode),
+]);
+
+// Per-user leaderboard identity + privacy. A row exists only after the required
+// onboarding (school + region, decision 2) — its absence means "not yet ranked".
+// Kept separate from the marketing `profiles` table on purpose.
+export const rankProfiles = pgTable("rank_profiles", {
+  userId: varchar("user_id", { length: 64 }).primaryKey().references(() => users.id),
+  provinceCode: varchar("province_code", { length: 8 }).notNull(),
+  cityCode: varchar("city_code", { length: 8 }).notNull(),
+  schoolId: varchar("school_id", { length: 64 }).notNull().references((): AnyPgColumn => schools.id),
+  // Public nickname (decision 3: real name is never shown on boards).
+  alias: varchar("alias", { length: 40 }).notNull(),
+  // public | school_only | hidden (src/lib/leaderboard/ranking.ts).
+  visibility: varchar("visibility", { length: 16 }).notNull().default("public"),
+  // Guardian consent gate for minors (decision 3). 0 until consented.
+  consent: integer("consent").notNull().default(0),
+  // Soft floor (decision 7): highest tier reached this season; a minor never
+  // drops below it within the season.
+  lastTier: integer("last_tier").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("rank_profiles_school_idx").on(table.schoolId),
+  index("rank_profiles_city_idx").on(table.cityCode),
+  index("rank_profiles_province_idx").on(table.provinceCode),
+]);
+
+// Computed power per user per period. Identity/scope (school, region, alias,
+// visibility) come from rank_profiles at read time so a visibility change takes
+// effect immediately. `tier` is the soft-floored tier at snapshot time.
+export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
+  period: varchar("period", { length: 16 }).notNull(),
+  periodKey: varchar("period_key", { length: 32 }).notNull(),
+  power: integer("power").notNull(),
+  tier: integer("tier").notNull(),
+  netWorth: integer("net_worth").notNull(),
+  components: jsonb("components")
+    .$type<{ riskAdjReturn: number; discipline: number; drawdown: number; learning: number; growth: number }>()
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  // one snapshot per user per period bucket — recompute uses onConflictDoUpdate.
+  uniqueIndex("leaderboard_snapshots_user_period_unique").on(
+    table.userId,
+    table.period,
+    table.periodKey,
+  ),
+  // ranking query: filter by (period, period_key), order by power desc.
+  index("leaderboard_snapshots_rank_idx").on(table.period, table.periodKey, table.power),
+]);
