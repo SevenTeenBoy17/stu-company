@@ -47,7 +47,7 @@ type SimulationActionInput =
       amount?: number;
     };
 
-const STARTING_CASH = 120_000;
+export const STARTING_CASH = 120_000;
 const PROPERTY_UNIT_PRICE = 24_000;
 
 function getRound(round: number): MarketRound {

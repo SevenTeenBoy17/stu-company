@@ -66,10 +66,12 @@ export function powerComponents(input: PowerScoreInput): PowerComponents {
 }
 
 /** 合成战力（0..maxPower）+ 分项（透明展示）。 */
-export function computePowerScore(input: PowerScoreInput): {
+export interface PowerScoreResult {
   power: number;
   components: PowerComponents;
-} {
+}
+
+export function computePowerScore(input: PowerScoreInput): PowerScoreResult {
   const components = powerComponents(input);
   const raw =
     POWER_WEIGHTS.riskAdjReturn * components.riskAdjReturn +
