@@ -401,7 +401,7 @@ export function StudentHistoryReviewDashboard({
             transition={{ duration: 0.45, ease: "easeOut" }}
             className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/88 shadow-[0_28px_70px_rgba(15,23,42,0.08)]"
           >
-            <div className="grid xl:grid-cols-[1.08fr_0.92fr]">
+            <div>
               <div className="relative overflow-hidden bg-[#0e1629] px-5 py-5 text-white sm:px-6 sm:py-6 lg:px-7 lg:py-7">
                 <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
                 <div className="pointer-events-none absolute -left-10 top-10 h-32 w-32 rounded-full bg-[#f08a38]/18 blur-3xl sm:-left-20 sm:top-12 sm:h-48 sm:w-48" />
@@ -424,25 +424,37 @@ export function StudentHistoryReviewDashboard({
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {payload.highlights.map((highlight) => {
                       const tone = highlightToneClasses(highlight.tone);
                       return (
                         <div
                           key={highlight.id}
-                          className={cn("rounded-[1.4rem] border px-4 py-4 backdrop-blur", tone.surface)}
+                          className={cn(
+                            "flex h-full flex-col rounded-[1.4rem] border px-4 py-4 backdrop-blur",
+                            tone.surface,
+                          )}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-xs uppercase tracking-[0.18em] text-white/42">R{highlight.round}</p>
-                              <p className="mt-2 text-lg font-semibold text-white">{highlight.title}</p>
-                            </div>
-                            <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", tone.badge)}>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/42">
+                              R{highlight.round}
+                            </p>
+                            <span
+                              className={cn(
+                                "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                tone.badge,
+                              )}
+                            >
                               {highlight.metricLabel}
                             </span>
                           </div>
-                          <p className="mt-3 text-sm leading-7 text-white/70">{highlight.detail}</p>
-                          <p className="mt-4 text-xl font-semibold text-white">
+                          <p className="mt-2.5 text-base font-semibold leading-snug text-white">
+                            {highlight.title}
+                          </p>
+                          <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-white/64">
+                            {highlight.detail}
+                          </p>
+                          <p className="mt-auto pt-3 text-lg font-semibold text-white">
                             <HighlightMetricValue value={highlight.metricValue} />
                           </p>
                         </div>
@@ -455,7 +467,7 @@ export function StudentHistoryReviewDashboard({
               <div className="bg-white/92 px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
                 <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">历史操作速写</p>
                 <h3 className="mt-3 text-2xl font-semibold text-slate-950">先看节奏，再拆动作</h3>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
                   {[
                     { label: "买入次数", value: `${payload.metrics.buyCount}`, hint: "主动加仓" },
                     { label: "卖出次数", value: `${payload.metrics.sellCount}`, hint: "兑现或回收" },
