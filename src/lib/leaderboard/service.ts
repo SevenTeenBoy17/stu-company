@@ -7,12 +7,15 @@
 import {
   getPowerSnapshot,
   getRankProfile,
+  getRunForUser,
   listRankSnapshots,
+  upsertLeaderboardSnapshot,
 } from "@/lib/db/repo";
 import type { PowerComponentsRecord, RankPeriod } from "@/lib/types";
 
 import { periodKey } from "./periods";
-import { POWER_WEIGHTS } from "./power-score";
+import { computePowerScore, POWER_WEIGHTS } from "./power-score";
+import { runToPowerInput, type LearningProgress } from "./run-power";
 import {
   rankLeaderboard,
   viewerScopeRanks,
@@ -124,6 +127,31 @@ export async function getPowerCard(
     components: own?.components,
     ranks,
   };
+}
+
+/**
+ * Recompute and persist a user's power for a period from their current run.
+ * Called after a round advances and on onboarding. No run -> no-op (returns
+ * null) so callers can ignore it for non-students.
+ */
+export async function recomputePowerForUser(
+  userId: string,
+  period: RankPeriod = "weekly",
+  opts: { now?: Date; learning?: LearningProgress } = {},
+): Promise<{ power: number } | null> {
+  const run = await getRunForUser(userId);
+  if (!run) return null;
+  const input = runToPowerInput(run, opts.learning);
+  const { power, components } = computePowerScore(input);
+  await upsertLeaderboardSnapshot({
+    userId,
+    period,
+    periodKey: periodKey(period, opts.now),
+    power,
+    netWorth: Math.round(input.netWorth),
+    components,
+  });
+  return { power };
 }
 
 /** Static description of the scoring formula for the transparency panel (decision 1). */
