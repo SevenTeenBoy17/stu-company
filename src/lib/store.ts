@@ -30,17 +30,25 @@ import type {
   GrowthReport,
   InviteCode,
   LeaderboardEntry,
+  LeaderboardSnapshot,
   PaymentChannel,
   PaymentOrder,
   PaymentStatus,
+  PowerComponentsRecord,
   ProfileRecord,
+  RankPeriod,
+  RankProfile,
+  RankVisibility,
   Role,
   ScenarioRun,
+  School,
   StudentParentLink,
   SubscriptionGrant,
   SubscriptionTier,
   UserRecord,
 } from "@/lib/types";
+import { applySoftFloor, tierFromPower } from "@/lib/leaderboard/tiers";
+import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
 import { createId } from "@/lib/utils";
 
 type Store = {
@@ -56,6 +64,9 @@ type Store = {
   paymentOrders: PaymentOrder[];
   subscriptionGrants: SubscriptionGrant[];
   familyMembers: FamilyMember[];
+  schools: School[];
+  rankProfiles: RankProfile[];
+  leaderboardSnapshots: LeaderboardSnapshot[];
 };
 
 declare global {
@@ -425,6 +436,9 @@ export function createSeedStore(): Store {
     paymentOrders: [],
     subscriptionGrants: [],
     familyMembers: [],
+    schools: [],
+    rankProfiles: [],
+    leaderboardSnapshots: [],
   };
 }
 
@@ -441,6 +455,15 @@ export function getStore() {
   }
   if (!globalThis.__brownZoneStore__.subscriptionGrants) {
     globalThis.__brownZoneStore__.subscriptionGrants = [];
+  }
+  if (!globalThis.__brownZoneStore__.schools) {
+    globalThis.__brownZoneStore__.schools = [];
+  }
+  if (!globalThis.__brownZoneStore__.rankProfiles) {
+    globalThis.__brownZoneStore__.rankProfiles = [];
+  }
+  if (!globalThis.__brownZoneStore__.leaderboardSnapshots) {
+    globalThis.__brownZoneStore__.leaderboardSnapshots = [];
   }
 
   return globalThis.__brownZoneStore__;
@@ -561,6 +584,152 @@ export function applyFamilyEntitlement(user: UserRecord): UserRecord {
 export function getSeasonLeaderboard() {
   const store = getStore();
   return buildSeasonLeaderboard(store.runs, store.users);
+}
+
+// ── Financial Power leaderboard (V1) ────────────────────────────────────────
+
+/**
+ * Find an existing school for (cityCode, normalizedName) or create one.
+ * Dedup mirrors the DB unique index (city_code, normalized_name).
+ */
+export function findOrCreateSchool(input: {
+  name: string;
+  provinceCode: string;
+  cityCode: string;
+  createdBy?: string;
+}): School {
+  const store = getStore();
+  const normalizedName = normalizeSchoolName(input.name);
+  const existing = store.schools.find(
+    (s) => s.cityCode === input.cityCode && s.normalizedName === normalizedName,
+  );
+  if (existing) return existing;
+
+  const school: School = {
+    id: createId("sch"),
+    name: input.name.trim(),
+    normalizedName,
+    provinceCode: input.provinceCode,
+    cityCode: input.cityCode,
+    status: "approved",
+    createdBy: input.createdBy,
+    createdAt: new Date().toISOString(),
+  };
+  store.schools.push(school);
+  return school;
+}
+
+export function listSchoolsByCity(cityCode: string): School[] {
+  return getStore()
+    .schools.filter((s) => s.cityCode === cityCode && s.status !== "merged")
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+}
+
+export function getSchoolById(schoolId: string): School | null {
+  return getStore().schools.find((s) => s.id === schoolId) ?? null;
+}
+
+export function getRankProfile(userId: string): RankProfile | null {
+  return getStore().rankProfiles.find((p) => p.userId === userId) ?? null;
+}
+
+/** Create or update a user's leaderboard identity (idempotent on userId). */
+export function upsertRankProfile(input: {
+  userId: string;
+  provinceCode: string;
+  cityCode: string;
+  schoolId: string;
+  alias: string;
+  visibility?: RankVisibility;
+  consent?: number;
+}): RankProfile {
+  const store = getStore();
+  const now = new Date().toISOString();
+  const existing = store.rankProfiles.find((p) => p.userId === input.userId);
+  if (existing) {
+    existing.provinceCode = input.provinceCode;
+    existing.cityCode = input.cityCode;
+    existing.schoolId = input.schoolId;
+    existing.alias = input.alias;
+    if (input.visibility !== undefined) existing.visibility = input.visibility;
+    if (input.consent !== undefined) existing.consent = input.consent;
+    existing.updatedAt = now;
+    return existing;
+  }
+  const profile: RankProfile = {
+    userId: input.userId,
+    provinceCode: input.provinceCode,
+    cityCode: input.cityCode,
+    schoolId: input.schoolId,
+    alias: input.alias,
+    visibility: input.visibility ?? "public",
+    consent: input.consent ?? 0,
+    lastTier: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  store.rankProfiles.push(profile);
+  return profile;
+}
+
+/**
+ * Persist a user's computed power for a period bucket (idempotent on
+ * userId+period+periodKey). Derives the tier, applies the season soft floor
+ * (decision 7) against the user's rank profile, and bumps its high-water tier.
+ */
+export function upsertLeaderboardSnapshot(input: {
+  userId: string;
+  period: RankPeriod;
+  periodKey: string;
+  power: number;
+  netWorth: number;
+  components: PowerComponentsRecord;
+}): LeaderboardSnapshot {
+  const store = getStore();
+  const now = new Date().toISOString();
+
+  const rawTier = tierFromPower(input.power);
+  const profile = store.rankProfiles.find((p) => p.userId === input.userId);
+  const tier = profile ? applySoftFloor(profile.lastTier, rawTier) : rawTier;
+  if (profile) {
+    profile.lastTier = tier;
+    profile.updatedAt = now;
+  }
+
+  const existing = store.leaderboardSnapshots.find(
+    (s) => s.userId === input.userId && s.period === input.period && s.periodKey === input.periodKey,
+  );
+  if (existing) {
+    existing.power = input.power;
+    existing.tier = tier;
+    existing.netWorth = input.netWorth;
+    existing.components = input.components;
+    existing.updatedAt = now;
+    return existing;
+  }
+  const snapshot: LeaderboardSnapshot = {
+    id: createId("lbs"),
+    userId: input.userId,
+    period: input.period,
+    periodKey: input.periodKey,
+    power: input.power,
+    tier,
+    netWorth: input.netWorth,
+    components: input.components,
+    createdAt: now,
+    updatedAt: now,
+  };
+  store.leaderboardSnapshots.push(snapshot);
+  return snapshot;
+}
+
+export function listLeaderboardSnapshots(
+  period: RankPeriod,
+  periodKey: string,
+): LeaderboardSnapshot[] {
+  return getStore().leaderboardSnapshots.filter(
+    (s) => s.period === period && s.periodKey === periodKey,
+  );
 }
 
 /** Weekly digests for the Premium family report email cron. */
