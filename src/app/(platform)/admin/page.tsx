@@ -116,9 +116,9 @@ export default async function AdminPage() {
           <div className="mt-5 space-y-3">
             {overview.invites.map((invite) => (
               <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-lg font-black text-fg-default">{invite.label}</p>
-                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-black">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="min-w-0 truncate text-lg font-black text-fg-default">{invite.label}</p>
+                  <span className="bz-brand-chip shrink-0 rounded-full px-3 py-1 text-xs font-black">
                     {invite.code}
                   </span>
                 </div>
