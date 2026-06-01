@@ -8,7 +8,7 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, ne, sql } from "drizzle-orm";
 
 import { z } from "zod";
 
@@ -29,9 +29,12 @@ import {
   familyMembers,
   growthReports,
   inviteCodes,
+  leaderboardSnapshots,
   paymentOrders,
   profiles,
+  rankProfiles,
   scenarioRuns,
+  schools,
   studentParentLinks,
   subscriptionGrants,
   users,
@@ -41,6 +44,8 @@ import {
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
 import { currentSeasonSeed } from "@/lib/season";
+import { applySoftFloor, tierFromPower } from "@/lib/leaderboard/tiers";
+import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
 import {
   advanceSimulationRun,
   applyEventChoice,
@@ -62,12 +67,18 @@ import type {
   FamilyDigest,
   GrowthReport,
   InviteCode,
+  LeaderboardSnapshot,
   PaymentChannel,
   PaymentOrder,
   PaymentStatus,
+  PowerComponentsRecord,
   ProfileRecord,
+  RankPeriod,
+  RankProfile,
+  RankVisibility,
   Role,
   ScenarioRun,
+  School,
   SubscriptionGrant,
   SubscriptionTier,
   UserRecord,
@@ -85,6 +96,9 @@ type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
 type DbPaymentOrder = typeof paymentOrders.$inferSelect;
 type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
+type DbSchool = typeof schools.$inferSelect;
+type DbRankProfile = typeof rankProfiles.$inferSelect;
+type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
 const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
@@ -2123,3 +2137,259 @@ export const getQuickDemoCredentials: typeof store.getQuickDemoCredentials = sto
 export const roleHomePath: (role: Role) => string = store.roleHomePath;
 export const buildTeacherLeaderboardCards: typeof store.buildTeacherLeaderboardCards =
   store.buildTeacherLeaderboardCards;
+
+// ---------------------------------------------------------------------------
+// Financial Power leaderboard (V1)
+// ---------------------------------------------------------------------------
+
+function toSchool(row: DbSchool): School {
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalizedName,
+    provinceCode: row.provinceCode,
+    cityCode: row.cityCode,
+    status: row.status as School["status"],
+    mergedInto: maybeUndefined(row.mergedInto),
+    createdBy: maybeUndefined(row.createdBy),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+  };
+}
+
+function toRankProfile(row: DbRankProfile): RankProfile {
+  return {
+    userId: row.userId,
+    provinceCode: row.provinceCode,
+    cityCode: row.cityCode,
+    schoolId: row.schoolId,
+    alias: row.alias,
+    visibility: row.visibility as RankVisibility,
+    consent: row.consent,
+    lastTier: row.lastTier,
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+function toLeaderboardSnapshot(row: DbLeaderboardSnapshot): LeaderboardSnapshot {
+  return {
+    id: row.id,
+    userId: row.userId,
+    period: row.period as RankPeriod,
+    periodKey: row.periodKey,
+    power: row.power,
+    tier: row.tier,
+    netWorth: row.netWorth,
+    components: row.components as PowerComponentsRecord,
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+/** Find the school for (city, normalized name) or create it. Idempotent. */
+export async function findOrCreateSchool(input: {
+  name: string;
+  provinceCode: string;
+  cityCode: string;
+  createdBy?: string;
+}): Promise<School> {
+  return withDb(
+    "findOrCreateSchool",
+    async (db) => {
+      const normalizedName = normalizeSchoolName(input.name);
+      await db
+        .insert(schools)
+        .values({
+          id: createId("sch"),
+          name: input.name.trim(),
+          normalizedName,
+          provinceCode: input.provinceCode,
+          cityCode: input.cityCode,
+          status: "approved",
+          createdBy: input.createdBy,
+        })
+        .onConflictDoNothing({ target: [schools.cityCode, schools.normalizedName] });
+      const [row] = await db
+        .select()
+        .from(schools)
+        .where(and(eq(schools.cityCode, input.cityCode), eq(schools.normalizedName, normalizedName)))
+        .limit(1);
+      return toSchool(row);
+    },
+    () => store.findOrCreateSchool(input),
+  );
+}
+
+export async function listSchoolsByCity(cityCode: string): Promise<School[]> {
+  return withDb(
+    "listSchoolsByCity",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(schools)
+        .where(and(eq(schools.cityCode, cityCode), ne(schools.status, "merged")));
+      return rows.map(toSchool).sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+    },
+    () => store.listSchoolsByCity(cityCode),
+  );
+}
+
+export async function getSchoolById(schoolId: string): Promise<School | null> {
+  return withDb(
+    "getSchoolById",
+    async (db) => {
+      const [row] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
+      return row ? toSchool(row) : null;
+    },
+    () => store.getSchoolById(schoolId),
+  );
+}
+
+export async function getRankProfile(userId: string): Promise<RankProfile | null> {
+  return withDb(
+    "getRankProfile",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(rankProfiles)
+        .where(eq(rankProfiles.userId, userId))
+        .limit(1);
+      return row ? toRankProfile(row) : null;
+    },
+    () => store.getRankProfile(userId),
+  );
+}
+
+export async function upsertRankProfile(input: {
+  userId: string;
+  provinceCode: string;
+  cityCode: string;
+  schoolId: string;
+  alias: string;
+  visibility?: RankVisibility;
+  consent?: number;
+}): Promise<RankProfile> {
+  return withDb(
+    "upsertRankProfile",
+    async (db) => {
+      const now = new Date();
+      const [row] = await db
+        .insert(rankProfiles)
+        .values({
+          userId: input.userId,
+          provinceCode: input.provinceCode,
+          cityCode: input.cityCode,
+          schoolId: input.schoolId,
+          alias: input.alias,
+          visibility: input.visibility ?? "public",
+          consent: input.consent ?? 0,
+          lastTier: 0,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: rankProfiles.userId,
+          // lastTier is intentionally NOT reset here — it's the season high-water.
+          set: {
+            provinceCode: input.provinceCode,
+            cityCode: input.cityCode,
+            schoolId: input.schoolId,
+            alias: input.alias,
+            ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+            ...(input.consent !== undefined ? { consent: input.consent } : {}),
+            updatedAt: now,
+          },
+        })
+        .returning();
+      return toRankProfile(row);
+    },
+    () => store.upsertRankProfile(input),
+  );
+}
+
+/**
+ * Persist computed power for a period bucket. Applies the season soft floor
+ * (decision 7) against the rank profile and bumps its high-water tier, atomic
+ * with the snapshot write.
+ */
+export async function upsertLeaderboardSnapshot(input: {
+  userId: string;
+  period: RankPeriod;
+  periodKey: string;
+  power: number;
+  netWorth: number;
+  components: PowerComponentsRecord;
+}): Promise<LeaderboardSnapshot> {
+  return withDb(
+    "upsertLeaderboardSnapshot",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const rawTier = tierFromPower(input.power);
+        const [profile] = await tx
+          .select()
+          .from(rankProfiles)
+          .where(eq(rankProfiles.userId, input.userId))
+          .limit(1)
+          .for("update");
+        const tier = profile ? applySoftFloor(profile.lastTier, rawTier) : rawTier;
+        const now = new Date();
+        if (profile) {
+          await tx
+            .update(rankProfiles)
+            .set({ lastTier: tier, updatedAt: now })
+            .where(eq(rankProfiles.userId, input.userId));
+        }
+        const [row] = await tx
+          .insert(leaderboardSnapshots)
+          .values({
+            id: createId("lbs"),
+            userId: input.userId,
+            period: input.period,
+            periodKey: input.periodKey,
+            power: input.power,
+            tier,
+            netWorth: input.netWorth,
+            components: input.components,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [
+              leaderboardSnapshots.userId,
+              leaderboardSnapshots.period,
+              leaderboardSnapshots.periodKey,
+            ],
+            set: {
+              power: input.power,
+              tier,
+              netWorth: input.netWorth,
+              components: input.components,
+              updatedAt: now,
+            },
+          })
+          .returning();
+        return toLeaderboardSnapshot(row);
+      }),
+    () => store.upsertLeaderboardSnapshot(input),
+  );
+}
+
+export async function listLeaderboardSnapshots(
+  period: RankPeriod,
+  periodKey: string,
+): Promise<LeaderboardSnapshot[]> {
+  return withDb(
+    "listLeaderboardSnapshots",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(leaderboardSnapshots)
+        .where(
+          and(
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+          ),
+        );
+      return rows.map(toLeaderboardSnapshot);
+    },
+    () => store.listLeaderboardSnapshots(period, periodKey),
+  );
+}
