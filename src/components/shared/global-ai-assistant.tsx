@@ -489,7 +489,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <Bot className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[#f08a38]">Mr.Brown</p>
+                    <p className="text-xs uppercase tracking-[0.26em] text-[#f08a38]">Mr.Brown</p>
                     <h2 className="text-[1.75rem] font-semibold tracking-tight text-slate-950">KeyAI</h2>
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.24em] text-[#f08a38]">History</p>
+                          <p className="text-xs uppercase tracking-[0.24em] text-[#f08a38]">History</p>
                           <h3 className="mt-1 text-lg font-semibold text-slate-950">最近会话</h3>
                         </div>
                         <button

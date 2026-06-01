@@ -320,7 +320,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <p className="mt-3 max-w-full overflow-hidden text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950">
+              <p className="mt-3 max-w-full text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950">
                 {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
               </p>
               <p className="mt-3 line-clamp-2 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
@@ -394,7 +394,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                         <p className="text-sm font-semibold">{decided.label}</p>
                         <p className="mt-1 text-xs opacity-80">
                           现金变化 {decided.amount >= 0 ? "+" : ""}
-                          {decided.amount.toLocaleString()} · 推进回合后会进入新的局面。
+                          {decided.amount.toLocaleString("zh-CN")} · 推进回合后会进入新的局面。
                         </p>
                       </div>
                     );
@@ -491,7 +491,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-lg font-black text-slate-950">{asset.name}</p>
+                        <p className="line-clamp-2 break-words text-lg font-black text-slate-950">{asset.name}</p>
                         <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
                       </div>
                       <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
@@ -708,12 +708,12 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   <div key={row.asset.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-lg font-black text-slate-950">{row.asset.name}</p>
+                        <p className="line-clamp-2 break-words text-lg font-black text-slate-950">{row.asset.name}</p>
                         <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                           {row.asset.symbol} · {row.quantity} 份
                         </p>
                       </div>
-                      <p className={cn("text-sm font-black", getMarketMoveClasses(row.pnl).text)}>
+                      <p className={cn("shrink-0 whitespace-nowrap text-sm font-black", getMarketMoveClasses(row.pnl).text)}>
                         {formatCurrency(row.pnl)}
                       </p>
                     </div>

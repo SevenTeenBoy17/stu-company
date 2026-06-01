@@ -14,7 +14,7 @@ export function MoneyText({
   return (
     <span
       className={cn(
-        "font-extrabold tabular-nums",
+        "font-extrabold tabular-nums whitespace-nowrap",
         tone === "dark" ? "text-[#ffb7af]" : "text-[#d43c33]",
         className,
       )}

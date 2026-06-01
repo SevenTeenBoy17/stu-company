@@ -337,7 +337,7 @@ export function DemoPortal({
                   className="rounded-[1.2rem] border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-200 disabled:opacity-60"
                 >
                   <p className="text-base font-black text-slate-950">{item.label}</p>
-                  <p className="mt-1 truncate text-sm font-semibold text-slate-500">{item.email}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-500" title={item.email}>{item.email}</p>
                 </button>
               ))}
             </div>
@@ -346,7 +346,7 @@ export function DemoPortal({
       </section>
 
       {message && !activeModal ? (
-        <p className={`rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
+        <p className={`break-all rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
           {message.text}
         </p>
       ) : null}
@@ -518,7 +518,7 @@ export function DemoPortal({
                         key={item.code}
                         type="button"
                         onClick={() => setInviteForm((current) => ({ ...current, inviteCode: item.code }))}
-                        className="rounded-full border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black text-orange-700"
+                        className="max-w-full break-all rounded-full border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black text-orange-700"
                       >
                         {item.role} · {item.code}
                       </button>
@@ -573,7 +573,7 @@ export function DemoPortal({
               ) : null}
 
               {message ? (
-                <p className={`relative mt-6 rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
+                <p className={`relative mt-6 break-all rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
                   {message.text}
                 </p>
               ) : null}

@@ -122,11 +122,11 @@ export function StudentTutorRadar({
         <div className="min-w-0">
           {persona ? (
             <div className="mb-3 rounded-[1.35rem] border border-[#f0c89a] bg-gradient-to-br from-[#fff7ee] to-[#ffeede] px-4 py-3">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[#f08a38] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="shrink-0 rounded-full bg-[#f08a38] px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-white">
                   高级版 · 投资人格
                 </span>
-                <span className="text-base font-black text-[#7a4717]">{persona.label}</span>
+                <span className="min-w-0 text-base font-black text-[#7a4717]">{persona.label}</span>
               </div>
               <p className="mt-2 text-xs leading-6 text-[#9a6a3a]">{persona.summary}</p>
               {personaShareText ? (

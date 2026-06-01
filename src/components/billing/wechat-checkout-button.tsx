@@ -33,8 +33,10 @@ const TIER_LABEL: Record<"standard" | "premium", string> = {
 
 export function WechatCheckoutButton({
   tier = "standard",
+  authed = true,
 }: {
   tier?: "standard" | "premium";
+  authed?: boolean;
 } = {}) {
   const [payload, setPayload] = useState<CheckoutPayload | null>(null);
   const [targets, setTargets] = useState<BillingTarget[]>([]);
@@ -57,6 +59,9 @@ export function WechatCheckoutButton({
   }, []);
 
   useEffect(() => {
+    // Anonymous visitors (logged-out /pricing) would get a 401 here; the target
+    // list is only needed for signed-in sponsored payments, so skip the fetch.
+    if (!authed) return;
     let alive = true;
     void fetch("/api/billing/status", { cache: "no-store" })
       .then(async (response) => {
@@ -75,7 +80,7 @@ export function WechatCheckoutButton({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [authed]);
 
   // Render the native pay URL as a scannable QR (real WeChat pay).
   useEffect(() => {

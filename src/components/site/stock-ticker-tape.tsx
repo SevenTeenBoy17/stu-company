@@ -53,7 +53,7 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
     <section className="border-b border-white/8 bg-[#0d1324] text-white">
       <div className="page-shell flex items-center gap-3 py-2.5 sm:gap-4 sm:py-3">
         <div className="hidden shrink-0 xl:block">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-[#f08a38]">Market Pulse</p>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#f08a38]">Market Pulse</p>
           <p className="mt-1 text-sm font-medium text-white/72">美股 AI / 科技观察池</p>
         </div>
 
@@ -75,10 +75,10 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
               return (
                 <div
                   key={`${item.symbol}-${index}`}
-                  className="flex min-w-[156px] items-center gap-2.5 border-r border-white/8 px-3 py-2.5 last:border-r-0 sm:min-w-[176px] sm:gap-3 sm:px-4 sm:py-3 md:min-w-[210px]"
+                  className="flex min-w-fit items-center gap-2.5 border-r border-white/8 px-3 py-2.5 last:border-r-0 sm:min-w-[176px] sm:gap-3 sm:px-4 sm:py-3 md:min-w-[210px]"
                 >
                   <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] sm:h-8 sm:w-8 sm:text-[11px]"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] sm:h-8 sm:w-8 sm:text-xs"
                     style={{
                       background: `linear-gradient(135deg, ${item.accentColor} 0%, rgba(255,255,255,0.12) 120%)`,
                     }}
@@ -89,7 +89,7 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-semibold text-white sm:text-sm">{item.symbol}</span>
-                      <span className="truncate text-[11px] text-white/48 sm:text-xs">{item.name}</span>
+                      <span className="text-xs text-white/48">{item.name}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[13px] sm:gap-3 sm:text-sm">
                       <span className="font-medium text-white/88">{formatPrice(item.currentPrice)}</span>
