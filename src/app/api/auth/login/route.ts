@@ -4,9 +4,18 @@ import { z } from "zod";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { authenticateUser, roleHomePath } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
-  email: z.string().trim().min(3).max(255),
+  email: z
+    .string()
+    .trim()
+    .max(255)
+    .refine(
+      (value) =>
+        value.toLowerCase() === "superadmin" || z.string().email().safeParse(value).success,
+      "请输入有效邮箱，或输入超级管理员账号 superadmin。",
+    ),
   password: z.string().min(8),
 });
 
@@ -16,7 +25,12 @@ export async function POST(request: Request) {
 
   try {
     const body = loginSchema.parse(await request.json());
-    const user = await authenticateUser(body.email, body.password);
+    const rl = rateLimit(rateLimitKey("login-account", body.email.toLowerCase(), request), 12, 60_000 * 10);
+    if (!rl.ok) {
+      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+    }
+
+    const user = await authenticateUser(body.email.toLowerCase(), body.password);
 
     if (!user) {
       return apiError("unauthorized", "邮箱或密码不正确。", 401);

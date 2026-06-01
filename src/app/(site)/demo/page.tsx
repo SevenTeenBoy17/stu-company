@@ -1,32 +1,33 @@
 import { DemoPortal } from "@/components/demo/demo-portal";
 import { getQuickDemoCredentials } from "@/lib/db/repo";
 
-// UI-DEBT: Demo page still needs richer form empty/error-state review; see docs/ui-spec/audit-2026-05-25.md.
 export default async function DemoPage() {
-  const credentials = await getQuickDemoCredentials();
+  const credentials = (await getQuickDemoCredentials()).filter(
+    (item) =>
+      item.email.toLowerCase() !== "superadmin" &&
+      !item.label.includes("超级"),
+  );
   return (
     <div className="pb-24">
       <section className="page-shell pt-8">
         <div className="bz-ink-panel overflow-hidden rounded-3xl px-6 py-8 sm:px-10 sm:py-12">
-          <p className="bz-eyebrow-inverse">开始体验</p>
-          <h1 className="font-display mt-5 text-4xl font-semibold leading-tight sm:text-5xl">
-            注册、登录或用样例账号，直接进入沙盘。
+          <p className="bz-eyebrow-inverse">Start Brown Zone</p>
+          <h1 className="font-display mt-5 max-w-5xl text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
+            一个入口，完成登录、注册、游客体验和课堂加入。
           </h1>
-          <p className="mt-5 max-w-3xl text-base leading-8 text-white/70">
-            免费注册即可体验完整的 12 回合经济沙盘 + AI 行为诊断。也可使用预置的样例账号一键进入学生、教师、家长或管理端。
+          <p className="mt-5 max-w-3xl text-base leading-8 text-white/72">
+            新用户用邮箱注册后进入沙盘体验；已有账号按角色进入对应工作台；游客可先轻量试玩；
+            学校或教师发放的邀请码可用于加入对应班级与角色。
           </p>
-          <div className="mt-6 flex flex-wrap gap-4 text-sm text-white/50">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-[var(--down-400)]" />
-              纯教育模拟，不涉及真实交易
+          <div className="mt-6 grid gap-3 text-sm text-white/58 sm:grid-cols-3">
+            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              教育模拟，不接真实交易
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-[var(--down-400)]" />
-              学生端不显示任何价格信息
+            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              邮箱唯一，重复注册会提示
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-[var(--down-400)]" />
-              注册数据仅用于教学反馈
+            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              登录后按权限进入工作台
             </span>
           </div>
         </div>
@@ -36,9 +37,21 @@ export default async function DemoPage() {
         <DemoPortal
           credentials={credentials}
           inviteHints={[
-            { role: "学生试点码", code: "MRB-STUDENT-2026", note: "注册后自动加入树德实验试点班，并创建个人沙盘。" },
-            { role: "家长绑定码", code: "MRB-PARENT-2026", note: "用于绑定已存在的学生成长报告，查看家长视角。" },
-            { role: "教师演示码", code: "MRB-TEACHER-2026", note: "注册为教师演示账号，可查看任务与榜单管理。" },
+            {
+              role: "学生试点码",
+              code: "MRB-STUDENT-2026",
+              note: "注册后自动加入树德实验试点班，并创建个人经济沙盘。",
+            },
+            {
+              role: "家长绑定码",
+              code: "MRB-PARENT-2026",
+              note: "用于绑定学生成长报告，查看家长视角数据。",
+            },
+            {
+              role: "教师演示码",
+              code: "MRB-TEACHER-2026",
+              note: "注册为教师演示账号，可查看任务与班级榜单。",
+            },
           ]}
         />
       </section>

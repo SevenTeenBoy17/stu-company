@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { PlatformLayout } from "@/components/platform/platform-layout";
+import { GuestUpgradeCheckout } from "@/components/billing/guest-upgrade-checkout";
 import { StudentSandbox } from "@/components/student/student-sandbox";
 import { StudentOnboardingGate } from "@/components/student/student-onboarding-gate";
 import { SubscriptionBanner } from "@/components/shared/subscription-banner";
@@ -15,7 +16,12 @@ export default async function StudentPage() {
 
   const initialState = await getSimulationStateForUser(user.id);
   const needsOnboarding = !user.onboardingCompleted;
-  const subState = resolveSubscriptionState(user.subscriptionTier, user.trialExpiresAt);
+  const isSharedGuest = user.id === "guest-student" || user.email.toLowerCase() === "guest@brownzone.ai";
+  const subState = resolveSubscriptionState(
+    user.subscriptionTier,
+    user.trialExpiresAt,
+    user.subscriptionExpiresAt,
+  );
 
   return (
     <PlatformLayout
@@ -24,6 +30,7 @@ export default async function StudentPage() {
       summary="围绕一名学生的一整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
       <SubscriptionBanner state={subState} role={user.role} />
+      {isSharedGuest ? <GuestUpgradeCheckout /> : null}
       <StudentOnboardingGate userName={user.name} needsOnboarding={needsOnboarding}>
         <StudentSandbox initialState={initialState} />
       </StudentOnboardingGate>

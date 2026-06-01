@@ -112,3 +112,19 @@
 - Fixed the homepage right hero artwork by switching it to contained rendering with a taller stage, so `AI 经济沙盘 · 课堂决策现场` is fully visible instead of being cropped.
 - Tightened the demo account-card grid so one-click role badges no longer overlap account labels on desktop widths.
 - Verified locally and in production with screenshots at 1280px, 1366px, 1536px, tablet, and phone widths; `/`, `/demo`, and `/learn` showed zero horizontal overflow, and production student login reached `/student`.
+- Implemented the WeChat subscription/email onboarding/event-system completion round: added APIv3 WeChat Native/JSAPI prepay and notify handling, payment order/subscription persistence, 30-day standard grants, 1-day full AI + 2-day basic AI trial behavior, email normalization/uniqueness, superadmin email editing, 7-step AI onboarding, and expanded financial event metadata.
+- Applied `drizzle/0004_billing_orders.sql` to Supabase, updated RLS policies for billing tables, reseeded demo data, and verified superadmin/student/guest billing smoke paths locally.
+- Fixed a production-build reliability issue caused by build-time Google Fonts downloads by removing `next/font/google` from `src/app/layout.tsx` and relying on the existing CSS font tokens/system Chinese font stacks.
+- Final billing/onboarding verification passed: `npx tsc --noEmit`, `npm run lint`, `npm run test` (11 files / 54 tests), `npm run build`, redline greps for API store references/raw AI fetch, and `python -m code_review_graph build/detect-changes`.
+- Re-deployed the current verified working tree to Vercel production with `npx vercel --prod --yes`; Vercel build passed and the deployment was aliased to `https://brown-zone-web.vercel.app`.
+- Production smoke check passed after deployment: `/`, `/pricing`, `/demo`, `/api/market/ticker-tape` returned 200; `student@brownzone.ai` login returned 200 and `/student` rendered the student dashboard.
+- Started login/admin completion round under dev-supervisor Goal mode.
+- Rebuilt public header navigation so the public site only exposes 首页 / 投资课程 / 试玩入口 / 产品矩阵 / 登录 / 立即体验; student/teacher direct links remain available only after role-based login.
+- Rewrote `/demo` and `DemoPortal` into working 邮箱登录 / 邮箱注册 / 游客体验 / 超级管理员入口 flows with loading, success, and error feedback.
+- Reworked the admin page and `AdminUserManager` into a commercial operations console with account search/filter, create user, update role/profile/subscription/trial, update email, and reset password actions.
+- Cleaned visible API/auth/admin/pricing/navigation Chinese messages and ran `npx tsc --noEmit` plus `npm run lint` successfully.
+- Final login/admin verification passed: `npx tsc --noEmit`, `npm run lint`, `npm run test` (11 files / 55 tests), `npm run build`, focused `npx playwright test tests/e2e/prelaunch.spec.ts` (5 passed), full `npx playwright test` (14 passed), API store redline greps, raw-secret grep, and code-review-graph build/detect.
+- Completed login modal polish continuation: homepage nav labels now compute to white text in the actual `nav`, `/demo?auth=login` opens a standalone login modal, and visible demo/login copy no longer exposes `superadmin` or `超级管理员`.
+- Added production smoke coverage after deployment: verified no homepage horizontal overflow, login modal visibility, hidden `superadmin / Super001!!!` login reaching `/admin`, and screenshot artifact `.codex-supervisor/login-modal-desktop-1440.png`.
+- Patched DB adapter date normalization in `src/lib/db/repo.ts` so Supabase string/date values for trial/subscription expiries no longer throw `toISOString is not a function` during E2E/admin flows.
+- Re-deployed the verified tree to Vercel production with `npx vercel --prod --yes`; Vercel build passed and the deployment was aliased to `https://brown-zone-web.vercel.app`.

@@ -1,21 +1,30 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { registerUserByInvite, roleHomePath } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
-  inviteCode: z.string().min(6),
-  name: z.string().min(2),
-  email: z.string().email(),
+  inviteCode: z.string().trim().min(6),
+  name: z.string().trim().min(2),
+  email: z.string().trim().email(),
   password: z.string().min(8),
 });
 
 export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   try {
     const body = registerSchema.parse(await request.json());
-    const user = await registerUserByInvite(body);
+    const rl = rateLimit(rateLimitKey("register-invite", body.email.toLowerCase(), request), 5, 60_000 * 10);
+    if (!rl.ok) {
+      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+    }
+
+    const user = await registerUserByInvite({ ...body, email: body.email.toLowerCase() });
 
     await persistSession({
       userId: user.id,

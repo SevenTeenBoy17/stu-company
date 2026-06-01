@@ -9,5 +9,13 @@ import { findUserById } from "@/lib/db/repo";
 export const getCurrentUser = cache(async () => {
   const session = await readSession();
   if (!session) return null;
-  return await findUserById(session.userId);
+  const user = await findUserById(session.userId);
+  if (!user) return null;
+
+  // Keep page-level auth aligned with API guards. If an admin resets a
+  // password/email, tokenVersion changes and old page cookies must stop
+  // resolving to a valid user even before an API call is made.
+  if ((user.tokenVersion ?? 0) !== (session.tv ?? 0)) return null;
+
+  return user;
 });

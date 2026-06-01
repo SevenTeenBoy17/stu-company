@@ -111,6 +111,8 @@ grant select, update on public.ai_sessions to authenticated;
 grant select on public.growth_reports to authenticated;
 grant select, insert, update, delete on public.assignments to authenticated;
 grant select, insert, update, delete on public.invite_codes to authenticated;
+grant select, insert, update on public.payment_orders to authenticated;
+grant select on public.subscription_grants to authenticated;
 
 alter table public.users enable row level security;
 alter table public.scenario_runs enable row level security;
@@ -118,6 +120,8 @@ alter table public.ai_sessions enable row level security;
 alter table public.growth_reports enable row level security;
 alter table public.assignments enable row level security;
 alter table public.invite_codes enable row level security;
+alter table public.payment_orders enable row level security;
+alter table public.subscription_grants enable row level security;
 
 drop policy if exists users_select_own on public.users;
 create policy users_select_own
@@ -247,4 +251,47 @@ using (
 )
 with check (
   app_private.is_teacher_or_admin()
+);
+
+drop policy if exists payment_orders_select_related on public.payment_orders;
+create policy payment_orders_select_related
+on public.payment_orders
+for select
+to authenticated
+using (
+  user_id = app_private.jwt_user_id()
+  or target_user_id = app_private.jwt_user_id()
+  or app_private.is_admin()
+);
+
+drop policy if exists payment_orders_insert_payer on public.payment_orders;
+create policy payment_orders_insert_payer
+on public.payment_orders
+for insert
+to authenticated
+with check (
+  user_id = app_private.jwt_user_id()
+  or app_private.is_teacher_or_admin()
+);
+
+drop policy if exists payment_orders_update_admin on public.payment_orders;
+create policy payment_orders_update_admin
+on public.payment_orders
+for update
+to authenticated
+using (
+  app_private.is_admin()
+)
+with check (
+  app_private.is_admin()
+);
+
+drop policy if exists subscription_grants_select_related on public.subscription_grants;
+create policy subscription_grants_select_related
+on public.subscription_grants
+for select
+to authenticated
+using (
+  user_id = app_private.jwt_user_id()
+  or app_private.is_admin()
 );

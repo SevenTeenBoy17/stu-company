@@ -3,13 +3,15 @@ import { redirect } from "next/navigation";
 import { AdminUserManager } from "@/components/admin/admin-user-manager";
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { MoneyText } from "@/components/shared/money-text";
-import { getCurrentUser } from "@/lib/session-user";
 import { getAdminOverview, roleHomePath } from "@/lib/db/repo";
+import { getCurrentUser } from "@/lib/session-user";
 import { formatCurrency } from "@/lib/utils";
 
-// UI-DEBT: Dedicated loading/empty/error states are still pending; see docs/ui-spec/audit-2026-05-25.md.
+function formatFen(value: number) {
+  return formatCurrency(value / 100);
+}
+
 export default async function AdminPage() {
-  // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
   if (!user) redirect("/demo?reason=login_required");
   if (user.role !== "admin") redirect(roleHomePath(user.role));
@@ -17,17 +19,58 @@ export default async function AdminPage() {
   const overview = await getAdminOverview();
   const canManagePasswords = user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
 
+  const businessCards = [
+    { label: "学校授权席位", value: `${overview.business.schoolLicenses}`, hint: "可用于班级与校内试点授权" },
+    { label: "活跃体验用户", value: `${overview.business.trialUsers}`, hint: "处于试用窗口的普通用户" },
+    { label: "订阅用户", value: `${overview.business.standardUsers}`, hint: "标准订阅或学校授权账号" },
+    { label: "已确认收入", value: formatFen(overview.business.revenueFen), hint: "来自已支付订单的演示统计" },
+  ];
+
   return (
     <PlatformLayout
       role="admin"
-      heading="运营总览"
-      summary="用于展示演示环境的整体运营面板：邀请码池、班级分布、榜单头部和任务活跃度一屏看清。"
+      heading="运营控制台"
+      summary="统一管理账号、试用、订阅和课堂授权。超级管理员拥有写权限，普通管理员只读查看运营概览。"
     >
-      <div className="grid gap-4 lg:grid-cols-4">
+      <section className="bz-ink-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
+        <p className="bz-eyebrow-inverse">Brown Zone / Admin</p>
+        <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div>
+            <h1 className="font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">
+              商业运营与账号权限，总览在这里完成。
+            </h1>
+            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">
+              当前采用“双轨商业模式”：个人月卡承接自助体验，学校授权承接批量账号、课堂数据、
+              教师管理和阶段性报告。这里展示的是运营面板与账号管理入口。
+            </p>
+          </div>
+          <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-5">
+            <p className="text-sm font-semibold text-white/54">当前身份</p>
+            <p className="mt-2 text-2xl font-black text-white">{canManagePasswords ? "超级管理员" : "普通管理员"}</p>
+            <p className="mt-3 text-sm leading-7 text-white/58">
+              {canManagePasswords
+                ? "可以创建账号、修改邮箱、重置密码和调整订阅状态。"
+                : "可查看运营数据，但无法修改账号与订阅。"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {overview.metrics.map((metric) => (
           <div key={metric.label} className="panel rounded-3xl p-5">
-            <p className="text-sm text-fg-muted">{metric.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-fg-default">{metric.value}</p>
+            <p className="text-sm font-bold text-fg-muted">{metric.label}</p>
+            <p className="mt-3 text-4xl font-black text-fg-default">{metric.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {businessCards.map((card) => (
+          <div key={card.label} className="panel rounded-3xl p-5">
+            <p className="bz-eyebrow">{card.label}</p>
+            <p className="mt-3 text-3xl font-black text-slate-950">{card.value}</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{card.hint}</p>
           </div>
         ))}
       </div>
@@ -36,17 +79,17 @@ export default async function AdminPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">榜单头部</p>
+          <p className="bz-eyebrow">班级榜单头部</p>
           <div className="mt-5 space-y-3">
             {overview.topUsers.map((entry) => (
-              <div key={entry.userId} className="flex items-center justify-between rounded-2xl bg-bg-muted px-4 py-4">
-                <div>
-                  <p className="text-lg font-semibold text-fg-default">
+              <div key={entry.userId} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-bg-muted px-4 py-4">
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-black text-fg-default" title={entry.name}>
                     #{entry.rank} {entry.name}
                   </p>
-                  <p className="text-sm text-fg-muted">纪律分 {entry.disciplineScore}</p>
+                  <p className="text-sm font-semibold text-fg-muted">纪律分 {entry.disciplineScore}</p>
                 </div>
-                <p className="text-lg font-semibold">
+                <p className="shrink-0 text-lg font-black">
                   <MoneyText>{formatCurrency(entry.netWorth)}</MoneyText>
                 </p>
               </div>
@@ -59,8 +102,8 @@ export default async function AdminPage() {
           <div className="mt-5 space-y-3">
             {overview.assignments.map((assignment) => (
               <div key={assignment.id} className="rounded-2xl bg-bg-muted p-5">
-                <p className="text-lg font-semibold text-fg-default">{assignment.title}</p>
-                <p className="mt-2 text-sm leading-7 text-fg-muted">{assignment.brief}</p>
+                <p className="text-lg font-black text-fg-default">{assignment.title}</p>
+                <p className="mt-2 text-sm font-semibold leading-7 text-fg-muted">{assignment.brief}</p>
               </div>
             ))}
           </div>
@@ -74,8 +117,8 @@ export default async function AdminPage() {
             {overview.invites.map((invite) => (
               <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-lg font-semibold text-fg-default">{invite.label}</p>
-                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
+                  <p className="text-lg font-black text-fg-default">{invite.label}</p>
+                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-black">
                     {invite.code}
                   </span>
                 </div>
@@ -85,12 +128,12 @@ export default async function AdminPage() {
         </section>
 
         <section className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">班级清单</p>
+          <p className="bz-eyebrow">班级与学校授权</p>
           <div className="mt-5 space-y-3">
             {overview.classrooms.map((classroom) => (
               <div key={classroom.id} className="rounded-2xl bg-bg-muted p-5">
-                <p className="text-lg font-semibold text-fg-default">{classroom.name}</p>
-                <p className="mt-2 text-sm text-fg-muted">
+                <p className="text-lg font-black text-fg-default">{classroom.name}</p>
+                <p className="mt-2 text-sm font-semibold text-fg-muted">
                   {classroom.region} · 校内排名第 {classroom.schoolRank} 名
                 </p>
               </div>

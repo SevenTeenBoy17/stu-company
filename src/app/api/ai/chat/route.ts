@@ -6,6 +6,7 @@ import { requestChatReply } from "@/lib/ai";
 import { buildAiSessionTitle } from "@/lib/assistant-config";
 import { buildAssistantContextBundle } from "@/lib/assistant-context";
 import { readSession } from "@/lib/auth";
+import { resolveSubscriptionState } from "@/lib/billing/subscription";
 import {
   appendAiMessages,
   createAiSession,
@@ -71,6 +72,9 @@ export async function POST(request: Request) {
     const body = chatSchema.parse(await request.json());
     const session = await readSession();
     const user = session ? await findUserById(session.userId) : null;
+    if (session && (!user || (user.tokenVersion ?? 0) !== (session.tv ?? 0))) {
+      return apiError("unauthorized", "会话已失效，请重新登录。", 401);
+    }
 
     // H4: per-user (or per-IP for guests) sliding window. 20 prompts/minute is
     // generous for legitimate use but caps abuse / cost-bomb risk.
@@ -84,6 +88,20 @@ export async function POST(request: Request) {
       user,
       pageContext: body.pageContext,
     });
+    if (user?.role === "student" && contextBundle.mode === "student-context") {
+      const subscription = resolveSubscriptionState(
+        user.subscriptionTier,
+        user.trialExpiresAt,
+        user.subscriptionExpiresAt,
+      );
+      if (subscription.aiTier === "none") {
+        return apiError(
+          "forbidden",
+          subscription.bannerMessage ?? "试用已结束，升级后即可继续使用 KeyAI 学生上下文问答。",
+          403,
+        );
+      }
+    }
 
     const pageContext: AiChatPageContext = {
       route: body.pageContext.route,

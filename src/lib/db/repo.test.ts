@@ -11,6 +11,7 @@ import {
   applyActionForUser,
   authenticateUser,
   buildTeacherLeaderboardCards,
+  canUserPayForTarget,
   createAiSession,
   createAssignmentForTeacher,
   findInviteByCode,
@@ -27,6 +28,7 @@ import {
   getSimulationStateForUser,
   getTeacherOverview,
   listAiSessionsForUser,
+  listSubscriptionTargetsForUser,
   registerUserByEmail,
   registerUserByInvite,
   resetStoreForTests,
@@ -142,8 +144,19 @@ describe("db repo fallback adapter", () => {
 
   it("re-exports pure store helpers", () => {
     expect(roleHomePath("student")).toBe("/student");
-    expect(getQuickDemoCredentials()).toHaveLength(6);
+    expect(getQuickDemoCredentials()).toHaveLength(5);
     expect(buildTeacherLeaderboardCards([{ userId: "u", name: "A", classroomId: "c", netWorth: 1, disciplineScore: 1, rank: 1 }])[0]?.headline).toBeTruthy();
+  });
+
+  it("checks sponsored subscription target permissions in fallback mode", async () => {
+    await expect(canUserPayForTarget("teacher-1", "student-1")).resolves.toBe(true);
+    await expect(canUserPayForTarget("parent-1", "student-1")).resolves.toBe(true);
+    await expect(canUserPayForTarget("parent-1", "student-2")).resolves.toBe(false);
+    await expect(canUserPayForTarget("student-1", "student-1")).resolves.toBe(false);
+
+    await expect(listSubscriptionTargetsForUser("parent-1")).resolves.toEqual([
+      expect.objectContaining({ id: "student-1" }),
+    ]);
   });
 
   it("registers a new user by email without invite code", async () => {

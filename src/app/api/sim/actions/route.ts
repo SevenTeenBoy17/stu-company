@@ -7,7 +7,7 @@ import { detectAdaptiveEvents } from "@/lib/adaptive-events";
 import { canUserOperate } from "@/lib/billing/subscription";
 import { applyActionForUser, getSimulationStateForUser } from "@/lib/db/repo";
 
-const actionSchema = z.discriminatedUnion("type", [
+const actionSchema = z.union([
   z.object({
     type: z.literal("trade"),
     assetId: z.string(),
@@ -26,8 +26,13 @@ const actionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("venture"),
-    action: z.enum(["invest", "exit"]),
+    action: z.literal("invest"),
     amount: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("venture"),
+    action: z.literal("exit"),
+    amount: z.number().positive().optional(),
   }),
 ]);
 
@@ -35,7 +40,7 @@ export async function POST(request: Request) {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
-  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt)) {
+  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
     return apiError("forbidden", "试用已结束，请升级到标准版以继续操作沙盘。", 403);
   }
 
