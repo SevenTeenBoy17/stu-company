@@ -23,7 +23,7 @@ import {
   type RankedEntry,
   type Viewer,
 } from "./ranking";
-import { POWER_TIERS, powerToNextTier, tierInfo } from "./tiers";
+import { nextTierGap, POWER_TIERS, tierInfo } from "./tiers";
 
 export interface LeaderboardBoard {
   scope: RankScope;
@@ -44,7 +44,7 @@ export interface PowerCard {
   alias?: string;
   power: number;
   tier: ReturnType<typeof tierInfo>;
-  toNextTier: ReturnType<typeof powerToNextTier>;
+  toNextTier: number;
   components?: PowerComponentsRecord;
   ranks: Record<RankScope, number | undefined>;
 }
@@ -93,7 +93,7 @@ export async function getPowerCard(
       ranked: false,
       power: 0,
       tier: tierInfo(1),
-      toNextTier: powerToNextTier(0),
+      toNextTier: nextTierGap(0, 1),
       ranks: { school: undefined, city: undefined, province: undefined, nation: undefined },
     };
   }
@@ -123,7 +123,7 @@ export async function getPowerCard(
     alias: profile.alias,
     power,
     tier: tierInfo(own?.tier ?? 1),
-    toNextTier: powerToNextTier(power),
+    toNextTier: nextTierGap(power, own?.tier ?? 1),
     components: own?.components,
     ranks,
   };

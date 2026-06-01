@@ -42,6 +42,18 @@ export function powerToNextTier(power: number): number {
 }
 
 /**
+ * Distance to the tier above the *displayed* tier. Needed because the soft floor
+ * (decision 7) can hold a player's displayed tier above what their current power
+ * alone implies; the "next tier" gap must be measured from the displayed tier so
+ * the card stays consistent (e.g. a floor-held 策略大师 counts toward 财商宗师,
+ * not back toward 策略大师). Returns 0 at the top tier.
+ */
+export function nextTierGap(power: number, displayedTier: number): number {
+  const next = POWER_TIERS.find((info) => info.tier === displayedTier + 1);
+  return next ? Math.max(0, next.min - power) : 0;
+}
+
+/**
  * Decision 7 soft floor: a student's tier never decreases within a season.
  * `prevTierThisSeason` is the highest tier they've held this season.
  */

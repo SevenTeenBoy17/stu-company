@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { POWER_TIERS, applySoftFloor, powerToNextTier, tierFromPower, tierInfo } from "./tiers";
+import {
+  POWER_TIERS,
+  applySoftFloor,
+  nextTierGap,
+  powerToNextTier,
+  tierFromPower,
+  tierInfo,
+} from "./tiers";
 
 describe("tierFromPower", () => {
   it("maps power to the 6 tiers at the thresholds", () => {
@@ -44,6 +51,22 @@ describe("powerToNextTier", () => {
 
   it("returns 0 at the top tier", () => {
     expect(powerToNextTier(1950)).toBe(0);
+  });
+});
+
+describe("nextTierGap (relative to the displayed/floor-held tier)", () => {
+  it("measures from the tier above the displayed tier", () => {
+    // normal: power 1411 displayed as tier 4 -> gap to tier 5 (1600)
+    expect(nextTierGap(1411, 4)).toBe(189);
+  });
+
+  it("uses the displayed tier even when the soft floor holds it above raw power", () => {
+    // floor-held: power 842 (raw tier 3) but displayed tier 4 -> gap to tier 5
+    expect(nextTierGap(842, 4)).toBe(758); // 1600 - 842, NOT 1200 - 842
+  });
+
+  it("returns 0 at the top displayed tier", () => {
+    expect(nextTierGap(1950, 6)).toBe(0);
   });
 });
 
