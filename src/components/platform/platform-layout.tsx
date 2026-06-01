@@ -13,6 +13,7 @@ const navMap: Record<Role, Array<{ href: string; label: string }>> = {
     { href: "/student", label: "策略总览" },
     { href: "/student/market", label: "市场信息" },
     { href: "/student/history", label: "历史复盘" },
+    { href: "/student/rank", label: "战力榜" },
     { href: "/learn", label: "课程模块" },
     { href: "/demo", label: "重新登录" },
   ],
