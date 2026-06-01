@@ -46,6 +46,7 @@ import {
 import { currentSeasonSeed } from "@/lib/season";
 import { applySoftFloor, tierFromPower } from "@/lib/leaderboard/tiers";
 import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
+import type { RankSnapshot } from "@/lib/leaderboard/ranking";
 import {
   advanceSimulationRun,
   applyEventChoice,
@@ -2391,5 +2392,81 @@ export async function listLeaderboardSnapshots(
       return rows.map(toLeaderboardSnapshot);
     },
     () => store.listLeaderboardSnapshots(period, periodKey),
+  );
+}
+
+/**
+ * Snapshots joined to rank profiles + schools for a period — the rows the pure
+ * ranker (ranking.ts) consumes. Only consented users (decision 3) are eligible;
+ * visibility filtering happens in ranking.ts at read time.
+ */
+export async function listRankSnapshots(
+  period: RankPeriod,
+  periodKey: string,
+): Promise<RankSnapshot[]> {
+  return withDb(
+    "listRankSnapshots",
+    async (db) => {
+      const rows = await db
+        .select({
+          userId: leaderboardSnapshots.userId,
+          power: leaderboardSnapshots.power,
+          tier: leaderboardSnapshots.tier,
+          alias: rankProfiles.alias,
+          visibility: rankProfiles.visibility,
+          schoolId: rankProfiles.schoolId,
+          cityCode: rankProfiles.cityCode,
+          provinceCode: rankProfiles.provinceCode,
+          schoolName: schools.name,
+        })
+        .from(leaderboardSnapshots)
+        .innerJoin(rankProfiles, eq(rankProfiles.userId, leaderboardSnapshots.userId))
+        .leftJoin(schools, eq(schools.id, rankProfiles.schoolId))
+        .where(
+          and(
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+            eq(rankProfiles.consent, 1),
+          ),
+        );
+      return rows.map((r) => ({
+        userId: r.userId,
+        alias: r.alias,
+        power: r.power,
+        tier: r.tier,
+        schoolId: r.schoolId,
+        schoolName: r.schoolName ?? "未知学校",
+        cityCode: r.cityCode,
+        provinceCode: r.provinceCode,
+        visibility: r.visibility as RankVisibility,
+      }));
+    },
+    () => store.listRankSnapshots(period, periodKey),
+  );
+}
+
+/** A single user's own power snapshot for a period (with components). */
+export async function getPowerSnapshot(
+  userId: string,
+  period: RankPeriod,
+  periodKey: string,
+): Promise<LeaderboardSnapshot | null> {
+  return withDb(
+    "getPowerSnapshot",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(leaderboardSnapshots)
+        .where(
+          and(
+            eq(leaderboardSnapshots.userId, userId),
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+          ),
+        )
+        .limit(1);
+      return row ? toLeaderboardSnapshot(row) : null;
+    },
+    () => store.getPowerSnapshot(userId, period, periodKey),
   );
 }

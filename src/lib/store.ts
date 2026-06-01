@@ -49,6 +49,7 @@ import type {
 } from "@/lib/types";
 import { applySoftFloor, tierFromPower } from "@/lib/leaderboard/tiers";
 import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
+import type { RankSnapshot } from "@/lib/leaderboard/ranking";
 import { createId } from "@/lib/utils";
 
 type Store = {
@@ -729,6 +730,47 @@ export function listLeaderboardSnapshots(
 ): LeaderboardSnapshot[] {
   return getStore().leaderboardSnapshots.filter(
     (s) => s.period === period && s.periodKey === periodKey,
+  );
+}
+
+/**
+ * Join snapshots -> rank profiles -> schools for a period, producing the
+ * RankSnapshot rows the pure ranker consumes. Only consented users (decision 3)
+ * are eligible; visibility filtering happens later in ranking.ts.
+ */
+export function listRankSnapshots(period: RankPeriod, periodKey: string): RankSnapshot[] {
+  const store = getStore();
+  const result: RankSnapshot[] = [];
+  for (const snap of store.leaderboardSnapshots) {
+    if (snap.period !== period || snap.periodKey !== periodKey) continue;
+    const profile = store.rankProfiles.find((p) => p.userId === snap.userId);
+    if (!profile || profile.consent !== 1) continue;
+    const school = store.schools.find((s) => s.id === profile.schoolId);
+    result.push({
+      userId: snap.userId,
+      alias: profile.alias,
+      power: snap.power,
+      tier: snap.tier,
+      schoolId: profile.schoolId,
+      schoolName: school?.name ?? "未知学校",
+      cityCode: profile.cityCode,
+      provinceCode: profile.provinceCode,
+      visibility: profile.visibility,
+    });
+  }
+  return result;
+}
+
+/** A single user's own power snapshot for a period (with components). */
+export function getPowerSnapshot(
+  userId: string,
+  period: RankPeriod,
+  periodKey: string,
+): LeaderboardSnapshot | null {
+  return (
+    getStore().leaderboardSnapshots.find(
+      (s) => s.userId === userId && s.period === period && s.periodKey === periodKey,
+    ) ?? null
   );
 }
 
