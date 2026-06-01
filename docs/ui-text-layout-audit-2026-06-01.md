@@ -298,4 +298,32 @@ npx playwright test tests/e2e/ui-audit-stress.spec.ts --project=chromium --worke
 
 ---
 
-*报告生成：产品架构分析 + 三轮仿真测试 + 4 前端 agent 静态扫描；修复后经质量门禁（tsc/lint/146 单测/build）+ 两脚本三轮回归验证，常规数据命中 169→6、hydration 消除。所有 `文件:行号` 均经实读定位，所有"会不会显示不全"结论均经真机渲染验证。*
+## 11. 复核（2026-06-01 · 修复后独立再审）
+
+应用户复审请求，在**修复后的当前代码**上重跑 3 轮仿真 + 2 个独立前端 agent 再扫，验证修复是否稳固并捕捉遗漏。
+
+### 11.1 真机 3 轮仿真（当前 HEAD）
+
+- 常规数据：**6 命中（全 low）**——与修复后一致，全部为资产卡描述的刻意 `line-clamp-2`，无新增/回归。
+- 极端 ¥1.2 亿压测：**28（截断 20 优雅 + 视口 8 合成超大值边缘）**——与修复后一致。
+- Hydration：**仍为 0**（无 `Hydration failed`）；全页面 0 报错 / 0 死链。
+
+### 11.2 独立 agent 再扫发现的「残留」（真机仿真因演示数据未触发而漏掉，静态读码捕获）
+
+| 文件:行号 | 问题 | 严重度 | 状态 |
+| --- | --- | --- | --- |
+| `parent/family-manager.tsx:182-183` | 家庭成员**姓名/邮箱 `truncate` 无 `title`**——家长读不到孩子完整邮箱（`parent/**` 原审计未覆盖） | **中** | ✅ 已修复：姓名 `break-words`、邮箱 `break-all`（完整换行显示） |
+| `app/(platform)/admin/page.tsx:119-123` | 邀请码池行 label 缺 `min-w-0`、code chip 缺 `shrink-0`（与 teacher 已修版本不一致） | 低 | ✅ 已修复：`flex-wrap` + label `min-w-0 truncate` + chip `shrink-0` |
+| `student/season-leaderboard.tsx:84` | 榜单名 `truncate` 无 `title` | 低 | ✅ 已修复：加 `title={entry.name}` |
+| `demo/demo-portal.tsx:340` | 演示邮箱 `truncate` 无 `title`（演示数据短，仅理论风险） | 低 | ✅ 已修复：加 `title={item.email}` |
+| `student/student-tutor-radar.tsx:126` | persona 徽章仍 `text-[11px]`（< 12px 下限，上一轮只从 10px 提到 11px） | 低 | ✅ 已修复：→ `text-xs` |
+
+> **关键收获**：`parent/family-manager.tsx` 是**原审计盲区**——它在 `parent/**` 目录、原 4 个文本 agent 未覆盖，且真机仿真因 `/parent` 演示账号非 Premium / 无家庭成员而**不渲染**该行，故两次都漏。本次独立再审通过**读码**补齐——印证了「静态读码 + 真机仿真」必须互补：真机只能测到「渲染出来的」，读码才能覆盖「数据未触发但代码里存在」的隐患。
+
+### 11.3 复核结论
+
+修复全部稳固；再审发现的 **5 处残留（1 中 + 4 低）已全部修复**。门禁复跑全绿（tsc / lint / 146 单测 / build）。
+
+---
+
+*报告生成：产品架构分析 + 三轮仿真测试 + 4 前端 agent 静态扫描 + 修复后独立再审；修复后经质量门禁（tsc/lint/146 单测/build）+ 三轮回归验证，常规数据命中 169→6、hydration 消除。所有 `文件:行号` 均经实读定位，所有"会不会显示不全"结论均经真机渲染验证。*

@@ -81,7 +81,7 @@ export function SeasonLeaderboard() {
                     <span className="w-6 shrink-0 text-center text-xs font-bold text-fg-muted">
                       #{entry.rank}
                     </span>
-                    <span className="truncate text-sm">
+                    <span className="truncate text-sm" title={entry.name}>
                       {entry.name}
                       {isViewer ? " （你）" : ""}
                     </span>

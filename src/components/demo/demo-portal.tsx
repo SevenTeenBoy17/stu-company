@@ -337,7 +337,7 @@ export function DemoPortal({
                   className="rounded-[1.2rem] border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-200 disabled:opacity-60"
                 >
                   <p className="text-base font-black text-slate-950">{item.label}</p>
-                  <p className="mt-1 truncate text-sm font-semibold text-slate-500">{item.email}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-slate-500" title={item.email}>{item.email}</p>
                 </button>
               ))}
             </div>

@@ -179,8 +179,8 @@ export function FamilyManager() {
                 className="flex items-center justify-between gap-3 rounded-2xl bg-bg-muted px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-fg-default">{member.studentName}</p>
-                  <p className="truncate text-xs text-fg-muted">{member.studentEmail}</p>
+                  <p className="break-words text-sm font-semibold text-fg-default">{member.studentName}</p>
+                  <p className="break-all text-xs text-fg-muted">{member.studentEmail}</p>
                 </div>
                 <button
                   type="button"
