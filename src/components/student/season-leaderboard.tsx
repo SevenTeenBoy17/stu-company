@@ -87,7 +87,7 @@ export function SeasonLeaderboard() {
                     </span>
                   </span>
                   <span className="shrink-0 font-mono text-sm tabular-nums">
-                    ￥{entry.netWorth.toLocaleString()}
+                    ￥{entry.netWorth.toLocaleString("zh-CN")}
                   </span>
                 </li>
               );
@@ -96,7 +96,7 @@ export function SeasonLeaderboard() {
         </>
       )}
 
-      <p className="mt-3 text-[11px] leading-4 text-fg-muted">
+      <p className="mt-3 text-xs leading-5 text-fg-muted">
         排名只反映教育模拟里的决策表现，不构成任何投资建议。
       </p>
     </section>

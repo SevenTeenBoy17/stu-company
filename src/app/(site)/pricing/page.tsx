@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { WechatCheckoutButton } from "@/components/billing/wechat-checkout-button";
 import { SectionReveal } from "@/components/site/section-reveal";
+import { getCurrentUser } from "@/lib/session-user";
 
 const plans = [
   {
@@ -93,7 +94,11 @@ const faqs = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  // Knowing auth server-side lets the checkout button skip the billing-status
+  // prefetch for anonymous visitors (which would log a harmless 401).
+  const user = await getCurrentUser();
+  const authed = Boolean(user);
   return (
     <div className="pb-24">
       <section className="page-shell pt-8 sm:pt-12">
@@ -148,7 +153,7 @@ export default function PricingPage() {
               </ul>
 
               {plan.id === "standard" || plan.id === "premium" ? (
-                <WechatCheckoutButton tier={plan.id as "standard" | "premium"} />
+                <WechatCheckoutButton tier={plan.id as "standard" | "premium"} authed={authed} />
               ) : (
                 <Link
                   href={plan.href}

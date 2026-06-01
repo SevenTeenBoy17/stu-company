@@ -247,7 +247,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                     </div>
                     <div>
                       <p className="text-sm leading-7 text-[var(--ink-700)]">{aiText}</p>
-                      <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--ink-400)]">
+                      <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--ink-400)]">
                         {aiProvider === "remote" ? "AI 已参与生成" : "本地教学脚本兜底"}
                       </p>
                     </div>
@@ -288,7 +288,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                         className="mt-3 w-full accent-[var(--brand)]"
                       />
                       <p className="mt-2 text-center font-mono text-lg font-bold text-[var(--amber-700)]">
-                        ￥{targetGuess.toLocaleString()}
+                        ￥{targetGuess.toLocaleString("zh-CN")}
                       </p>
                     </div>
                   </div>
@@ -340,7 +340,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                     className="mt-4 rounded-2xl bg-[var(--down-50)] px-5 py-4"
                   >
                     <p className="font-mono text-2xl font-bold text-[var(--down-700)]">
-                      ￥{MARKET_REVEAL.netWorth.toLocaleString()}
+                      ￥{MARKET_REVEAL.netWorth.toLocaleString("zh-CN")}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-[var(--down-600)]">
                       {MARKET_REVEAL.changePct}%

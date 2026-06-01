@@ -64,7 +64,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
         ].map(([label, value]) => (
           <div key={label} className="panel rounded-3xl p-5">
             <p className="text-sm text-fg-muted">{label}</p>
-            <p className="mt-3 text-2xl font-semibold text-fg-default">{value}</p>
+            <p className="mt-3 break-words text-2xl font-semibold text-fg-default">{value}</p>
           </div>
         ))}
       </div>
@@ -74,14 +74,14 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
           <p className="bz-eyebrow">班级排行</p>
           <div className="mt-5 space-y-3">
             {data.leaderboard.map((entry) => (
-              <div key={entry.userId} className="flex items-center justify-between rounded-2xl bg-bg-muted px-4 py-4">
-                <div>
+              <div key={entry.userId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bg-muted px-4 py-4">
+                <div className="min-w-0">
                   <p className="text-lg font-semibold text-fg-default">
                     #{entry.rank} {entry.name}
                   </p>
                   <p className="mt-1 text-sm text-fg-muted">纪律分 {entry.disciplineScore}</p>
                 </div>
-                <p className="text-lg font-semibold">
+                <p className="shrink-0 text-lg font-semibold">
                   <MoneyText>{formatCurrency(entry.netWorth)}</MoneyText>
                 </p>
               </div>
@@ -141,11 +141,11 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
             {data.students.map((student) => (
               <div key={student.id} className="rounded-2xl bg-bg-muted p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-lg font-semibold text-fg-default">{student.name}</p>
                     <p className="text-sm text-fg-muted">{student.title}</p>
                   </div>
-                  <div className="text-sm text-fg-muted">
+                  <div className="shrink-0 text-sm text-fg-muted">
                     净值{" "}
                     {student.latestSnapshot ? (
                       <MoneyText>{formatCurrency(student.latestSnapshot.netWorth)}</MoneyText>
@@ -174,9 +174,9 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
           <div className="mt-5 space-y-3">
             {data.invites.map((invite) => (
               <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-lg font-semibold text-fg-default">{invite.label}</p>
-                  <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="min-w-0 truncate text-lg font-semibold text-fg-default">{invite.label}</p>
+                  <span className="bz-brand-chip shrink-0 rounded-full px-3 py-1 text-xs font-semibold">
                     {invite.code}
                   </span>
                 </div>

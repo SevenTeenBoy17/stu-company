@@ -154,7 +154,7 @@ export function StudentAllocationPanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="break-all text-xs font-semibold leading-5 text-white sm:text-sm">{signal.label}</p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/42">
+                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/42">
                             {signal.code} · {signal.region}
                           </p>
                         </div>

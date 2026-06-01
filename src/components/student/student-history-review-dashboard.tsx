@@ -268,14 +268,14 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
                 { label: "债务", value: item.debt, color: "bg-[#f08a38]" },
               ].map((row) => (
                 <div key={`${item.round}-${row.label}`} className="flex items-center gap-3">
-                  <div className="w-10 text-[11px] font-medium text-slate-500">{row.label}</div>
+                  <div className="w-12 shrink-0 text-xs font-medium text-slate-500">{row.label}</div>
                   <div className="h-2.5 flex-1 rounded-full bg-white">
                     <div
                       className={cn("h-full rounded-full", row.color)}
                       style={{ width: `${Math.max(4, (row.value / maxValue) * 100)}%` }}
                     />
                   </div>
-                  <div className="w-24 text-right text-[11px] font-medium text-slate-600">
+                  <div className="min-w-[6rem] shrink-0 text-right text-xs font-medium text-slate-600">
                     <MoneyText>{formatCurrency(row.value)}</MoneyText>
                   </div>
                 </div>
@@ -544,7 +544,7 @@ export function StudentHistoryReviewDashboard({
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-slate-950/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                <span className="rounded-full bg-slate-950/[0.04] px-2.5 py-1 text-xs font-semibold text-slate-600">
                                   {item.type}
                                 </span>
                                 <span className="text-xs text-slate-400">
