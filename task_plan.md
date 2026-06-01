@@ -33,6 +33,8 @@ Complete the unfinished workflow gate safely: finish Stage 0 environment readine
 | Stage 4.3 student market refactor | complete | Refactored the student market board into a clearer responsive layout with watchlist grid, main stock card, key fields, radar + metric explanations, sector structure, rankings, heat bars, classroom tips, and content cards. |
 | Stage 4.4 UI audit pass | complete | Added `docs/ui-spec/audit-2026-05-25.md` and page-level `UI-DEBT` comments for remaining token/type/spacing/loading-state work. |
 | Redline review | complete | `.env.local` remains ignored and unstaged; no `git commit -a`, no `git add .`, no raw AI provider fetch outside `src/lib/ai.ts`, and reviewer found no blocker. |
+| WeChat subscription, email auth, onboarding, and event-system completion | complete | Implemented payment order/subscription persistence, WeChat Native/JSAPI/notify helpers, trial gating, superadmin email editing, 7-step AI onboarding, event metadata, Supabase migration/policies, and final verification. |
+| Login/admin completion polish | complete | Public student/teacher direct links removed from public navigation, `/demo` rebuilt as working email login/register/guest/superadmin portal, `/admin` rebuilt as operations console with user-management actions; TypeScript/lint/tests/build/E2E/review gate passed. |
 
 ## Verification Criteria
 

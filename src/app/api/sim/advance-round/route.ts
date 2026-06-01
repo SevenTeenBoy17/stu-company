@@ -10,7 +10,7 @@ export async function POST() {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
-  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt)) {
+  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
     return apiError("forbidden", "试用已结束，请升级到标准版以继续操作沙盘。", 403);
   }
 

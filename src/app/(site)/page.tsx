@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import { HeroStageArt } from "@/components/site/hero-stage-art";
+import { ModuleIllustration } from "@/components/site/module-illustration";
+import { SectionReveal } from "@/components/site/section-reveal";
+import { StockTickerTape } from "@/components/site/stock-ticker-tape";
 import {
   comparisonRows,
   learningModules,
@@ -8,12 +12,7 @@ import {
   teamProfiles,
 } from "@/lib/content";
 import { getTickerTapePayload } from "@/lib/market-data";
-import { HeroStageArt } from "@/components/site/hero-stage-art";
-import { ModuleIllustration } from "@/components/site/module-illustration";
-import { SectionReveal } from "@/components/site/section-reveal";
-import { StockTickerTape } from "@/components/site/stock-ticker-tape";
 
-// UI-DEBT: Home page still needs explicit page-level loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function HomePage() {
   const tickerPayload = await getTickerTapePayload();
 
@@ -28,19 +27,13 @@ export default async function HomePage() {
             用 AI 把经济学装进游戏里，让课堂真正进入决策现场。
           </h1>
           <p className="mt-5 max-w-2xl text-body leading-7 text-white/70 sm:mt-6 sm:text-body-lg sm:leading-8">
-            Brown Zone 以 Mr.Brown AI 经济沙盘为核心，把 AP 经济学考点、资产配置、家校共育和排行榜挑战做成一体化网页端体验。
+            Brown Zone 以 Mr.Brown AI 经济沙盘为核心，把经济学考点、资产配置、家校共育和排行榜挑战做成一体化网页端体验。
           </p>
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
-            <Link
-              href="/demo"
-              className="bz-primary-action px-6 py-3 text-sm"
-            >
+            <Link href="/demo" className="bz-primary-action px-6 py-3 text-sm">
               进入试玩入口
             </Link>
-            <Link
-              href="/learn"
-              className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white"
-            >
+            <Link href="/learn" className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white">
               查看 8 大模块
             </Link>
           </div>
@@ -56,13 +49,16 @@ export default async function HomePage() {
           </div>
         </SectionReveal>
 
-        <SectionReveal delay={0.08} className="bz-ink-panel relative min-h-[440px] overflow-hidden rounded-3xl sm:min-h-[560px] lg:min-h-[620px]">
+        <SectionReveal
+          delay={0.08}
+          className="bz-ink-panel relative min-h-[440px] overflow-hidden rounded-3xl sm:min-h-[560px] lg:min-h-[620px]"
+        >
           <HeroStageArt className="absolute inset-0" />
           <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5">
             <p className="bz-eyebrow-inverse">Product Promise</p>
             <p className="mt-3 text-lg font-semibold text-white">展示优先版首发聚焦</p>
             <p className="mt-2 text-sm leading-7 text-white/62">
-              官网叙事、课程模块、学生端 Demo、教师/家长后台与邀请制闭环全部可跑通，联赛先做异步榜单与挑战赛。
+              官网叙事、课程模块、试玩入口、家校协同和邀请制闭环全部可跑通；内部工作台需登录后按账号权限进入。
             </p>
           </div>
         </SectionReveal>
@@ -85,9 +81,11 @@ export default async function HomePage() {
       <section className="page-shell mt-14 sm:mt-16">
         <SectionReveal className="flex flex-col gap-3">
           <p className="bz-eyebrow">核心功能</p>
-          <h2 className="font-display text-4xl font-semibold text-slate-950">8 大模块围绕一套完整沙盘协同运转</h2>
+          <h2 className="font-display text-4xl font-semibold text-slate-950">
+            8 大模块围绕一套完整沙盘协同运转
+          </h2>
           <p className="max-w-3xl text-base leading-8 text-slate-600">
-            从资产配置到家校后台，每一块都来自附件里的真实需求，并按照可展示、可试玩、可扩展的方式重新组织。
+            从资产配置到家校后台，每一块都按可展示、可试玩、可扩展的方式重新组织，避免只停留在静态介绍。
           </p>
         </SectionReveal>
 
@@ -126,7 +124,9 @@ export default async function HomePage() {
       <section className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <SectionReveal className="bz-ink-panel rounded-3xl p-8">
           <p className="bz-eyebrow-inverse">方案优势</p>
-          <h2 className="mt-4 font-display text-4xl font-semibold">为什么它比传统财商课更像下一代课堂产品</h2>
+          <h2 className="mt-4 font-display text-4xl font-semibold">
+            为什么它比传统财商课更像下一代课堂产品？
+          </h2>
           <div className="mt-8 space-y-4">
             {comparisonRows.map((row) => (
               <div key={row.label} className="bz-inverse-tile p-5">
@@ -143,7 +143,9 @@ export default async function HomePage() {
         <div className="space-y-6">
           <SectionReveal className="panel rounded-3xl p-7">
             <p className="bz-eyebrow">增长路径</p>
-            <h3 className="mt-4 text-3xl font-semibold text-slate-950">先做校内试点，再把联赛与 SaaS 做成增长飞轮</h3>
+            <h3 className="mt-4 text-3xl font-semibold text-slate-950">
+              先做校内试点，再把联赛与 SaaS 做成增长飞轮
+            </h3>
             <div className="mt-6 space-y-4">
               {roadmapPhases.map((phase, index) => (
                 <div key={phase.title} className="bz-muted-tile p-5">
@@ -161,12 +163,14 @@ export default async function HomePage() {
 
           <SectionReveal id="business" className="panel rounded-3xl p-7">
             <p className="bz-eyebrow">商业模式</p>
-            <h3 className="mt-4 text-3xl font-semibold text-slate-950">校园版订阅 + 个人增值 + 赛事服务</h3>
+            <h3 className="mt-4 text-3xl font-semibold text-slate-950">
+              个人月卡 + 学校授权 + 赛事服务
+            </h3>
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {[
-                ["B2B2C 校园 SaaS", "按学校 / 班级年费订阅，含教师后台与教学脚本。"],
-                ["学生个人版", "高级模组、深度 AI 报告与可视化皮肤订阅。"],
-                ["赛事与认证", "校际联赛、等级证书与合作背书形成额外收入。"],
+                ["个人月卡", "15 元/月，用于自助体验、AI 评定和成长复盘。"],
+                ["学校授权", "按班级或学期授权，包含教师后台、批量账号和课堂数据。"],
+                ["赛事服务", "校际挑战、主题赛与阶段证书形成额外服务收入。"],
               ].map(([title, text]) => (
                 <div key={title} className="bz-muted-tile p-5">
                   <p className="text-lg font-semibold text-slate-950">{title}</p>
@@ -181,7 +185,9 @@ export default async function HomePage() {
       <section id="safety" className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <SectionReveal className="panel rounded-3xl p-7">
           <p className="bz-eyebrow">团队与愿景</p>
-          <h2 className="mt-4 text-4xl font-semibold text-slate-950">以游戏为载体，做真正对同龄人有帮助的经济学启蒙</h2>
+          <h2 className="mt-4 text-4xl font-semibold text-slate-950">
+            以游戏为载体，做真正对同龄人有帮助的经济学启蒙
+          </h2>
           <div className="mt-6 space-y-4">
             {teamProfiles.map((member) => (
               <div key={member.name} className="bz-muted-tile p-5">
@@ -199,11 +205,13 @@ export default async function HomePage() {
 
         <SectionReveal className="bz-ink-panel bz-ink-gradient rounded-3xl p-8">
           <p className="bz-eyebrow-inverse">未成年人友好</p>
-          <h2 className="mt-4 font-display text-4xl font-semibold">坚持去金钱化、去开户导流，把“玩”变成理性训练</h2>
+          <h2 className="mt-4 font-display text-4xl font-semibold">
+            坚持去金钱化、去开户导流，把“玩”变成理性训练
+          </h2>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {[
               "不接真实行情交易，不做任何真实收益承诺。",
-              "课堂、家庭与 AI 报告围绕成长反馈而不是刺激频繁操作。",
+              "课堂、家庭与 AI 报告围绕成长反馈，而不是刺激频繁操作。",
               "邀请码与班级关系可控，适合校园试点与展示环境。",
               "联赛先做异步排行榜，不做鼓励冲动行为的实时对战房间。",
             ].map((item) => (
@@ -213,17 +221,11 @@ export default async function HomePage() {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/demo"
-              className="bz-primary-action px-6 py-3 text-sm"
-            >
+            <Link href="/demo" className="bz-primary-action px-6 py-3 text-sm">
               打开 Demo 闭环
             </Link>
-            <Link
-              href="/teacher"
-              className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white"
-            >
-              查看教师端
+            <Link href="/pricing" className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white">
+              查看商业方案
             </Link>
           </div>
         </SectionReveal>

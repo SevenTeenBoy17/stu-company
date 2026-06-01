@@ -85,6 +85,8 @@ function profileNameFor(userId: string) {
 
 async function seedUsers() {
   console.log("Seeding users + profiles...");
+  const guestTrialEnd = new Date();
+  guestTrialEnd.setDate(guestTrialEnd.getDate() + 3);
 
   // Insert without circular FK fields first; relationships are synced after
   // classrooms and parent links exist.
@@ -96,6 +98,9 @@ async function seedUsers() {
         email: user.email,
         passwordHash: user.passwordHash,
         role: user.role,
+        trialExpiresAt: user.id === "guest-student" ? guestTrialEnd : null,
+        subscriptionTier: user.id === "guest-student" ? "free" : "standard",
+        onboardingCompleted: user.id === "guest-student" ? 0 : 1,
       })),
     )
     .onConflictDoUpdate({
@@ -104,8 +109,9 @@ async function seedUsers() {
         email: sql`excluded.email`,
         passwordHash: sql`excluded.password_hash`,
         role: sql`excluded.role`,
-        onboardingCompleted: sql`1`,
-        subscriptionTier: sql`'standard'`,
+        trialExpiresAt: sql`excluded.trial_expires_at`,
+        onboardingCompleted: sql`excluded.onboarding_completed`,
+        subscriptionTier: sql`excluded.subscription_tier`,
       },
     });
 

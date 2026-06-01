@@ -24,7 +24,7 @@ export function SiteFooter() {
             </p>
             <div className="mt-6 space-y-2 text-sm text-white/48">
               <p>成都市树德实验中学 · 学生创意公司计划书 Demo</p>
-              <p>contact@brownzone.ai</p>
+              <p className="break-words">contact@brownzone.ai</p>
             </div>
           </div>
 
@@ -40,11 +40,8 @@ export function SiteFooter() {
               <Link href="/demo" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
                 试玩入口
               </Link>
-              <Link href="/student" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
-                学生策略台
-              </Link>
-              <Link href="/teacher" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
-                教师指挥舱
+              <Link href="/pricing" className="inline-flex min-h-11 items-center transition-colors hover:text-white">
+                订阅方案
               </Link>
             </div>
           </div>

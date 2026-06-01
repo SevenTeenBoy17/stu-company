@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import type { Role } from "@/lib/types";
@@ -65,7 +65,13 @@ export function PlatformLayout({
         <div className="xl:hidden">
           <div className="bz-ink-panel rounded-3xl px-5 py-5 sm:px-6">
             <div className="flex items-start gap-4">
-              <Image src={roleAsset.src} alt={roleAsset.label} width={64} height={64} className="h-16 w-16 shrink-0 rounded-2xl shadow-glow" />
+              <Image
+                src={roleAsset.src}
+                alt={roleAsset.label}
+                width={64}
+                height={64}
+                className="h-16 w-16 shrink-0 rounded-2xl shadow-glow"
+              />
               <div className="min-w-0">
                 <p className="bz-eyebrow-inverse">Brown Zone</p>
                 <h2 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h2>
@@ -78,7 +84,6 @@ export function PlatformLayout({
             <div className="flex flex-wrap gap-2 pb-1">
               {navMap[role].map((item, index) => {
                 const active = item.href === activeHref;
-
                 return (
                   <Link
                     key={item.href}
@@ -103,25 +108,30 @@ export function PlatformLayout({
 
         <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="bz-ink-panel hidden rounded-3xl p-6 xl:block">
-            <Image src={roleAsset.src} alt={roleAsset.label} width={80} height={80} className="h-20 w-20 rounded-3xl shadow-glow" />
+            <Image
+              src={roleAsset.src}
+              alt={roleAsset.label}
+              width={80}
+              height={80}
+              className="h-20 w-20 rounded-3xl shadow-glow"
+            />
             <p className="bz-eyebrow-inverse mt-5">Brown Zone</p>
             <h2 className="mt-3 text-h1 font-semibold">{heading}</h2>
             <p className="mt-3 text-body leading-8 text-white/60">{summary}</p>
             <div className="mt-8 space-y-2">
               {navMap[role].map((item, index) => {
                 const active = item.href === activeHref;
-
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/12",
+                      "flex min-w-0 items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/12",
                       active ? "bg-white/14 text-white" : "bg-white/[0.05] text-white/70",
                     )}
                   >
-                    <span>{item.label}</span>
-                    <span className={cn("text-white/35", active && "text-brand-warm")}>
+                    <span className="truncate">{item.label}</span>
+                    <span className={cn("shrink-0 text-white/35", active && "text-brand-warm")}>
                       0{index + 1}
                     </span>
                   </Link>

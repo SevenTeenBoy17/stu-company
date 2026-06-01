@@ -48,6 +48,15 @@ export interface TutorRadarRequest {
   state: SimulationState;
 }
 
+export interface OnboardingNarrativeRequest {
+  userName: string;
+  stepId: string;
+  stepTitle: string;
+  concept: string;
+  fallbackText: string;
+  progressLabel: string;
+}
+
 function endpointForBase(baseUrl: string) {
   const normalized = baseUrl.replace(/\/$/, "");
   return normalized.endsWith("/v1") ? `${normalized}/messages` : `${normalized}/v1/messages`;
@@ -87,6 +96,32 @@ function getAiConfig() {
     model: process.env.AI_MODEL ?? "claude-sonnet-4-6",
     baseUrls: [primary, secondary].filter((url): url is string => Boolean(url)),
   };
+}
+
+function buildOnboardingSystemPrompt() {
+  return [
+    "你是 Brown Zone 的 Mr.Brown，一位面向青少年的财商启蒙导师。",
+    "请始终使用简体中文，语气像游戏新手村导师：清晰、温和、有一点故事感，但不夸张。",
+    "每次只解释一个核心概念，避免认知负荷过高。",
+    "所有内容必须声明这是教育模拟，不涉及真实交易建议。",
+  ].join("\n");
+}
+
+function buildOnboardingPrompt(input: OnboardingNarrativeRequest) {
+  return [
+    `学生：${input.userName}`,
+    `当前教学进度：${input.progressLabel}`,
+    `步骤：${input.stepTitle}`,
+    `本步唯一核心概念：${input.concept}`,
+    `页面已有默认文案：${input.fallbackText}`,
+    "请改写成 70-110 字的新手引导文案。",
+    "要求：第一句承接游戏叙事，第二句解释概念，第三句给出一个低压力行动提示。",
+    "不要输出标题、编号、Markdown 或真实投资建议。",
+  ].join("\n");
+}
+
+function buildLocalOnboardingNarrative(input: OnboardingNarrativeRequest) {
+  return input.fallbackText.replace("新同学", input.userName);
 }
 
 function buildTutorSystemPrompt() {
@@ -385,6 +420,21 @@ export async function requestTutorInsight(input: TutorInsightRequest): Promise<T
       },
     ],
     fallbackText: buildLocalTutorNarrative(input),
+  });
+}
+
+export async function requestOnboardingNarrative(
+  input: OnboardingNarrativeRequest,
+): Promise<TutorInsightResponse> {
+  return requestRemoteText({
+    system: buildOnboardingSystemPrompt(),
+    messages: [
+      {
+        role: "user",
+        content: [{ type: "text", text: buildOnboardingPrompt(input) }],
+      },
+    ],
+    fallbackText: buildLocalOnboardingNarrative(input),
   });
 }
 

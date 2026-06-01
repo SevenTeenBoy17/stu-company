@@ -11,14 +11,14 @@ export const siteNavGroups: NavGroup[] = [
         description: "12 回合校园赛季，覆盖宏观波动、舆情冲击与资产配置。",
       },
       {
-        label: "黑天鹅事件卡",
+        label: "随机事件卡",
         href: "/learn",
-        description: "随机政策、舆论与供需变化，训练风险响应与复盘能力。",
+        description: "政策、行业、情绪与黑天鹅事件分阶段出现，训练风险响应与复盘能力。",
       },
       {
-        label: "投资决策沙盘",
-        href: "/student",
-        description: "股票、ETF、债券、商品、外汇统一放进一张操作台里。",
+        label: "登录后进入策略台",
+        href: "/demo",
+        description: "学生、教师、家长与管理员按账号权限进入对应工作台，公共站点不直接暴露内部入口。",
       },
     ],
   },
@@ -29,7 +29,7 @@ export const siteNavGroups: NavGroup[] = [
       {
         label: "8 大核心模块",
         href: "/learn",
-        description: "股市、银行、房产、创业等模块化学习路径。",
+        description: "股市、银行、房产、创业、事件与榜单等模块化学习路径。",
       },
       {
         label: "学·用·评闭环",
@@ -37,9 +37,9 @@ export const siteNavGroups: NavGroup[] = [
         description: "先学概念，再做情景决策，最后拿到 AI 行为报告。",
       },
       {
-        label: "校内挑战赛",
-        href: "/teacher",
-        description: "把课堂作业变成班级挑战赛，提高参与度与完成率。",
+        label: "课堂挑战赛",
+        href: "/demo",
+        description: "教师登录后可把课堂作业变成班级挑战赛，提高参与度与完成率。",
       },
     ],
   },
@@ -48,19 +48,19 @@ export const siteNavGroups: NavGroup[] = [
     summary: "学生、教师、家长三端联动，让课堂和家庭都能看到成长轨迹。",
     items: [
       {
-        label: "学生策略台",
-        href: "/student",
-        description: "统一交易面板、资产总览、AI 导师点评与回合推进。",
+        label: "学生策略体验",
+        href: "/demo",
+        description: "统一交易面板、资产总览、AI 导师点评与回合推进，需登录后进入。",
       },
       {
-        label: "教师指挥舱",
-        href: "/teacher",
-        description: "发任务、管邀请码、看班级排行与行为偏差。",
+        label: "教师组织工具",
+        href: "/demo",
+        description: "教师账号可发任务、管邀请码、看班级排行与行为偏差。",
       },
       {
         label: "家长成长报告",
-        href: "/parent",
-        description: "查看理性决策能力、计划性与风险控制等维度变化。",
+        href: "/demo",
+        description: "家长账号可查看理性决策、计划性与风险控制等维度变化。",
       },
     ],
   },
@@ -69,14 +69,14 @@ export const siteNavGroups: NavGroup[] = [
     summary: "坚持去金钱化与未成年人友好，把投教做成成长工具而不是诱导工具。",
     items: [
       {
-        label: "白名单内容",
+        label: "教育白名单",
         href: "/#safety",
-        description: "不接真实交易、不做开户导流，强调教育属性。",
+        description: "不接真实交易、不做开户导流，强调教育属性与模拟边界。",
       },
       {
-        label: "管理端总览",
-        href: "/admin",
-        description: "统一查看邀请码、活跃班级、内容模块与 AI 使用情况。",
+        label: "运营控制台",
+        href: "/demo",
+        description: "超级管理员登录后可统一查看账号、试用、订阅、订单与学校授权指标。",
       },
       {
         label: "项目路演摘要",
@@ -118,7 +118,7 @@ export const learningModules: LearningModule[] = [
   {
     key: "property",
     title: "房地产模拟",
-    tagline: "把首付、按揭与租售比搬进可比较的场景里。",
+    tagline: "把首付、按揭与租售比放进可比较的场景里。",
     description:
       "学生可以在不同利率与景气度环境下做买租判断，理解杠杆与长期现金流。",
     level: "进阶",
@@ -144,7 +144,7 @@ export const learningModules: LearningModule[] = [
   },
   {
     key: "competition",
-    title: "社区与竞技",
+    title: "社区与竞赛",
     tagline: "用班级榜、校际榜和周挑战，让课堂拥有游戏张力。",
     description:
       "把策略讨论、团队荣誉与阶段成绩结合起来，让学生更愿意持续参与。",
@@ -213,17 +213,17 @@ export const teamProfiles = [
     summary: "统筹产品架构、商业逻辑与市场试点，定义整体产品方向。",
   },
   {
-    name: "罗布木",
+    name: "罗布森",
     role: "CTO / Algorithm",
-    summary: "负责高保真股市仿真、舆情逻辑与 AI 导师接入策略。",
+    summary: "负责高保真股市仿真、事件逻辑与 AI 导师接入策略。",
   },
   {
-    name: "刘煜柃",
+    name: "刘煜柯",
     role: "CFO / Curriculum",
     summary: "负责经济学内容转译、预算控制与财务模型设计。",
   },
   {
-    name: "张珍渝",
+    name: "张珍清",
     role: "COO / Operations",
     summary: "负责校园运营、联赛活动、执行节奏与用户增长试点。",
   },
