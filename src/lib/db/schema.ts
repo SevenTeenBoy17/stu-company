@@ -303,3 +303,16 @@ export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
   // ranking query: filter by (period, period_key), order by power desc.
   index("leaderboard_snapshots_rank_idx").on(table.period, table.periodKey, table.power),
 ]);
+
+// Per-user lesson completion (learning component of the power score). Option A:
+// view/learn-based — a row means the student marked the module learned. (A future
+// quiz gate would add a score column.)
+export const learningProgress = pgTable("learning_progress", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
+  moduleKey: varchar("module_key", { length: 48 }).notNull(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("learning_progress_user_module_unique").on(table.userId, table.moduleKey),
+  index("learning_progress_user_idx").on(table.userId),
+]);

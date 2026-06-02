@@ -5,6 +5,7 @@
  * comes from the live rank profile so visibility changes apply immediately.
  */
 import {
+  getLearningProgress,
   getPowerSnapshot,
   getRankProfile,
   getRunForUser,
@@ -154,7 +155,10 @@ export async function recomputePowerForUser(
 ): Promise<{ power: number } | null> {
   const run = await getRunForUser(userId);
   if (!run) return null;
-  const input = runToPowerInput(run, opts.learning);
+  // Pull the student's real lesson completion into the learning component
+  // (defaults to whatever the caller passes, e.g. in tests).
+  const learning = opts.learning ?? (await getLearningProgress(userId));
+  const input = runToPowerInput(run, learning);
   const { power, components } = computePowerScore(input);
   const netWorth = Math.round(input.netWorth);
   const seasonKey = semesterKey(opts.now);

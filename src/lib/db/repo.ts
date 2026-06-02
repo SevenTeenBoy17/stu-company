@@ -30,6 +30,7 @@ import {
   growthReports,
   inviteCodes,
   leaderboardSnapshots,
+  learningProgress,
   paymentOrders,
   profiles,
   rankProfiles,
@@ -69,6 +70,8 @@ import type {
   GrowthReport,
   InviteCode,
   LeaderboardSnapshot,
+  LearningProgressRow,
+  LearningProgressSummary,
   PaymentChannel,
   PaymentOrder,
   PaymentStatus,
@@ -2376,6 +2379,40 @@ export async function upsertLeaderboardSnapshot(input: {
         return toLeaderboardSnapshot(row);
       }),
     () => store.upsertLeaderboardSnapshot(input),
+  );
+}
+
+/** Mark a learning module completed for a user. Idempotent. */
+export async function markModuleComplete(
+  userId: string,
+  moduleKey: string,
+): Promise<LearningProgressRow> {
+  return withDb(
+    "markModuleComplete",
+    async (db) => {
+      await db
+        .insert(learningProgress)
+        .values({ id: createId("lp"), userId, moduleKey })
+        .onConflictDoNothing({ target: [learningProgress.userId, learningProgress.moduleKey] });
+      return { userId, moduleKey, completedAt: new Date().toISOString() };
+    },
+    () => store.markModuleComplete(userId, moduleKey),
+  );
+}
+
+export async function getLearningProgress(userId: string): Promise<LearningProgressSummary> {
+  return withDb(
+    "getLearningProgress",
+    async (db) => {
+      const rows = await db
+        .select({ moduleKey: learningProgress.moduleKey })
+        .from(learningProgress)
+        .where(eq(learningProgress.userId, userId));
+      const valid = new Set<string>(learningModules.map((m) => m.key));
+      const completedKeys = rows.map((r) => r.moduleKey).filter((k) => valid.has(k));
+      return { completed: completedKeys.length, total: valid.size, completedKeys };
+    },
+    () => store.getLearningProgress(userId),
   );
 }
 

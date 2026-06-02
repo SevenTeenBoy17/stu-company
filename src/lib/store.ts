@@ -31,6 +31,8 @@ import type {
   InviteCode,
   LeaderboardEntry,
   LeaderboardSnapshot,
+  LearningProgressRow,
+  LearningProgressSummary,
   PaymentChannel,
   PaymentOrder,
   PaymentStatus,
@@ -68,6 +70,7 @@ type Store = {
   schools: School[];
   rankProfiles: RankProfile[];
   leaderboardSnapshots: LeaderboardSnapshot[];
+  learningProgress: LearningProgressRow[];
 };
 
 declare global {
@@ -440,6 +443,7 @@ export function createSeedStore(): Store {
     schools: [],
     rankProfiles: [],
     leaderboardSnapshots: [],
+    learningProgress: [],
   };
 }
 
@@ -465,6 +469,9 @@ export function getStore() {
   }
   if (!globalThis.__brownZoneStore__.leaderboardSnapshots) {
     globalThis.__brownZoneStore__.leaderboardSnapshots = [];
+  }
+  if (!globalThis.__brownZoneStore__.learningProgress) {
+    globalThis.__brownZoneStore__.learningProgress = [];
   }
 
   return globalThis.__brownZoneStore__;
@@ -779,6 +786,33 @@ export function getPowerSnapshot(
       (s) => s.userId === userId && s.period === period && s.periodKey === periodKey,
     ) ?? null
   );
+}
+
+// ── Learning progress (learning component of the power score) ────────────────
+
+const VALID_MODULE_KEYS = new Set<string>(learningModules.map((m) => m.key));
+
+/** Mark a module learned for a user. Idempotent on (userId, moduleKey). */
+export function markModuleComplete(userId: string, moduleKey: string): LearningProgressRow {
+  const store = getStore();
+  const existing = store.learningProgress.find(
+    (p) => p.userId === userId && p.moduleKey === moduleKey,
+  );
+  if (existing) return existing;
+  const row: LearningProgressRow = {
+    userId,
+    moduleKey,
+    completedAt: new Date().toISOString(),
+  };
+  store.learningProgress.push(row);
+  return row;
+}
+
+export function getLearningProgress(userId: string): LearningProgressSummary {
+  const completedKeys = getStore()
+    .learningProgress.filter((p) => p.userId === userId && VALID_MODULE_KEYS.has(p.moduleKey))
+    .map((p) => p.moduleKey);
+  return { completed: completedKeys.length, total: VALID_MODULE_KEYS.size, completedKeys };
 }
 
 /** Weekly digests for the Premium family report email cron. */

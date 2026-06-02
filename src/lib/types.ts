@@ -343,6 +343,18 @@ export interface PowerComponentsRecord {
   growth: number;
 }
 
+export interface LearningProgressRow {
+  userId: string;
+  moduleKey: string;
+  completedAt: string;
+}
+
+export interface LearningProgressSummary {
+  completed: number;
+  total: number;
+  completedKeys: string[];
+}
+
 /** Computed power for a user in one period bucket. */
 export interface LeaderboardSnapshot {
   id: string;

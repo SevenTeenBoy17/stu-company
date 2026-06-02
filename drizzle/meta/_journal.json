@@ -85,6 +85,13 @@
       "when": 1780000100000,
       "tag": "0011_rank_profile_tier_season",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780000110000,
+      "tag": "0012_learning_progress",
+      "breakpoints": true
     }
   ]
 }
