@@ -102,4 +102,17 @@ describe("getPowerCard", () => {
     expect(card.hasProfile).toBe(false);
     expect(card.ranks.nation).toBeUndefined();
   });
+
+  it("gives a hidden (but consented) player a private rank yet keeps them off the board", async () => {
+    seedStudent("rival", 1500); // public, ahead
+    seedStudent("me", 1200, { visibility: "hidden", consent: 1 });
+
+    const card = await getPowerCard("me", "weekly", { now });
+    expect(card.visibility).toBe("hidden");
+    expect(card.ranks.nation).toBe(2); // true position behind rival — visible to themselves
+
+    // ...but they do not appear on the public board.
+    const board = await getLeaderboardBoard("rival", "nation", "weekly", { now });
+    expect(board!.entries.some((e) => e.userId === "me")).toBe(false);
+  });
 });

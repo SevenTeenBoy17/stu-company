@@ -25,6 +25,8 @@ export interface PowerCardDTO {
   hasProfile: boolean;
   ranked: boolean;
   alias?: string;
+  visibility?: RankVisibility;
+  consent?: number;
   power: number;
   tier: TierInfoDTO;
   toNextTier: number;

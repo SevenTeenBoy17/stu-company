@@ -92,11 +92,21 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
           })}
         </div>
 
-        {!card.ranked || card.ranks.nation === undefined ? (
+        {!card.ranked ? (
           <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
-            {card.ranked
-              ? "你已有战力，但当前为「隐身」或未授权，暂不进入公开榜单。可在设置里调整可见性并获得家长同意后上榜。"
-              : "完成一局沙盘即可生成战力并参与排名。"}
+            完成一局沙盘即可生成战力并参与排名。
+          </p>
+        ) : card.consent !== 1 ? (
+          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+            获得家长 / 监护人同意后即可登上公开榜单。以上名次仅你自己可见。
+          </p>
+        ) : card.visibility === "hidden" ? (
+          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+            你已开启「隐身」，以下名次仅自己可见，不会出现在公开榜单。
+          </p>
+        ) : card.visibility === "school_only" ? (
+          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+            你当前「仅校内」可见，校外榜单不显示你的昵称。
           </p>
         ) : null}
       </motion.section>

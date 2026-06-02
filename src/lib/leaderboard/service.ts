@@ -11,14 +11,14 @@ import {
   listRankSnapshots,
   upsertLeaderboardSnapshot,
 } from "@/lib/db/repo";
-import type { PowerComponentsRecord, RankPeriod } from "@/lib/types";
+import type { PowerComponentsRecord, RankPeriod, RankVisibility } from "@/lib/types";
 
 import { periodKey } from "./periods";
 import { computePowerScore, POWER_WEIGHTS } from "./power-score";
 import { runToPowerInput, type LearningProgress } from "./run-power";
 import {
   rankLeaderboard,
-  viewerScopeRanks,
+  viewerPrivateRanks,
   type RankScope,
   type RankedEntry,
   type Viewer,
@@ -42,6 +42,8 @@ export interface PowerCard {
   hasProfile: boolean;
   ranked: boolean;
   alias?: string;
+  visibility?: RankVisibility;
+  consent?: number;
   power: number;
   tier: ReturnType<typeof tierInfo>;
   toNextTier: number;
@@ -113,7 +115,10 @@ export async function getPowerCard(
     provinceCode: profile.provinceCode,
   };
   const power = own?.power ?? 0;
-  const ranks = viewerScopeRanks(snapshots, viewer);
+  // Private ranks: the viewer's true position among all consented players in
+  // scope, regardless of their own visibility — so a 隐身 player still sees
+  // where they stand while staying off everyone else's board.
+  const ranks = viewerPrivateRanks(snapshots, viewer);
 
   return {
     period,
@@ -121,6 +126,8 @@ export async function getPowerCard(
     hasProfile: true,
     ranked: Boolean(own),
     alias: profile.alias,
+    visibility: profile.visibility,
+    consent: profile.consent,
     power,
     tier: tierInfo(own?.tier ?? 1),
     toNextTier: nextTierGap(power, own?.tier ?? 1),

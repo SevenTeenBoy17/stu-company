@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   rankLeaderboard,
+  viewerPrivateRanks,
   viewerScopeRanks,
   type RankSnapshot,
   type Viewer,
@@ -122,6 +123,35 @@ describe("pagination", () => {
     expect(page2.entries).toHaveLength(50);
     expect(page2.entries[0].rank).toBe(51);
     expect(page2.total).toBe(120);
+  });
+});
+
+describe("viewerPrivateRanks (own card, visibility-independent)", () => {
+  it("gives a hidden viewer their true position while the board hides them", () => {
+    const data = [
+      snap({ userId: "top", power: 1800 }),
+      snap({ userId: "me", power: 1200, visibility: "hidden" }),
+      snap({ userId: "below", power: 900 }),
+    ];
+    // Board (visibility-filtered): hidden me is absent.
+    expect(rankLeaderboard(data, "nation", viewer).entries.some((e) => e.userId === "me")).toBe(false);
+    // But the private card rank counts the full consented field: top(1800) > me -> #2.
+    expect(viewerPrivateRanks(data, viewer).nation).toBe(2);
+    // And the visibility-honouring variant returns undefined for hidden.
+    expect(viewerScopeRanks(data, viewer).nation).toBeUndefined();
+  });
+
+  it("counts other hidden players in the field too", () => {
+    const data = [
+      snap({ userId: "secretLeader", power: 1900, visibility: "hidden" }),
+      snap({ userId: "me", power: 1200 }),
+    ];
+    expect(viewerPrivateRanks(data, viewer).nation).toBe(2);
+  });
+
+  it("returns undefined when the viewer has no snapshot", () => {
+    const data = [snap({ userId: "other", power: 1000 })];
+    expect(viewerPrivateRanks(data, viewer).nation).toBeUndefined();
   });
 });
 

@@ -97,7 +97,7 @@ export function rankLeaderboard(
   return { entries, total, viewerRank, page, pageSize };
 }
 
-/** The viewer's rank in all four scopes (for the power card). */
+/** The viewer's rank in all four scopes, honouring visibility (board-consistent). */
 export function viewerScopeRanks(
   snapshots: RankSnapshot[],
   viewer: Viewer,
@@ -106,6 +106,34 @@ export function viewerScopeRanks(
   const result = {} as Record<RankScope, number | undefined>;
   for (const scope of scopes) {
     result[scope] = rankLeaderboard(snapshots, scope, viewer, { pageSize: 1 }).viewerRank;
+  }
+  return result;
+}
+
+/**
+ * The viewer's *private* rank in all four scopes — their true competitive
+ * position among every consented player in scope, ignoring visibility (and
+ * including the viewer even when hidden). Used for the player's own card so a
+ * 隐身 player still sees where they stand, while never appearing on others'
+ * boards. Undefined when the viewer has no snapshot (not in the field).
+ */
+export function viewerPrivateRanks(
+  snapshots: RankSnapshot[],
+  viewer: Viewer,
+): Record<RankScope, number | undefined> {
+  const scopes: RankScope[] = ["school", "city", "province", "nation"];
+  const empty = { school: undefined, city: undefined, province: undefined, nation: undefined };
+  const self = snapshots.find((s) => s.userId === viewer.userId);
+  if (!self) return { ...empty };
+
+  const result = { ...empty } as Record<RankScope, number | undefined>;
+  for (const scope of scopes) {
+    const field = snapshots.filter((s) => inScope(s, scope, viewer));
+    // Same ordering as the board: power desc, userId asc as the tie-break.
+    const higher = field.filter(
+      (s) => s.power > self.power || (s.power === self.power && s.userId < self.userId),
+    ).length;
+    result[scope] = higher + 1;
   }
   return result;
 }
