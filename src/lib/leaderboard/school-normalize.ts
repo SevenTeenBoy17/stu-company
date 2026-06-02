@@ -18,3 +18,19 @@ export function normalizeSchoolName(raw: string): string {
 export function schoolDedupKey(name: string, cityCode: string): string {
   return `${cityCode}:${normalizeSchoolName(name)}`;
 }
+
+/**
+ * Sanitize public display text (alias / school name shown on boards): strip
+ * control (\p{Cc}) and format (\p{Cf} — zero-width + bidi-override) characters to
+ * prevent layout abuse on a board seen by other minors, collapse inner
+ * whitespace, and trim. This is NOT a content-moderation filter
+ * (profanity/impersonation is a separate product decision) — only objective,
+ * safe character hardening. Full-width characters are preserved so nicknames
+ * keep their intended look.
+ */
+export function sanitizeDisplayText(raw: string): string {
+  return raw
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

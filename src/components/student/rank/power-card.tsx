@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Crown, Info, Share2, TrendingUp } from "lucide-react";
+import { Check, Crown, Info, Share2, TrendingUp, X } from "lucide-react";
 
 import { buildPowerShareText } from "@/lib/leaderboard/share";
 
@@ -32,7 +32,7 @@ function tierAccent(tier: number): string {
 }
 
 export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: FormulaDTO }) {
-  const [copied, setCopied] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
 
   async function share() {
     const text = buildPowerShareText({
@@ -42,11 +42,12 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
     });
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      setShareState("copied");
     } catch {
-      // clipboard blocked (e.g. insecure context) — silently ignore
+      // clipboard blocked (e.g. insecure context)
+      setShareState("failed");
     }
+    window.setTimeout(() => setShareState("idle"), 2000);
   }
 
   const rows = (Object.keys(formula.weights) as (keyof ComponentsDTO)[]).map((key) => {
@@ -82,8 +83,14 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
               onClick={share}
               className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
             >
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
-              {copied ? "已复制" : "分享战绩"}
+              {shareState === "copied" ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : shareState === "failed" ? (
+                <X className="h-3.5 w-3.5" />
+              ) : (
+                <Share2 className="h-3.5 w-3.5" />
+              )}
+              {shareState === "copied" ? "已复制" : shareState === "failed" ? "复制失败" : "分享战绩"}
             </button>
           ) : (
             <span className="text-xs font-medium text-white/80">{card.seasonName} · 本周榜</span>

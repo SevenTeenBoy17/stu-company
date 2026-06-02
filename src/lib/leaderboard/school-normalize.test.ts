@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeSchoolName, schoolDedupKey } from "./school-normalize";
+import { normalizeSchoolName, sanitizeDisplayText, schoolDedupKey } from "./school-normalize";
 
 describe("normalizeSchoolName", () => {
   it("trims and removes inner whitespace", () => {
@@ -23,6 +23,25 @@ describe("normalizeSchoolName", () => {
   it("does NOT merge synonyms (left to moderation)", () => {
     // intentionally different after normalization — auto-merge would be unsafe
     expect(normalizeSchoolName("七中")).not.toBe(normalizeSchoolName("第七中学"));
+  });
+});
+
+describe("sanitizeDisplayText (board-safe alias/school)", () => {
+  it("strips zero-width and bidi-override characters", () => {
+    expect(sanitizeDisplayText("小​财‮迷")).toBe("小财迷");
+    expect(sanitizeDisplayText("abc﻿")).toBe("abc");
+  });
+
+  it("strips control characters and collapses whitespace", () => {
+    expect(sanitizeDisplayText("稳健  小   能手")).toBe("稳健 小 能手");
+  });
+
+  it("preserves full-width characters (nickname look kept)", () => {
+    expect(sanitizeDisplayText("财商达人ＡＢ")).toBe("财商达人ＡＢ");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(sanitizeDisplayText("  学霸  ")).toBe("学霸");
   });
 });
 

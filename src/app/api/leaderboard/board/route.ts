@@ -26,8 +26,10 @@ export async function GET(request: Request) {
   const scope = coerceScope(sp.get("scope"));
   const period = coercePeriod(sp.get("period"));
   const page = Math.max(1, Number(sp.get("page")) || 1);
+  // Client may request a page size; clamp to a sane range (default 50).
+  const pageSize = Math.min(100, Math.max(1, Number(sp.get("pageSize")) || 50));
 
-  const board = await getLeaderboardBoard(auth.user.id, scope, period, { page, pageSize: 50 });
+  const board = await getLeaderboardBoard(auth.user.id, scope, period, { page, pageSize });
   if (!board) {
     // No rank profile yet — the UI should route to onboarding.
     return NextResponse.json({ board: null, needsOnboarding: true });

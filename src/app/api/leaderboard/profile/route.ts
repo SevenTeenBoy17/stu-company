@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { findOrCreateSchool, getRankProfile, upsertRankProfile } from "@/lib/db/repo";
 import { isValidCity, isValidProvince } from "@/lib/leaderboard/regions";
+import { sanitizeDisplayText } from "@/lib/leaderboard/school-normalize";
 import { recomputePowerForUser } from "@/lib/leaderboard/service";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +43,18 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return apiError("invalid_input", "请完整填写学校、地区与昵称。", 400);
     }
-    const { provinceCode, cityCode, schoolName, alias, visibility, consent } = parsed.data;
+    const { provinceCode, cityCode, visibility, consent } = parsed.data;
 
     if (!isValidProvince(provinceCode) || !isValidCity(provinceCode, cityCode)) {
       return apiError("invalid_input", "请选择有效的省份与城市。", 400);
+    }
+
+    // Harden the public display text (strip control/zero-width/bidi chars) before
+    // it lands on a board seen by other minors; re-check length post-sanitize.
+    const schoolName = sanitizeDisplayText(parsed.data.schoolName);
+    const alias = sanitizeDisplayText(parsed.data.alias);
+    if (alias.length < 2 || schoolName.length < 2) {
+      return apiError("invalid_input", "学校或昵称包含无效字符，请重新填写。", 400);
     }
 
     const school = await findOrCreateSchool({
