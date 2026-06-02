@@ -54,6 +54,10 @@ export function powerComponents(input: PowerScoreInput): PowerComponents {
   const totalReturn = input.netWorth / Math.max(input.startCapital, POWER_TUNING.epsilon) - 1;
   const riskAdj = totalReturn / Math.max(input.returnVolatility, POWER_TUNING.epsilon);
 
+  // By design, total return feeds BOTH riskAdjReturn (.30, return per unit of
+  // volatility) and growth (.10, raw return). The overlap is intentional — it
+  // rewards return while weighting it more heavily when achieved with low
+  // volatility — and is surfaced transparently in the composition panel.
   return {
     riskAdjReturn: clamp01(
       (riskAdj + POWER_TUNING.riskAdjReturnCap) / (2 * POWER_TUNING.riskAdjReturnCap),

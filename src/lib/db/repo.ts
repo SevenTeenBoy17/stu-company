@@ -2219,6 +2219,10 @@ export async function findOrCreateSchool(input: {
         .from(schools)
         .where(and(eq(schools.cityCode, input.cityCode), eq(schools.normalizedName, normalizedName)))
         .limit(1);
+      // Defensive: the row was just inserted (or already existed); a miss means a
+      // pathological race deleted it. Fail with a clean error rather than crash
+      // in toSchool(undefined).
+      if (!row) throw new Error("学校创建失败，请重试。");
       return toSchool(row);
     },
     () => store.findOrCreateSchool(input),

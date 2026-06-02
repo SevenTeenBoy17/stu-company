@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { learningModules } from "@/lib/content";
-import { getLearningProgress, markModuleComplete, resetStoreForTests } from "@/lib/store";
+import {
+  findOrCreateSchool,
+  getLearningProgress,
+  markModuleComplete,
+  resetStoreForTests,
+  upsertRankProfile,
+} from "@/lib/store";
 
 import { recomputePowerForUser } from "./service";
 
@@ -37,7 +43,17 @@ describe("learning raises power through recompute", () => {
   beforeEach(() => resetStoreForTests());
 
   it("completing every module increases the learning component and total power", async () => {
-    // student-1 has a seeded run.
+    // student-1 has a seeded run; give them a rank profile so recompute runs.
+    const school = findOrCreateSchool({ name: "成都七中", provinceCode: "51", cityCode: "5101" });
+    upsertRankProfile({
+      userId: "student-1",
+      provinceCode: "51",
+      cityCode: "5101",
+      schoolId: school.id,
+      alias: "一号",
+      consent: 1,
+    });
+
     const before = await recomputePowerForUser("student-1", { now });
     expect(before).not.toBeNull();
 

@@ -150,15 +150,22 @@ const STANDING_PERIODS: RankPeriod[] = ["weekly", "monthly", "season"];
 
 /**
  * Recompute and persist a user's power from their current run, into every live
- * board (weekly + monthly). Power is computed once and written to each bucket;
- * the soft floor is semester-scoped so the repeated writes are idempotent on the
- * tier. Called after a round advances and on onboarding. No run -> no-op
- * (returns null) so callers can ignore it for non-students.
+ * board (weekly + monthly + season). Power is computed once and written to each
+ * bucket; the soft floor is semester-scoped so the repeated writes are idempotent
+ * on the tier. Called after a round advances and on onboarding. Returns null
+ * (a no-op) when the student has not onboarded onto the leaderboard or has no
+ * run — so the hot gameplay path never writes orphan snapshots for players who
+ * never visited /student/rank.
  */
 export async function recomputePowerForUser(
   userId: string,
   opts: { now?: Date; learning?: LearningProgress } = {},
 ): Promise<{ power: number } | null> {
+  // No rank profile -> not on the leaderboard; skip (avoids orphan snapshot rows
+  // that every consumer filters out anyway). Onboarding creates the profile
+  // before calling this, so the initial seed still runs.
+  const profile = await getRankProfile(userId);
+  if (!profile) return null;
   const run = await getRunForUser(userId);
   if (!run) return null;
   // Pull the student's real lesson completion into the learning component
