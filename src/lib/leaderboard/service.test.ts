@@ -8,7 +8,12 @@ import {
 } from "@/lib/store";
 
 import { periodKey } from "./periods";
-import { getLeaderboardBoard, getPowerCard, recomputePowerForUser } from "./service";
+import {
+  getLeaderboardBoard,
+  getPowerCard,
+  recomputeAllRankedUsers,
+  recomputePowerForUser,
+} from "./service";
 
 const comp = { riskAdjReturn: 0.6, discipline: 0.7, drawdown: 0.8, learning: 0.5, growth: 0.4 };
 const now = new Date(Date.UTC(2026, 5, 1));
@@ -125,6 +130,24 @@ describe("getPowerCard", () => {
     expect(weekly!.entries.some((e) => e.userId === "student-1")).toBe(true);
     expect(monthly!.entries.some((e) => e.userId === "student-1")).toBe(true);
     expect(monthly!.periodKey).toBe("2026-06");
+  });
+
+  it("recomputeAllRankedUsers refreshes every onboarded user (cron)", async () => {
+    const school = findOrCreateSchool({ name: "成都七中", provinceCode: "51", cityCode: "5101" });
+    for (const uid of ["student-1", "student-2"]) {
+      upsertRankProfile({
+        userId: uid,
+        provinceCode: "51",
+        cityCode: "5101",
+        schoolId: school.id,
+        alias: uid,
+        consent: 1,
+      });
+    }
+    const { processed } = await recomputeAllRankedUsers({ now });
+    expect(processed).toBe(2);
+    const board = await getLeaderboardBoard("student-1", "nation", "weekly", { now });
+    expect(board!.total).toBe(2);
   });
 
   it("gives a hidden (but consented) player a private rank yet keeps them off the board", async () => {

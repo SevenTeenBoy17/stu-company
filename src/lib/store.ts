@@ -775,6 +775,11 @@ export function listRankSnapshots(period: RankPeriod, periodKey: string): RankSn
   return result;
 }
 
+/** All users who have onboarded onto the leaderboard (for the recompute cron). */
+export function listRankedUserIds(): string[] {
+  return getStore().rankProfiles.map((p) => p.userId);
+}
+
 /** A single user's own power snapshot for a period (with components). */
 export function getPowerSnapshot(
   userId: string,

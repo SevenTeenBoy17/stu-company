@@ -9,6 +9,7 @@ import {
   getPowerSnapshot,
   getRankProfile,
   getRunForUser,
+  listRankedUserIds,
   listRankSnapshots,
   upsertLeaderboardSnapshot,
 } from "@/lib/db/repo";
@@ -174,6 +175,22 @@ export async function recomputePowerForUser(
     });
   }
   return { power };
+}
+
+/**
+ * Recompute every onboarded user (the daily cron). Keeps boards fresh and, at a
+ * season boundary, applies the soft-floor reset to inactive students too.
+ */
+export async function recomputeAllRankedUsers(
+  opts: { now?: Date } = {},
+): Promise<{ processed: number }> {
+  const userIds = await listRankedUserIds();
+  let processed = 0;
+  for (const userId of userIds) {
+    const result = await recomputePowerForUser(userId, opts);
+    if (result) processed += 1;
+  }
+  return { processed };
 }
 
 /** Static description of the scoring formula for the transparency panel (decision 1). */

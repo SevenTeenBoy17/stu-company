@@ -2488,6 +2488,18 @@ export async function listRankSnapshots(
   );
 }
 
+/** All users who have onboarded onto the leaderboard (for the recompute cron). */
+export async function listRankedUserIds(): Promise<string[]> {
+  return withDb(
+    "listRankedUserIds",
+    async (db) => {
+      const rows = await db.select({ userId: rankProfiles.userId }).from(rankProfiles);
+      return rows.map((r) => r.userId);
+    },
+    () => store.listRankedUserIds(),
+  );
+}
+
 /** A single user's own power snapshot for a period (with components). */
 export async function getPowerSnapshot(
   userId: string,
