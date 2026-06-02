@@ -115,9 +115,7 @@ export function RankBoard() {
         </ol>
       ) : !board || board.entries.length === 0 ? (
         <p className="mt-3 rounded-xl bg-bg-muted px-3 py-5 text-center text-sm text-fg-muted">
-          {period === "season"
-            ? "赛季榜将在本学期开始后开放，敬请期待 📅"
-            : "本范围本期还没有上榜的同学，完成一局沙盘抢占头名 🏁"}
+          本范围本期还没有上榜的同学，完成一局沙盘抢占头名 🏁
         </p>
       ) : (
         <ol className="mt-3 space-y-1.5">

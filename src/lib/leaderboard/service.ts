@@ -136,9 +136,10 @@ export async function getPowerCard(
   };
 }
 
-// The boards with real (non-placeholder) period keys, refreshed live as students
-// play. The season board waits on 校历 dates (decision 4) and is not written here.
-const STANDING_PERIODS: RankPeriod[] = ["weekly", "monthly"];
+// All boards are refreshed live as students play. Season uses the 校历-aligned
+// semester key (periods.ts, decision 4); adjust the two boundary months there if
+// a school's calendar differs.
+const STANDING_PERIODS: RankPeriod[] = ["weekly", "monthly", "season"];
 
 /**
  * Recompute and persist a user's power from their current run, into every live
