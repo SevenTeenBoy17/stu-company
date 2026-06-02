@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Info, TrendingUp } from "lucide-react";
+import { Check, Crown, Info, Share2, TrendingUp } from "lucide-react";
+
+import { buildPowerShareText } from "@/lib/leaderboard/share";
 
 import {
   COMPONENT_LABELS,
@@ -29,6 +32,23 @@ function tierAccent(tier: number): string {
 }
 
 export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: FormulaDTO }) {
+  const [copied, setCopied] = useState(false);
+
+  async function share() {
+    const text = buildPowerShareText({
+      power: card.power,
+      tierName: card.tier.name,
+      ranks: card.ranks,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard blocked (e.g. insecure context) — silently ignore
+    }
+  }
+
   const rows = (Object.keys(formula.weights) as (keyof ComponentsDTO)[]).map((key) => {
     const weight = formula.weights[key];
     const value = card.components?.[key] ?? 0;
@@ -56,7 +76,18 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur">
             <Crown className="h-3.5 w-3.5" /> {card.tier.name}
           </span>
-          <span className="text-xs font-medium text-white/80">{card.periodKey} · 周榜</span>
+          {card.ranked ? (
+            <button
+              type="button"
+              onClick={share}
+              className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
+            >
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
+              {copied ? "已复制" : "分享战绩"}
+            </button>
+          ) : (
+            <span className="text-xs font-medium text-white/80">{card.periodKey} · 周榜</span>
+          )}
         </div>
 
         <div className="mt-6">
