@@ -13,7 +13,7 @@ import {
 } from "@/lib/db/repo";
 import type { PowerComponentsRecord, RankPeriod, RankVisibility } from "@/lib/types";
 
-import { periodKey } from "./periods";
+import { periodKey, semesterKey } from "./periods";
 import { computePowerScore, POWER_WEIGHTS } from "./power-score";
 import { runToPowerInput, type LearningProgress } from "./run-power";
 import {
@@ -157,6 +157,9 @@ export async function recomputePowerForUser(
     power,
     netWorth: Math.round(input.netWorth),
     components,
+    // Soft floor is scoped to the semester (decision 7), independent of the
+    // board period — a weekly recompute still floors against the semester.
+    seasonKey: semesterKey(opts.now),
   });
   return { power };
 }

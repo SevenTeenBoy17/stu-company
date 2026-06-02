@@ -73,29 +73,41 @@ describe("store: leaderboard snapshots + soft floor", () => {
 
   it("upserts idempotently on (user, period, periodKey)", () => {
     seedProfile();
-    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 800, netWorth: 200000, components });
-    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 1300, netWorth: 260000, components });
+    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 800, netWorth: 200000, components, seasonKey: "2026H1" });
+    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 1300, netWorth: 260000, components, seasonKey: "2026H1" });
     const rows = listLeaderboardSnapshots("weekly", "2026-W22");
     expect(rows).toHaveLength(1);
     expect(rows[0].power).toBe(1300);
   });
 
-  it("derives the tier and applies the season soft floor (decision 7)", () => {
+  it("holds the soft floor within a season (decision 7)", () => {
     seedProfile();
     // power 1300 -> tier 4 (strategist); profile high-water becomes 4
-    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 1300, netWorth: 260000, components });
+    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 1300, netWorth: 260000, components, seasonKey: "2026H1" });
     expect(getRankProfile("u1")?.lastTier).toBe(4);
 
-    // a bad week drops raw power to tier 2, but the floor holds the displayed tier at 4
-    const dropped = upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W23", power: 500, netWorth: 130000, components });
+    // a bad week (same season) drops raw power to tier 2, but the floor holds tier 4
+    const dropped = upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W23", power: 500, netWorth: 130000, components, seasonKey: "2026H1" });
     expect(dropped.tier).toBe(4);
     expect(getRankProfile("u1")?.lastTier).toBe(4);
   });
 
+  it("resets the soft floor across seasons (decision 7: within-season only)", () => {
+    seedProfile();
+    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 1300, netWorth: 260000, components, seasonKey: "2026H1" });
+    expect(getRankProfile("u1")?.lastTier).toBe(4);
+
+    // new semester: the floor resets to the current raw tier (500 -> tier 2)
+    const fresh = upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W40", power: 500, netWorth: 130000, components, seasonKey: "2026H2" });
+    expect(fresh.tier).toBe(2);
+    expect(getRankProfile("u1")?.lastTier).toBe(2);
+    expect(getRankProfile("u1")?.lastTierSeason).toBe("2026H2");
+  });
+
   it("separates periods by periodKey", () => {
     seedProfile();
-    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 800, netWorth: 200000, components });
-    upsertLeaderboardSnapshot({ userId: "u1", period: "monthly", periodKey: "2026-06", power: 900, netWorth: 210000, components });
+    upsertLeaderboardSnapshot({ userId: "u1", period: "weekly", periodKey: "2026-W22", power: 800, netWorth: 200000, components, seasonKey: "2026H1" });
+    upsertLeaderboardSnapshot({ userId: "u1", period: "monthly", periodKey: "2026-06", power: 900, netWorth: 210000, components, seasonKey: "2026H1" });
     expect(listLeaderboardSnapshots("weekly", "2026-W22")).toHaveLength(1);
     expect(listLeaderboardSnapshots("monthly", "2026-06")).toHaveLength(1);
   });

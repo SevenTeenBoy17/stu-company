@@ -666,6 +666,7 @@ export function upsertRankProfile(input: {
     visibility: input.visibility ?? "public",
     consent: input.consent ?? 0,
     lastTier: 0,
+    lastTierSeason: "",
     createdAt: now,
     updatedAt: now,
   };
@@ -685,15 +686,21 @@ export function upsertLeaderboardSnapshot(input: {
   power: number;
   netWorth: number;
   components: PowerComponentsRecord;
+  /** Season (semester key) the soft floor is scoped to; resets across seasons. */
+  seasonKey: string;
 }): LeaderboardSnapshot {
   const store = getStore();
   const now = new Date().toISOString();
 
   const rawTier = tierFromPower(input.power);
   const profile = store.rankProfiles.find((p) => p.userId === input.userId);
-  const tier = profile ? applySoftFloor(profile.lastTier, rawTier) : rawTier;
+  let tier = rawTier;
   if (profile) {
+    // Reset the floor when the season rolls over (decision 7: within-season only).
+    const baseline = profile.lastTierSeason === input.seasonKey ? profile.lastTier : 0;
+    tier = applySoftFloor(baseline, rawTier);
     profile.lastTier = tier;
+    profile.lastTierSeason = input.seasonKey;
     profile.updatedAt = now;
   }
 

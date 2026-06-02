@@ -266,6 +266,9 @@ export const rankProfiles = pgTable("rank_profiles", {
   // Soft floor (decision 7): highest tier reached this season; a minor never
   // drops below it within the season.
   lastTier: integer("last_tier").notNull().default(0),
+  // The season (semester key) lastTier belongs to, so the floor resets across
+  // seasons. Empty until the first recompute.
+  lastTierSeason: varchar("last_tier_season", { length: 32 }).notNull().default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [

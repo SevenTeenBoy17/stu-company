@@ -329,6 +329,8 @@ export interface RankProfile {
   consent: number;
   /** Soft-floor high-water tier within the season (decision 7). */
   lastTier: number;
+  /** Season (semester key) that lastTier belongs to; floor resets across seasons. */
+  lastTierSeason: string;
   createdAt: string;
   updatedAt: string;
 }

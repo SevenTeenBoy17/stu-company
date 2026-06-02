@@ -2167,6 +2167,7 @@ function toRankProfile(row: DbRankProfile): RankProfile {
     visibility: row.visibility as RankVisibility,
     consent: row.consent,
     lastTier: row.lastTier,
+    lastTierSeason: row.lastTierSeason,
     createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
   };
@@ -2319,6 +2320,8 @@ export async function upsertLeaderboardSnapshot(input: {
   power: number;
   netWorth: number;
   components: PowerComponentsRecord;
+  /** Season (semester key) the soft floor is scoped to; resets across seasons. */
+  seasonKey: string;
 }): Promise<LeaderboardSnapshot> {
   return withDb(
     "upsertLeaderboardSnapshot",
@@ -2331,12 +2334,15 @@ export async function upsertLeaderboardSnapshot(input: {
           .where(eq(rankProfiles.userId, input.userId))
           .limit(1)
           .for("update");
-        const tier = profile ? applySoftFloor(profile.lastTier, rawTier) : rawTier;
+        // Reset the floor when the season rolls over (decision 7: within-season).
+        const baseline =
+          profile && profile.lastTierSeason === input.seasonKey ? profile.lastTier : 0;
+        const tier = profile ? applySoftFloor(baseline, rawTier) : rawTier;
         const now = new Date();
         if (profile) {
           await tx
             .update(rankProfiles)
-            .set({ lastTier: tier, updatedAt: now })
+            .set({ lastTier: tier, lastTierSeason: input.seasonKey, updatedAt: now })
             .where(eq(rankProfiles.userId, input.userId));
         }
         const [row] = await tx

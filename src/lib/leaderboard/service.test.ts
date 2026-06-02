@@ -34,6 +34,7 @@ function seedStudent(userId: string, power: number, opts: { consent?: number; vi
     power,
     netWorth: 100000 + power * 100,
     components: comp,
+    seasonKey: "2026H1",
   });
 }
 
