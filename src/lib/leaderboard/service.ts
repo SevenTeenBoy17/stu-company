@@ -136,31 +136,38 @@ export async function getPowerCard(
   };
 }
 
+// The boards with real (non-placeholder) period keys, refreshed live as students
+// play. The season board waits on 校历 dates (decision 4) and is not written here.
+const STANDING_PERIODS: RankPeriod[] = ["weekly", "monthly"];
+
 /**
- * Recompute and persist a user's power for a period from their current run.
- * Called after a round advances and on onboarding. No run -> no-op (returns
- * null) so callers can ignore it for non-students.
+ * Recompute and persist a user's power from their current run, into every live
+ * board (weekly + monthly). Power is computed once and written to each bucket;
+ * the soft floor is semester-scoped so the repeated writes are idempotent on the
+ * tier. Called after a round advances and on onboarding. No run -> no-op
+ * (returns null) so callers can ignore it for non-students.
  */
 export async function recomputePowerForUser(
   userId: string,
-  period: RankPeriod = "weekly",
   opts: { now?: Date; learning?: LearningProgress } = {},
 ): Promise<{ power: number } | null> {
   const run = await getRunForUser(userId);
   if (!run) return null;
   const input = runToPowerInput(run, opts.learning);
   const { power, components } = computePowerScore(input);
-  await upsertLeaderboardSnapshot({
-    userId,
-    period,
-    periodKey: periodKey(period, opts.now),
-    power,
-    netWorth: Math.round(input.netWorth),
-    components,
-    // Soft floor is scoped to the semester (decision 7), independent of the
-    // board period — a weekly recompute still floors against the semester.
-    seasonKey: semesterKey(opts.now),
-  });
+  const netWorth = Math.round(input.netWorth);
+  const seasonKey = semesterKey(opts.now);
+  for (const period of STANDING_PERIODS) {
+    await upsertLeaderboardSnapshot({
+      userId,
+      period,
+      periodKey: periodKey(period, opts.now),
+      power,
+      netWorth,
+      components,
+      seasonKey,
+    });
+  }
   return { power };
 }
 

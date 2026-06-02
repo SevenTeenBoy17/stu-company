@@ -8,7 +8,7 @@ import {
 } from "@/lib/store";
 
 import { periodKey } from "./periods";
-import { getLeaderboardBoard, getPowerCard } from "./service";
+import { getLeaderboardBoard, getPowerCard, recomputePowerForUser } from "./service";
 
 const comp = { riskAdjReturn: 0.6, discipline: 0.7, drawdown: 0.8, learning: 0.5, growth: 0.4 };
 const now = new Date(Date.UTC(2026, 5, 1));
@@ -102,6 +102,29 @@ describe("getPowerCard", () => {
     const card = await getPowerCard("nobody", "weekly", { now });
     expect(card.hasProfile).toBe(false);
     expect(card.ranks.nation).toBeUndefined();
+  });
+
+  it("recompute populates BOTH the weekly and monthly boards", async () => {
+    // student-1 has a seeded run; give them a consented rank profile.
+    const school = findOrCreateSchool({ name: "成都七中", provinceCode: "51", cityCode: "5101" });
+    upsertRankProfile({
+      userId: "student-1",
+      provinceCode: "51",
+      cityCode: "5101",
+      schoolId: school.id,
+      alias: "一号",
+      consent: 1,
+    });
+
+    const result = await recomputePowerForUser("student-1", { now });
+    expect(result).not.toBeNull();
+
+    const viewer = { userId: "student-1" };
+    const weekly = await getLeaderboardBoard(viewer.userId, "nation", "weekly", { now });
+    const monthly = await getLeaderboardBoard(viewer.userId, "nation", "monthly", { now });
+    expect(weekly!.entries.some((e) => e.userId === "student-1")).toBe(true);
+    expect(monthly!.entries.some((e) => e.userId === "student-1")).toBe(true);
+    expect(monthly!.periodKey).toBe("2026-06");
   });
 
   it("gives a hidden (but consented) player a private rank yet keeps them off the board", async () => {
