@@ -6,7 +6,6 @@ import Link from "next/link";
 import { learningModules } from "@/lib/content";
 import { cn } from "@/lib/utils";
 import { ModuleIllustration } from "@/components/site/module-illustration";
-import { QuizModal } from "@/components/site/quiz-modal";
 
 const levelFilters = ["全部", "核心", "进阶", "运营", "家校"] as const;
 
@@ -36,11 +35,11 @@ export function LearnCatalog() {
     });
   }, [activeLevel, deferredQuery]);
 
-  // Learning 测验 (Option B). null = not a logged-in student → controls hidden,
+  // Learning 打卡 (Option A). null = not a logged-in student → controls hidden,
   // public visitors see the catalog unchanged.
   const [completedKeys, setCompletedKeys] = useState<Set<string> | null>(null);
   const [learnTotal, setLearnTotal] = useState(0);
-  const [quizModule, setQuizModule] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -59,12 +58,23 @@ export function LearnCatalog() {
     };
   }, []);
 
-  function handlePassed(key: string) {
-    setCompletedKeys((prev) => {
-      const next = new Set(prev ?? []);
-      next.add(key);
-      return next;
-    });
+  async function markLearned(key: string) {
+    if (pendingKey || completedKeys?.has(key)) return;
+    setPendingKey(key);
+    try {
+      const res = await fetch("/api/learn/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moduleKey: key }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.progress) {
+        setCompletedKeys(new Set(data.progress.completedKeys));
+        setLearnTotal(data.progress.total);
+      }
+    } finally {
+      setPendingKey(null);
+    }
   }
 
   return (
@@ -101,13 +111,13 @@ export function LearnCatalog() {
       {completedKeys ? (
         <div className="panel flex flex-col gap-1 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-slate-700">
-            学习进度：已通过测验{" "}
+            学习打卡：已完成{" "}
             <span className="font-bold text-brand-ink">
               {completedKeys.size}/{learnTotal}
             </span>{" "}
             个模块
           </p>
-          <p className="text-xs text-slate-500">通过模块测验可提升财商战力的「学习」分（占总分 15%）</p>
+          <p className="text-xs text-slate-500">完成学习可提升财商战力的「学习」分（占总分 15%）</p>
         </div>
       ) : null}
 
@@ -148,16 +158,20 @@ export function LearnCatalog() {
                 {completedKeys ? (
                   <button
                     type="button"
-                    onClick={() => !completedKeys.has(module.key) && setQuizModule(module.key)}
-                    disabled={completedKeys.has(module.key)}
+                    onClick={() => markLearned(module.key)}
+                    disabled={completedKeys.has(module.key) || pendingKey === module.key}
                     className={cn(
                       "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition",
                       completedKeys.has(module.key)
                         ? "bg-[var(--amber-100)] text-brand-ink"
-                        : "border border-slate-300 text-slate-700 hover:border-brand",
+                        : "border border-slate-300 text-slate-700 hover:border-brand disabled:opacity-60",
                     )}
                   >
-                    {completedKeys.has(module.key) ? "已学完 ✓" : "做测验解锁"}
+                    {completedKeys.has(module.key)
+                      ? "已学完 ✓"
+                      : pendingKey === module.key
+                        ? "记录中…"
+                        : "学完打卡"}
                   </button>
                 ) : null}
               </div>
@@ -165,15 +179,6 @@ export function LearnCatalog() {
           </article>
         ))}
       </div>
-
-      {quizModule ? (
-        <QuizModal
-          moduleKey={quizModule}
-          moduleTitle={learningModules.find((m) => m.key === quizModule)?.title ?? "课程测验"}
-          onClose={() => setQuizModule(null)}
-          onPassed={() => handlePassed(quizModule)}
-        />
-      ) : null}
     </div>
   );
 }
