@@ -86,12 +86,15 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
               {copied ? "已复制" : "分享战绩"}
             </button>
           ) : (
-            <span className="text-xs font-medium text-white/80">{card.periodKey} · 周榜</span>
+            <span className="text-xs font-medium text-white/80">{card.seasonName} · 本周榜</span>
           )}
         </div>
 
         <div className="mt-6">
-          <p className="text-xs font-medium uppercase tracking-wider text-white/75">财商战力</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-white/75">
+            财商战力
+            <span className="ml-1.5 normal-case tracking-normal text-white/60">· {card.seasonName} 本周榜</span>
+          </p>
           <p className="mt-1 font-mono text-5xl font-black tabular-nums leading-none">
             {card.power.toLocaleString("zh-CN")}
           </p>

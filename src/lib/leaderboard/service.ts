@@ -15,7 +15,7 @@ import {
 } from "@/lib/db/repo";
 import type { PowerComponentsRecord, RankPeriod, RankVisibility } from "@/lib/types";
 
-import { periodKey, semesterKey } from "./periods";
+import { periodKey, seasonLabel, semesterKey } from "./periods";
 import { computePowerScore, POWER_WEIGHTS } from "./power-score";
 import { runToPowerInput, type LearningProgress } from "./run-power";
 import {
@@ -41,6 +41,8 @@ export interface LeaderboardBoard {
 export interface PowerCard {
   period: RankPeriod;
   periodKey: string;
+  /** Human season name for the current semester, e.g. "2026 春季赛季". */
+  seasonName: string;
   hasProfile: boolean;
   ranked: boolean;
   alias?: string;
@@ -88,11 +90,13 @@ export async function getPowerCard(
 ): Promise<PowerCard> {
   const profile = await getRankProfile(userId);
   const key = periodKey(period, opts.now);
+  const seasonName = seasonLabel(semesterKey(opts.now));
 
   if (!profile) {
     return {
       period,
       periodKey: key,
+      seasonName,
       hasProfile: false,
       ranked: false,
       power: 0,
@@ -125,6 +129,7 @@ export async function getPowerCard(
   return {
     period,
     periodKey: key,
+    seasonName,
     hasProfile: true,
     ranked: Boolean(own),
     alias: profile.alias,

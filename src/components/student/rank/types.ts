@@ -22,6 +22,7 @@ export interface ComponentsDTO {
 export interface PowerCardDTO {
   period: RankPeriod;
   periodKey: string;
+  seasonName: string;
   hasProfile: boolean;
   ranked: boolean;
   alias?: string;
