@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { learningModules } from "@/lib/content";
@@ -35,6 +35,48 @@ export function LearnCatalog() {
     });
   }, [activeLevel, deferredQuery]);
 
+  // Learning 打卡 (Option A). null = not a logged-in student → controls hidden,
+  // public visitors see the catalog unchanged.
+  const [completedKeys, setCompletedKeys] = useState<Set<string> | null>(null);
+  const [learnTotal, setLearnTotal] = useState(0);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/learn/progress", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { progress?: { total: number; completedKeys: string[] } } | null) => {
+        if (!alive || !data?.progress) return;
+        setCompletedKeys(new Set(data.progress.completedKeys));
+        setLearnTotal(data.progress.total);
+      })
+      .catch(() => {
+        // public visitor / not logged in — leave controls hidden
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function markLearned(key: string) {
+    if (pendingKey || completedKeys?.has(key)) return;
+    setPendingKey(key);
+    try {
+      const res = await fetch("/api/learn/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moduleKey: key }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.progress) {
+        setCompletedKeys(new Set(data.progress.completedKeys));
+        setLearnTotal(data.progress.total);
+      }
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="panel rounded-3xl p-5 sm:p-6">
@@ -66,6 +108,19 @@ export function LearnCatalog() {
         </div>
       </div>
 
+      {completedKeys ? (
+        <div className="panel flex flex-col gap-1 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-slate-700">
+            学习打卡：已完成{" "}
+            <span className="font-bold text-brand-ink">
+              {completedKeys.size}/{learnTotal}
+            </span>{" "}
+            个模块
+          </p>
+          <p className="text-xs text-slate-500">完成学习可提升财商战力的「学习」分（占总分 15%）</p>
+        </div>
+      ) : null}
+
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredModules.map((module) => (
           <article key={module.key} className="panel overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
@@ -93,12 +148,33 @@ export function LearnCatalog() {
                   </span>
                 ))}
               </div>
-              <Link
-                href="/demo"
-                className="mt-6 inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white"
-              >
-                开始体验
-              </Link>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/demo"
+                  className="inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white"
+                >
+                  开始体验
+                </Link>
+                {completedKeys ? (
+                  <button
+                    type="button"
+                    onClick={() => markLearned(module.key)}
+                    disabled={completedKeys.has(module.key) || pendingKey === module.key}
+                    className={cn(
+                      "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition",
+                      completedKeys.has(module.key)
+                        ? "bg-[var(--amber-100)] text-brand-ink"
+                        : "border border-slate-300 text-slate-700 hover:border-brand disabled:opacity-60",
+                    )}
+                  >
+                    {completedKeys.has(module.key)
+                      ? "已学完 ✓"
+                      : pendingKey === module.key
+                        ? "记录中…"
+                        : "学完打卡"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </article>
         ))}
