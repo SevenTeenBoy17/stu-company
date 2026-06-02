@@ -30,7 +30,7 @@ npm run db:apply-policies      # Apply RLS policies from drizzle/policies.sql
 Two Next.js route groups under `src/app/`:
 
 - `(site)` — public marketing/auth pages: landing `/`, `/learn`, `/demo`, `/pricing`, `/reset-password`
-- `(platform)` — authenticated app: `/student`, `/student/market`, `/student/history`, `/teacher`, `/parent`, `/admin`
+- `(platform)` — authenticated app: `/student`, `/student/market`, `/student/history`, `/student/rank`, `/teacher`, `/parent`, `/admin`
 
 `(platform)/layout.tsx` is the single auth boundary — redirects unauthenticated users to `/demo?reason=login_required`. Individual pages enforce their own role check.
 
@@ -85,6 +85,19 @@ Real-time quotes from AllTick (`src/lib/alltick.ts`) with a 10-minute refresh ca
 ### Seasons & Leaderboard
 
 `src/lib/season.ts` — each ISO-ish week is a "season" with a deterministic seed (`currentSeasonSeed`, epoch 2026-01-05). All new runs that week share the same market, so the cross-student weekly leaderboard (`/api/market/season-leaderboard`) is fair. Membership is derived by matching a run's stored seed to the current season seed — no extra column needed.
+
+### 财商战力 Power Rank
+
+`src/lib/leaderboard/**` — the 王者-style competitive ranking layer (migrations `0010`–`0012`), separate from the seed-based season leaderboard above. The pipeline is pure-core + thin-service:
+
+- `power-score.ts` — `computePowerScore()` maps a run to **财商战力** (0–2000): a weighted composite of risk-adjusted return (.30), discipline (.25), drawdown control (.20), learning completion (.15), and growth (.10). Ranks decision *quality*, not luck (anti-YOLO) — weights are surfaced to students in a transparency panel (`powerFormula()`). Pure, no IO.
+- `run-power.ts` — adapter from a sim run + `learning_progress` into `PowerScoreInput`.
+- `tiers.ts` — power→tier bands; `periods.ts` — `weekly` / `monthly` / `season` period keys (season uses a 校历-aligned semester key).
+- `ranking.ts` — pure ranker over snapshots across four scopes (`school` / `city` / `province` / `nation`), mirroring the SQL `RANK() OVER (PARTITION BY scope)` path. Enforces visibility privacy (`public` / `school_only` / `hidden`); ranks are computed over exactly the displayed set so hiding leaks no rank gaps.
+- `service.ts` — the bridge API routes call: `getLeaderboardBoard()`, `getPowerCard()` (private to the player, works even when hidden/unconsented), and `recomputePowerForUser()` / `recomputeAllRankedUsers()` (writes a snapshot into all live period buckets; no-op for non-onboarded users so the hot gameplay path never writes orphan rows).
+- `regions.ts` / `school-normalize.ts` — region code + school-name normalization for scope assignment.
+
+Routes under `src/app/api/leaderboard/**` (`board`, `me`, `profile`, `regions`, `schools`); UI at `/student/rank`. A student must onboard a rank profile (alias + region + consent) before appearing on any board.
 
 ### Transactional Email & Cron
 
