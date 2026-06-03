@@ -1708,13 +1708,13 @@ export async function appendAiMessage(sessionId: string, userId: string, message
 }
 
 export async function listAiSessionsForUser(userId: string) {
-  return withDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
+  return withScopedDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
     store.listAiSessionsForUser(userId),
   );
 }
 
 export async function getAiSessionById(sessionId: string, userId: string) {
-  return withDb(
+  return withScopedDb(
     "getAiSessionById",
     async (db) => {
       const session = await getAiSessionByIdWithExecutor(db, sessionId, userId);
