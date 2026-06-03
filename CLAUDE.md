@@ -15,6 +15,7 @@ npm run lint                   # ESLint
 npx tsc --noEmit               # Type-check without emitting
 npm run test                   # Vitest unit tests (src/**/*.test.ts)
 npm run test:watch             # Vitest in watch mode
+npm run test:coverage          # Vitest with v8 coverage
 npx vitest run src/lib/simulation.test.ts   # Run a single test file
 npm run test:integration       # Integration tests (needs DATABASE_URL pointing at test schema)
 npx playwright test            # E2E tests (tests/e2e/) — auto-starts its own dev server on :4173 (PLAYWRIGHT_PORT), reusing one if already running
@@ -58,6 +59,15 @@ HTTP-only cookie `brown_zone_session` containing a HS256 JWT. Claims: `userId`, 
 
 Drizzle migrations live in `drizzle/`. RLS policies in `drizzle/policies.sql` are only enforced when `DATABASE_ROLE=authenticated` AND queries go through `withRls()` in `src/lib/db/client.ts`. The default `owner` connection bypasses RLS — application-layer checks in `repo.ts` are the primary defence.
 
+### Security Hardening Conventions
+
+Recent hardening (commits P1–P8) established invariants that new code must preserve:
+
+- **CSRF**: state-changing routes call `checkOrigin()` from `src/lib/api-response.ts` to reject cross-origin requests. Applied to `/api/sim/*` and billing routes; add it to any new mutating route.
+- **No silent write-fallback**: `repo.ts` may fall back to the in-memory store for *reads* when the DB is down, but *writes* must surface the DB error instead of silently writing to memory (P2). `ALLOW_MEMORY_FALLBACK` gates the read fallback only.
+- **Query timeout**: the Postgres client sets server-side `statement_timeout` (`DB_QUERY_TIMEOUT_MS`, default 5000ms) in `src/lib/db/client.ts` so slow queries are cancelled rather than hanging.
+- **Rate limiting**: extend `src/lib/rate-limit.ts` coverage when adding auth, AI, or payment-intent routes (e.g. `/api/billing/prepay`).
+
 ### Simulation Engine
 
 `src/lib/simulation.ts` — pure functions for the 12-round economic sandbox. Actions: trade (buy/sell assets), bank (deposit/withdraw/loan/repay), property (buy/sell), venture (invest/exit). Starting cash: 120,000. Market assets and 24 event cards defined in `src/lib/market-data.ts`.
@@ -97,7 +107,7 @@ Real-time quotes from AllTick (`src/lib/alltick.ts`) with a 10-minute refresh ca
 - `service.ts` — the bridge API routes call: `getLeaderboardBoard()`, `getPowerCard()` (private to the player, works even when hidden/unconsented), and `recomputePowerForUser()` / `recomputeAllRankedUsers()` (writes a snapshot into all live period buckets; no-op for non-onboarded users so the hot gameplay path never writes orphan rows).
 - `regions.ts` / `school-normalize.ts` — region code + school-name normalization for scope assignment.
 
-Routes under `src/app/api/leaderboard/**` (`board`, `me`, `profile`, `regions`, `schools`); UI at `/student/rank`. A student must onboard a rank profile (alias + region + consent) before appearing on any board.
+Routes under `src/app/api/leaderboard/**` (`board`, `me`, `profile`, `regions`, `schools`); UI at `/student/rank`. A student must onboard a rank profile (alias + region + consent) before appearing on any board. Snapshots are refreshed by the Vercel Cron `GET /api/cron/recompute-leaderboard` (same `CRON_SECRET` Bearer auth as the weekly report). The learning-completion input (`.15` of the power score) is fed by `/api/learn/progress` and `/api/learn/complete`, persisted to `learning_progress` (migration `0012`).
 
 ### Transactional Email & Cron
 
@@ -134,6 +144,15 @@ All route errors use: `{ error: <stable_code>, message: <中文提示> }`. Error
 ### Env Validation
 
 `src/lib/env.ts` validates all environment variables with zod at startup. Most are optional for dev (the app degrades gracefully without DATABASE_URL or AI keys). `SESSION_SECRET` must be >= 32 chars in production.
+
+### Testing Layers
+
+Beyond plain unit tests, the suite mixes several techniques — match the existing pattern when touching these areas:
+
+- **Property-based** (`fast-check`): determinism/invariant guards, e.g. `determinism.guard.test.ts`, `simulation.money.test.ts`. The seeded engines (`event-engine`, `season`) must stay reproducible.
+- **MSW** (`msw`): the AI gateway (`src/lib/ai.ts`) is tested against mocked provider responses (`ai-gateway.msw.test.ts`, `ai-format-drift.test.ts`) — never hit a real provider in tests.
+- **Accessibility** (`axe-core` / `vitest-axe`): component a11y assertions.
+- **Audit tests**: `repo-fallback.audit.test.ts` / `repo-logging.test.ts` enforce the no-silent-write-fallback and logging invariants above — keep them green when changing `repo.ts`.
 
 ## Key Conventions
 
