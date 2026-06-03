@@ -12,6 +12,15 @@ export default defineConfig({
     // test schema, not production.
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["tests/e2e/**", "node_modules/**", ".next/**", "tests/integration/**"],
+    // Coverage is opt-in via `npm run test:coverage`; `npm run test` is unaffected.
+    // No global thresholds yet — informational until a baseline is agreed.
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "html"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/**/*.d.ts"],
+    },
   },
   resolve: {
     alias: {
