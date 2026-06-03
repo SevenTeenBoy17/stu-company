@@ -113,10 +113,40 @@ const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 const ALLOW_MEMORY_FALLBACK =
   process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
 
+// P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
+// greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
+// are rate-limited (5s) so a sustained DB outage can't flood logs; the error text
+// is scrubbed of emails/tokens; and "no DATABASE_URL" is logged once so a
+// misconfigured prod silently running on ephemeral memory is detectable.
+let fallbackCount = 0;
+let loggedNoDb = false;
+let lastFallbackLogAt = 0;
+
+/** Redact emails / long hex secrets from an error message before logging (P6). */
+export function scrubError(err: unknown): string {
+  if (err === undefined || err === null) return "";
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "<email>")
+    .replace(/\b[a-f0-9]{16,}\b/gi, "<token>")
+    .slice(0, 200);
+}
+
 function logFallback(fn: string, reason: FallbackReason, err?: unknown) {
-  if (reason !== "no_database_url" && process.env.NODE_ENV !== "test") {
-    console.warn(`[repo] ${fn} -> fallback (${reason})`, err ?? "");
+  fallbackCount += 1;
+  if (process.env.NODE_ENV === "test") return;
+
+  if (reason === "no_database_url") {
+    if (loggedNoDb) return;
+    loggedNoDb = true;
+    console.warn("[repo.fallback] running on in-memory store (no DATABASE_URL) — degraded mode");
+    return;
   }
+
+  const now = Date.now();
+  if (now - lastFallbackLogAt < 5000) return;
+  lastFallbackLogAt = now;
+  console.warn(`[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${scrubError(err)}`.trim());
 }
 
 async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {

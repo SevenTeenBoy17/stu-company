@@ -11,7 +11,10 @@ expect.extend(axeMatchers);
 // Global MSW lifecycle (TEST-STRATEGY §5.6). onUnhandledRequest "bypass" so the
 // many tests that issue no requests are unaffected; each test opts in by adding
 // handlers via server.use(). resetHandlers() after each test clears those opt-ins.
-beforeAll(() => server.listen({ onUnhandledRequest: "bypass" }));
+// T1: "warn" (not "bypass") so an unmocked request is surfaced, not silently sent
+// to the real network. Tests opt into handlers via server.use(); no test should
+// hit the network unmocked.
+beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 

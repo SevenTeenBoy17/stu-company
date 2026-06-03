@@ -20,6 +20,9 @@ export default defineConfig({
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/**/*.d.ts"],
+      // T2: regression floor (only-up). Current ~36% lines / 27% branches; floor set
+      // just below so coverage can't silently drop. Raise as suites grow.
+      thresholds: { lines: 35, functions: 35, statements: 35, branches: 25 },
     },
   },
   resolve: {
