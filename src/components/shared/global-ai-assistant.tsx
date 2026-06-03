@@ -649,6 +649,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <textarea
                       value={input}
                       rows={2}
+                      aria-label="给 KeyAI 的消息"
                       onChange={(event) => setInput(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {

@@ -16,8 +16,16 @@ export const AI_SECONDARY_BASE = "https://secondary.example";
 export const AI_PRIMARY_ENDPOINT = "https://primary.example/v1/messages";
 export const AI_SECONDARY_ENDPOINT = "https://secondary.example/v1/messages";
 
-// Default: both base urls answer 200. Individual tests override via server.use().
+// App API routes consumed by client components (relative URLs, matched on any origin).
+export const AI_CHAT_ENDPOINT = "/api/ai/chat";
+export const AI_HISTORY_ENDPOINT = "/api/ai/history";
+
+// Default handlers (happy path). Individual tests override via server.use().
 export const handlers = [
   http.post(AI_PRIMARY_ENDPOINT, () => aiMessage("主地址 AI 建议")),
   http.post(AI_SECONDARY_ENDPOINT, () => aiMessage("第二地址 AI 建议")),
+  http.post(AI_CHAT_ENDPOINT, () =>
+    HttpResponse.json({ reply: "默认教学回答。", provider: "remote", sessionId: "s-default" }),
+  ),
+  http.get(AI_HISTORY_ENDPOINT, () => HttpResponse.json({ sessions: [] })),
 ];

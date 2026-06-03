@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 
 import { requestTutorInsight } from "@/lib/ai";
@@ -23,14 +23,13 @@ const originalEnv = {
   AI_BASE_URL_SECONDARY: process.env.AI_BASE_URL_SECONDARY,
 };
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// MSW lifecycle (listen/reset/close) is global in src/test/setup.ts now; here we
+// only restore the env the tests mutate. Per-test handlers go via server.use().
 afterEach(() => {
-  server.resetHandlers();
   process.env.AI_API_KEY = originalEnv.AI_API_KEY;
   process.env.AI_BASE_URL_PRIMARY = originalEnv.AI_BASE_URL_PRIMARY;
   process.env.AI_BASE_URL_SECONDARY = originalEnv.AI_BASE_URL_SECONDARY;
 });
-afterAll(() => server.close());
 
 function tutorRequest() {
   const state = getSimulationStateForUser("student-1");
