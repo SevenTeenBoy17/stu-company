@@ -15,6 +15,7 @@ import {
   findUserById,
   updatePaymentOrderProviderFields,
 } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { createId } from "@/lib/utils";
 
 const prepaySchema = z.object({
@@ -46,6 +47,10 @@ export async function POST(request: Request) {
 
   const auth = await requireUser();
   if (auth.error) return auth.error;
+
+  // P8: cap payment-order creation to curb order spam (auth + origin already enforced).
+  const rl = rateLimit(rateLimitKey("billing-prepay", auth.user.id, request), 10, 60_000);
+  if (!rl.ok) return apiError("invalid_input", buildRateLimitMessage(rl), 429);
 
   try {
     const body = prepaySchema.parse(await request.json());
