@@ -12,6 +12,7 @@
     "test:integration": "vitest run tests/integration --config vitest.integration.config.ts",
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:apply-policies": "tsx scripts/apply-policies.ts"
   },
