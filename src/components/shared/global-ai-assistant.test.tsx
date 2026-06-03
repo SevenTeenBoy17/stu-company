@@ -139,9 +139,10 @@ describe("GlobalAiAssistant (guest)", () => {
     expect(send).not.toBeDisabled();
   });
 
-  it.skipIf(guestStarters.length === 0)(
-    "sends a starter prompt when its quick-action button is clicked",
-    async () => {
+  it("sends a starter prompt when its quick-action button is clicked", async () => {
+    // Fail loudly (don't silently skip) if guest mode ever stops offering starters.
+    expect(guestStarters.length).toBeGreaterThan(0);
+    {
       server.use(
         http.post(AI_CHAT_ENDPOINT, async ({ request }) => {
           const body = (await request.json()) as { prompt: string };
@@ -151,8 +152,8 @@ describe("GlobalAiAssistant (guest)", () => {
       const user = await openPanel();
       await user.click(await screen.findByRole("button", { name: guestStarters[0] }));
       expect(await screen.findByText(`回答：${guestStarters[0]}`)).toBeInTheDocument();
-    },
-  );
+    }
+  });
 
   it("has no axe-core violations when the panel is open", async () => {
     const user = userEvent.setup();
