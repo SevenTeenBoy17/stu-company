@@ -1,6 +1,8 @@
 # RLS 逐请求强制执行 — 实施与 Staging 验证方案
 
-> 状态：**已评审，实施中（P1）** ｜ 作者：Codex/Claude ｜ 日期：2026-06-03
+> 状态：**已评审，实施中（P1 ✅ / P2 样板 ✅）** ｜ 作者：Codex/Claude ｜ 日期：2026-06-03
+>
+> P2 样板已接：`/api/leaderboard/me`、`/board`、`/profile`(GET) 经 `withUserRls` 接入；repo 读函数 `getRankProfile`/`listRankSnapshots`/`getPowerSnapshot` 改走 `withScopedDb`。已用 `RLS_ENFORCE=true` 起服务实测：登录/onboarding(owner 写) 正常，三个端点在 authenticated 角色下正确返回本人卡片/榜单。下一步铺开其余用户端点（/student、/api/ai/history、/api/sim/*）。
 >
 > **已拍板的决定**：① Staging = **Supabase 分支**；② 机制 = **请求级单事务**（ALS 共享一个 scoped tx）；③ `users` 表**不**加 teacher/admin 读策略，这些读**维持走 service**。
 > 前置已完成：17 表 42 条策略已 DB 层验证 **15/15 强制正确**（`SET LOCAL ROLE authenticated` + claims，回滚事务）。

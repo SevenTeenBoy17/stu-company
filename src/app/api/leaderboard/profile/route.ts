@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { findOrCreateSchool, getRankProfile, upsertRankProfile } from "@/lib/db/repo";
+import { rlsClaimsForUser, withUserRls } from "@/lib/db/rls-context";
 import { isValidCity, isValidProvince } from "@/lib/leaderboard/regions";
 import { sanitizeDisplayText } from "@/lib/leaderboard/school-normalize";
 import { recomputePowerForUser } from "@/lib/leaderboard/service";
@@ -26,7 +27,9 @@ const profileSchema = z.object({
 export async function GET() {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
-  const profile = await getRankProfile(auth.user.id);
+  const profile = await withUserRls(rlsClaimsForUser(auth.user), () =>
+    getRankProfile(auth.user.id),
+  );
   return NextResponse.json({ profile });
 }
 

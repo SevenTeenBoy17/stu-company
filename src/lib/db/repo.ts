@@ -21,6 +21,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
 import { getDb, isDatabaseConfigured } from "@/lib/db/client";
+import { getRequestExecutor } from "@/lib/db/rls-context";
 import {
   aiMessages,
   aiSessions,
@@ -183,9 +184,10 @@ const WRITE_FNS = new Set<string>([
   "updatePaymentOrderProviderFields", "markPaymentOrderStatus", "fulfillPaymentOrder",
 ]);
 
-async function withDb<T>(
+async function withDbExecutor<T>(
   fn: string,
-  dbFn: (db: Db) => Promise<T>,
+  executor: DbExecutor | null,
+  dbFn: (db: DbExecutor) => Promise<T>,
   fallback: () => T | Promise<T>,
 ): Promise<T> {
   if (!isDatabaseConfigured()) {
@@ -196,8 +198,7 @@ async function withDb<T>(
     return await fallback();
   }
 
-  const db = getDb();
-  if (!db) {
+  if (!executor) {
     if (!ALLOW_MEMORY_FALLBACK) {
       throw new Error(`[repo] ${fn}: DB client unavailable`);
     }
@@ -206,7 +207,7 @@ async function withDb<T>(
   }
 
   try {
-    return await withQueryTimeout(fn, dbFn(db));
+    return await withQueryTimeout(fn, dbFn(executor));
   } catch (err) {
     logFallback(fn, "query_failed", err);
     // Writes never silently fall back (P2): a failed persist must surface as an
@@ -216,6 +217,30 @@ async function withDb<T>(
     }
     return await fallback();
   }
+}
+
+// Default service path (owner connection, RLS bypassed). Used by the vast
+// majority of repo functions and ALL system / cron / admin / auth-bootstrap work.
+async function withDb<T>(
+  fn: string,
+  dbFn: (db: Db) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
+  // Sound: withDbExecutor only ever invokes this with getDb()'s Db.
+  return withDbExecutor(fn, getDb(), dbFn as unknown as (db: DbExecutor) => Promise<T>, fallback);
+}
+
+// Per-request user-scoped path. Uses the active request's executor: the scoped
+// `authenticated` tx when inside withUserRls (RLS enforced), else the owner
+// connection (default, today's behaviour). Opt user-scoped READ paths into this
+// — system callers reach it outside any withUserRls and transparently get owner.
+// See docs/rls-enforcement-staging-plan.md.
+async function withScopedDb<T>(
+  fn: string,
+  dbFn: (db: DbExecutor) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
+  return withDbExecutor(fn, getRequestExecutor(), dbFn, fallback);
 }
 
 function maybeUndefined<T>(value: T | null | undefined) {
@@ -2301,7 +2326,7 @@ export async function getSchoolById(schoolId: string): Promise<School | null> {
 }
 
 export async function getRankProfile(userId: string): Promise<RankProfile | null> {
-  return withDb(
+  return withScopedDb(
     "getRankProfile",
     async (db) => {
       const [row] = await db
@@ -2497,7 +2522,7 @@ export async function listRankSnapshots(
   period: RankPeriod,
   periodKey: string,
 ): Promise<RankSnapshot[]> {
-  return withDb(
+  return withScopedDb(
     "listRankSnapshots",
     async (db) => {
       const rows = await db
@@ -2556,7 +2581,7 @@ export async function getPowerSnapshot(
   period: RankPeriod,
   periodKey: string,
 ): Promise<LeaderboardSnapshot | null> {
-  return withDb(
+  return withScopedDb(
     "getPowerSnapshot",
     async (db) => {
       const [row] = await db

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/api-guard";
+import { rlsClaimsForUser, withUserRls } from "@/lib/db/rls-context";
 import { getPowerCard, powerFormula } from "@/lib/leaderboard/service";
 import type { RankPeriod } from "@/lib/types";
 
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
   if (auth.error) return auth.error;
 
   const period = coercePeriod(new URL(request.url).searchParams.get("period"));
-  const card = await getPowerCard(auth.user.id, period);
+  const card = await withUserRls(rlsClaimsForUser(auth.user), () =>
+    getPowerCard(auth.user.id, period),
+  );
   return NextResponse.json({ card, formula: powerFormula() });
 }

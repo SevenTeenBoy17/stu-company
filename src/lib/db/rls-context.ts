@@ -21,6 +21,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { sql } from "drizzle-orm";
 
 import { getDb, type RlsClaims } from "@/lib/db/client";
+import type { Role } from "@/lib/types";
 
 type Db = NonNullable<ReturnType<typeof getDb>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -90,4 +91,13 @@ export function getServiceDb() {
 /** The current request's claims, if running inside withUserRls (else null). */
 export function currentRlsClaims(): RlsClaims | null {
   return store.getStore()?.claims ?? null;
+}
+
+/** Build RLS claims from the authenticated user (the result of requireUser). */
+export function rlsClaimsForUser(user: {
+  id: string;
+  role: Role;
+  classroomId?: string | null;
+}): RlsClaims {
+  return { sub: user.id, role: user.role, classroomId: user.classroomId ?? null };
 }
