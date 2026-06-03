@@ -65,6 +65,22 @@ describe("GlobalAiAssistant (guest)", () => {
     expect(screen.getByText(/云端分析/)).toBeInTheDocument();
   });
 
+  it("renders the user message before the assistant reply (real-time ordering)", async () => {
+    // No SSE here — the real-time surface is fetch-then-state-update. This pins the
+    // message ORDER that a streaming UI would also have to guarantee.
+    server.use(
+      http.post(AI_CHAT_ENDPOINT, () => HttpResponse.json({ reply: "助手回复内容。", provider: "remote" })),
+    );
+    const user = await openPanel();
+    await user.type(screen.getByPlaceholderText(/问我任何问题/), "我的提问");
+    await user.click(screen.getByRole("button", { name: "发送消息" }));
+
+    const reply = await screen.findByText("助手回复内容。");
+    const question = screen.getByText("我的提问");
+    // The user bubble must precede the assistant bubble in the DOM.
+    expect(question.compareDocumentPosition(reply) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("flags a local fallback reply with the conservative status note", async () => {
     server.use(
       http.post(AI_CHAT_ENDPOINT, () =>
