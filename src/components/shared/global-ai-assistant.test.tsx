@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
@@ -38,6 +38,22 @@ describe("GlobalAiAssistant (guest)", () => {
     // ground truth: the floating trigger is always present; the dialog is not.
     expect(screen.getByRole("button", { name: "打开 KeyAI" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "发送消息" })).toBeNull();
+  });
+
+  it("on login, wipes a previous student's lingering AI storage (P1 — shared-computer privacy)", async () => {
+    // Seed a previous student's auth-mirror + a guest cache + this user's own cache.
+    window.sessionStorage.setItem("brown-zone-ai-auth-cache:prev-student", JSON.stringify([{ id: "x" }]));
+    window.localStorage.setItem("brown-zone-ai-guest-sessions", JSON.stringify([{ id: "g" }]));
+    window.sessionStorage.setItem("brown-zone-ai-auth-cache:me", JSON.stringify([{ id: "mine" }]));
+
+    render(<GlobalAiAssistant viewer={{ id: "me", role: "student", name: "我" }} />);
+
+    // The login effect runs clearBrownZoneAiStorage("me"): foreign + guest wiped, own kept.
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("brown-zone-ai-auth-cache:prev-student")).toBeNull(),
+    );
+    expect(window.localStorage.getItem("brown-zone-ai-guest-sessions")).toBeNull();
+    expect(window.sessionStorage.getItem("brown-zone-ai-auth-cache:me")).not.toBeNull();
   });
 
   it("opens the chat panel when the launcher is clicked", async () => {
