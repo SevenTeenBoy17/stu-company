@@ -139,6 +139,20 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
   }
 }
 
+// Functions that PERSIST data. A configured DB that throws on one of these must
+// surface the error — never silently fall back to the in-memory store, which would
+// be a fake success + lost/diverged student data (audit R1 / P2). Reads may still
+// fall back to seed/demo data when ALLOW_MEMORY_FALLBACK is on (offline demo).
+const WRITE_FNS = new Set<string>([
+  "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
+  "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
+  "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
+  "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
+  "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
+  "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
+  "updatePaymentOrderProviderFields", "markPaymentOrderStatus", "fulfillPaymentOrder",
+]);
+
 async function withDb<T>(
   fn: string,
   dbFn: (db: Db) => Promise<T>,
@@ -165,7 +179,9 @@ async function withDb<T>(
     return await withQueryTimeout(fn, dbFn(db));
   } catch (err) {
     logFallback(fn, "query_failed", err);
-    if (!ALLOW_MEMORY_FALLBACK) {
+    // Writes never silently fall back (P2): a failed persist must surface as an
+    // error, not pretend success in memory. Reads fall back only when allowed.
+    if (WRITE_FNS.has(fn) || !ALLOW_MEMORY_FALLBACK) {
       throw err;
     }
     return await fallback();

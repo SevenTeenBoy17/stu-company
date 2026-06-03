@@ -45,4 +45,10 @@ describe("repo withDb fallback contract (R1 audit)", () => {
     // DB throws -> store fallback (no such user -> null), and does NOT throw.
     await expect(repo.findUserById("definitely-not-a-seed-user")).resolves.toBeNull();
   });
+
+  it("a WRITE never silently falls back even when fallback is enabled (P2 — no lost data)", async () => {
+    const repo = await loadRepoWithEnv("test", ""); // fallback enabled -> reads WOULD fall back
+    // bumpTokenVersion is a WRITE: a failed DB write must surface, not fake success.
+    await expect(repo.bumpTokenVersion("any-user")).rejects.toThrow();
+  });
 });
