@@ -134,14 +134,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Supabase provisions `authenticated`/`anon`; a vanilla postgres image does
-      # not. drizzle/policies.sql + rls.test.ts depend on them. Create no-login
-      # roles so policy application and `set local role authenticated` work.
-      - name: Provision Supabase-style roles
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d brownzone_test \
-            -c "DO \$\$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;" \
-            -c "DO \$\$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;"
+      # Supabase provides authenticated/anon roles AND an auth schema with
+      # auth.jwt(); a vanilla postgres image has neither. 0002_rls_policies.sql
+      # references auth.jwt() in function bodies, which check_function_bodies
+      # validates at migrate time — so without these shims drizzle-kit migrate
+      # aborts before the leaderboard tables (0010+) are created. Idempotent.
+      - name: Provision Supabase-style roles + auth schema
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d brownzone_test -v ON_ERROR_STOP=1 -f scripts/ci-supabase-shims.sql
       - name: Apply migrations (0000–0012)
         run: npx drizzle-kit migrate
       - name: Apply RLS policies

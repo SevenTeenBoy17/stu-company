@@ -141,6 +141,13 @@ alter table public.rank_profiles enable row level security;
 alter table public.leaderboard_snapshots enable row level security;
 alter table public.learning_progress enable row level security;
 alter table public.family_members enable row level security;
+-- Fix (2026-06-04): classrooms + student_parent_links have policies defined below
+-- but RLS was never ENABLED on them, so the policies were inert and ANY
+-- authenticated user could read every classroom and every parent-student bond
+-- (minors' guardian links). The owner connection bypasses RLS so production was
+-- unaffected, but the per-request RLS rollout (RLS_ENFORCE) needs these enforced.
+alter table public.classrooms enable row level security;
+alter table public.student_parent_links enable row level security;
 
 drop policy if exists users_select_own on public.users;
 create policy users_select_own
