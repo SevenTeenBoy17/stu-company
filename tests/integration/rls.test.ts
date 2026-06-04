@@ -116,4 +116,105 @@ describeWithDb("postgres row level security isolation", () => {
 
     expect(rows.length).toBeGreaterThan(0);
   }, TEST_TIMEOUT_MS);
+
+  // ── leaderboard layer (policies added 2026-06-03) ──────────────────────────
+  it("leaderboard tables are cross-user readable; learning_progress is private", async () => {
+    let seen: { profiles: number; snapshots: number; learning: number } | undefined;
+    try {
+      await client.begin(async (sql) => {
+        await sql`insert into schools (id,name,normalized_name,province_code,city_code,status,created_by)
+                  values ('rls-sch','RLS校','RLS校','51','5101','approved','student-1')`;
+        await sql`insert into rank_profiles (user_id,province_code,city_code,school_id,alias)
+                  values ('student-1','51','5101','rls-sch','A'),('student-2','51','5101','rls-sch','B')`;
+        await sql`insert into leaderboard_snapshots (id,user_id,period,period_key,power,tier,net_worth,components)
+                  values ('rls-1','student-1','weekly','W',1,1,1,'{}'::jsonb),('rls-2','student-2','weekly','W',2,2,2,'{}'::jsonb)`;
+        await sql`insert into learning_progress (id,user_id,module_key)
+                  values ('rls-l1','student-1','m'),('rls-l2','student-2','m')`;
+        await setClaims(sql, { sub: "student-1", role: "student", classroomId: "class-1" });
+        // Filter to the rows this test controls so it is robust to other data:
+        // student-1 should see BOTH leaderboard rows (cross-user) but only its OWN
+        // learning row (private).
+        const ids = ["student-1", "student-2"];
+        seen = {
+          profiles: Number((await sql`select count(*)::int n from rank_profiles where user_id in ${sql(ids)}`)[0].n),
+          snapshots: Number((await sql`select count(*)::int n from leaderboard_snapshots where user_id in ${sql(ids)}`)[0].n),
+          learning: Number((await sql`select count(*)::int n from learning_progress where user_id in ${sql(ids)} and module_key='m'`)[0].n),
+        };
+        throw new Error("__rollback__");
+      });
+    } catch (e) {
+      if ((e as Error).message !== "__rollback__") throw e;
+    }
+    expect(seen).toEqual({ profiles: 2, snapshots: 2, learning: 1 });
+  }, TEST_TIMEOUT_MS);
+
+  it("blocks a student from writing another user's rank_profile", async () => {
+    let denied = false;
+    try {
+      await client.begin(async (sql) => {
+        await sql`insert into schools (id,name,normalized_name,province_code,city_code,status,created_by)
+                  values ('rls-sch2','RLS校2','RLS校2','51','5101','approved','student-1')`;
+        await setClaims(sql, { sub: "student-1", role: "student", classroomId: "class-1" });
+        try {
+          await sql`insert into rank_profiles (user_id,province_code,city_code,school_id,alias)
+                    values ('student-2','51','5101','rls-sch2','x')`;
+        } catch {
+          denied = true;
+        }
+        throw new Error("__rollback__");
+      });
+    } catch (e) {
+      if ((e as Error).message !== "__rollback__") throw e;
+    }
+    expect(denied).toBe(true);
+  }, TEST_TIMEOUT_MS);
+
+  // ── gap tables (policies added 2026-06-03) ─────────────────────────────────
+  it("scopes classrooms to the member and student_parent_links to the parties", async () => {
+    const classroomsSeen = await client.begin(async (sql) => {
+      await setClaims(sql, { sub: "student-1", role: "student", classroomId: "class-1" });
+      return Number((await sql`select count(*)::int n from classrooms`)[0].n);
+    });
+    expect(classroomsSeen).toBe(1);
+
+    const parentBonds = await client.begin(async (sql) => {
+      await setClaims(sql, { sub: "parent-1", role: "parent" });
+      return Number((await sql`select count(*)::int n from student_parent_links`)[0].n);
+    });
+    expect(parentBonds).toBeGreaterThanOrEqual(1);
+
+    const strangerBonds = await client.begin(async (sql) => {
+      await setClaims(sql, { sub: "student-2", role: "student", classroomId: "class-1" });
+      return Number((await sql`select count(*)::int n from student_parent_links`)[0].n);
+    });
+    expect(strangerBonds).toBe(0);
+  }, TEST_TIMEOUT_MS);
+});
+
+// The withUserRls() mechanism: the same enforcement, but reached through the app's
+// db layer (drizzle) rather than raw SQL. Dynamic imports defer @/lib/db/client so
+// loadEnvFile() above has populated DATABASE_URL before env.ts parses it.
+describeWithDb("withUserRls mechanism", () => {
+  it("enforces own-only when RLS_ENFORCE=true, owner-wide when off", async () => {
+    const prev = process.env.RLS_ENFORCE;
+    const { withUserRls, getRequestExecutor } = await import("@/lib/db/rls-context");
+    const { scenarioRuns } = await import("@/lib/db/schema");
+    const claims = { sub: "student-1", role: "student" as const, classroomId: "class-1" };
+    const runQuery = () =>
+      withUserRls(claims, async () => {
+        const ex = getRequestExecutor();
+        return ex ? (await ex.select().from(scenarioRuns)).length : -1;
+      });
+    try {
+      process.env.RLS_ENFORCE = "true";
+      const enforced = await runQuery();
+      process.env.RLS_ENFORCE = "";
+      const ownerWide = await runQuery();
+      expect(enforced).toBeGreaterThanOrEqual(1); // student-1 has a seeded run
+      expect(ownerWide).toBeGreaterThan(enforced); // owner sees other users' runs too
+    } finally {
+      if (prev === undefined) delete process.env.RLS_ENFORCE;
+      else process.env.RLS_ENFORCE = prev;
+    }
+  }, TEST_TIMEOUT_MS);
 });

@@ -89,14 +89,20 @@ function writeAuthMirrorSessions(userId: string, sessions: AiChatSession[]) {
   );
 }
 
-/** Wipe any AI-related browser storage (called on logout). */
-export function clearBrownZoneAiStorage() {
+/**
+ * Wipe AI-related browser storage. Pass `exceptUserId` to KEEP that user's own
+ * auth-mirror cache and drop everyone else's — used on login so a shared school
+ * computer never carries a previous student's AI history into the next session.
+ * (There is no logout button in the app, so login-time cleanup is the guarantee.)
+ */
+export function clearBrownZoneAiStorage(exceptUserId?: string) {
   if (typeof window === "undefined") return;
+  const keep = exceptUserId ? `brown-zone-ai-auth-cache:${exceptUserId}` : null;
   for (const storage of [window.localStorage, window.sessionStorage]) {
     const keys: string[] = [];
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
-      if (key && key.startsWith("brown-zone-ai-")) keys.push(key);
+      if (key && key.startsWith("brown-zone-ai-") && key !== keep) keys.push(key);
     }
     keys.forEach((key) => storage.removeItem(key));
   }
@@ -393,6 +399,9 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
 
   useEffect(() => {
     if (viewerKey !== "guest") {
+      // Shared-computer privacy (H3): a logged-in session wipes any *other* user's
+      // lingering AI storage (and the guest cache), keeping only this user's mirror.
+      clearBrownZoneAiStorage(viewerKey);
       setActiveSessionId(null);
       setMessages([]);
       setContextMeta({});
@@ -649,6 +658,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <textarea
                       value={input}
                       rows={2}
+                      aria-label="给 KeyAI 的消息"
                       onChange={(event) => setInput(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {

@@ -8,7 +8,7 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, ne, sql } from "drizzle-orm";
 
 import { z } from "zod";
 
@@ -21,6 +21,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
 import { getDb, isDatabaseConfigured } from "@/lib/db/client";
+import { getRequestExecutor } from "@/lib/db/rls-context";
 import {
   aiMessages,
   aiSessions,
@@ -29,9 +30,13 @@ import {
   familyMembers,
   growthReports,
   inviteCodes,
+  leaderboardSnapshots,
+  learningProgress,
   paymentOrders,
   profiles,
+  rankProfiles,
   scenarioRuns,
+  schools,
   studentParentLinks,
   subscriptionGrants,
   users,
@@ -41,6 +46,9 @@ import {
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
 import { currentSeasonSeed } from "@/lib/season";
+import { applySoftFloor, tierFromPower } from "@/lib/leaderboard/tiers";
+import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
+import type { RankSnapshot } from "@/lib/leaderboard/ranking";
 import {
   advanceSimulationRun,
   applyEventChoice,
@@ -62,12 +70,20 @@ import type {
   FamilyDigest,
   GrowthReport,
   InviteCode,
+  LeaderboardSnapshot,
+  LearningProgressRow,
+  LearningProgressSummary,
   PaymentChannel,
   PaymentOrder,
   PaymentStatus,
+  PowerComponentsRecord,
   ProfileRecord,
+  RankPeriod,
+  RankProfile,
+  RankVisibility,
   Role,
   ScenarioRun,
+  School,
   SubscriptionGrant,
   SubscriptionTier,
   UserRecord,
@@ -85,6 +101,9 @@ type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
 type DbPaymentOrder = typeof paymentOrders.$inferSelect;
 type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
+type DbSchool = typeof schools.$inferSelect;
+type DbRankProfile = typeof rankProfiles.$inferSelect;
+type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
 const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
@@ -95,10 +114,40 @@ const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 const ALLOW_MEMORY_FALLBACK =
   process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
 
+// P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
+// greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
+// are rate-limited (5s) so a sustained DB outage can't flood logs; the error text
+// is scrubbed of emails/tokens; and "no DATABASE_URL" is logged once so a
+// misconfigured prod silently running on ephemeral memory is detectable.
+let fallbackCount = 0;
+let loggedNoDb = false;
+let lastFallbackLogAt = 0;
+
+/** Redact emails / long hex secrets from an error message before logging (P6). */
+export function scrubError(err: unknown): string {
+  if (err === undefined || err === null) return "";
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "<email>")
+    .replace(/\b[a-f0-9]{16,}\b/gi, "<token>")
+    .slice(0, 200);
+}
+
 function logFallback(fn: string, reason: FallbackReason, err?: unknown) {
-  if (reason !== "no_database_url" && process.env.NODE_ENV !== "test") {
-    console.warn(`[repo] ${fn} -> fallback (${reason})`, err ?? "");
+  fallbackCount += 1;
+  if (process.env.NODE_ENV === "test") return;
+
+  if (reason === "no_database_url") {
+    if (loggedNoDb) return;
+    loggedNoDb = true;
+    console.warn("[repo.fallback] running on in-memory store (no DATABASE_URL) — degraded mode");
+    return;
   }
+
+  const now = Date.now();
+  if (now - lastFallbackLogAt < 5000) return;
+  lastFallbackLogAt = now;
+  console.warn(`[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${scrubError(err)}`.trim());
 }
 
 async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
@@ -121,9 +170,24 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
   }
 }
 
-async function withDb<T>(
+// Functions that PERSIST data. A configured DB that throws on one of these must
+// surface the error — never silently fall back to the in-memory store, which would
+// be a fake success + lost/diverged student data (audit R1 / P2). Reads may still
+// fall back to seed/demo data when ALLOW_MEMORY_FALLBACK is on (offline demo).
+const WRITE_FNS = new Set<string>([
+  "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
+  "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
+  "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
+  "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
+  "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
+  "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
+  "updatePaymentOrderProviderFields", "markPaymentOrderStatus", "fulfillPaymentOrder",
+]);
+
+async function withDbExecutor<T>(
   fn: string,
-  dbFn: (db: Db) => Promise<T>,
+  executor: DbExecutor | null,
+  dbFn: (db: DbExecutor) => Promise<T>,
   fallback: () => T | Promise<T>,
 ): Promise<T> {
   if (!isDatabaseConfigured()) {
@@ -134,8 +198,7 @@ async function withDb<T>(
     return await fallback();
   }
 
-  const db = getDb();
-  if (!db) {
+  if (!executor) {
     if (!ALLOW_MEMORY_FALLBACK) {
       throw new Error(`[repo] ${fn}: DB client unavailable`);
     }
@@ -144,14 +207,40 @@ async function withDb<T>(
   }
 
   try {
-    return await withQueryTimeout(fn, dbFn(db));
+    return await withQueryTimeout(fn, dbFn(executor));
   } catch (err) {
     logFallback(fn, "query_failed", err);
-    if (!ALLOW_MEMORY_FALLBACK) {
+    // Writes never silently fall back (P2): a failed persist must surface as an
+    // error, not pretend success in memory. Reads fall back only when allowed.
+    if (WRITE_FNS.has(fn) || !ALLOW_MEMORY_FALLBACK) {
       throw err;
     }
     return await fallback();
   }
+}
+
+// Default service path (owner connection, RLS bypassed). Used by the vast
+// majority of repo functions and ALL system / cron / admin / auth-bootstrap work.
+async function withDb<T>(
+  fn: string,
+  dbFn: (db: Db) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
+  // Sound: withDbExecutor only ever invokes this with getDb()'s Db.
+  return withDbExecutor(fn, getDb(), dbFn as unknown as (db: DbExecutor) => Promise<T>, fallback);
+}
+
+// Per-request user-scoped path. Uses the active request's executor: the scoped
+// `authenticated` tx when inside withUserRls (RLS enforced), else the owner
+// connection (default, today's behaviour). Opt user-scoped READ paths into this
+// — system callers reach it outside any withUserRls and transparently get owner.
+// See docs/rls-enforcement-staging-plan.md.
+async function withScopedDb<T>(
+  fn: string,
+  dbFn: (db: DbExecutor) => Promise<T>,
+  fallback: () => T | Promise<T>,
+): Promise<T> {
+  return withDbExecutor(fn, getRequestExecutor(), dbFn, fallback);
 }
 
 function maybeUndefined<T>(value: T | null | undefined) {
@@ -1619,13 +1708,13 @@ export async function appendAiMessage(sessionId: string, userId: string, message
 }
 
 export async function listAiSessionsForUser(userId: string) {
-  return withDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
+  return withScopedDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
     store.listAiSessionsForUser(userId),
   );
 }
 
 export async function getAiSessionById(sessionId: string, userId: string) {
-  return withDb(
+  return withScopedDb(
     "getAiSessionById",
     async (db) => {
       const session = await getAiSessionByIdWithExecutor(db, sessionId, userId);
@@ -2123,3 +2212,397 @@ export const getQuickDemoCredentials: typeof store.getQuickDemoCredentials = sto
 export const roleHomePath: (role: Role) => string = store.roleHomePath;
 export const buildTeacherLeaderboardCards: typeof store.buildTeacherLeaderboardCards =
   store.buildTeacherLeaderboardCards;
+
+// ---------------------------------------------------------------------------
+// Financial Power leaderboard (V1)
+// ---------------------------------------------------------------------------
+
+function toSchool(row: DbSchool): School {
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalizedName,
+    provinceCode: row.provinceCode,
+    cityCode: row.cityCode,
+    status: row.status as School["status"],
+    mergedInto: maybeUndefined(row.mergedInto),
+    createdBy: maybeUndefined(row.createdBy),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+  };
+}
+
+function toRankProfile(row: DbRankProfile): RankProfile {
+  return {
+    userId: row.userId,
+    provinceCode: row.provinceCode,
+    cityCode: row.cityCode,
+    schoolId: row.schoolId,
+    alias: row.alias,
+    visibility: row.visibility as RankVisibility,
+    consent: row.consent,
+    lastTier: row.lastTier,
+    lastTierSeason: row.lastTierSeason,
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+function toLeaderboardSnapshot(row: DbLeaderboardSnapshot): LeaderboardSnapshot {
+  return {
+    id: row.id,
+    userId: row.userId,
+    period: row.period as RankPeriod,
+    periodKey: row.periodKey,
+    power: row.power,
+    tier: row.tier,
+    netWorth: row.netWorth,
+    components: row.components as PowerComponentsRecord,
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
+/** Find the school for (city, normalized name) or create it. Idempotent. */
+export async function findOrCreateSchool(input: {
+  name: string;
+  provinceCode: string;
+  cityCode: string;
+  createdBy?: string;
+}): Promise<School> {
+  return withDb(
+    "findOrCreateSchool",
+    async (db) => {
+      const normalizedName = normalizeSchoolName(input.name);
+      // Single round-trip insert-or-return. Previously this was INSERT … ON
+      // CONFLICT DO NOTHING followed by a separate SELECT — two sequential
+      // round-trips, which on a high-latency / cold link (the DB is cross-region
+      // for CN users; a cold connection measured ~1.7s) could blow past the 5s
+      // query budget and surface as "findOrCreateSchool timed out". A no-op
+      // self-assignment of the conflict-target column makes ON CONFLICT DO UPDATE
+      // RETURN the existing row WITHOUT overwriting its first-created canonical
+      // name, so we always get the row back in one trip.
+      const [row] = await db
+        .insert(schools)
+        .values({
+          id: createId("sch"),
+          name: input.name.trim(),
+          normalizedName,
+          provinceCode: input.provinceCode,
+          cityCode: input.cityCode,
+          status: "approved",
+          createdBy: input.createdBy,
+        })
+        .onConflictDoUpdate({
+          target: [schools.cityCode, schools.normalizedName],
+          set: { cityCode: input.cityCode },
+        })
+        .returning();
+      // Defensive: RETURNING always yields a row for insert-or-update; a miss would
+      // mean a pathological race. Fail clean rather than crash in toSchool(undefined).
+      if (!row) throw new Error("学校创建失败，请重试。");
+      return toSchool(row);
+    },
+    () => store.findOrCreateSchool(input),
+  );
+}
+
+export async function listSchoolsByCity(cityCode: string): Promise<School[]> {
+  return withDb(
+    "listSchoolsByCity",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(schools)
+        .where(and(eq(schools.cityCode, cityCode), ne(schools.status, "merged")));
+      return rows.map(toSchool).sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+    },
+    () => store.listSchoolsByCity(cityCode),
+  );
+}
+
+export async function getSchoolById(schoolId: string): Promise<School | null> {
+  return withDb(
+    "getSchoolById",
+    async (db) => {
+      const [row] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
+      return row ? toSchool(row) : null;
+    },
+    () => store.getSchoolById(schoolId),
+  );
+}
+
+export async function getRankProfile(userId: string): Promise<RankProfile | null> {
+  return withScopedDb(
+    "getRankProfile",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(rankProfiles)
+        .where(eq(rankProfiles.userId, userId))
+        .limit(1);
+      return row ? toRankProfile(row) : null;
+    },
+    () => store.getRankProfile(userId),
+  );
+}
+
+export async function upsertRankProfile(input: {
+  userId: string;
+  provinceCode: string;
+  cityCode: string;
+  schoolId: string;
+  alias: string;
+  visibility?: RankVisibility;
+  consent?: number;
+}): Promise<RankProfile> {
+  return withDb(
+    "upsertRankProfile",
+    async (db) => {
+      const now = new Date();
+      const [row] = await db
+        .insert(rankProfiles)
+        .values({
+          userId: input.userId,
+          provinceCode: input.provinceCode,
+          cityCode: input.cityCode,
+          schoolId: input.schoolId,
+          alias: input.alias,
+          visibility: input.visibility ?? "public",
+          consent: input.consent ?? 0,
+          lastTier: 0,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: rankProfiles.userId,
+          // lastTier is intentionally NOT reset here — it's the season high-water.
+          set: {
+            provinceCode: input.provinceCode,
+            cityCode: input.cityCode,
+            schoolId: input.schoolId,
+            alias: input.alias,
+            ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+            ...(input.consent !== undefined ? { consent: input.consent } : {}),
+            updatedAt: now,
+          },
+        })
+        .returning();
+      return toRankProfile(row);
+    },
+    () => store.upsertRankProfile(input),
+  );
+}
+
+/**
+ * Persist computed power for a period bucket. Applies the season soft floor
+ * (decision 7) against the rank profile and bumps its high-water tier, atomic
+ * with the snapshot write.
+ */
+export async function upsertLeaderboardSnapshot(input: {
+  userId: string;
+  period: RankPeriod;
+  periodKey: string;
+  power: number;
+  netWorth: number;
+  components: PowerComponentsRecord;
+  /** Season (semester key) the soft floor is scoped to; resets across seasons. */
+  seasonKey: string;
+}): Promise<LeaderboardSnapshot> {
+  return withDb(
+    "upsertLeaderboardSnapshot",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const rawTier = tierFromPower(input.power);
+        const [profile] = await tx
+          .select()
+          .from(rankProfiles)
+          .where(eq(rankProfiles.userId, input.userId))
+          .limit(1)
+          .for("update");
+        // Reset the floor when the season rolls over (decision 7: within-season).
+        const baseline =
+          profile && profile.lastTierSeason === input.seasonKey ? profile.lastTier : 0;
+        const tier = profile ? applySoftFloor(baseline, rawTier) : rawTier;
+        const now = new Date();
+        if (profile) {
+          await tx
+            .update(rankProfiles)
+            .set({ lastTier: tier, lastTierSeason: input.seasonKey, updatedAt: now })
+            .where(eq(rankProfiles.userId, input.userId));
+        }
+        const [row] = await tx
+          .insert(leaderboardSnapshots)
+          .values({
+            id: createId("lbs"),
+            userId: input.userId,
+            period: input.period,
+            periodKey: input.periodKey,
+            power: input.power,
+            tier,
+            netWorth: input.netWorth,
+            components: input.components,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [
+              leaderboardSnapshots.userId,
+              leaderboardSnapshots.period,
+              leaderboardSnapshots.periodKey,
+            ],
+            set: {
+              power: input.power,
+              tier,
+              netWorth: input.netWorth,
+              components: input.components,
+              updatedAt: now,
+            },
+          })
+          .returning();
+        return toLeaderboardSnapshot(row);
+      }),
+    () => store.upsertLeaderboardSnapshot(input),
+  );
+}
+
+/** Mark a learning module completed for a user. Idempotent. */
+export async function markModuleComplete(
+  userId: string,
+  moduleKey: string,
+): Promise<LearningProgressRow> {
+  return withDb(
+    "markModuleComplete",
+    async (db) => {
+      await db
+        .insert(learningProgress)
+        .values({ id: createId("lp"), userId, moduleKey })
+        .onConflictDoNothing({ target: [learningProgress.userId, learningProgress.moduleKey] });
+      return { userId, moduleKey, completedAt: new Date().toISOString() };
+    },
+    () => store.markModuleComplete(userId, moduleKey),
+  );
+}
+
+export async function getLearningProgress(userId: string): Promise<LearningProgressSummary> {
+  return withDb(
+    "getLearningProgress",
+    async (db) => {
+      const rows = await db
+        .select({ moduleKey: learningProgress.moduleKey })
+        .from(learningProgress)
+        .where(eq(learningProgress.userId, userId));
+      const valid = new Set<string>(learningModules.map((m) => m.key));
+      const completedKeys = rows.map((r) => r.moduleKey).filter((k) => valid.has(k));
+      return { completed: completedKeys.length, total: valid.size, completedKeys };
+    },
+    () => store.getLearningProgress(userId),
+  );
+}
+
+export async function listLeaderboardSnapshots(
+  period: RankPeriod,
+  periodKey: string,
+): Promise<LeaderboardSnapshot[]> {
+  return withDb(
+    "listLeaderboardSnapshots",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(leaderboardSnapshots)
+        .where(
+          and(
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+          ),
+        );
+      return rows.map(toLeaderboardSnapshot);
+    },
+    () => store.listLeaderboardSnapshots(period, periodKey),
+  );
+}
+
+/**
+ * Snapshots joined to rank profiles + schools for a period — the rows the pure
+ * ranker (ranking.ts) consumes. Only consented users (decision 3) are eligible;
+ * visibility filtering happens in ranking.ts at read time.
+ */
+export async function listRankSnapshots(
+  period: RankPeriod,
+  periodKey: string,
+): Promise<RankSnapshot[]> {
+  return withScopedDb(
+    "listRankSnapshots",
+    async (db) => {
+      const rows = await db
+        .select({
+          userId: leaderboardSnapshots.userId,
+          power: leaderboardSnapshots.power,
+          tier: leaderboardSnapshots.tier,
+          alias: rankProfiles.alias,
+          visibility: rankProfiles.visibility,
+          schoolId: rankProfiles.schoolId,
+          cityCode: rankProfiles.cityCode,
+          provinceCode: rankProfiles.provinceCode,
+          schoolName: schools.name,
+        })
+        .from(leaderboardSnapshots)
+        .innerJoin(rankProfiles, eq(rankProfiles.userId, leaderboardSnapshots.userId))
+        .leftJoin(schools, eq(schools.id, rankProfiles.schoolId))
+        .where(
+          and(
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+            eq(rankProfiles.consent, 1),
+          ),
+        );
+      return rows.map((r) => ({
+        userId: r.userId,
+        alias: r.alias,
+        power: r.power,
+        tier: r.tier,
+        schoolId: r.schoolId,
+        schoolName: r.schoolName ?? "未知学校",
+        cityCode: r.cityCode,
+        provinceCode: r.provinceCode,
+        visibility: r.visibility as RankVisibility,
+      }));
+    },
+    () => store.listRankSnapshots(period, periodKey),
+  );
+}
+
+/** All users who have onboarded onto the leaderboard (for the recompute cron). */
+export async function listRankedUserIds(): Promise<string[]> {
+  return withDb(
+    "listRankedUserIds",
+    async (db) => {
+      const rows = await db.select({ userId: rankProfiles.userId }).from(rankProfiles);
+      return rows.map((r) => r.userId);
+    },
+    () => store.listRankedUserIds(),
+  );
+}
+
+/** A single user's own power snapshot for a period (with components). */
+export async function getPowerSnapshot(
+  userId: string,
+  period: RankPeriod,
+  periodKey: string,
+): Promise<LeaderboardSnapshot | null> {
+  return withScopedDb(
+    "getPowerSnapshot",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(leaderboardSnapshots)
+        .where(
+          and(
+            eq(leaderboardSnapshots.userId, userId),
+            eq(leaderboardSnapshots.period, period),
+            eq(leaderboardSnapshots.periodKey, periodKey),
+          ),
+        )
+        .limit(1);
+      return row ? toLeaderboardSnapshot(row) : null;
+    },
+    () => store.getPowerSnapshot(userId, period, periodKey),
+  );
+}

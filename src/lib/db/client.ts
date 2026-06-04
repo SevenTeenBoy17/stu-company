@@ -27,6 +27,10 @@ export function getDb() {
       prepare: false,
       max: 3,
       idle_timeout: 20,
+      // P3: server-side statement timeout so Postgres ABORTS a slow query (and
+      // frees the connection) instead of it running on after the client-side race
+      // in repo.ts gives up. Matches DB_QUERY_TIMEOUT_MS (default 5s).
+      connection: { statement_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000) },
     });
     dbInstance = drizzle(client);
     if (process.env.NODE_ENV !== "production") {

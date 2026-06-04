@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { apiError, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { getAiSessionById } from "@/lib/db/repo";
+import { rlsClaimsForUser, withUserRls } from "@/lib/db/rls-context";
 
 export async function GET(
   _request: Request,
@@ -15,7 +16,9 @@ export async function GET(
 
   try {
     const { sessionId } = await context.params;
-    const session = await getAiSessionById(sessionId, auth.user.id);
+    const session = await withUserRls(rlsClaimsForUser(auth.user), () =>
+      getAiSessionById(sessionId, auth.user.id),
+    );
     if (!session) {
       return apiError("not_found", "当前会话不存在或无权访问。", 404);
     }

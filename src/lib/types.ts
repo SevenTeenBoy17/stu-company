@@ -300,6 +300,75 @@ export interface LeaderboardEntry {
   rank: number;
 }
 
+// ── Financial Power leaderboard (V1) ────────────────────────────────────────
+export type RankVisibility = "public" | "school_only" | "hidden";
+export type RankPeriod = "weekly" | "monthly" | "season";
+
+/** Self-input school, deduped per city (decision 2: no classroom binding). */
+export interface School {
+  id: string;
+  name: string;
+  normalizedName: string;
+  provinceCode: string;
+  cityCode: string;
+  status: "approved" | "pending" | "merged";
+  mergedInto?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+/** Per-user leaderboard identity + privacy. Absent until onboarding done. */
+export interface RankProfile {
+  userId: string;
+  provinceCode: string;
+  cityCode: string;
+  schoolId: string;
+  alias: string;
+  visibility: RankVisibility;
+  /** Guardian consent gate (decision 3): 0 until consented, 1 after. */
+  consent: number;
+  /** Soft-floor high-water tier within the season (decision 7). */
+  lastTier: number;
+  /** Season (semester key) that lastTier belongs to; floor resets across seasons. */
+  lastTierSeason: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PowerComponentsRecord {
+  riskAdjReturn: number;
+  discipline: number;
+  drawdown: number;
+  learning: number;
+  growth: number;
+}
+
+export interface LearningProgressRow {
+  userId: string;
+  moduleKey: string;
+  completedAt: string;
+}
+
+export interface LearningProgressSummary {
+  completed: number;
+  total: number;
+  completedKeys: string[];
+}
+
+/** Computed power for a user in one period bucket. */
+export interface LeaderboardSnapshot {
+  id: string;
+  userId: string;
+  period: RankPeriod;
+  periodKey: string;
+  power: number;
+  tier: number;
+  netWorth: number;
+  components: PowerComponentsRecord;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GrowthReport {
   studentUserId: string;
   parentUserId: string;

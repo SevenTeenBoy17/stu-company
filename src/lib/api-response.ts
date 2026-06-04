@@ -23,7 +23,11 @@ export function handleRouteError(error: unknown, fallbackMessage: string) {
 
   const message = error instanceof Error ? error.message : fallbackMessage;
 
-  if (/database|postgres|connection|timeout|query|ECONN|ENOTFOUND|数据库/i.test(message)) {
+  // DB/connectivity faults map to a calm Chinese 503 — never leak the raw
+  // internal message to a student. The client-side query race throws
+  // "<fn> timed out after Nms" (note: "timed out", not "timeout"), so match
+  // both spellings plus the common node socket codes and the Chinese 超时.
+  if (/database|postgres|connection|timed?\s*out|timeout|ETIMEDOUT|ECONNREFUSED|query|ECONN|ENOTFOUND|数据库|超时/i.test(message)) {
     return apiError("db_unavailable", "数据库暂时不可用，请稍后再试。", 503);
   }
 

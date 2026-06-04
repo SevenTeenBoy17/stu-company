@@ -1,0 +1,151 @@
+# CI pipeline — encodes the AGENTS.md §5 quality bar as discrete gates.
+# Authored alongside docs/TEST-STRATEGY.md §1.4 / §5.9.
+#
+# Verified locally before commit: lint, typecheck, unit (all green).
+# Authored from real config but FIRST run is here: build, e2e, integration.
+# The integration job is non-blocking (continue-on-error) until the test
+# Postgres is provisioned with Supabase-style roles (authenticated/anon) that
+# tests/integration/rls.test.ts switches into via `set local role`.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  unit:
+    name: Unit + Component
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Runs only src/**/*.test.{ts,tsx} (jsdom) — integration is a separate job.
+      # (pytest from the FastAPI brief is N/A — this stack has no Python; Vitest is the runner.)
+      - run: npm run test:coverage
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      # next build runs with NODE_ENV=production, where env.ts requires
+      # SESSION_SECRET >= 32 chars. CI-only placeholder — never a real secret.
+      SESSION_SECRET: ci-build-placeholder-session-secret-override-me-32
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Playwright auto-starts `npm run dev` on :4173 (playwright.config.ts) and
+      # exercises the in-memory fallback path (no DATABASE_URL; DB_QUERY_TIMEOUT_MS=350).
+      - run: npx playwright test
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: test-results/
+          retention-days: 7
+
+  integration:
+    name: Integration (Postgres) [non-blocking until DB roles provisioned]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: brownzone_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/brownzone_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Supabase provides authenticated/anon roles AND an auth schema with
+      # auth.jwt(); a vanilla postgres image has neither. 0002_rls_policies.sql
+      # references auth.jwt() in function bodies, which check_function_bodies
+      # validates at migrate time — so without these shims drizzle-kit migrate
+      # aborts before the leaderboard tables (0010+) are created. Idempotent.
+      - name: Provision Supabase-style roles + auth schema
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d brownzone_test -v ON_ERROR_STOP=1 -f scripts/ci-supabase-shims.sql
+      - name: Apply migrations (0000–0012)
+        run: npx drizzle-kit migrate
+      - name: Apply RLS policies
+        run: npm run db:apply-policies
+      - name: Seed demo data
+        run: npm run db:seed
+      - name: Run integration tests
+        run: npm run test:integration

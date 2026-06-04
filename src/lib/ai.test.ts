@@ -16,6 +16,10 @@ const originalEnv = {
   AI_BASE_URL_SECONDARY: process.env.AI_BASE_URL_SECONDARY,
 };
 
+// NOTE: the primary->secondary failover test was migrated to ai-gateway.msw.test.ts
+// (MSW network-boundary mock) and removed from here. The cases below all exercise
+// the local-fallback path (no API key -> no network), so they need no HTTP mock.
+
 describe("ai tutor", () => {
   beforeEach(() => {
     resetStoreForTests();
@@ -42,39 +46,6 @@ describe("ai tutor", () => {
 
     expect(response.provider).toBe("fallback");
     expect(response.text).toContain("Mr.Brown");
-  });
-
-  it("retries on secondary base url after the primary fails", async () => {
-    process.env.AI_API_KEY = "test-key";
-    process.env.AI_BASE_URL_PRIMARY = "https://primary.example/v1";
-    process.env.AI_BASE_URL_SECONDARY = "https://secondary.example";
-
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            content: [{ type: "text", text: "第二地址返回的 AI 建议" }],
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
-      );
-
-    const state = getSimulationStateForUser("student-1");
-    const response = await requestTutorInsight({
-      mode: "round-review",
-      state: {
-        user: state.user,
-        market: state.market,
-        run: state.run,
-      },
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(response.provider).toBe("remote");
-    expect(response.baseUrl).toBe("https://secondary.example");
-    expect(response.text).toContain("AI 建议");
   });
 
   it("builds a local chat fallback when no key is configured", async () => {

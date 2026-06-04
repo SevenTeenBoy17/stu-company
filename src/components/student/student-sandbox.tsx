@@ -14,6 +14,7 @@ import {
 
 import { MoneyText } from "@/components/shared/money-text";
 import { SeasonLeaderboard } from "@/components/student/season-leaderboard";
+import { PowerRankTeaser } from "@/components/student/rank/power-rank-teaser";
 import { StudentAllocationPanel } from "@/components/student/student-allocation-panel";
 import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
@@ -811,6 +812,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               }}
             />
             <SeasonLeaderboard />
+            <PowerRankTeaser />
           </div>
         </section>
 

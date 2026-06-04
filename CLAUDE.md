@@ -15,6 +15,7 @@ npm run lint                   # ESLint
 npx tsc --noEmit               # Type-check without emitting
 npm run test                   # Vitest unit tests (src/**/*.test.ts)
 npm run test:watch             # Vitest in watch mode
+npm run test:coverage          # Vitest with v8 coverage
 npx vitest run src/lib/simulation.test.ts   # Run a single test file
 npm run test:integration       # Integration tests (needs DATABASE_URL pointing at test schema)
 npx playwright test            # E2E tests (tests/e2e/) — auto-starts its own dev server on :4173 (PLAYWRIGHT_PORT), reusing one if already running
@@ -30,7 +31,7 @@ npm run db:apply-policies      # Apply RLS policies from drizzle/policies.sql
 Two Next.js route groups under `src/app/`:
 
 - `(site)` — public marketing/auth pages: landing `/`, `/learn`, `/demo`, `/pricing`, `/reset-password`
-- `(platform)` — authenticated app: `/student`, `/student/market`, `/student/history`, `/teacher`, `/parent`, `/admin`
+- `(platform)` — authenticated app: `/student`, `/student/market`, `/student/history`, `/student/rank`, `/teacher`, `/parent`, `/admin`
 
 `(platform)/layout.tsx` is the single auth boundary — redirects unauthenticated users to `/demo?reason=login_required`. Individual pages enforce their own role check.
 
@@ -57,6 +58,15 @@ HTTP-only cookie `brown_zone_session` containing a HS256 JWT. Claims: `userId`, 
 ### RLS
 
 Drizzle migrations live in `drizzle/`. RLS policies in `drizzle/policies.sql` are only enforced when `DATABASE_ROLE=authenticated` AND queries go through `withRls()` in `src/lib/db/client.ts`. The default `owner` connection bypasses RLS — application-layer checks in `repo.ts` are the primary defence.
+
+### Security Hardening Conventions
+
+Recent hardening (commits P1–P8) established invariants that new code must preserve:
+
+- **CSRF**: state-changing routes call `checkOrigin()` from `src/lib/api-response.ts` to reject cross-origin requests. Applied to `/api/sim/*` and billing routes; add it to any new mutating route.
+- **No silent write-fallback**: `repo.ts` may fall back to the in-memory store for *reads* when the DB is down, but *writes* must surface the DB error instead of silently writing to memory (P2). `ALLOW_MEMORY_FALLBACK` gates the read fallback only.
+- **Query timeout**: the Postgres client sets server-side `statement_timeout` (`DB_QUERY_TIMEOUT_MS`, default 5000ms) in `src/lib/db/client.ts` so slow queries are cancelled rather than hanging.
+- **Rate limiting**: extend `src/lib/rate-limit.ts` coverage when adding auth, AI, or payment-intent routes (e.g. `/api/billing/prepay`).
 
 ### Simulation Engine
 
@@ -85,6 +95,19 @@ Real-time quotes from AllTick (`src/lib/alltick.ts`) with a 10-minute refresh ca
 ### Seasons & Leaderboard
 
 `src/lib/season.ts` — each ISO-ish week is a "season" with a deterministic seed (`currentSeasonSeed`, epoch 2026-01-05). All new runs that week share the same market, so the cross-student weekly leaderboard (`/api/market/season-leaderboard`) is fair. Membership is derived by matching a run's stored seed to the current season seed — no extra column needed.
+
+### 财商战力 Power Rank
+
+`src/lib/leaderboard/**` — the 王者-style competitive ranking layer (migrations `0010`–`0012`), separate from the seed-based season leaderboard above. The pipeline is pure-core + thin-service:
+
+- `power-score.ts` — `computePowerScore()` maps a run to **财商战力** (0–2000): a weighted composite of risk-adjusted return (.30), discipline (.25), drawdown control (.20), learning completion (.15), and growth (.10). Ranks decision *quality*, not luck (anti-YOLO) — weights are surfaced to students in a transparency panel (`powerFormula()`). Pure, no IO.
+- `run-power.ts` — adapter from a sim run + `learning_progress` into `PowerScoreInput`.
+- `tiers.ts` — power→tier bands; `periods.ts` — `weekly` / `monthly` / `season` period keys (season uses a 校历-aligned semester key).
+- `ranking.ts` — pure ranker over snapshots across four scopes (`school` / `city` / `province` / `nation`), mirroring the SQL `RANK() OVER (PARTITION BY scope)` path. Enforces visibility privacy (`public` / `school_only` / `hidden`); ranks are computed over exactly the displayed set so hiding leaks no rank gaps.
+- `service.ts` — the bridge API routes call: `getLeaderboardBoard()`, `getPowerCard()` (private to the player, works even when hidden/unconsented), and `recomputePowerForUser()` / `recomputeAllRankedUsers()` (writes a snapshot into all live period buckets; no-op for non-onboarded users so the hot gameplay path never writes orphan rows).
+- `regions.ts` / `school-normalize.ts` — region code + school-name normalization for scope assignment.
+
+Routes under `src/app/api/leaderboard/**` (`board`, `me`, `profile`, `regions`, `schools`); UI at `/student/rank`. A student must onboard a rank profile (alias + region + consent) before appearing on any board. Snapshots are refreshed by the Vercel Cron `GET /api/cron/recompute-leaderboard` (same `CRON_SECRET` Bearer auth as the weekly report). The learning-completion input (`.15` of the power score) is fed by `/api/learn/progress` and `/api/learn/complete`, persisted to `learning_progress` (migration `0012`).
 
 ### Transactional Email & Cron
 
@@ -121,6 +144,15 @@ All route errors use: `{ error: <stable_code>, message: <中文提示> }`. Error
 ### Env Validation
 
 `src/lib/env.ts` validates all environment variables with zod at startup. Most are optional for dev (the app degrades gracefully without DATABASE_URL or AI keys). `SESSION_SECRET` must be >= 32 chars in production.
+
+### Testing Layers
+
+Beyond plain unit tests, the suite mixes several techniques — match the existing pattern when touching these areas:
+
+- **Property-based** (`fast-check`): determinism/invariant guards, e.g. `determinism.guard.test.ts`, `simulation.money.test.ts`. The seeded engines (`event-engine`, `season`) must stay reproducible.
+- **MSW** (`msw`): the AI gateway (`src/lib/ai.ts`) is tested against mocked provider responses (`ai-gateway.msw.test.ts`, `ai-format-drift.test.ts`) — never hit a real provider in tests.
+- **Accessibility** (`axe-core` / `vitest-axe`): component a11y assertions.
+- **Audit tests**: `repo-fallback.audit.test.ts` / `repo-logging.test.ts` enforce the no-silent-write-fallback and logging invariants above — keep them green when changing `repo.ts`.
 
 ## Key Conventions
 
