@@ -2273,7 +2273,15 @@ export async function findOrCreateSchool(input: {
     "findOrCreateSchool",
     async (db) => {
       const normalizedName = normalizeSchoolName(input.name);
-      await db
+      // Single round-trip insert-or-return. Previously this was INSERT … ON
+      // CONFLICT DO NOTHING followed by a separate SELECT — two sequential
+      // round-trips, which on a high-latency / cold link (the DB is cross-region
+      // for CN users; a cold connection measured ~1.7s) could blow past the 5s
+      // query budget and surface as "findOrCreateSchool timed out". A no-op
+      // self-assignment of the conflict-target column makes ON CONFLICT DO UPDATE
+      // RETURN the existing row WITHOUT overwriting its first-created canonical
+      // name, so we always get the row back in one trip.
+      const [row] = await db
         .insert(schools)
         .values({
           id: createId("sch"),
@@ -2284,15 +2292,13 @@ export async function findOrCreateSchool(input: {
           status: "approved",
           createdBy: input.createdBy,
         })
-        .onConflictDoNothing({ target: [schools.cityCode, schools.normalizedName] });
-      const [row] = await db
-        .select()
-        .from(schools)
-        .where(and(eq(schools.cityCode, input.cityCode), eq(schools.normalizedName, normalizedName)))
-        .limit(1);
-      // Defensive: the row was just inserted (or already existed); a miss means a
-      // pathological race deleted it. Fail with a clean error rather than crash
-      // in toSchool(undefined).
+        .onConflictDoUpdate({
+          target: [schools.cityCode, schools.normalizedName],
+          set: { cityCode: input.cityCode },
+        })
+        .returning();
+      // Defensive: RETURNING always yields a row for insert-or-update; a miss would
+      // mean a pathological race. Fail clean rather than crash in toSchool(undefined).
       if (!row) throw new Error("学校创建失败，请重试。");
       return toSchool(row);
     },
