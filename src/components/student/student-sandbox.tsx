@@ -55,13 +55,24 @@ const actionTabs: Array<{ id: ActionTab; label: string; hint: string }> = [
   { id: "venture", label: "创业", hint: "投入或退出项目" },
 ];
 
-const actionTypeLabel: Record<ActionLog["type"], string> = {
+const actionTypeLabel: Partial<Record<ActionLog["type"], string>> = {
   trade: "交易",
   bank: "现金流",
   property: "房产",
   venture: "创业",
   advance: "回合推进",
   event: "事件决策",
+};
+
+const readableActionTypeLabel: Record<ActionLog["type"], string> = {
+  trade: actionTypeLabel.trade ?? "交易",
+  bank: actionTypeLabel.bank ?? "现金流",
+  property: actionTypeLabel.property ?? "房产",
+  venture: actionTypeLabel.venture ?? "创业",
+  advance: actionTypeLabel.advance ?? "回合推进",
+  event: actionTypeLabel.event ?? "事件决策",
+  auto_invest: "定投机器人",
+  quest: "任务奖励",
 };
 
 function actionDirection(amount: number) {
@@ -85,6 +96,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   // Premium surfacing: investor-personality card (deepAiReport) + season replay.
   const [persona, setPersona] = useState<InvestorPersona | null>(null);
   const [canReplay, setCanReplay] = useState(false);
+  const [canUsePersonalAi, setCanUsePersonalAi] = useState<boolean | null>(null);
   // Behavior-bias overlay cards (adaptive-events) surfaced after each action.
   const [adaptiveEvents, setAdaptiveEvents] = useState<AdaptiveEvent[]>([]);
   const [activeTab, setActiveTab] = useState<ActionTab>("trade");
@@ -151,6 +163,11 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const refreshPortfolioIntelRef = useRef<() => Promise<void>>(async () => {});
   refreshPortfolioIntelRef.current = async () => {
     if (!state) return;
+    if (canUsePersonalAi !== true) {
+      setPortfolioIntel(buildPortfolioIntel(state));
+      setIntelPending(false);
+      return;
+    }
 
     refreshControllerRef.current?.abort();
     const controller = new AbortController();
@@ -175,7 +192,20 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   };
   const refreshPortfolioIntel = useCallback(() => refreshPortfolioIntelRef.current(), []);
 
-  async function loadTutorRadarForState(currentState: SimulationState) {
+  async function loadTutorRadarForState(
+    currentState: SimulationState,
+    options: { silent?: boolean } = {},
+  ) {
+    if (canUsePersonalAi !== true) {
+      setTutorRadar(buildTutorRadarPayload(currentState));
+      setPersona(null);
+      setRadarPending(false);
+      if (!options.silent) {
+        setMessage("当前账号暂未开通完整 AI 评定，已先显示本地教学雷达。");
+      }
+      return;
+    }
+
     setRadarPending(true);
     try {
       const response = await fetch("/api/ai/radar-chart", { method: "POST", cache: "no-store" });
@@ -201,7 +231,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const refreshTutorRadarOnMountRef = useRef<() => Promise<void>>(async () => {});
   refreshTutorRadarOnMountRef.current = async () => {
     if (state) {
-      await loadTutorRadarForState(state);
+      await loadTutorRadarForState(state, { silent: true });
     }
   };
   const refreshTutorRadarOnMount = useCallback(
@@ -213,18 +243,26 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     if (!state) return;
     setPortfolioIntel(buildPortfolioIntel(state));
     setTutorRadar(buildTutorRadarPayload(state));
-    void refreshPortfolioIntel();
-  }, [state, refreshPortfolioIntel]);
+    if (canUsePersonalAi === true) {
+      void refreshPortfolioIntel();
+    }
+  }, [state, canUsePersonalAi, refreshPortfolioIntel]);
 
   useEffect(() => {
     let alive = true;
     void fetch("/api/billing/status", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: { features?: { seasonReplay?: boolean } } | null) => {
-        if (alive && data?.features) setCanReplay(Boolean(data.features.seasonReplay));
+      .then((data: { canUsePersonalAiAssessment?: boolean; features?: { seasonReplay?: boolean } } | null) => {
+        if (!alive) return;
+        setCanReplay(Boolean(data?.features?.seasonReplay));
+        setCanUsePersonalAi(Boolean(data?.canUsePersonalAiAssessment));
       })
       .catch(() => {
         // Replay is a premium extra; absence just hides the button.
+        if (alive) {
+          setCanReplay(false);
+          setCanUsePersonalAi(false);
+        }
       });
     return () => {
       alive = false;
@@ -232,16 +270,16 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   }, []);
 
   useEffect(() => {
-    if (studentId) {
+    if (studentId && canUsePersonalAi !== null) {
       void refreshTutorRadarOnMount();
     }
-  }, [studentId, refreshTutorRadarOnMount]);
+  }, [studentId, canUsePersonalAi, refreshTutorRadarOnMount]);
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId || canUsePersonalAi !== true) return;
     const timer = window.setInterval(() => void refreshPortfolioIntel(), MARKET_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [studentId, refreshPortfolioIntel]);
+  }, [studentId, canUsePersonalAi, refreshPortfolioIntel]);
 
   useEffect(() => {
     return () => refreshControllerRef.current?.abort();
@@ -310,6 +348,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   return (
     <div className="space-y-6 pb-24">
+      <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Brown Zone</p>
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">学生策略台</h1>
+      </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {heroMetrics.map((item) => {
           const Icon = item.icon;
@@ -490,14 +532,18 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
                     className="block w-full rounded-[1.2rem] text-left focus:outline-none focus:ring-2 focus:ring-orange-300"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 break-words text-lg font-black text-slate-950">{asset.name}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
+                    <div className="min-w-0">
+                      {/* Title on its own full-width line so it stays on ONE line
+                          (no competing with the change badge, no mid-word "ETF" break). */}
+                      <p className="truncate text-base font-black text-slate-950">{asset.name}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="truncate text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                          {asset.symbol}
+                        </p>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-black", move.badge)}>
+                          {formatPercent(asset.dayChange)}
+                        </span>
                       </div>
-                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
-                        {formatPercent(asset.dayChange)}
-                      </span>
                     </div>
                     <p className="mt-3 text-2xl font-black text-slate-950">
                       <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
@@ -743,7 +789,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       <div className="min-w-0">
                         <p className="line-clamp-2 break-words text-base font-black text-slate-950">{entry.label}</p>
                         <p className="mt-1 text-sm font-semibold text-slate-500">
-                          第 {entry.round} 回合 · {actionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
+                          第 {entry.round} 回合 · {readableActionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
                         </p>
                       </div>
                       <button

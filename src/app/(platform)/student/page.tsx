@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { PlatformLayout } from "@/components/platform/platform-layout";
 import { GuestUpgradeCheckout } from "@/components/billing/guest-upgrade-checkout";
-import { StudentSandbox } from "@/components/student/student-sandbox";
-import { StudentOnboardingGate } from "@/components/student/student-onboarding-gate";
+import { PlatformLayout } from "@/components/platform/platform-layout";
 import { SubscriptionBanner } from "@/components/shared/subscription-banner";
+import { StudentOnboardingGate } from "@/components/student/student-onboarding-gate";
+import { StudentSandbox } from "@/components/student/student-sandbox";
 import { resolveSubscriptionState } from "@/lib/billing/subscription";
-import { getCurrentUser } from "@/lib/session-user";
 import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
+import { getCurrentUser } from "@/lib/session-user";
 
 export default async function StudentPage() {
   const user = await getCurrentUser();
@@ -27,11 +27,15 @@ export default async function StudentPage() {
     <PlatformLayout
       role="student"
       heading="学生策略台"
-      summary="围绕一名学生的一整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
+      summary="围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
       <SubscriptionBanner state={subState} role={user.role} />
       {isSharedGuest ? <GuestUpgradeCheckout /> : null}
-      <StudentOnboardingGate userName={user.name} needsOnboarding={needsOnboarding}>
+      <StudentOnboardingGate
+        userName={user.name}
+        needsOnboarding={needsOnboarding}
+        showUpgradeShortcut={isSharedGuest}
+      >
         <StudentSandbox initialState={initialState} />
       </StudentOnboardingGate>
     </PlatformLayout>

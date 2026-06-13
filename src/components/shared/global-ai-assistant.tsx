@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -128,6 +130,7 @@ function getLatestContextMeta(messages: AiChatMessage[]) {
 export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -139,6 +142,9 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [contextMeta, setContextMeta] = useState<{ assetId?: string; actionLogId?: string }>({});
+
+  // A11y: full dialog keyboard contract — focus-in, Tab-trap, Esc, focus-restore.
+  useFocusTrap(isOpen, panelRef, () => setIsOpen(false));
   const viewerKey = viewer?.id ?? "guest";
 
   const mode = useMemo(() => resolveAiChatMode(pathname, viewer?.role), [pathname, viewer?.role]);
@@ -458,15 +464,15 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               void refreshAuthHistory();
             }
           }}
-          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#2f3848] text-white shadow-[0_20px_50px_rgba(15,23,42,0.35)] sm:h-16 sm:w-16"
+          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--ink-700)] text-white shadow-2xl shadow-slate-950/30 sm:h-16 sm:w-16"
           data-allow-overflow="true"
           aria-label="打开 KeyAI"
         >
-          <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(240,138,56,0.28)_0%,transparent_62%)]" />
+          <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,var(--brand)_0%,transparent_62%)] opacity-30" />
           <span className="absolute -inset-2 rounded-full border border-white/10" />
           <span className="relative flex h-8 w-8 items-center justify-center rounded-[0.95rem] border border-white/12 bg-white/6 sm:h-11 sm:w-11 sm:rounded-[1.2rem]">
-            <span className="absolute left-1 h-2.5 w-1 rounded-full bg-[#f08a38] sm:left-1.5 sm:h-3" />
-            <span className="absolute right-1 h-2.5 w-1 rounded-full bg-[#f08a38] sm:right-1.5 sm:h-3" />
+            <span className="absolute left-1 h-2.5 w-1 rounded-full bg-brand sm:left-1.5 sm:h-3" />
+            <span className="absolute right-1 h-2.5 w-1 rounded-full bg-brand sm:right-1.5 sm:h-3" />
             <span className="text-xs font-bold tracking-tight sm:text-sm">AI</span>
           </span>
         </motion.button>
@@ -485,20 +491,25 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               aria-label="关闭 KeyAI 面板"
             />
 
-            <motion.aside
+            <motion.div
+              ref={panelRef}
+              tabIndex={-1}
+              role="dialog"
+              aria-modal="true"
+              aria-label="KeyAI 助手"
               initial={{ opacity: 0, y: 28, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.98 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-x-3 bottom-3 top-3 z-[72] flex flex-col overflow-hidden rounded-[1.85rem] border border-white/12 bg-[#f7f8fb] shadow-[0_28px_90px_rgba(15,23,42,0.32)] sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:h-[min(760px,calc(100svh-32px))] sm:w-[min(420px,calc(100vw-32px))] sm:rounded-[2rem]"
+              className="fixed inset-x-3 bottom-3 top-3 z-[72] flex flex-col overflow-hidden rounded-[1.85rem] border border-white/12 bg-bg-app shadow-2xl shadow-slate-950/20 focus:outline-none sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:h-[min(760px,calc(100svh-32px))] sm:w-[min(420px,calc(100vw-32px))] sm:rounded-[2rem]"
             >
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,#8dd5ff,transparent_36%),linear-gradient(135deg,#1f2937_0%,#40506a_100%)] text-white shadow-[0_10px_24px_rgba(64,80,106,0.28)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,var(--info-100),transparent_36%),linear-gradient(135deg,var(--ink-800)_0%,var(--ink-600)_100%)] text-white shadow-lg shadow-slate-700/20">
                     <Bot className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.26em] text-[#f08a38]">Mr.Brown</p>
+                    <p className="text-xs uppercase tracking-[0.26em] text-brand">Mr.Brown</p>
                     <h2 className="text-[1.75rem] font-semibold tracking-tight text-slate-950">KeyAI</h2>
                   </div>
                 </div>
@@ -522,14 +533,14 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                         : "游客模式"}
                   </span>
                   {statusNote ? (
-                    <span className="rounded-full bg-[#fff4e9] px-3 py-1 text-xs font-medium text-[#9a571e]">
+                    <span className="rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand-ink">
                       {statusNote}
                     </span>
                   ) : null}
                 </div>
               </div>
 
-              <div className="relative flex-1 overflow-hidden bg-[#edf1f6]">
+              <div className="relative flex-1 overflow-hidden bg-bg-muted">
                 <AnimatePresence>
                   {isHistoryOpen ? (
                     <motion.div
@@ -540,7 +551,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-[#f08a38]">History</p>
+                          <p className="text-xs uppercase tracking-[0.24em] text-brand">History</p>
                           <h3 className="mt-1 text-lg font-semibold text-slate-950">最近会话</h3>
                         </div>
                         <button
@@ -561,7 +572,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                               onClick={() => {
                                 void selectConversation(session.id);
                               }}
-                              className="w-full rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition-colors hover:border-[#f08a38] hover:bg-[#fff9f3]"
+                              className="w-full rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 text-left shadow-sm transition-colors hover:border-brand hover:bg-brand-subtle"
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <p className="font-semibold text-slate-950">{session.title}</p>
@@ -603,7 +614,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                             className={cn(
                               "max-w-[84%] rounded-[1.5rem] px-4 py-3 shadow-sm",
                               message.role === "user"
-                                ? "bg-[#3a4659] text-white"
+                                ? "bg-[var(--ink-700)] text-white"
                                 : "bg-white text-slate-800",
                             )}
                           >
@@ -617,7 +628,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <div className="flex h-full flex-col justify-between gap-6">
                       <div className="pt-8">
                         <div className="flex items-center gap-3 text-slate-700">
-                          <Sparkles className="h-5 w-5 text-[#f08a38]" />
+                          <Sparkles className="h-5 w-5 text-brand" />
                           <p className="text-sm font-medium">你可以直接和 KeyAI 对话。</p>
                         </div>
                         <p className="mt-3 text-sm leading-7 text-slate-500">
@@ -635,7 +646,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                             onClick={() => {
                               void sendPrompt(prompt);
                             }}
-                            className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-[#f08a38] hover:bg-[#fff9f3]"
+                            className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 text-left text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-brand hover:bg-brand-subtle"
                           >
                             {prompt}
                           </button>
@@ -646,7 +657,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                 </div>
               </div>
 
-              <div className="safe-drawer-offset border-t border-slate-200 bg-[#2f3848] p-4 text-white">
+              <div className="safe-drawer-offset border-t border-slate-200 bg-[var(--ink-700)] p-4 text-white">
                 {error ? (
                   <div className="mb-3 rounded-[1.2rem] bg-white/8 px-3 py-2 text-sm text-white/80">
                     {error}
@@ -677,7 +688,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     onClick={() => {
                       void sendPrompt();
                     }}
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4d7cff] text-white shadow-[0_16px_34px_rgba(77,124,255,0.35)] transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-info text-white shadow-lg shadow-info/25 transition-transform hover:-translate-y-0.5 hover:bg-[var(--info-600)] disabled:opacity-60"
                     aria-label="发送消息"
                   >
                     {isSending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <SendHorizontal className="h-5 w-5" />}
@@ -689,7 +700,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <button
                       type="button"
                       onClick={startNewConversation}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#4d7cff] px-4 py-2 text-sm font-semibold text-white"
+                      className="inline-flex items-center gap-2 rounded-full bg-info px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--info-600)]"
                     >
                       <Plus className="h-4 w-4" />
                       New
@@ -715,7 +726,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                   </div>
                 </div>
               </div>
-            </motion.aside>
+            </motion.div>
           </>
         ) : null}
       </AnimatePresence>

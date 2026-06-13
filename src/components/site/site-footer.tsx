@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { Logo } from "@/components/site/logo";
@@ -7,15 +6,11 @@ import { learningModules, siteNavGroups } from "@/lib/content";
 export function SiteFooter() {
   return (
     <footer className="relative overflow-hidden border-t border-white/8 bg-bg-inverse text-white">
-      <Image
-        src="/brand/footer-pattern.svg"
-        alt=""
+      <div
         aria-hidden="true"
-        fill
-        sizes="100vw"
-        className="pointer-events-none object-cover opacity-90"
+        className="pointer-events-none absolute inset-0 z-0 bg-[url('/brand/footer-pattern.svg')] bg-cover bg-center opacity-90"
       />
-      <div className="relative mx-auto max-w-[1440px] px-4 py-14 sm:py-16 lg:px-8">
+      <div className="relative z-10 mx-auto max-w-[1440px] px-4 py-14 sm:py-16 lg:px-8">
         <div className="grid gap-10 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Logo />

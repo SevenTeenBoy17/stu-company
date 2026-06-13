@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { PowerCard } from "./power-card";
 import { RankBoard } from "./rank-board";
 import { RankOnboarding } from "./rank-onboarding";
-import type { FormulaDTO, PowerCardDTO } from "./types";
+import type { FormulaDTO, PowerCardDTO, RankScope } from "./types";
 
 interface MeResponse {
   card: PowerCardDTO;
@@ -19,6 +19,9 @@ export function RankDashboard() {
   // Bumped after onboarding to re-run the fetch effect (setState stays inside
   // the async callbacks, per the codebase's effect pattern).
   const [refreshKey, setRefreshKey] = useState(0);
+  // Region scope is lifted here so the hero's per-region tiles and the board's
+  // own selector stay in sync — clicking 全国 on either drives the same board.
+  const [scope, setScope] = useState<RankScope>("school");
 
   useEffect(() => {
     let alive = true;
@@ -52,8 +55,13 @@ export function RankDashboard() {
 
   return (
     <div className="space-y-4">
-      <PowerCard card={data.card} formula={data.formula} />
-      <RankBoard />
+      <PowerCard
+        card={data.card}
+        formula={data.formula}
+        scope={scope}
+        onScopeChange={setScope}
+      />
+      <RankBoard scope={scope} onScopeChange={setScope} />
     </div>
   );
 }

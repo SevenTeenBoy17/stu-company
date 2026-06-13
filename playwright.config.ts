@@ -20,6 +20,11 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
+      // E2E should be deterministic on teacher laptops and CI. By default it
+      // exercises the app's supported offline demo store; set
+      // PLAYWRIGHT_DATABASE_URL to explicitly run against a real Postgres DB.
+      DATABASE_URL: process.env.PLAYWRIGHT_DATABASE_URL ?? "",
+      ALLOW_MEMORY_FALLBACK: process.env.ALLOW_MEMORY_FALLBACK ?? "true",
       DB_QUERY_TIMEOUT_MS: process.env.DB_QUERY_TIMEOUT_MS ?? "350",
     },
   },

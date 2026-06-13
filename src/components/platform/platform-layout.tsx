@@ -11,6 +11,12 @@ import { cn } from "@/lib/utils";
 const navMap: Record<Role, Array<{ href: string; label: string }>> = {
   student: [
     { href: "/student", label: "策略总览" },
+    { href: "/student/wealth", label: "我的财富" },
+    { href: "/student/auto-invest", label: "定投机器人" },
+    { href: "/student/risk-profile", label: "风险测评" },
+    { href: "/student/life", label: "生活账本" },
+    { href: "/student/credit", label: "信用实验室" },
+    { href: "/student/quests", label: "任务中心" },
     { href: "/student/market", label: "市场信息" },
     { href: "/student/history", label: "历史复盘" },
     { href: "/student/rank", label: "战力榜" },
@@ -40,6 +46,10 @@ const roleAssets: Record<Role, { src: string; label: string }> = {
   parent: { src: "/brand/role-parent.svg", label: "家长端头像" },
   admin: { src: "/brand/role-admin.svg", label: "管理端头像" },
 };
+
+function navIndexLabel(index: number) {
+  return String(index + 1).padStart(2, "0");
+}
 
 export function PlatformLayout({
   role,
@@ -75,7 +85,7 @@ export function PlatformLayout({
               />
               <div className="min-w-0">
                 <p className="bz-eyebrow-inverse">Brown Zone</p>
-                <h2 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h2>
+                <p className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</p>
                 <p className="mt-3 text-body leading-8 text-white/60 sm:text-body-lg">{summary}</p>
               </div>
             </div>
@@ -98,7 +108,7 @@ export function PlatformLayout({
                   >
                     <span>{item.label}</span>
                     <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-400")}>
-                      0{index + 1}
+                      {navIndexLabel(index)}
                     </span>
                   </Link>
                 );
@@ -117,7 +127,7 @@ export function PlatformLayout({
               className="h-20 w-20 rounded-3xl shadow-glow"
             />
             <p className="bz-eyebrow-inverse mt-5">Brown Zone</p>
-            <h2 className="mt-3 text-h1 font-semibold">{heading}</h2>
+            <p className="mt-3 text-h1 font-semibold">{heading}</p>
             <p className="mt-3 text-body leading-8 text-white/60">{summary}</p>
             <div className="mt-8 space-y-2">
               {navMap[role].map((item, index) => {
@@ -132,8 +142,8 @@ export function PlatformLayout({
                     )}
                   >
                     <span className="truncate">{item.label}</span>
-                    <span className={cn("shrink-0 text-white/35", active && "text-brand-warm")}>
-                      0{index + 1}
+                    <span className={cn("shrink-0 text-white/60", active && "text-brand-warm")}>
+                      {navIndexLabel(index)}
                     </span>
                   </Link>
                 );
@@ -141,7 +151,8 @@ export function PlatformLayout({
             </div>
           </aside>
 
-          <main className="min-w-0 space-y-6">{children}</main>
+          {/* pb-24 keeps the last module clear of the fixed KeyAI FAB (bottom-right). */}
+          <main className="min-w-0 space-y-6 pb-24 xl:pr-16 2xl:pr-0">{children}</main>
         </div>
       </div>
     </div>

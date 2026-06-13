@@ -123,11 +123,11 @@ export function LearnCatalog() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredModules.map((module) => (
-          <article key={module.key} className="panel overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
+          <article key={module.key} className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
             <div className={`p-4 ${levelTints[module.level] ?? "bg-[var(--ink-50)]"}`}>
               <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
             </div>
-            <div className="p-6">
+            <div className="flex flex-1 flex-col p-6">
               <div className="flex items-center justify-between gap-3">
                 <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                   {module.level}
@@ -148,12 +148,15 @@ export function LearnCatalog() {
                   </span>
                 ))}
               </div>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
                 <Link
                   href="/demo"
-                  className="inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 shadow-sm transition-colors hover:bg-slate-800"
                 >
-                  开始体验
+                  {/* White label lives on a <span>: the global `a { color: inherit }`
+                      reset targets the anchor and beats `text-white` there, but a
+                      span has no competing rule so the utility wins cleanly. */}
+                  <span className="text-[0.95rem] font-bold tracking-[0.04em] text-white">立即学习</span>
                 </Link>
                 {completedKeys ? (
                   <button

@@ -2,13 +2,12 @@ import { redirect } from "next/navigation";
 
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { StudentHistoryReviewDashboard } from "@/components/student/student-history-review-dashboard";
+import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 import { buildHistoryReviewPayload } from "@/lib/history-review";
 import { getCurrentUser } from "@/lib/session-user";
-import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 
 // UI-DEBT: History page still needs a component-token pass plus richer loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentHistoryPage() {
-  // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
   if (!user) redirect("/demo?reason=login_required");
   if (user.role !== "student") redirect(roleHomePath(user.role));

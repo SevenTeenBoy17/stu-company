@@ -9,6 +9,13 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/integration/**/*.test.ts"],
+    // Load .env.local BEFORE any test-file import evaluates, so @/lib/env (which
+    // reads process.env at import time) picks up DATABASE_URL. Without this the
+    // repo layer froze env undefined → silent in-memory fallback → false failures.
+    setupFiles: ["./tests/integration/setup-env.ts"],
+    // Integration files share one real DB and write persistently — run them
+    // sequentially so they can't race each other on the same rows.
+    fileParallelism: false,
     testTimeout: 30_000,
   },
   resolve: {

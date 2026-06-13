@@ -48,7 +48,13 @@ export default async function ParentPage() {
             <div className="flex h-56 items-end gap-3">
               {overview.report.netWorthTrend.map((value, index, array) => {
                 const max = Math.max(...array);
-                const heightPercent = max > 0 ? (value / max) * 100 : 0;
+                const min = Math.min(...array);
+                const range = max - min;
+                // Scale to the data's actual min–max, not a 0-based axis: net-worth
+                // values sit in a narrow high band, so a 0-based axis made every bar
+                // ~full height (a solid block). Map min→12%, max→100% so the
+                // round-to-round trend is actually visible.
+                const heightPercent = range > 0 ? 12 + ((value - min) / range) * 88 : 60;
                 return (
                   <div
                     key={`${value}-${index}`}
@@ -57,6 +63,7 @@ export default async function ParentPage() {
                     <div
                       className="w-full rounded-t-2xl bg-brand"
                       style={{ height: `${heightPercent}%` }}
+                      title={`R${index + 1}：¥${value.toLocaleString("zh-CN")}`}
                     />
                     <span className="text-xs text-white/55">R{index + 1}</span>
                   </div>

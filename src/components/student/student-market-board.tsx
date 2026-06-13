@@ -1,6 +1,9 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { PointerEvent } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import {
   Activity,
   Bot,
@@ -18,8 +21,10 @@ import {
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
-import type { MarketBoardPayload, MarketWatchlistSymbol } from "@/lib/types";
+import type { MarketBoardPayload, MarketKlineCandle, MarketWatchlistSymbol } from "@/lib/types";
 import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
+
+gsap.registerPlugin(useGSAP);
 
 const MINI_CHART_WIDTH = 720;
 const MINI_CHART_HEIGHT = 220;
@@ -54,6 +59,40 @@ function buildAreaPath(values: number[]) {
   return `${buildLinePath(values)} L ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT} L 0 ${MINI_CHART_HEIGHT} Z`;
 }
 
+function buildCandleGeometry(candles: MarketKlineCandle[]) {
+  const visible = candles.slice(-18);
+  if (visible.length === 0) return [];
+
+  const lows = visible.map((item) => item.low);
+  const highs = visible.map((item) => item.high);
+  const min = Math.min(...lows);
+  const max = Math.max(...highs);
+  const range = max - min || 1;
+  const slot = MINI_CHART_WIDTH / visible.length;
+  const bodyWidth = Math.min(22, Math.max(9, slot * 0.42));
+  const yFor = (value: number) => MINI_CHART_HEIGHT - ((value - min) / range) * MINI_CHART_HEIGHT;
+
+  return visible.map((item, index) => {
+    const centerX = slot * index + slot / 2;
+    const openY = yFor(item.open);
+    const closeY = yFor(item.close);
+    const highY = yFor(item.high);
+    const lowY = yFor(item.low);
+
+    return {
+      key: `${item.time}-${index}`,
+      centerX,
+      x: centerX - bodyWidth / 2,
+      width: bodyWidth,
+      highY,
+      lowY,
+      bodyY: Math.min(openY, closeY),
+      bodyHeight: Math.max(Math.abs(openY - closeY), 4),
+      up: item.close >= item.open,
+    };
+  });
+}
+
 function buildRadarPoint(index: number, total: number, distance: number) {
   const angle = (-90 + (360 / total) * index) * (Math.PI / 180);
   return {
@@ -84,7 +123,12 @@ function buildDonutGradient(items: Array<{ color: string; weight: number }>) {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketBoardPayload }) {
+  const marketBoardRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
   const [payloadCache, setPayloadCache] = useState<Record<string, MarketBoardPayload>>({
     [initialPayload.selected.symbol]: initialPayload,
@@ -133,6 +177,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
   const radarPath = buildRadarShape(selectedMetricValues);
   const linePath = buildLinePath(payload.selected.miniSeries);
   const areaPath = buildAreaPath(payload.selected.miniSeries);
+  const candleGeometry = useMemo(() => buildCandleGeometry(payload.selected.candles), [payload.selected.candles]);
   const sectorTotal = payload.sectorPerformance.reduce(
     (total, item) => total + Math.max(Math.abs(item.changePercent), 0.4),
     0,
@@ -143,9 +188,99 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
     weight: (Math.max(Math.abs(item.changePercent), 0.4) / sectorTotal) * 100,
   }));
 
+  const { contextSafe } = useGSAP(
+    () => {
+      const panels = gsap.utils.toArray<HTMLElement>(".market-motion-panel");
+      const watchCards = gsap.utils.toArray<HTMLElement>(".market-watch-card");
+      const candles = gsap.utils.toArray<SVGGElement>(".market-candle");
+      const taskChips = gsap.utils.toArray<HTMLElement>(".market-task-chip");
+      const trendArea = gsap.utils.toArray<SVGPathElement>(".market-trend-area")[0];
+      const trendLine = gsap.utils.toArray<SVGPathElement>(".market-trend-line")[0];
+      const ambientOrb = gsap.utils.toArray<HTMLElement>(".market-ambient-orb")[0];
+
+      if (prefersReducedMotion()) {
+        gsap.set([...panels, ...watchCards, ...candles, ...taskChips, trendArea, trendLine, ambientOrb].filter(Boolean), {
+          autoAlpha: 1,
+          clearProps: "transform,opacity,visibility,strokeDasharray,strokeDashoffset",
+        });
+        return;
+      }
+
+      const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+      timeline.fromTo(
+        panels,
+        { autoAlpha: 0, y: 18, scale: 0.985 },
+        { autoAlpha: 1, y: 0, scale: 1, duration: 0.52, stagger: 0.045, clearProps: "transform,opacity,visibility" },
+        0,
+      );
+
+      timeline.fromTo(
+        watchCards,
+        { autoAlpha: 0, y: 12 },
+        { autoAlpha: 1, y: 0, duration: 0.42, stagger: { amount: 0.22, from: "start" }, clearProps: "transform,opacity,visibility" },
+        0.08,
+      );
+
+      timeline.fromTo(
+        candles,
+        { autoAlpha: 0, scaleY: 0.08, transformOrigin: "50% 100%" },
+        {
+          autoAlpha: 1,
+          scaleY: 1,
+          duration: 0.58,
+          stagger: { amount: 0.32, from: "start" },
+          ease: "back.out(1.25)",
+          clearProps: "transform,opacity,visibility",
+        },
+        0.22,
+      );
+
+      if (trendArea) {
+        timeline.fromTo(trendArea, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.68 }, 0.3);
+      }
+
+      if (trendLine) {
+        const length = trendLine.getTotalLength();
+        gsap.set(trendLine, { strokeDasharray: length, strokeDashoffset: length });
+        timeline.to(trendLine, { strokeDashoffset: 0, duration: 0.95, ease: "power2.inOut" }, 0.36);
+      }
+
+      timeline.fromTo(
+        taskChips,
+        { autoAlpha: 0, y: 8 },
+        { autoAlpha: 1, y: 0, duration: 0.38, stagger: 0.06, clearProps: "transform,opacity,visibility" },
+        0.72,
+      );
+
+      if (ambientOrb) {
+        gsap.to(ambientOrb, {
+          autoAlpha: 0.9,
+          scale: 1.1,
+          duration: 3.2,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          overwrite: "auto",
+        });
+      }
+    },
+    { scope: marketBoardRef, dependencies: [payload.selected.symbol, payload.asOf], revertOnUpdate: true },
+  );
+
+  const handleMotionEnter = contextSafe((event: PointerEvent<HTMLElement>) => {
+    if (prefersReducedMotion()) return;
+    gsap.to(event.currentTarget, { y: -3, scale: 1.018, duration: 0.24, ease: "power2.out", overwrite: "auto" });
+  });
+
+  const handleMotionLeave = contextSafe((event: PointerEvent<HTMLElement>) => {
+    if (prefersReducedMotion()) return;
+    gsap.to(event.currentTarget, { y: 0, scale: 1, duration: 0.24, ease: "power2.out", overwrite: "auto" });
+  });
+
   return (
-    <div className="space-y-6 pb-24">
-      <section className="panel rounded-[2rem] p-5 sm:p-6">
+    <div ref={marketBoardRef} className="space-y-6 pb-24">
+      <section className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Radar</p>
@@ -171,13 +306,15 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 <button
                   key={item.symbol}
                   type="button"
+                  onPointerEnter={handleMotionEnter}
+                  onPointerLeave={handleMotionLeave}
                   onClick={() => {
                     const cached = payloadCache[item.symbol];
                     if (cached) setPayload(cached);
                     startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
                   }}
                   className={cn(
-                    "min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-all duration-200",
+                    "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200 will-change-transform",
                     active
                       ? "border-orange-400 bg-orange-50 shadow-[0_18px_44px_rgba(240,138,56,0.16)]"
                       : "border-slate-200 bg-white hover:border-orange-300 hover:bg-slate-50",
@@ -216,12 +353,12 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
+        <div className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
             <div className="relative min-w-0 overflow-hidden p-5 sm:p-6 lg:p-7">
               <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
               <div
-                className="pointer-events-none absolute -left-10 top-8 h-44 w-44 rounded-full blur-3xl"
+                className="market-ambient-orb pointer-events-none absolute -left-10 top-8 h-44 w-44 rounded-full blur-3xl"
                 style={{ backgroundColor: `${payload.selected.accentColor}28` }}
               />
               <div className="relative z-10">
@@ -238,13 +375,15 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                   </div>
                   <button
                     type="button"
+                    onPointerEnter={handleMotionEnter}
+                    onPointerLeave={handleMotionLeave}
                     onClick={() =>
                       dispatchAssistantOpen({
                         prompt: `请结合市场信息页，解读 ${payload.selected.name}（${payload.selected.symbol}）当前的价格位置、风险张力和下一步观察重点。`,
                         autoSend: true,
                       })
                     }
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-base font-bold text-white transition-colors hover:bg-white/15"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-base font-bold text-white transition-colors hover:bg-white/15 will-change-transform"
                   >
                     <Bot className="h-4 w-4" />
                     让 AI 解读
@@ -273,12 +412,12 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 <div className="mt-7 rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 sm:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-base font-black text-white">价格趋势速写</p>
-                      <p className="mt-1 text-sm font-semibold text-white/50">用于帮助学生识别趋势节奏，不作为真实交易信号。</p>
+                      <p className="text-base font-black text-white">日 K 线与趋势速写</p>
+                      <p className="mt-1 text-sm font-semibold text-white/50">实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。</p>
                     </div>
                     <Activity className="h-5 w-5 text-orange-300" />
                   </div>
-                  <svg viewBox={`0 0 ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT}`} className="mt-4 h-52 w-full">
+                  <svg aria-hidden="true" viewBox={`0 0 ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT}`} className="mt-4 h-52 w-full">
                     <defs>
                       <linearGradient id="market-board-fill" x1="0" x2="0" y1="0" y2="1">
                         <stop offset="0%" stopColor={payload.selected.accentColor} stopOpacity="0.42" />
@@ -296,9 +435,39 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                         strokeDasharray="4 8"
                       />
                     ))}
-                    <path d={areaPath} fill="url(#market-board-fill)" />
-                    <path d={linePath} fill="none" stroke="#fff4e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    <path className="market-trend-area" d={areaPath} fill="url(#market-board-fill)" />
+                    {candleGeometry.map((item) => (
+                      <g key={item.key} className="market-candle">
+                        <line
+                          x1={item.centerX}
+                          x2={item.centerX}
+                          y1={item.highY}
+                          y2={item.lowY}
+                          stroke={item.up ? "#f87171" : "#6ee7b7"}
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          opacity="0.9"
+                        />
+                        <rect
+                          x={item.x}
+                          y={item.bodyY}
+                          width={item.width}
+                          height={item.bodyHeight}
+                          rx="3"
+                          fill={item.up ? "#f87171" : "#6ee7b7"}
+                          opacity="0.82"
+                        />
+                      </g>
+                    ))}
+                    <path className="market-trend-line" d={linePath} fill="none" stroke="#fff4e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
+                  <div className="mt-4 grid gap-2 text-xs font-bold text-white/72 sm:grid-cols-3">
+                    {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
+                      <span key={task} className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
+                        {task}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -329,7 +498,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <aside className="panel rounded-[2rem] p-5 sm:p-6">
+        <aside className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Snapshot</p>
           <h3 className="mt-3 text-2xl font-black text-slate-950">关键字段</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -344,7 +513,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
-        <div className="panel rounded-[2rem] p-5 sm:p-6">
+        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Radar className="h-5 w-5 text-orange-500" />
@@ -352,9 +521,9 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
             </div>
             <p className="text-sm font-bold text-slate-400">文字说明移到右侧，避免图内拥挤。</p>
           </div>
-          <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+          <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)]">
             <div className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
-              <svg viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-72 w-full max-w-[300px]">
+              <svg aria-hidden="true" viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-72 w-full max-w-[300px]">
                 {[0.25, 0.5, 0.75, 1].map((ratio) => (
                   <polygon
                     key={ratio}
@@ -385,7 +554,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                 <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
               </svg>
             </div>
-            <div className="grid min-w-0 gap-3 md:grid-cols-2">
+            <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-1">
               {payload.selected.metrics.map((metric) => (
                 <div key={metric.id} className="rounded-[1.5rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -399,43 +568,51 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="panel rounded-[2rem] p-5 sm:p-6">
+        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <PieChart className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">观察池结构拆解</h3>
           </div>
-          <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="relative mx-auto flex h-56 w-56 items-center justify-center rounded-full">
+          <div className="mt-6 flex flex-col items-center gap-7">
+            <div className="relative flex h-52 w-52 shrink-0 items-center justify-center rounded-full">
               <div className="absolute inset-0 rounded-full shadow-inner" style={{ background: buildDonutGradient(sectorSlices) }} />
-              <div className="relative flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white text-center shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
+              <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white text-center shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
                 <span className="text-xs font-bold text-slate-400">AI/科技</span>
-                <span className="mt-1 text-2xl font-black text-slate-950">10</span>
+                <span className="mt-1 text-2xl font-black text-slate-950">{payload.watchlist.length}</span>
                 <span className="text-xs font-bold text-slate-400">观察标的</span>
               </div>
             </div>
-            <div className="space-y-3">
+            <ul className="w-full space-y-2.5">
               {sectorSlices.map((item) => (
-                <div key={item.id} className="rounded-[1.5rem] bg-slate-50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <p className="text-base font-black text-slate-950">{item.label}</p>
-                    </div>
-                    <p className={cn("text-sm font-black", getMarketMoveClasses(item.changePercent).text)}>
-                      {item.changePercent >= 0 ? "+" : ""}
-                      {item.changePercent.toFixed(2)}%
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-[1.5rem] bg-slate-50 px-4 py-3"
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-black text-slate-950">{item.label}</p>
+                    <p className="mt-0.5 truncate text-xs font-semibold text-slate-400">
+                      领跑观察：{item.leadSymbol}
                     </p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">领跑观察：{item.leadSymbol}</p>
-                </div>
+                  <p
+                    className={cn(
+                      "shrink-0 text-sm font-black tabular-nums",
+                      getMarketMoveClasses(item.changePercent).text,
+                    )}
+                  >
+                    {item.changePercent >= 0 ? "+" : ""}
+                    {item.changePercent.toFixed(2)}%
+                  </p>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-3">
-        <div className="panel rounded-[2rem] p-5 sm:p-6">
+        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">观察池排行</h3>
@@ -461,7 +638,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="panel rounded-[2rem] p-5 sm:p-6">
+        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Layers3 className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">板块热度条</h3>
@@ -488,7 +665,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="panel rounded-[2rem] p-5 sm:p-6">
+        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Waves className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">课堂提示</h3>
@@ -505,7 +682,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
 
       <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
         <div
-          className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.12)]"
+          className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.12)]"
           style={{
             backgroundImage: `radial-gradient(circle at top left, ${payload.contentCards[0]?.accentColor ?? "#f08a38"}22, transparent 24%), linear-gradient(135deg,#0f1729 0%,#182338 100%)`,
           }}
@@ -521,7 +698,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
 
         <div className="grid gap-4">
           {payload.contentCards.slice(1).map((card) => (
-            <div key={card.id} className="panel rounded-[2rem] p-5">
+            <div key={card.id} className="market-motion-panel panel rounded-[2rem] p-5">
               <div className="flex items-center gap-2">
                 <Newspaper className="h-4 w-4" style={{ color: card.accentColor }} />
                 <p className="text-xs font-bold uppercase tracking-[0.22em]" style={{ color: card.accentColor }}>

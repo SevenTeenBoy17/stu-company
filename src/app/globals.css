@@ -314,6 +314,31 @@ select {
   border-color: var(--color-brand);
 }
 
+.bz-field[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+/* A11y: a guaranteed-visible focus ring on every keyboard-focused control — the
+   UA default can be near-invisible on white/amber surfaces (WCAG 2.4.7). */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* A11y: honor the OS "reduce motion" preference for CSS transitions/animations
+   and programmatic smooth scrolling (WCAG 2.3.3). framer-motion entrances are
+   gated in JS where they matter. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .bz-primary-action {
   border-radius: var(--radius-full);
   background: var(--color-brand);
@@ -369,6 +394,10 @@ select {
 [data-history-ai-review="true"] {
   opacity: 1 !important;
   transform: none !important;
+}
+
+footer img[src*="footer-pattern.svg"] {
+  display: none !important;
 }
 
 @media (min-width: 768px) {

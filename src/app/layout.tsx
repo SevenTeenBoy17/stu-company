@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { GlobalAiAssistant } from "@/components/shared/global-ai-assistant";
+import { PremiumMotionProvider } from "@/components/shared/premium-motion-provider";
 import { getCurrentUser } from "@/lib/session-user";
 
 import "./globals.css";
@@ -22,6 +23,7 @@ export default async function RootLayout({
     <html lang="zh-CN" className="h-full antialiased" data-scroll-behavior="smooth">
       <body className="min-h-full bg-bg-app text-fg-default">
         {children}
+        <PremiumMotionProvider />
         <GlobalAiAssistant
           viewer={
             currentUser

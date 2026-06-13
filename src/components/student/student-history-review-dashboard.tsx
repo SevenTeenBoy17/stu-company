@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 import { MoneyText } from "@/components/shared/money-text";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import type { HistoryReviewPayload, HistoryRoundSummary } from "@/lib/types";
-import { cn, formatCurrency, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
+import { cn, formatCurrency, formatDateLabel, getMarketMoveClasses, stripMarkdown } from "@/lib/utils";
 
 type StudentHistoryReviewDashboardProps = {
   initialPayload: HistoryReviewPayload;
@@ -127,7 +127,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
         <TrendingUp className="h-4 w-4 text-[#ffb36d]" />
       </div>
       <div className="mt-4">
-        <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
+        <svg aria-hidden="true" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
           <defs>
             <linearGradient id="history-net-worth-fill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="#f08a38" stopOpacity="0.42" />
@@ -203,7 +203,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
         <ShieldAlert className="h-4 w-4 text-[#f08a38]" />
       </div>
       <div className="mt-4">
-        <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
+        <svg aria-hidden="true" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
           {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
             <line
               key={ratio}
@@ -618,7 +618,7 @@ export function StudentHistoryReviewDashboard({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">AI Review</p>
-                <h2 className="mt-3 text-2xl font-semibold text-slate-950">Mr.Brown 的历史复盘建议</h2>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-950 xl:text-xl">Mr.Brown 的历史复盘建议</h2>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-slate-950/[0.04] px-3 py-2 text-xs font-medium text-slate-600">
                 <Bot className="h-3.5 w-3.5 text-[#f08a38]" />
@@ -638,7 +638,7 @@ export function StudentHistoryReviewDashboard({
                   <Sparkles className="h-4 w-4 text-[#f08a38]" />
                   <p className="text-lg font-semibold text-slate-950">AI 总结</p>
                 </div>
-                <p className="mt-3 text-sm leading-8 text-slate-700">{payload.aiReview.summary}</p>
+                <p className="mt-3 text-sm leading-8 text-slate-700">{stripMarkdown(payload.aiReview.summary)}</p>
               </div>
 
               <div className="rounded-[1.6rem] bg-slate-950/[0.03] p-5">
@@ -649,7 +649,7 @@ export function StudentHistoryReviewDashboard({
                 <div className="mt-4 space-y-3">
                   {payload.aiReview.analysis.map((item, index) => (
                     <div key={`analysis-${index}`} className="rounded-[1.2rem] bg-white px-4 py-3 shadow-sm">
-                      <p className="text-sm leading-7 text-slate-700">{item}</p>
+                      <p className="text-sm leading-7 text-slate-700">{stripMarkdown(item)}</p>
                     </div>
                   ))}
                 </div>
@@ -669,7 +669,7 @@ export function StudentHistoryReviewDashboard({
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f08a38]">
                         Step 0{index + 1}
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-slate-700">{item}</p>
+                      <p className="mt-2 text-sm leading-7 text-slate-700">{stripMarkdown(item)}</p>
                     </div>
                   ))}
                 </div>

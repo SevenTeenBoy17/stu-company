@@ -14,9 +14,11 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:apply-policies": "tsx scripts/apply-policies.ts"
+    "db:apply-policies": "tsx scripts/apply-policies.ts",
+    "env:doctor": "tsx scripts/runtime-env-doctor.ts"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@supabase/supabase-js": "^2.103.0",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
@@ -24,6 +26,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
+    "gsap": "^3.15.0",
     "jose": "^6.2.2",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",

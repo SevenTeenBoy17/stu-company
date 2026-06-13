@@ -100,10 +100,11 @@ const MARKET_REVEAL = { direction: "down" as const, netWorth: 119_460, changePct
 
 interface OnboardingFlowProps {
   userName: string;
+  showUpgradeShortcut?: boolean;
   onComplete: () => void;
 }
 
-export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(0);
   const [tradeExecuted, setTradeExecuted] = useState(false);
   const [targetGuess, setTargetGuess] = useState(150_000);
@@ -111,11 +112,47 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
   const [marketRevealed, setMarketRevealed] = useState(false);
   const [aiTextByStep, setAiTextByStep] = useState<Record<string, string>>({});
   const [aiProviderByStep, setAiProviderByStep] = useState<Record<string, "remote" | "fallback">>({});
+  const [canUsePersonalAi, setCanUsePersonalAi] = useState<boolean | null>(null);
   const current = STEPS[step];
+  const personalizeFallback = useCallback(
+    (text: string) => text.replace(String.fromCodePoint(0x65b0, 0x540c, 0x5b66), userName),
+    [userName],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/billing/status", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { canUsePersonalAiAssessment?: boolean } | null) => {
+        if (!cancelled) setCanUsePersonalAi(Boolean(data?.canUsePersonalAiAssessment));
+      })
+      .catch(() => {
+        if (!cancelled) setCanUsePersonalAi(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     if (aiTextByStep[current.id]) return;
+    if (canUsePersonalAi === null) return;
+
+    if (canUsePersonalAi !== true) {
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setAiTextByStep((value) => ({
+          ...value,
+          [current.id]: personalizeFallback(current.mrBrown),
+        }));
+        setAiProviderByStep((value) => ({ ...value, [current.id]: "fallback" }));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     fetch("/api/ai/onboarding", {
       method: "POST",
@@ -152,7 +189,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
     return () => {
       cancelled = true;
     };
-  }, [aiTextByStep, current, step, userName]);
+  }, [aiTextByStep, canUsePersonalAi, current, personalizeFallback, step, userName]);
 
   const completeOnboarding = useCallback(async () => {
     try {
@@ -162,6 +199,16 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
     }
     onComplete();
   }, [onComplete]);
+
+  const jumpToUpgrade = useCallback(async () => {
+    await completeOnboarding();
+    window.setTimeout(() => {
+      document.getElementById("guest-upgrade-checkout")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }, [completeOnboarding]);
 
   const handleNext = useCallback(async () => {
     if (current.id === "first-trade" && !tradeExecuted) {
@@ -223,13 +270,24 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-400)]">
                 Mr.Brown AI 教学
               </p>
-              <button
-                type="button"
-                onClick={completeOnboarding}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
-              >
-                跳过引导
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {showUpgradeShortcut ? (
+                  <button
+                    type="button"
+                    onClick={jumpToUpgrade}
+                    className="rounded-full border border-[var(--amber-200)] bg-[var(--amber-50)] px-3 py-1.5 text-xs font-semibold text-[var(--amber-700)] transition hover:bg-[var(--amber-100)]"
+                  >
+                    先开通完整 AI
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={completeOnboarding}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
+                >
+                  跳过引导
+                </button>
+              </div>
             </div>
 
             <AnimatePresence mode="wait">

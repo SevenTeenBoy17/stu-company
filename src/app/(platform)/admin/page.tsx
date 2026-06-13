@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { AdminUserManager } from "@/components/admin/admin-user-manager";
+import { ManualWechatConfigCard } from "@/components/admin/manual-wechat-config-card";
+import { ManualPaymentOrders } from "@/components/admin/manual-payment-orders";
 import { PlatformLayout } from "@/components/platform/platform-layout";
+import { getManualWechatCollectionConfig, getManualWechatReadiness } from "@/lib/billing/manual-wechat";
 import { MoneyText } from "@/components/shared/money-text";
 import { getAdminOverview, roleHomePath } from "@/lib/db/repo";
 import { getCurrentUser } from "@/lib/session-user";
@@ -18,6 +21,8 @@ export default async function AdminPage() {
 
   const overview = await getAdminOverview();
   const canManagePasswords = user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
+  const manualWechatConfig = await getManualWechatCollectionConfig();
+  const manualWechatReadiness = getManualWechatReadiness(manualWechatConfig);
 
   const businessCards = [
     { label: "学校授权席位", value: `${overview.business.schoolLicenses}`, hint: "可用于班级与校内试点授权" },
@@ -74,6 +79,14 @@ export default async function AdminPage() {
           </div>
         ))}
       </div>
+
+      <ManualWechatConfigCard
+        config={manualWechatConfig}
+        initialReadiness={manualWechatReadiness}
+        canManage={canManagePasswords}
+      />
+
+      <ManualPaymentOrders orders={overview.manualOrders ?? []} canManage={canManagePasswords} />
 
       <AdminUserManager users={overview.users} canManagePasswords={canManagePasswords} />
 
