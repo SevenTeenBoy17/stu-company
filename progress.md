@@ -128,3 +128,68 @@
 - Added production smoke coverage after deployment: verified no homepage horizontal overflow, login modal visibility, hidden `superadmin / Super001!!!` login reaching `/admin`, and screenshot artifact `.codex-supervisor/login-modal-desktop-1440.png`.
 - Patched DB adapter date normalization in `src/lib/db/repo.ts` so Supabase string/date values for trial/subscription expiries no longer throw `toISOString is not a function` during E2E/admin flows.
 - Re-deployed the verified tree to Vercel production with `npx vercel --prod --yes`; Vercel build passed and the deployment was aliased to `https://brown-zone-web.vercel.app`.
+- Restored the Supabase project `brone-web` from `INACTIVE` to `ACTIVE_HEALTHY`, resolving the production `db_unavailable` login blocker without changing schema, data, or secrets.
+- Re-deployed to Vercel production (`dpl_6yEKYuwZKeRERrphjXQEuyuQdEHD`) and verified `/`, `/demo`, `/pricing`, `/api/billing/status`, `/api/market/ticker-tape`, student/guest/superadmin login, `/student`, `/student/market`, `/student/history`, and `/admin` all return 200.
+- Paused official WeChat merchant configuration and implemented the safer manual WeChat collection fallback: users create a manual order, pay via a configured collection QR/offline instruction, submit payment proof, and only superadmin confirmation opens the 30-day subscription.
+- Added manual payment proof and superadmin confirmation APIs, admin pending-order review UI, manual checkout states for normal and guest-upgrade flows, and documented `WECHAT_MANUAL_QR_URL` for Vercel.
+- Verified the manual collection route locally and in production: guest upgrade -> manual prepay -> proof submission -> superadmin confirmation -> paid order/subscription status; redeployed production as `dpl_CYQGbqrwhCWHs1gHQQcxSW4PMMxe`.
+- Continued the manual WeChat QR subscription goal: added a server-side manual collection config helper, returned `manualPayment` metadata from prepay, exposed manual proof state in order status, cleaned user-facing payment/admin Chinese copy, and added store/repo tests for proof submission -> admin confirmation -> subscription unlock.
+- Re-deployed production as `dpl_BGsSif76oMnJSxyP5M6v9wXiDZjH`; production smoke passed for guest upgrade -> manual prepay -> proof -> superadmin confirm -> `order-status.paid=true` and `targetUser.subscriptionTier=standard`. Actual QR image remains externally required via `WECHAT_MANUAL_QR_URL`.
+- Added the admin-facing WeChat QR configuration status card so `/admin` now shows whether the real collection QR is configured, previews the QR when `WECHAT_MANUAL_QR_URL` is present, and lists the exact Vercel env vars needed for operation.
+- Re-deployed production as `dpl_8udovaJCi2uiw9npQe8cSbemnKGt`; production visual smoke passed for `/pricing` and `/admin`, and production API smoke again confirmed manual order -> proof -> superadmin confirmation -> `paid=true` and `targetUser.subscriptionTier=standard`.
+- Confirmed shared guest direct prepay is safely blocked with “请先升级为个人账号，再开通月卡。”; real WeChat payment auto-unlock remains blocked until Production WeChat merchant variables are configured.
+## 2026-06-12 Manual WeChat QR Admin Config Continuation
+
+- Added durable `app_settings` persistence for operator-managed non-secret runtime configuration, including `drizzle/0013_app_settings.sql`, schema/repo/store support, and admin-only RLS policy coverage.
+- Added superadmin-only `/api/admin/billing/manual-config` so the manual WeChat QR URL, payee name, and payment instruction can be saved from the web admin console instead of requiring a Vercel env edit/redeploy.
+- Upgraded `/admin` with an editable WeChat collection configuration card. The payment creation route now reads manual WeChat config DB-first, then falls back to `WECHAT_MANUAL_QR_URL`/environment/default copy.
+- Applied the Supabase migration and RLS policy to project `brone-web` (`pdxrgsseoxiliotjzsiu`) and verified `app_settings` exists.
+- Verification passed: `npx tsc --noEmit`, `npm run lint`, `npm run test` (51 files / 366 tests), `npm run build`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Re-deployed production as `dpl_HZtrQKo3iuSBfhRPDD4MMQEkRrYR`, aliased to `https://brown-zone-web.vercel.app`.
+- Production smoke passed: superadmin config API GET/PATCH, guest upgrade -> manual prepay -> proof -> superadmin confirmation -> order status `paid=true` and `targetUser.subscriptionTier=standard`, plus admin visual smoke with zero horizontal overflow.
+- Current production QR state remains `qrConfigured=false` until the real collection-code image URL is entered in `/admin`.
+
+## 2026-06-12 Manual WeChat QR Upload Continuation
+
+- Upgraded the manual WeChat configuration from URL-only to URL-or-upload: superadmin can now upload a PNG/JPG/WebP collection QR image from `/admin`, which is stored as a DB-backed `data:image/...` value in `app_settings`.
+- `getManualWechatCollectionConfig()` now resolves QR priority as uploaded image first, external URL second, environment variable third. Manual checkout continues to receive a single effective `codeUrl`, so the payment UI did not need a second QR display path.
+- Added validation on `/api/admin/billing/manual-config` for image data URLs and 800KB upload guidance in the admin UI. The admin preview updates before save and persists after save.
+- Verification passed: `npx tsc --noEmit`, `npm run lint`, `npm run test` (51 files / 367 tests), `npm run build`, `python -m code_review_graph build --repo . --skip-flows`, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+- Re-deployed production as `dpl_FUVqjGNayZU5wJCrVBHbnNn7gPEB`, aliased to `https://brown-zone-web.vercel.app`.
+- Production smoke passed: temporarily saved a tiny uploaded QR data URL, confirmed manual prepay returned that data URL as `codeUrl`, then restored the previous no-real-QR state; admin visual smoke confirmed the upload entry is visible with zero horizontal overflow.
+
+## 2026-06-13 Student Auto Invest Training Continuation
+
+- Added a student-facing "定投机器人训练营" route at `/student/auto-invest` with a game-like robot control panel, execution trajectory, strategy selector,定投 vs 一次性买入 comparison, and Mr.Brown teaching prompts.
+- Added `GET/POST /api/student/auto-invest` plus pure logic in `src/lib/auto-invest.ts`; the module computes schedule execution, skipped rounds, average cost, terminal value, cash safety, discipline score, and comparison results from the current scenario run without changing database schema.
+- Updated the student platform navigation with the new "定投机器人" entry and replaced visible navigation mojibake in `PlatformLayout` with clean Simplified Chinese labels.
+- Verification passed: `npm run test -- src/lib/auto-invest.test.ts`, `npx tsc --noEmit`, `npm run lint`, `npm run test` (57 files / 386 tests), `npm run build`, Playwright desktop/mobile smoke for login -> `/student/auto-invest` -> simulate, redline greps for raw AI fetch and rank/power coupling, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+
+## 2026-06-13 Student Auto Invest Real Execution Continuation
+
+- Upgraded `/student/auto-invest` from a simulation-only training screen into an event-sourced real plan loop: students can activate a recurring plan, cancel it, and see the current plan state directly on the page.
+- Persisted plan creation, cancellation, and each execution/skip as `auto_invest` entries in the existing `actionLog` JSONB shape, avoiding a Supabase schema migration while preserving history/review compatibility.
+- Wired `advanceRunForUser` in both Drizzle repo and memory store so each round advance automatically attempts the active auto-invest order, updates cash/holdings/snapshots, and syncs growth reports.
+- Cleaned the auto-invest logic/page copy to readable Simplified Chinese and added focused tests for plan creation, execution on the next round, cancellation, and JSONB payload validation.
+- Verification passed: focused auto-invest/schema tests (12 passed), `npx tsc --noEmit`, `npm run lint`, full `npm run test` (57 files / 389 tests), `npm run build`, Playwright smoke for student login -> `/student/auto-invest` -> active plan -> round advance, redline greps for raw AI fetch and rank/power coupling, and `python -m code_review_graph detect-changes --repo . --base HEAD --brief`.
+
+## 2026-06-12 S0 Kickoff Baseline (fix/s0-security-hotfix)
+
+- Created `fix/s0-security-hotfix` off `feat/leaderboard-power-rank` @ 442fb8d; uncommitted working set (82 modified + 20 untracked) carried over, no stash. Local Docker Postgres `brownzone-pg` restarted (Docker Desktop was down) and `pg_isready` confirmed; `.env.local` keys verified (DATABASE_URL → localhost:5433, SESSION_SECRET 64 chars, AI_BASE_URL_PRIMARY/SECONDARY set, CRON_SECRET absent = dev-OK).
+- Baseline quality gates green BEFORE any S0 change: `npm run lint` clean, `npx tsc --noEmit` clean, `npm run test` 52 files / 370 tests passed.
+- **FE-06 活基线（S4 令牌统一收尾对比的真实分母，取代 doc 01 的历史快照 ~230）**: `(git grep -nE "#[0-9a-fA-F]{3,8}" src/components/ | Measure-Object -Line).Lines` = **141** matching lines @ 2026-06-12. Untracked-inclusive (`Get-ChildItem -Recurse | Select-String`) count is also 141 — the new untracked components contain zero hardcoded hex.
+- Top offenders: student-history-review-dashboard.tsx (39), module-illustration.tsx (33, SVG 插画，S4 时再裁定是否豁免), student-allocation-panel.tsx (16), global-ai-assistant.tsx (16), student-tutor-radar.tsx (9) — top 4 files hold 104/141 (74%).
+
+## 2026-06-13 Student Life Cashflow Real Challenge Continuation
+
+- Upgraded `/student/life` from a simulation-only life cashflow calculator into a real monthly budget challenge loop: students can apply a selected budget and insurance plan to the live sandbox run.
+- Added `applyLifeCashflowChallenge` pure logic that models monthly income, essential spending, insurance premium, debt repayment, automatic saving, savings drawdown, debt fallback, snapshot refresh, and a `bank` action-log entry with `life_cashflow_challenge` metadata.
+- Wired the challenge through Drizzle repo and memory store with write-failure redline protection, then extended `POST /api/student/life-cashflow` with `intent: "simulate" | "apply"`.
+- Added a student-facing "执行本月预算挑战" action and result card showing savings transferred, debt repaid, emergency fund, and updated cashflow score.
+- Verification passed: focused life-cashflow tests, `npx tsc --noEmit`, `npm run lint`, full `npm run test` (57 files / 390 tests), `npm run build`, Playwright student login -> `/student/life` -> apply challenge smoke, raw AI fetch grep, rank/power coupling grep, and code-review-graph detect-changes.
+## 2026-06-13 Student Quest Reward Claim Continuation
+
+- Upgraded `/student/quests` from a static progress board into a real decorative reward loop: completed quests are claimable, claimed quests are persisted in the existing `actionLog`, and the page updates immediately after claiming.
+- Added `quest` action-log support and JSONB schema coverage. Quest rewards are recorded with `meta.kind = "quest_reward_claim"`, `amount = 0`, and no net-worth, power, or ranking mutation.
+- Repaired the task-center Chinese copy and JSX after detecting mojibake in the in-progress files; the visible quest hub now has clean labels, loading/disabled/claimed states, success status, and friendly API errors.
+- Verification passed: focused quest/schema tests (13 passed), `npx tsc --noEmit`, `npm run lint`, full `npm run test` (57 files / 393 tests), `npm run build`, Playwright student login -> `/student/quests` -> claim reward smoke, raw AI fetch grep, leaderboard/rank coupling grep, mojibake grep, and code-review-graph detect-changes.

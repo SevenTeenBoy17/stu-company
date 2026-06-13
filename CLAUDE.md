@@ -19,10 +19,14 @@ npm run test:coverage          # Vitest with v8 coverage
 npx vitest run src/lib/simulation.test.ts   # Run a single test file
 npm run test:integration       # Integration tests (needs DATABASE_URL pointing at test schema)
 npx playwright test            # E2E tests (tests/e2e/) — auto-starts its own dev server on :4173 (PLAYWRIGHT_PORT), reusing one if already running
-npm run db:generate            # Generate Drizzle migrations
+npm run db:generate            # Generate Drizzle migrations from schema.ts changes
+npm run db:migrate             # Apply pending migrations to DATABASE_URL (canonical path — `drizzle-kit push` crashes on this DB)
 npm run db:seed                # Seed demo users, classrooms, invites, assignments, runs, reports
 npm run db:apply-policies      # Apply RLS policies from drizzle/policies.sql
+npm run env:doctor             # Diagnose env config at runtime (scripts/runtime-env-doctor.ts)
 ```
+
+Unit tests live next to their source as `*.test.ts` / `*.test.tsx`. Integration tests are under `tests/integration/` (need `DATABASE_URL`); Playwright E2E specs under `tests/e2e/`.
 
 ## Architecture
 
@@ -31,7 +35,7 @@ npm run db:apply-policies      # Apply RLS policies from drizzle/policies.sql
 Two Next.js route groups under `src/app/`:
 
 - `(site)` — public marketing/auth pages: landing `/`, `/learn`, `/demo`, `/pricing`, `/reset-password`
-- `(platform)` — authenticated app: `/student`, `/student/market`, `/student/history`, `/student/rank`, `/teacher`, `/parent`, `/admin`
+- `(platform)` — authenticated app: `/student` (+ the 理财 sub-pages `/student/market`, `/student/history`, `/student/rank`, `/student/wealth`, `/student/risk-profile`, `/student/auto-invest`, `/student/life`, `/student/credit`, `/student/quests`), `/teacher`, `/parent`, `/admin`
 
 `(platform)/layout.tsx` is the single auth boundary — redirects unauthenticated users to `/demo?reason=login_required`. Individual pages enforce their own role check.
 
@@ -57,7 +61,7 @@ HTTP-only cookie `brown_zone_session` containing a HS256 JWT. Claims: `userId`, 
 
 ### RLS
 
-Drizzle migrations live in `drizzle/`. RLS policies in `drizzle/policies.sql` are only enforced when `DATABASE_ROLE=authenticated` AND queries go through `withRls()` in `src/lib/db/client.ts`. The default `owner` connection bypasses RLS — application-layer checks in `repo.ts` are the primary defence.
+Drizzle migrations live in `drizzle/` (currently through `0013_app_settings`). RLS policies in `drizzle/policies.sql` are only enforced when `DATABASE_ROLE=authenticated` AND queries go through `withRls()` in `src/lib/db/client.ts`. The default `owner` connection bypasses RLS — application-layer checks in `repo.ts` are the primary defence. `src/lib/db/rls-context.ts` (`withUserRls()` / `rlsClaimsForUser()`) is the per-user wrapper that sets the request's JWT claims for an RLS-scoped query — used by the AI-history routes.
 
 ### Security Hardening Conventions
 
@@ -80,17 +84,31 @@ Recent hardening (commits P1–P8) established invariants that new code must pre
 
 `src/lib/adaptive-events.ts` — behavior-triggered teaching interventions. Detects: overtrading, revenge trading, bond avoidance, concentration, cash hoarding, positive streaks. Returns max 2 events per round (CLT constraint: 1 warning + 1 info). Integrated into `/api/sim/state`, `/api/sim/actions`, `/api/sim/advance-round` responses.
 
+### Financial-Planning (理财) Layer
+
+The 2.0 multi-tool teaching layer — pure-core modules (each with a sibling `*.test.ts`) that derive 理财 lessons from a finished/in-progress `ScenarioRun`, mirroring the simulation engine's no-IO style. `src/lib/allocation.ts` (`buildWealthSummary()`) is the shared core the others build on:
+
+- `risk-profile.ts` — risk-tolerance questionnaire → risk band (`defensive`/`steady`/`balanced`/`growth`).
+- `auto-invest.ts` — 定投 / dollar-cost-averaging planner.
+- `life-cashflow.ts` — household budgeting + insurance plan teaching (budget/insurance presets).
+- `quests.ts` — financial-literacy quest/checklist progression.
+- `credit-lab.ts` — credit-score sandbox.
+
+Thin routes under `src/app/api/student/**` (`wealth-summary`, `risk-profile`, `auto-invest`, `life-cashflow`, `quests`, `credit-lab`) feed the matching `(platform)/student/*` pages.
+
 ### Subscription & Billing
 
 `src/lib/billing/subscription.ts` — trial/subscription state machine. States: trial → trial_degraded → expired (free), active (standard/premium). `canUserOperate()` gates simulation actions and round advances. WeChat Pay scaffold in `src/lib/billing/wechat-pay.ts` (requires WECHAT_MCH_ID env vars); purchase-intent helpers in `src/lib/billing/billing-intent.ts`. Family linking (`/api/family/members`, `/api/billing/parent-link`) lets a parent account share a Premium plan with their student(s), which also powers the weekly parent report.
 
+**Manual WeChat collection** (`src/lib/billing/manual-wechat.ts`) is the live fallback while the merchant API is not provisioned: an admin configures a collection QR + payee (`/api/admin/billing/manual-config`), a buyer submits payment proof (`/api/billing/manual-proof`), and an admin confirms it (`/api/admin/billing/manual-confirm`). Operator-managed, non-secret config is stored in the `app_settings` table (migration `0013_app_settings`, key `billing.manual_wechat`) via `getAppSetting()`/`upsertAppSetting()` in `repo.ts` — secrets still belong in env.
+
 ### AI Gateway
 
-All AI provider calls must go through `src/lib/ai.ts`. Direct provider fetches elsewhere are blockers. Supports primary/secondary base URLs with fallback narratives when AI is unavailable.
+All AI provider calls must go through `src/lib/ai.ts`. Direct provider fetches elsewhere are blockers. Supports primary/secondary base URLs with fallback narratives when AI is unavailable. The global assistant is wired via `src/lib/assistant-config.ts` + `assistant-context.ts`. AI chat sessions are persisted and read back per-user through `/api/ai/history` (+ `/[sessionId]`), which reads via the RLS-scoped `withUserRls()` path.
 
 ### Market Data
 
-Real-time quotes from AllTick (`src/lib/alltick.ts`) with a 10-minute refresh cadence (`src/lib/market-refresh.ts`). Teaching-mode fallback when AllTick key is absent. Watchlist tickers and board payload built in `src/lib/market-watchlist.ts`.
+Real-time quotes come from the external `MarketDataProvider`s AllTick (`src/lib/alltick.ts`) and/or iTick (`src/lib/itick.ts`) — selectable individually or combined (`hybrid`) — on a 10-minute refresh cadence (`src/lib/market-refresh.ts`). Teaching-mode `fallback` kicks in when no provider key is present. Watchlist tickers and board payload built in `src/lib/market-watchlist.ts`.
 
 ### Seasons & Leaderboard
 
