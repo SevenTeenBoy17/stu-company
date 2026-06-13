@@ -11,8 +11,6 @@
  *
  * Run: DATABASE_URL=postgres://... npm run test:integration
  */
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -24,23 +22,9 @@ import {
 } from "@/lib/db/repo";
 import { normalizeSchoolName } from "@/lib/leaderboard/school-normalize";
 
-function loadEnvFile(fileName: string, override = false) {
-  const filePath = resolve(process.cwd(), fileName);
-  if (!existsSync(filePath)) return;
-  for (const line of readFileSync(filePath, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const i = trimmed.indexOf("=");
-    if (i <= 0) continue;
-    const key = trimmed.slice(0, i).trim();
-    const value = trimmed.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
-    if (override || process.env[key] === undefined) process.env[key] = value;
-  }
-}
-
-loadEnvFile(".env");
-loadEnvFile(".env.local", true);
-
+// DATABASE_URL is loaded by tests/integration/setup-env.ts (a vitest setupFile)
+// BEFORE this file's imports evaluate, so @/lib/env (read at import time) sees it
+// and the repo + the raw cross-check client below target the SAME database.
 const databaseUrl = process.env.DATABASE_URL;
 const describeWithDb = databaseUrl ? describe : describe.skip;
 const TEST_TIMEOUT_MS = 30_000;

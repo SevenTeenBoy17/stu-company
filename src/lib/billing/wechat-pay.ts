@@ -69,9 +69,9 @@ function normalizePem(value: string) {
 }
 
 function getConfig(): WechatPayConfig | null {
-  const mchId = envValue("WECHAT_MCH_ID", "WECHAT_PAY_MCH_ID");
-  const apiKeyV3 = envValue("WECHAT_API_KEY_V3", "WECHAT_PAY_API_V3_KEY");
-  const appId = envValue("WECHAT_APP_ID", "WECHAT_PAY_APPID");
+  const mchId = envValue("WECHAT_MCH_ID", "WECHAT_PAY_MCH_ID", "WECHAT_PAY_MCHID");
+  const apiKeyV3 = envValue("WECHAT_API_KEY_V3", "WECHAT_PAY_API_V3_KEY", "WECHAT_PAY_API_KEY_V3");
+  const appId = envValue("WECHAT_APP_ID", "WECHAT_PAY_APP_ID", "WECHAT_PAY_APPID");
   const notifyUrl = envValue("WECHAT_NOTIFY_URL", "WECHAT_PAY_NOTIFY_URL");
   const privateKey = envValue("WECHAT_PRIVATE_KEY", "WECHAT_PAY_PRIVATE_KEY");
   const certSerialNo = envValue("WECHAT_CERT_SERIAL_NO", "WECHAT_PAY_CERT_SERIAL_NO");

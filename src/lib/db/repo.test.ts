@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db/client", () => ({
   getDb: () => null,
+  getDirectFallbackDb: () => null,
+  getSupabaseDirectFallbackUrl: () => null,
   isDatabaseConfigured: () => false,
 }));
 
@@ -10,6 +12,7 @@ import {
   appendAiMessage,
   applyActionForUser,
   authenticateUser,
+  attachManualPaymentProof,
   buildTeacherLeaderboardCards,
   canUserPayForTarget,
   createAiSession,
@@ -20,8 +23,12 @@ import {
   findUserById,
   getAdminOverview,
   getAiSessionById,
+  getAppSetting,
   getClassroomById,
   getLeaderboardSnapshot,
+  createPaymentOrder,
+  fulfillPaymentOrder,
+  getPaymentOrderByOutTradeNo,
   getParentOverview,
   getQuickDemoCredentials,
   getRunForUser,
@@ -33,8 +40,14 @@ import {
   registerUserByInvite,
   resetStoreForTests,
   roleHomePath,
+  upsertAppSetting,
   validateInviteCode,
 } from "@/lib/db/repo";
+import {
+  getManualWechatCollectionConfig,
+  getManualWechatReadiness,
+  saveManualWechatCollectionConfig,
+} from "@/lib/billing/manual-wechat";
 
 describe("db repo fallback adapter", () => {
   beforeEach(async () => {
@@ -80,6 +93,22 @@ describe("db repo fallback adapter", () => {
     });
   });
 
+  it("rejects wildcard invite codes instead of treating them as patterns", async () => {
+    await expect(findInviteByCode("MRB-TE%")).resolves.toBeNull();
+    await expect(validateInviteCode("MRB-TE%")).resolves.toMatchObject({
+      valid: false,
+      reason: "邀请码不存在。",
+    });
+    await expect(
+      registerUserByInvite({
+        inviteCode: "MRB-TE%",
+        name: "通配码",
+        email: "wildcard-invite@brownzone.ai",
+        password: "BrownZone2026!",
+      }),
+    ).rejects.toThrow("邀请码不存在");
+  });
+
   it("mutates simulation runs through action and advance helpers", async () => {
     const before = await getRunForUser("student-1");
     const afterTrade = await applyActionForUser("student-1", {
@@ -116,6 +145,27 @@ describe("db repo fallback adapter", () => {
       metrics: expect.any(Array),
       invites: expect.any(Array),
     });
+  });
+
+  // SECURITY REGRESSION (internal-test 2026-06-05, P0): teacher/parent overviews
+  // embed full user rows (their own + students'). They MUST NOT serialize the
+  // bcrypt passwordHash — doing so shipped offline-crackable credential material
+  // to any teacher/parent browser. Pin it so the projection can't be removed.
+  it("teacher & parent overviews never expose a passwordHash", async () => {
+    const teacherOverview = await getTeacherOverview("teacher-1");
+    expect(JSON.stringify(teacherOverview)).not.toContain("passwordHash");
+    expect(teacherOverview.teacher).not.toHaveProperty("passwordHash");
+    expect(teacherOverview.students.length).toBeGreaterThan(0);
+    for (const student of teacherOverview.students) {
+      expect(student).not.toHaveProperty("passwordHash");
+      expect(student.id).toBeTruthy(); // data still present, only the hash is gone
+    }
+
+    const parentOverview = await getParentOverview("parent-1");
+    expect(JSON.stringify(parentOverview)).not.toContain("passwordHash");
+    expect(parentOverview.parent).not.toHaveProperty("passwordHash");
+    expect(parentOverview.student).not.toHaveProperty("passwordHash");
+    expect(parentOverview.student.id).toBe("student-1");
   });
 
   it("stores AI sessions and trims message history", async () => {
@@ -157,6 +207,138 @@ describe("db repo fallback adapter", () => {
     await expect(listSubscriptionTargetsForUser("parent-1")).resolves.toEqual([
       expect.objectContaining({ id: "student-1" }),
     ]);
+  });
+
+  it("creates, fulfills and reads back a paid subscription order", async () => {
+    const order = await createPaymentOrder({
+      userId: "parent-1",
+      targetUserId: "student-1",
+      tier: "standard",
+      channel: "mock",
+      amountFen: 1500,
+      description: "Mr.Brown AI 经济沙盘标准版月卡",
+      outTradeNo: "wxorder-repo-paid",
+      expiresAt: new Date("2026-06-11T12:30:00.000Z"),
+      codeUrl: "brown-zone://mock-wechat-pay/wxorder-repo-paid",
+    });
+
+    await expect(getPaymentOrderByOutTradeNo(order.outTradeNo)).resolves.toMatchObject({
+      status: "pending",
+      codeUrl: expect.stringContaining("wxorder-repo-paid"),
+    });
+
+    const result = await fulfillPaymentOrder({
+      outTradeNo: order.outTradeNo,
+      transactionId: "mock-wxorder-repo-paid",
+      paidAt: "2026-06-11T12:00:00.000Z",
+      paidAmountFen: 1500,
+    });
+
+    await expect(getPaymentOrderByOutTradeNo(order.outTradeNo)).resolves.toMatchObject({
+      status: "paid",
+      transactionId: "mock-wxorder-repo-paid",
+    });
+    await expect(findUserById("student-1")).resolves.toMatchObject({
+      subscriptionTier: "standard",
+    });
+    expect(result.grant?.expiresAt).toContain("2026-07-11");
+  });
+
+  it("records manual WeChat proof before admin fulfillment in fallback mode", async () => {
+    const order = await createPaymentOrder({
+      userId: "parent-1",
+      targetUserId: "student-1",
+      tier: "standard",
+      channel: "manual",
+      amountFen: 1500,
+      description: "Mr.Brown AI 经济沙盘 · 标准版月卡",
+      outTradeNo: "wxorder-repo-manual",
+      expiresAt: new Date("2026-06-12T12:30:00.000Z"),
+    });
+
+    await expect(
+      attachManualPaymentProof(order.outTradeNo, {
+        note: "微信转账单号 420000-repo",
+        proofImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        submittedBy: "parent-1",
+      }),
+    ).resolves.toMatchObject({
+      rawNotify: expect.objectContaining({
+        manualProof: expect.objectContaining({
+          note: "微信转账单号 420000-repo",
+          proofImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        }),
+      }),
+    });
+
+    await expect(
+      fulfillPaymentOrder({
+        outTradeNo: order.outTradeNo,
+        transactionId: "manual-wxorder-repo-manual",
+        paidAmountFen: 1500,
+      }),
+    ).resolves.toMatchObject({
+      order: expect.objectContaining({ status: "paid" }),
+      grant: expect.objectContaining({ tier: "standard" }),
+    });
+  });
+
+  it("persists manual WeChat settings through the repo fallback adapter", async () => {
+    const saved = await upsertAppSetting("billing.manual_wechat", {
+      qrUrl: "https://cdn.example.com/repo-wechat.png",
+      payeeName: "Brown Zone Demo",
+      instruction: "Submit the transfer note after payment.",
+    }, "superadmin");
+
+    expect(saved.updatedBy).toBe("superadmin");
+    await expect(getAppSetting("billing.manual_wechat")).resolves.toMatchObject({
+      value: expect.objectContaining({
+        qrUrl: "https://cdn.example.com/repo-wechat.png",
+        payeeName: "Brown Zone Demo",
+      }),
+    });
+  });
+
+  it("uses an uploaded WeChat QR image ahead of the external URL", async () => {
+    const qrImageDataUrl = "data:image/png;base64,iVBORw0KGgo=";
+    await saveManualWechatCollectionConfig({
+      qrUrl: "https://cdn.example.com/external-wechat.png",
+      qrImageDataUrl,
+      payeeName: "Brown Zone Upload",
+      instruction: "Scan the uploaded QR and submit proof.",
+    }, "superadmin");
+
+    await expect(getManualWechatCollectionConfig()).resolves.toMatchObject({
+      qrUrl: qrImageDataUrl,
+      qrImageDataUrl,
+      externalQrUrl: "https://cdn.example.com/external-wechat.png",
+      qrConfigured: true,
+      payeeName: "Brown Zone Upload",
+      source: "database",
+    });
+  });
+
+  it("reports manual WeChat launch readiness from the saved QR config", async () => {
+    const initial = await getManualWechatCollectionConfig();
+    expect(getManualWechatReadiness(initial)).toMatchObject({
+      ready: false,
+      label: "needs_setup",
+      nextSteps: expect.arrayContaining([
+        expect.stringContaining("需要上传真实收款码图片"),
+      ]),
+    });
+
+    const config = await saveManualWechatCollectionConfig({
+      qrImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+      payeeName: "Brown Zone",
+      instruction: "扫码付款后提交订单号和付款截图。",
+    }, "superadmin");
+
+    expect(getManualWechatReadiness(config)).toMatchObject({
+      ready: true,
+      label: "ready",
+      nextSteps: [],
+    });
   });
 
   it("registers a new user by email without invite code", async () => {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { createAdminManagedUser, listAdminUsers } from "@/lib/db/repo";
 
@@ -47,6 +47,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   const auth = await requireUser("admin");
   if (auth.error) return auth.error;
   if (!isSuperAdmin(auth.user)) {

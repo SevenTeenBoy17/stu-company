@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestOnboardingNarrative } from "@/lib/ai";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -15,6 +15,9 @@ const onboardingSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 

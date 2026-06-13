@@ -40,6 +40,19 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { ok: true, remaining: limit - bucket.count, retryAfterMs: 0 };
 }
 
+/**
+ * Check whether a key is still under its limit WITHOUT consuming a slot. Used to
+ * gate an action on an existing failure counter (e.g. block a password-spraying
+ * IP) while letting the actual attempt increment the counter only on failure —
+ * so legitimate users sharing one NAT IP (a whole classroom) are never blocked
+ * by each other's successful logins.
+ */
+export function peekRateLimit(key: string, limit: number): boolean {
+  const bucket = buckets.get(key);
+  if (!bucket || bucket.resetAt < Date.now()) return true;
+  return bucket.count < limit;
+}
+
 export function rateLimitKey(scope: string, sessionUserId: string | undefined, request: Request) {
   if (sessionUserId) return `${scope}:user:${sessionUserId}`;
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";

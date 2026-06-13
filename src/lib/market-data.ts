@@ -2,6 +2,7 @@ import type {
   EventCard,
   MarketAsset,
   MarketBoardPayload,
+  MarketDataProvider,
   MarketRound,
   MarketWatchlistSymbol,
   TickerTapeItem,
@@ -734,36 +735,64 @@ export const marketRounds: MarketRound[] = [
 
 export type TickerTapePayload = {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   note: string;
   items: TickerTapeItem[];
 };
 
 export async function getTickerTapePayload(): Promise<TickerTapePayload> {
+  const { fetchItickWatchlistSnapshot } = await import("@/lib/itick");
+  const itickSnapshot = await fetchItickWatchlistSnapshot();
+  if (itickSnapshot.provider !== "fallback") {
+    return {
+      asOf: itickSnapshot.asOf,
+      provider: itickSnapshot.provider,
+      note: itickSnapshot.note,
+      items: buildTickerTapeItems({ quotes: itickSnapshot.quotes }),
+    };
+  }
+
   const { fetchWatchlistSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchWatchlistSnapshot();
+  const liveAlltick = snapshot.provider !== "fallback";
 
   return {
-    asOf: snapshot.asOf,
-    provider: snapshot.provider,
-    note: snapshot.note,
-    items: buildTickerTapeItems({ quotes: snapshot.quotes }),
+    asOf: liveAlltick ? snapshot.asOf : itickSnapshot.asOf,
+    provider: liveAlltick ? snapshot.provider : itickSnapshot.provider,
+    note: liveAlltick ? snapshot.note : itickSnapshot.note,
+    items: buildTickerTapeItems({ quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes }),
   };
 }
 
 export async function getMarketBoardPayload(
   symbol: MarketWatchlistSymbol = "MU",
 ): Promise<MarketBoardPayload> {
+  const { fetchItickMarketBoardSnapshot } = await import("@/lib/itick");
+  const itickSnapshot = await fetchItickMarketBoardSnapshot(symbol);
+  if (itickSnapshot.provider !== "fallback") {
+    return buildMarketBoardPayload({
+      selectedSymbol: symbol,
+      asOf: itickSnapshot.asOf,
+      provider: itickSnapshot.provider,
+      note: itickSnapshot.note,
+      quotes: itickSnapshot.quotes,
+      klineSeries: itickSnapshot.selectedKline,
+      klineCandles: itickSnapshot.selectedCandles,
+    });
+  }
+
   const { fetchMarketBoardSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchMarketBoardSnapshot(symbol);
+  const liveAlltick = snapshot.provider !== "fallback";
 
   return buildMarketBoardPayload({
     selectedSymbol: symbol,
-    asOf: snapshot.asOf,
-    provider: snapshot.provider,
-    note: snapshot.note,
-    quotes: snapshot.quotes,
-    klineSeries: snapshot.selectedKline,
+    asOf: liveAlltick ? snapshot.asOf : itickSnapshot.asOf,
+    provider: liveAlltick ? snapshot.provider : itickSnapshot.provider,
+    note: liveAlltick ? snapshot.note : itickSnapshot.note,
+    quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes,
+    klineSeries: liveAlltick ? snapshot.selectedKline : itickSnapshot.selectedKline,
+    klineCandles: itickSnapshot.selectedCandles,
     staticInfo: snapshot.staticInfo,
   });
 }

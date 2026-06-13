@@ -21,7 +21,28 @@ describe("payload schemas (R8 — malformed JSONB surfaces as a boundary error)"
     expect((parsed as Record<string, unknown>).extra).toBe("kept");
   });
 
-  it("rejects an action type outside the 6-value enum", () => {
+  it("accepts auto-invest action metadata", () => {
+    const parsed = ActionLogSchema.parse({
+      ...validAction,
+      type: "auto_invest",
+      meta: { kind: "auto_invest_execution", planId: "aip_1" },
+    });
+    expect(parsed.type).toBe("auto_invest");
+    expect(parsed.meta?.kind).toBe("auto_invest_execution");
+  });
+
+  it("accepts decorative quest reward claim metadata", () => {
+    const parsed = ActionLogSchema.parse({
+      ...validAction,
+      type: "quest",
+      amount: 0,
+      meta: { kind: "quest_reward_claim", questId: "cash-management" },
+    });
+    expect(parsed.type).toBe("quest");
+    expect(parsed.meta?.questId).toBe("cash-management");
+  });
+
+  it("rejects an action type outside the supported enum", () => {
     const res = ActionLogSchema.safeParse({ ...validAction, type: "hack" });
     expect(res.success).toBe(false);
     if (!res.success) {

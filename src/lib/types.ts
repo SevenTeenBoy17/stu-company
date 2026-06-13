@@ -11,6 +11,8 @@ export type MarketWatchlistSymbol =
   | "ORCL"
   | "TSLA"
   | "TSM";
+export type MarketQuoteSource = "itick" | "alltick" | "fallback";
+export type MarketDataProvider = "itick" | "alltick" | "hybrid" | "fallback";
 
 export type ModuleKey =
   | "equities"
@@ -43,6 +45,10 @@ export interface LearningModule {
   description: string;
   level: "核心" | "进阶" | "运营" | "家校";
   highlights: string[];
+  /** External "深入学习" link — mapped to the closest 富途牛牛课堂 (futunn.com/learn) section. */
+  href: string;
+  /** Short label for that destination section, shown on the card CTA. */
+  hrefLabel: string;
 }
 
 export interface MarketAsset {
@@ -104,10 +110,11 @@ export type FinancialEventCard = EventCard;
 export interface ActionLog {
   id: string;
   round: number;
-  type: "trade" | "bank" | "property" | "venture" | "advance" | "event";
+  type: "trade" | "bank" | "property" | "venture" | "advance" | "event" | "auto_invest" | "quest";
   label: string;
   amount: number;
   timestamp: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface PortfolioSnapshot {
@@ -155,7 +162,7 @@ export interface ScenarioRun {
 }
 
 export type SubscriptionTier = "free" | "standard" | "premium";
-export type PaymentChannel = "native" | "jsapi" | "mock";
+export type PaymentChannel = "native" | "jsapi" | "mock" | "manual";
 export type PaymentStatus = "pending" | "paid" | "closed" | "failed";
 
 export interface PaymentOrder {
@@ -171,6 +178,7 @@ export interface PaymentOrder {
   codeUrl?: string;
   prepayId?: string;
   transactionId?: string;
+  rawNotify?: unknown;
   paidAt?: string;
   expiresAt: string;
   createdAt: string;
@@ -185,6 +193,14 @@ export interface SubscriptionGrant {
   startsAt: string;
   expiresAt: string;
   createdAt: string;
+}
+
+export interface AppSetting<TValue = unknown> {
+  key: string;
+  value: TValue;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BillingIntent {
@@ -417,7 +433,7 @@ export interface ExternalMarketSignal {
   region: string;
   currentPrice: number | null;
   changePercent: number;
-  source: "alltick" | "simulation";
+  source: "itick" | "alltick" | "simulation";
   summary: string;
 }
 
@@ -450,7 +466,7 @@ export interface AllocationSuggestion {
 
 export interface PortfolioIntel {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   regimeLabel: string;
   regimeSummary: string;
   marketNote: string;
@@ -492,9 +508,18 @@ export interface TickerTapeItem {
   companyName: string;
   currentPrice: number;
   changePercent: number;
-  source: "alltick" | "fallback";
+  source: MarketQuoteSource;
   accentColor: string;
   monogram: string;
+}
+
+export interface MarketKlineCandle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
 }
 
 export interface MarketBoardMetric {
@@ -511,7 +536,7 @@ export interface MarketBoardStock {
   companyName: string;
   currentPrice: number;
   changePercent: number;
-  source: "alltick" | "fallback";
+  source: MarketQuoteSource;
   score: number;
   summary: string;
   teachingNote: string;
@@ -521,6 +546,7 @@ export interface MarketBoardStock {
   monogram: string;
   accentColor: string;
   miniSeries: number[];
+  candles: MarketKlineCandle[];
   metrics: MarketBoardMetric[];
   facts: Array<{ label: string; value: string }>;
 }
@@ -543,7 +569,7 @@ export interface MarketBoardContentCard {
 
 export interface MarketBoardPayload {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   note: string;
   watchlist: TickerTapeItem[];
   selected: MarketBoardStock;

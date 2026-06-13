@@ -77,6 +77,16 @@ export const subscriptionGrants = pgTable("subscription_grants", {
   index("subscription_grants_order_id_idx").on(table.orderId),
 ]);
 
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 120 }).primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedBy: varchar("updated_by", { length: 64 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("app_settings_updated_by_idx").on(table.updatedBy),
+]);
+
 export const profiles = pgTable("profiles", {
   userId: varchar("user_id", { length: 64 }).primaryKey().references(() => users.id),
   name: varchar("name", { length: 120 }).notNull(),

@@ -363,9 +363,11 @@ export function buildPortfolioIntel(
   });
 
   const provider: PortfolioIntel["provider"] =
-    marketSignals.every((signal) => signal.source === "alltick")
-      ? "alltick"
-      : marketSignals.some((signal) => signal.source === "alltick")
+    marketSignals.every((signal) => signal.source === "itick")
+      ? "itick"
+      : marketSignals.every((signal) => signal.source === "alltick")
+        ? "alltick"
+        : marketSignals.some((signal) => signal.source === "itick" || signal.source === "alltick")
         ? "hybrid"
         : "fallback";
 

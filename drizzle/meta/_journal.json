@@ -92,6 +92,13 @@
       "when": 1780000110000,
       "tag": "0012_learning_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780000120000,
+      "tag": "0013_app_settings",
+      "breakpoints": true
     }
   ]
 }

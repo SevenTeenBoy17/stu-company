@@ -53,7 +53,7 @@ export async function verifyBillingIntent(token?: string | null) {
   if (!token) return null;
 
   try {
-    const result = await jwtVerify(token, getBillingSecret());
+    const result = await jwtVerify(token, getBillingSecret(), { algorithms: ["HS256"] });
     const payload = billingIntentSchema.parse(result.payload);
     return {
       purpose: payload.purpose,

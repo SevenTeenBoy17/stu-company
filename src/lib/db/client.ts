@@ -14,8 +14,48 @@ const DB_ROLE = (process.env.DATABASE_ROLE ?? "owner") as "owner" | "authenticat
 
 const globalForDb = globalThis as unknown as {
   __brownZoneDb?: ReturnType<typeof drizzle>;
+  __brownZoneDirectFallbackDb?: ReturnType<typeof drizzle>;
 };
 let dbInstance: ReturnType<typeof drizzle> | null = globalForDb.__brownZoneDb ?? null;
+let directFallbackDbInstance: ReturnType<typeof drizzle> | null =
+  globalForDb.__brownZoneDirectFallbackDb ?? null;
+
+function createDrizzleClient(databaseUrl: string, options?: { forceSsl?: boolean }) {
+  const client = postgres(databaseUrl, {
+    prepare: false,
+    max: 3,
+    idle_timeout: 20,
+    ssl: options?.forceSsl ? "require" : undefined,
+    // P3: server-side statement timeout so Postgres ABORTS a slow query (and
+    // frees the connection) instead of it running on after the client-side race
+    // in repo.ts gives up. Matches DB_QUERY_TIMEOUT_MS (default 5s).
+    connection: { statement_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000) },
+  });
+  return drizzle(client);
+}
+
+export function getSupabaseDirectFallbackUrl() {
+  if (process.env.DISABLE_SUPABASE_DIRECT_FALLBACK === "true") return null;
+  if (!env.DATABASE_URL) return null;
+
+  try {
+    const parsed = new URL(env.DATABASE_URL);
+    if (!parsed.hostname.includes("pooler.supabase.com")) return null;
+
+    const match = /^postgres\.([a-z0-9]+)$/i.exec(decodeURIComponent(parsed.username));
+    const projectRef = match?.[1];
+    if (!projectRef) return null;
+
+    const direct = new URL(env.DATABASE_URL);
+    direct.username = "postgres";
+    direct.hostname = `db.${projectRef}.supabase.co`;
+    direct.port = "5432";
+    direct.searchParams.set("sslmode", "require");
+    return direct.toString();
+  } catch {
+    return null;
+  }
+}
 
 export function getDb() {
   if (!env.DATABASE_URL) {
@@ -23,22 +63,27 @@ export function getDb() {
   }
 
   if (!dbInstance) {
-    const client = postgres(env.DATABASE_URL, {
-      prepare: false,
-      max: 3,
-      idle_timeout: 20,
-      // P3: server-side statement timeout so Postgres ABORTS a slow query (and
-      // frees the connection) instead of it running on after the client-side race
-      // in repo.ts gives up. Matches DB_QUERY_TIMEOUT_MS (default 5s).
-      connection: { statement_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000) },
-    });
-    dbInstance = drizzle(client);
+    dbInstance = createDrizzleClient(env.DATABASE_URL);
     if (process.env.NODE_ENV !== "production") {
       globalForDb.__brownZoneDb = dbInstance;
     }
   }
 
   return dbInstance;
+}
+
+export function getDirectFallbackDb() {
+  const fallbackUrl = getSupabaseDirectFallbackUrl();
+  if (!fallbackUrl) return null;
+
+  if (!directFallbackDbInstance) {
+    directFallbackDbInstance = createDrizzleClient(fallbackUrl, { forceSsl: true });
+    if (process.env.NODE_ENV !== "production") {
+      globalForDb.__brownZoneDirectFallbackDb = directFallbackDbInstance;
+    }
+  }
+
+  return directFallbackDbInstance;
 }
 
 export function isDatabaseConfigured() {

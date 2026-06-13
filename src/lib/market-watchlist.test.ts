@@ -17,6 +17,7 @@ describe("market watchlist builders", () => {
     expect(payload.selected.symbol).toBe("MU");
     expect(payload.watchlist).toHaveLength(10);
     expect(payload.selected.metrics).toHaveLength(6);
+    expect(payload.selected.candles.length).toBeGreaterThanOrEqual(4);
     expect(payload.sectorPerformance).toHaveLength(6);
     expect(payload.contentCards).toHaveLength(4);
   });

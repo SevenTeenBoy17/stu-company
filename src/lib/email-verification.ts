@@ -52,7 +52,7 @@ export async function verifyEmailVerificationToken(
 ): Promise<{ userId: string; email: string } | null> {
   if (!token) return null;
   try {
-    const result = await jwtVerify(token, getSecret());
+    const result = await jwtVerify(token, getSecret(), { algorithms: ["HS256"] });
     const payload = tokenSchema.parse(result.payload);
     return { userId: payload.userId, email: payload.email };
   } catch {

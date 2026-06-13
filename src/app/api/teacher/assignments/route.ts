@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { handleRouteError } from "@/lib/api-response";
+import { checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { createAssignmentForTeacher, getTeacherOverview } from "@/lib/db/repo";
 
@@ -28,6 +28,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   const auth = await requireUser("teacher");
   if (auth.error) return auth.error;
 

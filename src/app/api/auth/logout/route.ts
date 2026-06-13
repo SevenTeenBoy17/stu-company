@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { handleRouteError } from "@/lib/api-response";
+import { checkOrigin, handleRouteError } from "@/lib/api-response";
 import { clearSession, readSession } from "@/lib/auth";
 import { bumpTokenVersion } from "@/lib/db/repo";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   try {
     const session = await readSession();
     await clearSession();

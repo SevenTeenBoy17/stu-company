@@ -8,7 +8,7 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import { and, desc, eq, ilike, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { z } from "zod";
 
@@ -20,11 +20,17 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
-import { getDb, isDatabaseConfigured } from "@/lib/db/client";
+import {
+  getDb,
+  getDirectFallbackDb,
+  getSupabaseDirectFallbackUrl,
+  isDatabaseConfigured,
+} from "@/lib/db/client";
 import { getRequestExecutor } from "@/lib/db/rls-context";
 import {
   aiMessages,
   aiSessions,
+  appSettings,
   assignments,
   classrooms,
   familyMembers,
@@ -60,11 +66,27 @@ import {
   createInitialRun,
   deriveInvestorPersona,
 } from "@/lib/simulation";
+import {
+  applyLifeCashflowChallenge,
+  type LifeCashflowApplyInput,
+} from "@/lib/life-cashflow";
+import {
+  applyCreditLabAction,
+  type CreditLabActionInput,
+} from "@/lib/credit-lab";
+import {
+  cancelAutoInvestPlan,
+  createAutoInvestPlan,
+  executeAutoInvestForRound,
+  type AutoInvestInput,
+} from "@/lib/auto-invest";
+import { claimQuestReward } from "@/lib/quests";
 import * as store from "@/lib/store";
 import type {
   AiChatMessage,
   AiChatMode,
   AiChatSession,
+  AppSetting,
   Assignment,
   Classroom,
   FamilyDigest,
@@ -99,6 +121,7 @@ type DbClassroom = typeof classrooms.$inferSelect;
 type DbRun = typeof scenarioRuns.$inferSelect;
 type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
+type DbAppSetting = typeof appSettings.$inferSelect;
 type DbPaymentOrder = typeof paymentOrders.$inferSelect;
 type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
 type DbSchool = typeof schools.$inferSelect;
@@ -123,10 +146,63 @@ let fallbackCount = 0;
 let loggedNoDb = false;
 let lastFallbackLogAt = 0;
 
+function describeDatabaseTarget(raw = process.env.DATABASE_URL) {
+  if (!raw) return "DATABASE_URL=missing";
+
+  try {
+    const parsed = new URL(raw);
+    return [
+      `protocol=${parsed.protocol.replace(/:$/, "")}`,
+      `host=${parsed.hostname || "unknown"}`,
+      `port=${parsed.port || "default"}`,
+      `db=${parsed.pathname.replace(/^\//, "") || "unknown"}`,
+      `sslmode=${parsed.searchParams.get("sslmode") ?? "none"}`,
+    ].join(" ");
+  } catch {
+    return "DATABASE_URL=invalid_url";
+  }
+}
+
 /** Redact emails / long hex secrets from an error message before logging (P6). */
 export function scrubError(err: unknown): string {
   if (err === undefined || err === null) return "";
-  const msg = err instanceof Error ? err.message : String(err);
+  const details: string[] = [];
+
+  if (err instanceof Error) {
+    details.push(`name=${err.name}`);
+    const maybeDbError = err as Error & {
+      code?: string;
+      cause?: unknown;
+      errors?: Array<{ code?: string; address?: string; port?: number }>;
+    };
+    if (maybeDbError.code) details.push(`code=${maybeDbError.code}`);
+    if (err.message) {
+      details.push(err.message.startsWith("Failed query:") ? "message=Failed query" : `message=${err.message}`);
+    }
+
+    const cause = maybeDbError.cause as
+      | (Error & {
+          code?: string;
+          severity?: string;
+          routine?: string;
+          errors?: Array<{ code?: string; address?: string; port?: number }>;
+        })
+      | undefined;
+    if (cause) {
+      if (cause.name) details.push(`causeName=${cause.name}`);
+      if (cause.code) details.push(`causeCode=${cause.code}`);
+      if (cause.severity) details.push(`causeSeverity=${cause.severity}`);
+      if (cause.routine) details.push(`causeRoutine=${cause.routine}`);
+      if (cause.message) details.push(`causeMessage=${cause.message || "(empty)"}`);
+      const nested = cause.errors
+        ?.map((item) => [item.code, item.address, item.port].filter(Boolean).join("@"))
+        .filter(Boolean)
+        .join(",");
+      if (nested) details.push(`causeErrors=${nested}`);
+    }
+  }
+
+  const msg = details.length ? details.join(" ") : String(err);
   return msg
     .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "<email>")
     .replace(/\b[a-f0-9]{16,}\b/gi, "<token>")
@@ -145,9 +221,13 @@ function logFallback(fn: string, reason: FallbackReason, err?: unknown) {
   }
 
   const now = Date.now();
-  if (now - lastFallbackLogAt < 5000) return;
+  const directRetry = fn.includes(":direct_supabase");
+  if (!directRetry && now - lastFallbackLogAt < 5000) return;
   lastFallbackLogAt = now;
-  console.warn(`[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${scrubError(err)}`.trim());
+  const target = directRetry ? (getSupabaseDirectFallbackUrl() ?? process.env.DATABASE_URL) : process.env.DATABASE_URL;
+  console.warn(
+    `[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${describeDatabaseTarget(target)} ${scrubError(err)}`.trim(),
+  );
 }
 
 async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
@@ -181,7 +261,9 @@ const WRITE_FNS = new Set<string>([
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
-  "updatePaymentOrderProviderFields", "markPaymentOrderStatus", "fulfillPaymentOrder",
+  "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
+  "upsertAppSetting", "createAutoInvestPlanForUser", "cancelAutoInvestPlanForUser", "applyLifeCashflowChallengeForUser",
+  "claimQuestRewardForUser", "applyCreditLabActionForUser",
 ]);
 
 async function withDbExecutor<T>(
@@ -212,7 +294,7 @@ async function withDbExecutor<T>(
     logFallback(fn, "query_failed", err);
     // Writes never silently fall back (P2): a failed persist must surface as an
     // error, not pretend success in memory. Reads fall back only when allowed.
-    if (WRITE_FNS.has(fn) || !ALLOW_MEMORY_FALLBACK) {
+    if (WRITE_FNS.has(fn.replace(/:direct_supabase$/, "")) || !ALLOW_MEMORY_FALLBACK) {
       throw err;
     }
     return await fallback();
@@ -227,7 +309,24 @@ async function withDb<T>(
   fallback: () => T | Promise<T>,
 ): Promise<T> {
   // Sound: withDbExecutor only ever invokes this with getDb()'s Db.
-  return withDbExecutor(fn, getDb(), dbFn as unknown as (db: DbExecutor) => Promise<T>, fallback);
+  const primaryDb = getDb();
+  const executor = dbFn as unknown as (db: DbExecutor) => Promise<T>;
+  try {
+    return await withDbExecutor(fn, primaryDb, executor, fallback);
+  } catch (error) {
+    const directDb = getDirectFallbackDb();
+    if (!primaryDb || !directDb || directDb === primaryDb) {
+      throw error;
+    }
+
+    const fallbackUrl = getSupabaseDirectFallbackUrl();
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(
+        `[repo.fallback] fn=${fn} retry=direct_supabase ${describeDatabaseTarget(fallbackUrl ?? undefined)}`,
+      );
+    }
+    return await withDbExecutor(`${fn}:direct_supabase`, directDb, executor, fallback);
+  }
 }
 
 // Per-request user-scoped path. Uses the active request's executor: the scoped
@@ -289,6 +388,18 @@ function toAdminUserSummary(user: UserRecord) {
   };
 }
 
+/**
+ * Strip the bcrypt `passwordHash` from any user-shaped object before it can be
+ * serialized to a client. Teacher/parent overviews embed full user rows (their
+ * own + students'); without this they would ship offline-crackable credential
+ * material to the browser. Keeps all other fields so consuming UIs are unaffected.
+ */
+function withoutPasswordHash<T extends { passwordHash?: unknown }>(user: T): Omit<T, "passwordHash"> {
+  const { passwordHash: _omit, ...safe } = user;
+  void _omit;
+  return safe;
+}
+
 function toPaymentOrder(row: DbPaymentOrder): PaymentOrder {
   return {
     id: row.id,
@@ -303,6 +414,7 @@ function toPaymentOrder(row: DbPaymentOrder): PaymentOrder {
     codeUrl: maybeUndefined(row.codeUrl),
     prepayId: maybeUndefined(row.prepayId),
     transactionId: maybeUndefined(row.transactionId),
+    rawNotify: row.rawNotify ?? undefined,
     paidAt: maybeIso(row.paidAt),
     expiresAt: maybeIso(row.expiresAt) ?? new Date().toISOString(),
     createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
@@ -319,6 +431,16 @@ function toSubscriptionGrant(row: DbSubscriptionGrant): SubscriptionGrant {
     startsAt: maybeIso(row.startsAt) ?? new Date().toISOString(),
     expiresAt: maybeIso(row.expiresAt) ?? new Date().toISOString(),
     createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+  };
+}
+
+function toAppSetting<TValue = unknown>(row: DbAppSetting): AppSetting<TValue> {
+  return {
+    key: row.key,
+    value: row.value as TValue,
+    updatedBy: maybeUndefined(row.updatedBy),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
   };
 }
 
@@ -508,11 +630,12 @@ async function selectUserById(executor: DbExecutor, id: string) {
 }
 
 async function selectUserByEmail(executor: DbExecutor, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
   const [row] = await executor
     .select({ user: users, profile: profiles })
     .from(users)
     .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(ilike(users.email, email))
+    .where(eq(users.email, normalizedEmail))
     .limit(1);
 
   return row ? toUserRecord(row.user, row.profile) : null;
@@ -703,22 +826,28 @@ export async function findProfileByUserId(userId: string) {
 // Auth & invite
 // ---------------------------------------------------------------------------
 
+function normalizeInviteCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
 export async function findInviteByCode(code: string) {
+  const normalizedCode = normalizeInviteCode(code);
   return withDb(
     "findInviteByCode",
     async (db) => {
-      const [row] = await db.select().from(inviteCodes).where(ilike(inviteCodes.code, code)).limit(1);
+      const [row] = await db.select().from(inviteCodes).where(eq(inviteCodes.code, normalizedCode)).limit(1);
       return row ? toInvite(row) : null;
     },
-    () => store.findInviteByCode(code),
+    () => store.findInviteByCode(normalizedCode),
   );
 }
 
 export async function validateInviteCode(code: string) {
+  const normalizedCode = normalizeInviteCode(code);
   return withDb(
     "validateInviteCode",
     async (db) => {
-      const invite = await findInviteByCodeWithExecutor(db, code);
+      const invite = await findInviteByCodeWithExecutor(db, normalizedCode);
       if (!invite) return { valid: false, reason: "邀请码不存在。" };
       if (invite.usesRemaining <= 0) return { valid: false, reason: "邀请码已达到使用上限。" };
       if (new Date(invite.expiresAt).getTime() < Date.now()) {
@@ -726,12 +855,12 @@ export async function validateInviteCode(code: string) {
       }
       return { valid: true, invite };
     },
-    () => store.validateInviteCode(code),
+    () => store.validateInviteCode(normalizedCode),
   );
 }
 
 async function findInviteByCodeWithExecutor(executor: DbExecutor, code: string) {
-  const [row] = await executor.select().from(inviteCodes).where(ilike(inviteCodes.code, code)).limit(1);
+  const [row] = await executor.select().from(inviteCodes).where(eq(inviteCodes.code, normalizeInviteCode(code))).limit(1);
   return row ? toInvite(row) : null;
 }
 
@@ -765,6 +894,7 @@ export async function registerUserByInvite(input: {
   password: string;
 }) {
   const normalizedEmail = input.email.trim().toLowerCase();
+  const normalizedInviteCode = normalizeInviteCode(input.inviteCode);
   return withDb(
     "registerUserByInvite",
     async (db) =>
@@ -778,7 +908,7 @@ export async function registerUserByInvite(input: {
           .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
           .where(
             and(
-              ilike(inviteCodes.code, input.inviteCode),
+              eq(inviteCodes.code, normalizedInviteCode),
               sql`${inviteCodes.usesRemaining} > 0`,
               sql`${inviteCodes.expiresAt} > now()`,
             ),
@@ -786,7 +916,7 @@ export async function registerUserByInvite(input: {
           .returning();
 
         if (reservedRows.length === 0) {
-          const probe = await findInviteByCodeWithExecutor(tx, input.inviteCode);
+          const probe = await findInviteByCodeWithExecutor(tx, normalizedInviteCode);
           if (!probe) throw new Error("邀请码不存在。");
           if (new Date(probe.expiresAt).getTime() < Date.now()) {
             throw new Error("邀请码已过期。");
@@ -865,7 +995,7 @@ export async function registerUserByInvite(input: {
 
         return newUser;
       }),
-    () => store.registerUserByInvite({ ...input, email: normalizedEmail }),
+    () => store.registerUserByInvite({ ...input, email: normalizedEmail, inviteCode: normalizedInviteCode }),
   );
 }
 
@@ -876,6 +1006,7 @@ export async function registerUserByEmail(input: {
   inviteCode?: string;
 }) {
   const normalizedEmail = input.email.trim().toLowerCase();
+  const normalizedInviteCode = input.inviteCode ? normalizeInviteCode(input.inviteCode) : undefined;
   return withDb(
     "registerUserByEmail",
     async (db) =>
@@ -887,13 +1018,13 @@ export async function registerUserByEmail(input: {
         let classroomId: string | undefined;
         let studentLinkId: string | undefined;
 
-        if (input.inviteCode) {
+        if (normalizedInviteCode) {
           const reservedRows = await tx
             .update(inviteCodes)
             .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
             .where(
               and(
-                ilike(inviteCodes.code, input.inviteCode),
+                eq(inviteCodes.code, normalizedInviteCode),
                 sql`${inviteCodes.usesRemaining} > 0`,
                 sql`${inviteCodes.expiresAt} > now()`,
               ),
@@ -975,7 +1106,7 @@ export async function registerUserByEmail(input: {
 
         return newUser;
       }),
-    () => store.registerUserByEmail({ ...input, email: normalizedEmail }),
+    () => store.registerUserByEmail({ ...input, email: normalizedEmail, inviteCode: normalizedInviteCode }),
   );
 }
 
@@ -1318,12 +1449,105 @@ export async function advanceRunForUser(userId: string) {
         const run = await selectRunForUser(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
-        const updated = advanceSimulationRun(run);
+        const updated = executeAutoInvestForRound(advanceSimulationRun(run));
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
         await syncGrowthReportForStudent(tx, userId);
         return updated;
       }),
     () => store.advanceRunForUser(userId),
+  );
+}
+
+export async function createAutoInvestPlanForUser(userId: string, input: Partial<AutoInvestInput>) {
+  return withDb(
+    "createAutoInvestPlanForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = createAutoInvestPlan(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.createAutoInvestPlanForUser(userId, input),
+  );
+}
+
+export async function cancelAutoInvestPlanForUser(userId: string) {
+  return withDb(
+    "cancelAutoInvestPlanForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = cancelAutoInvestPlan(run);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.cancelAutoInvestPlanForUser(userId),
+  );
+}
+
+export async function applyLifeCashflowChallengeForUser(userId: string, input: LifeCashflowApplyInput = {}) {
+  return withDb(
+    "applyLifeCashflowChallengeForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = applyLifeCashflowChallenge(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.applyLifeCashflowChallengeForUser(userId, input),
+  );
+}
+
+export async function applyCreditLabActionForUser(userId: string, input: CreditLabActionInput = {}) {
+  return withDb(
+    "applyCreditLabActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = applyCreditLabAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.applyCreditLabActionForUser(userId, input),
+  );
+}
+
+export async function claimQuestRewardForUser(userId: string, questId: string) {
+  return withDb(
+    "claimQuestRewardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const rows = await tx
+          .select({ moduleKey: learningProgress.moduleKey })
+          .from(learningProgress)
+          .where(eq(learningProgress.userId, userId));
+        const valid = new Set<string>(learningModules.map((module) => module.key));
+        const completedKeys = rows.map((row) => row.moduleKey).filter((key) => valid.has(key));
+        const learning = { completed: completedKeys.length, total: valid.size, completedKeys };
+
+        const outcome = claimQuestReward(run, learning, questId);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.claimQuestRewardForUser(userId, questId),
   );
 }
 
@@ -1366,7 +1590,7 @@ export async function createAssignmentForTeacher(
 }
 
 export async function getTeacherOverview(userId: string) {
-  return withDb(
+  const overview = await withDb(
     "getTeacherOverview",
     async (db) => {
       const teacher = await selectUserById(db, userId);
@@ -1410,10 +1634,17 @@ export async function getTeacherOverview(userId: string) {
     },
     () => store.getTeacherOverview(userId),
   );
+  // Defence-in-depth: never serialize passwordHash to the client, regardless of
+  // whether the data came from the DB or the in-memory fallback.
+  return {
+    ...overview,
+    teacher: withoutPasswordHash(overview.teacher),
+    students: overview.students.map(withoutPasswordHash),
+  };
 }
 
 export async function getParentOverview(userId: string) {
-  return withDb(
+  const overview = await withDb(
     "getParentOverview",
     async (db) => {
       const parent = await selectUserById(db, userId);
@@ -1446,6 +1677,13 @@ export async function getParentOverview(userId: string) {
     },
     () => store.getParentOverview(userId),
   );
+  // Defence-in-depth: strip passwordHash from the parent's own row and the
+  // linked student's row before this reaches the browser.
+  return {
+    ...overview,
+    parent: withoutPasswordHash(overview.parent),
+    student: withoutPasswordHash(overview.student),
+  };
 }
 
 function isSuperAdminUser(user?: UserRecord | null) {
@@ -1558,6 +1796,21 @@ export async function getAdminOverview() {
             new Date(user.trialExpiresAt).getTime() > now,
         );
         const paidOrders = orderRows.filter((order) => order.status === "paid");
+        const userById = new Map(allUsers.map((user) => [user.id, user]));
+        const manualOrders = orderRows
+          .filter((order) => order.channel === "manual" && order.status === "pending")
+          .map((order) => {
+            const payer = userById.get(order.userId);
+            const target = userById.get(order.targetUserId);
+            if (!payer || !target) return null;
+            return {
+              order: toPaymentOrder(order),
+              payer: toAdminUserSummary(payer),
+              target: toAdminUserSummary(target),
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+          .sort((a, b) => Date.parse(b.order.createdAt) - Date.parse(a.order.createdAt));
 
         return {
           metrics: [
@@ -1581,6 +1834,7 @@ export async function getAdminOverview() {
           topUsers: leaderboard.slice(0, 5),
           assignments: assignmentRows.map(toAssignment).slice(0, 4),
           users: allUsers.map(toAdminUserSummary),
+          manualOrders,
         };
       },
       () => store.getAdminOverview(),
@@ -2011,6 +2265,53 @@ export async function updateAdminManagedUser(
   );
 }
 
+export async function getAppSetting<TValue = unknown>(key: string) {
+  return withDb(
+    "getAppSetting",
+    async (db) => {
+      const [setting] = await db
+        .select()
+        .from(appSettings)
+        .where(eq(appSettings.key, key))
+        .limit(1);
+      return setting ? toAppSetting<TValue>(setting) : null;
+    },
+    () => store.getAppSetting<TValue>(key),
+  );
+}
+
+export async function upsertAppSetting<TValue = unknown>(
+  key: string,
+  value: TValue,
+  updatedBy?: string,
+) {
+  return withDb(
+    "upsertAppSetting",
+    async (db) => {
+      const now = new Date();
+      const [setting] = await db
+        .insert(appSettings)
+        .values({
+          key,
+          value,
+          updatedBy: updatedBy ?? null,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: appSettings.key,
+          set: {
+            value,
+            updatedBy: updatedBy ?? null,
+            updatedAt: now,
+          },
+        })
+        .returning();
+      return toAppSetting<TValue>(setting);
+    },
+    () => store.upsertAppSetting<TValue>(key, value, updatedBy),
+  );
+}
+
 export async function createPaymentOrder(input: {
   userId: string;
   targetUserId: string;
@@ -2069,6 +2370,44 @@ export async function updatePaymentOrderProviderFields(
       return toPaymentOrder(order);
     },
     () => store.updatePaymentOrderProviderFields(outTradeNo, fields),
+  );
+}
+
+export async function attachManualPaymentProof(
+  outTradeNo: string,
+  input: { note: string; submittedBy: string; proofImageDataUrl?: string },
+) {
+  return withDb(
+    "attachManualPaymentProof",
+    async (db) => {
+      const [existing] = await db
+        .select()
+        .from(paymentOrders)
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .limit(1);
+      if (!existing) throw new Error("支付订单不存在。");
+      if (existing.channel !== "manual") throw new Error("该订单不是人工核验订单。");
+      if (existing.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+
+      const [order] = await db
+        .update(paymentOrders)
+        .set({
+          rawNotify: {
+            ...(existing.rawNotify && typeof existing.rawNotify === "object" ? existing.rawNotify : {}),
+            manualProof: {
+              note: input.note,
+              submittedBy: input.submittedBy,
+              proofImageDataUrl: input.proofImageDataUrl,
+              submittedAt: new Date().toISOString(),
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .returning();
+      return toPaymentOrder(order);
+    },
+    () => store.attachManualPaymentProof(outTradeNo, input),
   );
 }
 

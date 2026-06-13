@@ -4,6 +4,9 @@ import type {
   MarketBoardPayload,
   MarketBoardSector,
   MarketBoardStock,
+  MarketDataProvider,
+  MarketKlineCandle,
+  MarketQuoteSource,
   MarketWatchlistSymbol,
   TickerTapeItem,
 } from "@/lib/types";
@@ -39,7 +42,7 @@ type MarketMetadata = {
 type QuoteInput = {
   currentPrice?: number | null;
   changePercent?: number | null;
-  source?: "alltick" | "fallback";
+  source?: MarketQuoteSource;
 };
 
 type StaticInfoInput = {
@@ -56,10 +59,11 @@ type StaticInfoInput = {
 type BuilderInput = {
   selectedSymbol?: MarketWatchlistSymbol;
   asOf?: string;
-  provider?: "alltick" | "hybrid" | "fallback";
+  provider?: MarketDataProvider;
   note?: string;
   quotes?: Partial<Record<MarketWatchlistSymbol, QuoteInput>>;
   klineSeries?: number[];
+  klineCandles?: MarketKlineCandle[];
   staticInfo?: StaticInfoInput;
 };
 
@@ -295,6 +299,42 @@ function resolveQuote(symbol: MarketWatchlistSymbol, quotes?: BuilderInput["quot
   };
 }
 
+function buildSyntheticCandles(series: number[]): MarketKlineCandle[] {
+  const values = series.length >= 4 ? series : [100, 101, 100.4, 102];
+  const now = Date.now();
+
+  return values.map((close, index) => {
+    const previous = index === 0 ? close * 0.992 : values[index - 1];
+    const open = previous ?? close;
+    const spread = Math.max(Math.abs(close - open), close * 0.006);
+    const high = Math.max(open, close) + spread * 0.42;
+    const low = Math.max(0.01, Math.min(open, close) - spread * 0.36);
+
+    return {
+      time: new Date(now - (values.length - 1 - index) * 24 * 60 * 60 * 1000).toISOString(),
+      open: Number(open.toFixed(3)),
+      high: Number(high.toFixed(3)),
+      low: Number(low.toFixed(3)),
+      close: Number(close.toFixed(3)),
+    };
+  });
+}
+
+function normalizeCandles(
+  candles: MarketKlineCandle[] | undefined,
+  series: number[],
+): MarketKlineCandle[] {
+  const valid = (candles ?? []).filter(
+    (item) =>
+      Number.isFinite(item.open) &&
+      Number.isFinite(item.high) &&
+      Number.isFinite(item.low) &&
+      Number.isFinite(item.close),
+  );
+
+  return valid.length >= 4 ? valid.slice(-24) : buildSyntheticCandles(series).slice(-24);
+}
+
 function formatShares(raw?: string) {
   if (!raw) return "教学观察";
   const parsed = Number(raw);
@@ -514,12 +554,14 @@ export function buildTickerTapeItems(input?: Pick<BuilderInput, "quotes">): Tick
 
 function humanizeMarketBoardNote(
   note: string | undefined,
-  provider: "alltick" | "hybrid" | "fallback",
+  provider: MarketDataProvider,
 ) {
-  const fallbackMessage = `AllTick 当前异常时会自动回退到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+  const fallbackMessage = `iTick 行情当前异常时会自动回退到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   if (!note) {
-    return provider === "alltick"
-      ? `AllTick 实时字段已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
+    return provider === "itick"
+      ? `iTick 实时行情与日 K 线已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
+      : provider === "alltick"
+        ? `AllTick 实时字段已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
       : fallbackMessage;
   }
 
@@ -531,7 +573,7 @@ function humanizeMarketBoardNote(
     normalized.includes("http 5") ||
     normalized.includes("ret=")
   ) {
-    return `AllTick 当前鉴权或权限返回异常，已自动切换到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+    return `外部行情当前鉴权或权限返回异常，已自动切换到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   }
 
   if (
@@ -540,11 +582,15 @@ function humanizeMarketBoardNote(
     normalized.includes("超时") ||
     normalized.includes("网络")
   ) {
-    return `AllTick 当前请求波动，已回退到教学观察池，并会在每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+    return `外部行情当前请求波动，已回退到教学观察池，并会在每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   }
 
   if (provider === "hybrid") {
-    return `AllTick 当前仅返回了部分字段，缺失部分已由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
+    return `外部行情当前仅返回了部分字段，缺失部分已由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
+  }
+
+  if (provider === "itick") {
+    return `iTick 实时行情与日 K 线已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
   }
 
   if (provider === "alltick") {
@@ -564,6 +610,7 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     input?.klineSeries && input.klineSeries.length >= 4
       ? input.klineSeries
       : selectedMetadata.fallbackSeries;
+  const selectedCandles = normalizeCandles(input?.klineCandles, selectedSeries);
   const metrics = buildTeachingMetrics(
     selectedMetadata,
     selectedQuote.currentPrice,
@@ -587,6 +634,7 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     monogram: selectedMetadata.monogram,
     accentColor: selectedMetadata.accentColor,
     miniSeries: selectedSeries,
+    candles: selectedCandles,
     metrics,
     facts: buildFacts(selectedMetadata, input?.staticInfo),
   };

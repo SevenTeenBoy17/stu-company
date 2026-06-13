@@ -106,6 +106,8 @@ test.describe("prelaunch smoke", () => {
     expect(prepay.ok()).toBe(true);
     const order = await prepay.json();
     expect(order.mock).toBe(true);
+    expect(order.codeUrl).toContain(order.outTradeNo);
+    expect(order.amountFen).toBe(1500);
 
     const complete = await page.request.post("/api/billing/mock-complete", {
       data: { outTradeNo: order.outTradeNo },
@@ -113,6 +115,19 @@ test.describe("prelaunch smoke", () => {
     expect(complete.ok()).toBe(true);
     await expect(complete.json()).resolves.toMatchObject({
       message: /模拟支付完成|此前已开通/,
+    });
+
+    const status = await page.request.get(
+      `/api/billing/order-status?outTradeNo=${encodeURIComponent(order.outTradeNo)}`,
+    );
+    expect(status.ok()).toBe(true);
+    await expect(status.json()).resolves.toMatchObject({
+      paid: true,
+      status: "paid",
+      targetUser: expect.objectContaining({
+        id: "student-1",
+        subscriptionTier: "standard",
+      }),
     });
   });
 

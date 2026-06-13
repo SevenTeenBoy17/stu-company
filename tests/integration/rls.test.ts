@@ -1,32 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 
-function loadEnvFile(fileName: string, override = false) {
-  const filePath = resolve(process.cwd(), fileName);
-  if (!existsSync(filePath)) return;
-
-  for (const line of readFileSync(filePath, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    const separatorIndex = trimmed.indexOf("=");
-    if (separatorIndex <= 0) continue;
-
-    const key = trimmed.slice(0, separatorIndex).trim();
-    const rawValue = trimmed.slice(separatorIndex + 1).trim();
-    const value = rawValue.replace(/^['"]|['"]$/g, "");
-
-    if (override || process.env[key] === undefined) {
-      process.env[key] = value;
-    }
-  }
-}
-
-loadEnvFile(".env");
-loadEnvFile(".env.local", true);
-
+// DATABASE_URL is loaded by tests/integration/setup-env.ts (a vitest setupFile)
+// before this file's imports evaluate, so @/lib/env and this raw client agree.
 const databaseUrl = process.env.DATABASE_URL;
 const describeWithDb = databaseUrl ? describe : describe.skip;
 const TEST_TIMEOUT_MS = 30_000;
@@ -122,6 +98,13 @@ describeWithDb("postgres row level security isolation", () => {
     let seen: { profiles: number; snapshots: number; learning: number } | undefined;
     try {
       await client.begin(async (sql) => {
+        // Robust to rows committed by other integration tests (leaderboard.test
+        // upserts a rank_profile for student-1). Clear the ids this test owns
+        // first — it all rolls back at the end, so nothing persists.
+        await sql`delete from learning_progress where user_id in ('student-1','student-2')`;
+        await sql`delete from leaderboard_snapshots where user_id in ('student-1','student-2')`;
+        await sql`delete from rank_profiles where user_id in ('student-1','student-2')`;
+        await sql`delete from schools where id = 'rls-sch'`;
         await sql`insert into schools (id,name,normalized_name,province_code,city_code,status,created_by)
                   values ('rls-sch','RLS校','RLS校','51','5101','approved','student-1')`;
         await sql`insert into rank_profiles (user_id,province_code,city_code,school_id,alias)

@@ -22,10 +22,11 @@ export const HoldingSchema = z
 export const ActionLogSchema = z
   .object({
     id: z.string(),
-    type: z.enum(["trade", "bank", "property", "venture", "advance", "event"]),
+    type: z.enum(["trade", "bank", "property", "venture", "advance", "event", "auto_invest", "quest"]),
     label: z.string(),
     round: z.number(),
     amount: z.number(),
+    meta: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
 

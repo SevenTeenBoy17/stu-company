@@ -17,6 +17,23 @@ export function formatPercent(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
+/**
+ * Strip common Markdown syntax (ATX headings, bold/italic, code spans, thematic
+ * breaks) from an AI narrative so markers never render literally as "###" or "**"
+ * in the teaching panels. Not a full Markdown renderer — just defensive
+ * de-syntaxing for free text the model may emit with formatting.
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "") // # / ## / ### headings -> plain
+    .replace(/^\s*([-*_])\1{2,}\s*$/gm, "") // --- *** ___ thematic breaks
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // **bold**
+    .replace(/__([^_]+)__/g, "$1") // __bold__
+    .replace(/`([^`]+)`/g, "$1") // `code`
+    .replace(/\n{3,}/g, "\n\n") // collapse blank-line runs left behind
+    .trim();
+}
+
 type MarketMoveTone = "up" | "down" | "flat";
 
 const MARKET_MOVE_CLASSES: Record<
@@ -31,20 +48,20 @@ const MARKET_MOVE_CLASSES: Record<
   }
 > = {
   up: {
-    text: "text-[#d43c33]",
-    darkText: "text-[#ffb7af]",
-    badge: "bg-[#fff1f0] text-[#d43c33]",
-    darkBadge: "bg-[#d43c33]/14 text-[#ffb7af]",
-    bar: "bg-[#d43c33]",
-    dot: "bg-[#d43c33]",
+    text: "text-up",
+    darkText: "text-[var(--up-200)]",
+    badge: "bg-up-soft text-up",
+    darkBadge: "bg-up/15 text-[var(--up-200)]",
+    bar: "bg-up",
+    dot: "bg-up",
   },
   down: {
-    text: "text-[#0f9d58]",
-    darkText: "text-[#94e3b5]",
-    badge: "bg-[#eefbf3] text-[#0f9d58]",
-    darkBadge: "bg-[#0f9d58]/14 text-[#94e3b5]",
-    bar: "bg-[#0f9d58]",
-    dot: "bg-[#0f9d58]",
+    text: "text-down",
+    darkText: "text-[var(--down-200)]",
+    badge: "bg-down-soft text-down",
+    darkBadge: "bg-down/15 text-[var(--down-200)]",
+    bar: "bg-down",
+    dot: "bg-down",
   },
   flat: {
     text: "text-slate-500",

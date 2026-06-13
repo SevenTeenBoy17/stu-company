@@ -96,6 +96,8 @@ export const learningModules: LearningModule[] = [
       "把牛熊转换、估值压力与舆情反转拆成易懂任务，帮助学生在无真实资金压力下训练判断。",
     level: "核心",
     highlights: ["市价 / 限价指令", "板块轮动提示", "行为偏差识别"],
+    href: "https://www.bilibili.com/video/BV1AnSvB8EZY/",
+    hrefLabel: "B站 · 从零开始学炒股",
   },
   {
     key: "portfolio",
@@ -105,6 +107,8 @@ export const learningModules: LearningModule[] = [
       "从单一押注切换为组合思维，理解分散配置、风险敞口与收益平衡。",
     level: "核心",
     highlights: ["ETF 组合", "债券缓冲", "外汇与商品对冲"],
+    href: "https://www.bilibili.com/video/BV1364y1S7wK/",
+    hrefLabel: "B站 · 理财与资产配置",
   },
   {
     key: "banking",
@@ -114,6 +118,8 @@ export const learningModules: LearningModule[] = [
       "通过活期、定存、贷款与还款动作，理解流动性与资金管理的基本功。",
     level: "核心",
     highlights: ["复利计算", "贷款成本", "流动性管理"],
+    href: "https://www.bilibili.com/video/BV1ZY97YQEN8/",
+    hrefLabel: "B站 · 个人理财公开课",
   },
   {
     key: "property",
@@ -123,6 +129,8 @@ export const learningModules: LearningModule[] = [
       "学生可以在不同利率与景气度环境下做买租判断，理解杠杆与长期现金流。",
     level: "进阶",
     highlights: ["首付压力测试", "租售比判断", "房产周期感知"],
+    href: "https://www.bilibili.com/video/BV1Nt411v7CD/",
+    hrefLabel: "B站 · 房地产投资分析",
   },
   {
     key: "venture",
@@ -132,6 +140,8 @@ export const learningModules: LearningModule[] = [
       "不只看价格涨跌，还要思考商业模式、并购窗口与团队执行效率。",
     level: "进阶",
     highlights: ["现金流经营", "股权结构", "并购窗口"],
+    href: "https://www.bilibili.com/video/BV1KK4y1s7mY/",
+    hrefLabel: "B站 · 斯坦福《如何创业》",
   },
   {
     key: "events",
@@ -141,6 +151,8 @@ export const learningModules: LearningModule[] = [
       "政策调整、舆情爆发、供需失衡会被随机推送，考验学生对不确定性的处理方式。",
     level: "运营",
     highlights: ["政策扰动", "舆情冲击", "危机复盘"],
+    href: "https://www.bilibili.com/video/BV14L4y157Ft/",
+    hrefLabel: "B站 · 金融史黑天鹅事件",
   },
   {
     key: "competition",
@@ -150,6 +162,8 @@ export const learningModules: LearningModule[] = [
       "把策略讨论、团队荣誉与阶段成绩结合起来，让学生更愿意持续参与。",
     level: "运营",
     highlights: ["班级榜", "校际榜", "每周挑战"],
+    href: "https://www.bilibili.com/video/BV1As4y1U7e5/",
+    hrefLabel: "B站 · 模拟投资实训竞赛",
   },
   {
     key: "guardian",
@@ -159,6 +173,8 @@ export const learningModules: LearningModule[] = [
       "教师可发任务与看班级数据，家长能查看成长曲线和行为偏差，形成家校共育闭环。",
     level: "家校",
     highlights: ["教学脚本", "成长报告", "行为标签"],
+    href: "https://www.bilibili.com/video/BV1rR4y1i7nC/",
+    hrefLabel: "B站 · 少儿财商启蒙课",
   },
 ];
 
