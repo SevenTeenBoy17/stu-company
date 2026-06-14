@@ -4,7 +4,10 @@ export function HeroStageArt({ className }: { className?: string }) {
   return (
     <div
       data-motion-card
+      data-motion-depth
       data-motion-reveal
+      data-motion-parallax="12"
+      data-motion-scrub="0.7"
       className={["relative h-full w-full overflow-hidden rounded-[2.5rem] bg-[#0b1020]", className]
         .filter(Boolean)
         .join(" ")}

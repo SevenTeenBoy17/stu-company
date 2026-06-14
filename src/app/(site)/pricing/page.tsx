@@ -119,6 +119,7 @@ export default async function PricingPage() {
             <SectionReveal
               key={plan.id}
               delay={index * 0.06}
+              motionCard
               className={`rounded-3xl p-6 sm:p-8 ${
                 plan.highlight
                   ? "relative border-2 border-[var(--brand)] bg-[var(--surface)] shadow-xl ring-1 ring-[var(--amber-200)] lg:-mt-4 lg:mb-4"
@@ -157,6 +158,7 @@ export default async function PricingPage() {
               ) : (
                 <Link
                   href={plan.href}
+                  data-motion-button
                   className={`mt-8 block rounded-full px-6 py-3 text-center text-sm font-semibold transition-all ${
                     plan.highlight
                       ? "bg-[var(--brand)] text-white shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
@@ -181,6 +183,7 @@ export default async function PricingPage() {
             <SectionReveal
               key={faq.q}
               delay={index * 0.05}
+              motionCard
               className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-5"
             >
               <p className="text-sm font-semibold text-[var(--ink-900)]">{faq.q}</p>

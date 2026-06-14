@@ -72,6 +72,7 @@ describe("forbidden non-determinism scan (R3 — clock/RNG must not leak into th
   // injected by callers, never read here.
   const pureCore = [
     "src/lib/event-engine.ts",
+    "src/lib/market-sentiment.ts",
     "src/lib/leaderboard/ranking.ts",
     "src/lib/leaderboard/power-score.ts",
   ];

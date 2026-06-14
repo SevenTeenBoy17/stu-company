@@ -1,7 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+
+import { useFocusTrap } from "@/lib/use-focus-trap";
+
+gsap.registerPlugin(useGSAP);
 
 type StepId =
   | "welcome"
@@ -105,6 +110,8 @@ interface OnboardingFlowProps {
 }
 
 export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComplete }: OnboardingFlowProps) {
+  const onboardingRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [tradeExecuted, setTradeExecuted] = useState(false);
   const [targetGuess, setTargetGuess] = useState(150_000);
@@ -200,6 +207,39 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
     onComplete();
   }, [onComplete]);
 
+  useFocusTrap(true, panelRef, () => {
+    void completeOnboarding();
+  });
+
+  useEffect(() => {
+    const root = onboardingRef.current;
+    const parent = root?.parentElement;
+    if (!root || !parent) return;
+
+    const siblings = Array.from(parent.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== root);
+    const previous = siblings.map((element) => ({
+      element,
+      ariaHidden: element.getAttribute("aria-hidden"),
+      inert: element.inert,
+    }));
+
+    siblings.forEach((element) => {
+      element.setAttribute("aria-hidden", "true");
+      element.inert = true;
+    });
+
+    return () => {
+      previous.forEach(({ element, ariaHidden, inert }) => {
+        if (ariaHidden === null) {
+          element.removeAttribute("aria-hidden");
+        } else {
+          element.setAttribute("aria-hidden", ariaHidden);
+        }
+        element.inert = inert;
+      });
+    };
+  }, []);
+
   const jumpToUpgrade = useCallback(async () => {
     await completeOnboarding();
     window.setTimeout(() => {
@@ -233,19 +273,75 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
   const aiText = aiTextByStep[current.id] ?? current.mrBrown.replace("新同学", userName);
   const aiProvider = aiProviderByStep[current.id];
 
+  useGSAP(
+    () => {
+      const reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const panel = onboardingRef.current?.querySelector("[data-onboarding-panel]");
+      const stepPanel = onboardingRef.current?.querySelector("[data-onboarding-step]");
+      const progressBar = onboardingRef.current?.querySelector("[data-onboarding-progress]");
+      const eventPanels = gsap.utils.toArray<HTMLElement>("[data-onboarding-event]");
+
+      if (reducedMotion) {
+        gsap.set([panel, stepPanel, progressBar, ...eventPanels].filter(Boolean), {
+          autoAlpha: 1,
+          clearProps: "transform,opacity,visibility",
+        });
+        return;
+      }
+
+      if (panel) {
+        gsap.fromTo(
+          panel,
+          { autoAlpha: 0, scale: 0.96, y: 14 },
+          { autoAlpha: 1, scale: 1, y: 0, duration: 0.34, ease: "power3.out", overwrite: "auto" },
+        );
+      }
+
+      if (stepPanel) {
+        gsap.fromTo(
+          stepPanel,
+          { autoAlpha: 0, x: 18 },
+          { autoAlpha: 1, x: 0, duration: 0.28, ease: "power3.out", overwrite: "auto" },
+        );
+      }
+
+      if (progressBar) {
+        gsap.fromTo(
+          progressBar,
+          { scaleX: 0.75 },
+          { scaleX: 1, duration: 0.36, ease: "power2.out", overwrite: "auto" },
+        );
+      }
+
+      if (eventPanels.length) {
+        gsap.fromTo(
+          eventPanels,
+          { autoAlpha: 0, y: 8 },
+          { autoAlpha: 1, y: 0, duration: 0.26, ease: "power3.out", stagger: 0.04, overwrite: "auto" },
+        );
+      }
+    },
+    { scope: onboardingRef, dependencies: [step, tradeExecuted, marketRevealed, progress], revertOnUpdate: true },
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 p-4 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+    <div ref={onboardingRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 p-4 backdrop-blur-sm">
+      <div
+        ref={panelRef}
+        data-onboarding-panel
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-onboarding-title"
         className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl"
       >
         <div className="h-1 bg-[var(--ink-100)]">
-          <motion.div
+          <div
+            data-onboarding-progress
             className="h-full bg-[var(--brand)]"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4 }}
+            style={{ width: `${progress}%`, transformOrigin: "left center" }}
           />
         </div>
 
@@ -254,7 +350,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
             <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[var(--brand)]">
               Brown Zone 新手村
             </p>
-            <h2 className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
+            <h2 id="student-onboarding-title" className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
             <p className="mt-3 text-sm leading-7 text-white/68">
               每一步只学习一个概念，先做轻量选择，再进入正式沙盘。
             </p>
@@ -290,13 +386,9 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
               </div>
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.section
+              <section
                 key={current.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.25 }}
+                data-onboarding-step
               >
                 <div className="mt-5 rounded-3xl border border-[var(--ink-100)] bg-[var(--ink-50)] p-5">
                   <div className="flex gap-3">
@@ -353,9 +445,8 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 )}
 
                 {current.interactive === "trade" && tradeExecuted && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <div
+                    data-onboarding-event
                     className="mt-4 rounded-2xl border border-[var(--up-200)] bg-[var(--up-50)] px-4 py-3"
                   >
                     <p className="text-sm font-semibold text-[var(--up-700)]">
@@ -364,7 +455,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                     <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">
                       这不是投资建议，只是帮助你看懂下单后资产和现金如何变化。
                     </p>
-                  </motion.div>
+                  </div>
                 )}
 
                 {current.interactive === "quiz" && !marketRevealed && (
@@ -392,9 +483,8 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 )}
 
                 {current.interactive === "quiz" && marketRevealed && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <div
+                    data-onboarding-event
                     className="mt-4 rounded-2xl bg-[var(--down-50)] px-5 py-4"
                   >
                     <p className="font-mono text-2xl font-bold text-[var(--down-700)]">
@@ -410,7 +500,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                           ? "这次和你猜的相反，市场下跌了。短期涨跌很难预测，猜错方向不代表你失败 —— 重要的是你有没有为「万一看错」留出应对空间。"
                           : "结果揭晓了。市场短期充满不确定性，方向谁都说不准；与其押对一次，不如练习在任何方向下都能稳住组合。"}
                     </p>
-                  </motion.div>
+                  </div>
                 )}
 
                 {current.interactive === "event" && (
@@ -428,8 +518,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                     </p>
                   </div>
                 )}
-              </motion.section>
-            </AnimatePresence>
+              </section>
 
             <div className="mt-6 flex items-center justify-between gap-3">
               {step > 0 ? (
@@ -453,7 +542,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
             </div>
           </main>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

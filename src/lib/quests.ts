@@ -5,6 +5,8 @@ import { clamp, createId } from "@/lib/utils";
 
 export type StudentQuestStatus = "done" | "active" | "watch" | "locked";
 export type StudentQuestCategory = "finance" | "learning" | "discipline" | "risk" | "review";
+export type StudentBenefitKind = "practice" | "competition" | "perk";
+export type StudentBenefitStatus = "available" | "in_progress" | "locked" | "claimed";
 
 export interface StudentQuestItem {
   id: string;
@@ -35,6 +37,20 @@ export interface StudentEarningsCalendarDay {
   label: string;
 }
 
+export interface StudentBenefitItem {
+  id: string;
+  kind: StudentBenefitKind;
+  title: string;
+  label: string;
+  summary: string;
+  href: string;
+  actionLabel: string;
+  reward: string;
+  progress: number;
+  status: StudentBenefitStatus;
+  guardrail: string;
+}
+
 export interface StudentQuestPayload {
   generatedAt: string;
   overview: {
@@ -49,6 +65,12 @@ export interface StudentQuestPayload {
   };
   quests: StudentQuestItem[];
   achievements: StudentAchievement[];
+  benefits: {
+    title: string;
+    summary: string;
+    guardrail: string;
+    items: StudentBenefitItem[];
+  };
   calendar: StudentEarningsCalendarDay[];
   coach: {
     title: string;
@@ -116,6 +138,9 @@ function buildCalendar(run: ScenarioRun): StudentEarningsCalendarDay[] {
 function buildCoach(summary: WealthSummary, run: ScenarioRun, learning: LearningProgressSummary) {
   const tradeCount = countActions(run, "trade");
   const bankCount = countActions(run, "bank");
+  const opportunityCount = countActions(run, "opportunity");
+  const fundLabCount = countActions(run, "fund_lab");
+  const protectionCount = countActions(run, "protection");
   const learningRate = learning.total > 0 ? learning.completed / learning.total : 0;
   const nextActions: string[] = [];
 
@@ -127,6 +152,15 @@ function buildCoach(summary: WealthSummary, run: ScenarioRun, learning: Learning
   }
   if (learningRate < 0.35) {
     nextActions.push("完成 1 节课程模块，再回到沙盘执行；这比盲目多交易更能提升判断质量。");
+  }
+  if (opportunityCount === 0) {
+    nextActions.push("去机会训练场写 1 张观察单：先说明证据和风险，再决定是否进入模拟配置。");
+  }
+  if (fundLabCount === 0) {
+    nextActions.push("完成 1 次基金/ETF 实验，比较分散配置和单一资产的波动差异。");
+  }
+  if (protectionCount === 0 && summary.riskScore >= 55) {
+    nextActions.push("做一次保护伞压力测试，看看现金垫、保险和债务会怎样影响坏情况。");
   }
   if (tradeCount > Math.max(6, run.currentRound + 2)) {
     nextActions.push("本回合先暂停追单，选择 1 笔交易写下理由，训练“先解释再行动”。");
@@ -148,6 +182,101 @@ function buildCoach(summary: WealthSummary, run: ScenarioRun, learning: Learning
   };
 }
 
+function benefitStatus(progress: number, locked = false): StudentBenefitStatus {
+  if (locked) return "locked";
+  if (progress >= 1) return "claimed";
+  if (progress > 0) return "in_progress";
+  return "available";
+}
+
+function buildBenefits(
+  run: ScenarioRun,
+  learning: LearningProgressSummary,
+  wealth: WealthSummary,
+): StudentQuestPayload["benefits"] {
+  const tradeCount = countActions(run, "trade");
+  const opportunityCount = countActions(run, "opportunity");
+  const fundLabCount = countActions(run, "fund_lab");
+  const reviewCount = countActions(run, "wealth_review") + countActions(run, "advance");
+  const learningProgress = learning.total > 0 ? learning.completed / Math.min(3, learning.total) : 0;
+  const diversified = wealth.diversificationScore >= 72;
+
+  const items: StudentBenefitItem[] = [
+    {
+      id: "guess-direction",
+      kind: "practice",
+      title: "猜涨跌微练习",
+      label: "波动红包",
+      summary: "先写下你对下一回合冷热方向的判断，再用结果复盘“预测为什么会失误”。",
+      href: "/student/market",
+      actionLabel: "去市场雷达练习",
+      reward: "装饰贴纸：波动侦探",
+      progress: clamp(opportunityCount / 1, 0, 1),
+      status: benefitStatus(opportunityCount / 1),
+      guardrail: "猜测只用于训练概率感，不改变净值、战力和排行榜。",
+    },
+    {
+      id: "season-mini-league",
+      kind: "competition",
+      title: "班级赛季小赛",
+      label: "模拟大赛",
+      summary: "用分散度、复盘和学习任务参与班级挑战，比的是决策质量，不是谁胆子更大。",
+      href: "/student/rank",
+      actionLabel: "查看班级榜",
+      reward: "称号：稳健挑战者",
+      progress: clamp((reviewCount + fundLabCount) / 3, 0, 1),
+      status: benefitStatus((reviewCount + fundLabCount) / 3),
+      guardrail: "赛事奖励只做展示，不额外发放战力。",
+    },
+    {
+      id: "trial-cash-lab",
+      kind: "perk",
+      title: "体验金首单训练",
+      label: "体验金",
+      summary: "完成第一笔模拟交易后，系统会引导你复盘“为什么买、亏了怎么办、什么时候退出”。",
+      href: "/student",
+      actionLabel: tradeCount > 0 ? "回到策略台复盘" : "去策略台完成首单",
+      reward: "头像角标：第一笔模拟单",
+      progress: clamp(tradeCount / 1, 0, 1),
+      status: benefitStatus(tradeCount / 1),
+      guardrail: "体验金是课堂练习概念，不是真实资金，也不进入真实交易。",
+    },
+    {
+      id: "learn-to-earn",
+      kind: "perk",
+      title: "学投资课程领皮肤",
+      label: "学习红包",
+      summary: "完成课程与小测后解锁界面皮肤，让“先学再做”变成可见的成长仪式。",
+      href: "/learn",
+      actionLabel: "去投教课程",
+      reward: "主页卡片光效：知识火种",
+      progress: clamp(learningProgress, 0, 1),
+      status: benefitStatus(learningProgress),
+      guardrail: "学习奖励是装饰权益，不承诺收益，不替代真实投资建议。",
+    },
+    {
+      id: "risk-shield",
+      kind: "practice",
+      title: "大盘晴雨保护伞",
+      label: "大盘晴雨",
+      summary: "当市场过热或过冷时，先检查现金垫和分散度，再决定下一步是否行动。",
+      href: "/student/protection",
+      actionLabel: "做保护伞压力测试",
+      reward: "装饰徽章：风险守门员",
+      progress: diversified ? 1 : clamp(wealth.diversificationScore / 72, 0, 1),
+      status: benefitStatus(wealth.diversificationScore / 72),
+      guardrail: "保护伞训练强调风险管理，不提供真实买卖指令。",
+    },
+  ];
+
+  return {
+    title: "活动权益中心",
+    summary: "把参考图里的波动红包、模拟炒股、学习红包和大盘晴雨，改造成未成年人友好的课堂练习货架。",
+    guardrail: "所有活动权益都只用于学习、装饰和复盘，不直接改变净值、战力或真实收益。",
+    items,
+  };
+}
+
 export function buildStudentQuestPayload(
   run: ScenarioRun,
   learning: LearningProgressSummary,
@@ -157,7 +286,14 @@ export function buildStudentQuestPayload(
   const streak = computeStreak(run);
   const tradeCount = countActions(run, "trade");
   const bankCount = countActions(run, "bank");
-  const reviewActions = run.actionLog.filter((entry) => entry.type === "advance" || entry.type === "event").length;
+  const opportunityCount = countActions(run, "opportunity");
+  const fundLabCount = countActions(run, "fund_lab");
+  const goalAccountCount = countActions(run, "goal_account");
+  const protectionCount = countActions(run, "protection");
+  const wealthReviewCount = countActions(run, "wealth_review");
+  const reviewActions = run.actionLog.filter(
+    (entry) => entry.type === "advance" || entry.type === "event" || entry.type === "wealth_review",
+  ).length;
   const lastTradeRound = latestActionRound(run, "trade");
   const cashBufferWeight =
     wealth.grossAssets > 0 ? ((run.cash + run.savings) / wealth.grossAssets) * 100 : 0;
@@ -214,6 +350,46 @@ export function buildStudentQuestPayload(
       coachNote: "复盘会把一次输赢变成可迁移的经验。",
     }),
     withClaimState(run, {
+      id: "opportunity-first-note",
+      title: "写下 1 张机会观察单",
+      category: "learning",
+      status: statusFrom(opportunityCount),
+      progress: clamp(opportunityCount, 0, 1),
+      target: "把热点主题拆成证据、风险和下一步验证动作",
+      reward: "装饰徽章：机会侦察员",
+      coachNote: "机会训练先练观察，不把热点直接变成真实买卖建议。",
+    }),
+    withClaimState(run, {
+      id: "fund-lab-first-plan",
+      title: "完成 1 次基金/ETF 实验",
+      category: "finance",
+      status: statusFrom(fundLabCount),
+      progress: clamp(fundLabCount, 0, 1),
+      target: "比较至少一种组合方案的收益、回撤和分散度",
+      reward: "装饰称号：组合研究员",
+      coachNote: "基金实验训练长期配置，不承诺收益，也不替代真实投顾。",
+    }),
+    withClaimState(run, {
+      id: "goal-protection-pair",
+      title: "连接目标账户与保护伞",
+      category: "risk",
+      status: statusFrom(Math.min(goalAccountCount, protectionCount)),
+      progress: clamp((goalAccountCount + protectionCount) / 2, 0, 1),
+      target: "至少做 1 次目标账户动作和 1 次保护伞压力测试",
+      reward: "装饰边框：生活规划师",
+      coachNote: "现实理财不是只看收益，还要看目标能否在坏情况里坚持下去。",
+    }),
+    withClaimState(run, {
+      id: "wealth-review-plan",
+      title: "提交 1 次持有计划复盘",
+      category: "review",
+      status: statusFrom(wealthReviewCount),
+      progress: clamp(wealthReviewCount, 0, 1),
+      target: "把当前持有理由、风险关注点和下一步动作写清楚",
+      reward: "装饰贴纸：冷静持有人",
+      coachNote: "持有计划不会改变净值，但会让每次等待都有可复查的理由。",
+    }),
+    withClaimState(run, {
       id: "cooldown-after-trade",
       title: "交易后留出冷静回合",
       category: "discipline",
@@ -248,6 +424,27 @@ export function buildStudentQuestPayload(
       decorativeReward: "主页卡片光效",
     },
     {
+      id: "opportunity-scout",
+      title: "机会侦察员",
+      unlocked: opportunityCount >= 1,
+      detail: "你已经把一个市场主题写成可复盘的观察单。",
+      decorativeReward: "机会卡片专属角标",
+    },
+    {
+      id: "portfolio-researcher",
+      title: "组合研究员",
+      unlocked: fundLabCount >= 1,
+      detail: "你开始用组合视角理解基金、ETF 和分散配置。",
+      decorativeReward: "基金实验室光效",
+    },
+    {
+      id: "life-planner",
+      title: "生活规划师",
+      unlocked: goalAccountCount >= 1 && protectionCount >= 1,
+      detail: "你已经把目标储蓄和风险保护放进同一张生活地图。",
+      decorativeReward: "生活理财徽章组",
+    },
+    {
       id: "streak-maker",
       title: "连续成长记录",
       unlocked: streak.best >= 2,
@@ -272,6 +469,7 @@ export function buildStudentQuestPayload(
     },
     quests,
     achievements,
+    benefits: buildBenefits(run, learning, wealth),
     calendar: buildCalendar(run),
     coach: buildCoach(wealth, run, learning),
   };

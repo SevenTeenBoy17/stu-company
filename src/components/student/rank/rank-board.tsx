@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { Crown, Flame, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -182,11 +181,11 @@ export function RankBoard({
             const { name, anonymous } = aliasInfo(entry.alias);
             const champion = entry.rank === 1;
             return (
-              <motion.li
+              <li
                 key={entry.userId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.4) }}
+                data-motion-reveal
+                data-motion-card
+                data-motion-delay={Math.min(index * 0.04, 0.4)}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl px-3.5 py-3",
                   entry.isViewer
@@ -244,7 +243,7 @@ export function RankBoard({
                     战力
                   </span>
                 </span>
-              </motion.li>
+              </li>
             );
           })}
         </ol>

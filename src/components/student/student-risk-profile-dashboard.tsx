@@ -145,6 +145,11 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set("[data-risk-reveal], [data-risk-score]", { opacity: 1, clearProps: "transform" });
+        return;
+      }
+
       gsap.from("[data-risk-reveal]", {
         y: 20,
         opacity: 0,
@@ -194,6 +199,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
     <div ref={rootRef} className="space-y-6" data-testid="risk-profile-dashboard">
       <section
         data-risk-reveal
+        data-motion-reveal
         className={cn(
           "overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft",
           "bg-gradient-to-br",
@@ -216,7 +222,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                   它不是买卖建议，而是一张帮助你“认识自己”的训练地图。
                 </p>
               </div>
-              <div data-risk-score className="rounded-[1.75rem] border border-white/12 bg-white/[0.08] p-5 text-right">
+              <div data-risk-score data-motion-card className="rounded-[1.75rem] border border-white/12 bg-white/[0.08] p-5 text-right">
                 <p className="text-sm font-bold text-white/58">风险人格分</p>
                 <p className="mt-2 text-display-xl font-black tabular-nums text-brand-warm">{payload.score}</p>
                 <p className="mt-1 text-sm font-semibold text-white/60">{formatTime(payload.generatedAt)}</p>
@@ -224,7 +230,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
             </div>
 
             <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-              <div className="rounded-[1.8rem] border border-white/10 bg-white/[0.07] p-5 md:p-6">
+              <div data-motion-card className="rounded-[1.8rem] border border-white/10 bg-white/[0.07] p-5 md:p-6">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-white">
                     <Brain className="h-5 w-5" />
@@ -251,7 +257,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div key={item.label} className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
+                    <div key={item.label} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                       <div className="flex items-center gap-2 text-white/56">
                         <Icon className="h-4 w-4 text-brand-warm" />
                         <p className="text-xs font-bold">{item.label}</p>
@@ -271,7 +277,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div data-risk-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <div data-risk-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -290,6 +296,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
           <div className="mt-6 grid gap-4">
             {payload.questions.map((question, questionIndex) => (
               <article
+                data-motion-card
                 key={question.id}
                 className="rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-[0_14px_35px_rgba(15,23,42,0.06)] md:p-5"
               >
@@ -308,6 +315,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                     const selected = selectedMap.get(question.id) === option.id;
                     return (
                       <button
+                        data-motion-button
                         key={option.id}
                         type="button"
                         onClick={() =>
@@ -344,6 +352,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
+              data-motion-button
               type="button"
               data-testid="risk-profile-submit"
               onClick={submitProfile}
@@ -368,7 +377,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
           </div>
         </div>
 
-        <aside data-risk-reveal className="space-y-6">
+        <aside data-risk-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />
@@ -383,7 +392,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                 const currentWidth = clamp(item.current, 3, 100);
                 const targetWidth = clamp(item.target, 3, 100);
                 return (
-                  <div key={item.id} className="rounded-[1.45rem] bg-slate-50 p-4">
+                  <div key={item.id} data-motion-card className="rounded-[1.45rem] bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-body font-black text-slate-950">{item.label}</p>

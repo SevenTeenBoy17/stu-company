@@ -88,6 +88,11 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set("[data-auto-reveal], [data-plan-dot]", { opacity: 1, clearProps: "transform" });
+        return;
+      }
+
       gsap.from("[data-auto-reveal]", {
         y: 22,
         opacity: 0,
@@ -155,7 +160,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="auto-invest-dashboard">
-      <section data-auto-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
+      <section data-auto-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
@@ -193,7 +198,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.label} className="min-w-0 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-5">
+                  <div key={item.label} data-motion-card className="min-w-0 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-5">
                     <div className="flex items-center gap-2 text-white/58">
                       <Icon className="h-4 w-4 text-brand-warm" />
                       <p className="text-sm font-bold">{item.label}</p>
@@ -238,7 +243,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
       </section>
 
       {latestPlan ? (
-        <section data-auto-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <section data-auto-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.2em] text-brand">Live Plan</p>
@@ -251,6 +256,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               </p>
             </div>
             <button
+              data-motion-button
               type="button"
               onClick={() => submit("cancel")}
               disabled={!activePlan || state === "loading"}
@@ -264,7 +270,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <aside data-auto-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <aside data-auto-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <Bot className="h-5 w-5 text-brand" />
             <h2 className="text-h1 font-semibold text-slate-950">机器人参数</h2>
@@ -371,7 +377,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
         </aside>
 
         <div className="space-y-6">
-          <section data-auto-reveal className="panel overflow-hidden rounded-[2rem] p-5 md:p-6">
+        <section data-auto-reveal data-motion-reveal className="panel overflow-hidden rounded-[2rem] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
@@ -469,7 +475,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <article data-auto-reveal className="panel rounded-[2rem] p-5 md:p-6">
+            <article data-auto-reveal data-motion-card className="panel rounded-[2rem] p-5 md:p-6">
               <div className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-brand" />
                 <h2 className="text-h1 font-semibold text-slate-950">定投 vs 一次性买入</h2>
@@ -503,7 +509,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               </p>
             </article>
 
-            <article data-auto-reveal className="panel rounded-[2rem] p-5 md:p-6">
+            <article data-auto-reveal data-motion-card className="panel rounded-[2rem] p-5 md:p-6">
               <div className="flex items-center gap-3">
                 <Sparkles className="h-5 w-5 text-brand" />
                 <h2 className="text-h1 font-semibold text-slate-950">Mr.Brown 训练提示</h2>

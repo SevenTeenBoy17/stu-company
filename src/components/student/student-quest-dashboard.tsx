@@ -11,15 +11,20 @@ import {
   CheckCircle2,
   CircleDot,
   Clock3,
+  Gift,
+  Gamepad2,
   Loader2,
   Lock,
+  ShieldCheck,
   Sparkles,
   Target,
   Trophy,
+  UsersRound,
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
-import type { QuestClaimResult, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
+import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
+import type { SeasonClaimResult, StudentSeasonChallengePayload } from "@/lib/season-challenges";
 import { cn, formatCurrency } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
@@ -63,6 +68,38 @@ const statusMeta: Record<
   },
 };
 
+const benefitKindMeta: Record<
+  StudentBenefitKind,
+  {
+    label: string;
+    icon: typeof Gift;
+    className: string;
+  }
+> = {
+  practice: {
+    label: "微练习",
+    icon: Gamepad2,
+    className: "bg-brand-subtle text-brand-ink",
+  },
+  competition: {
+    label: "小赛事",
+    icon: UsersRound,
+    className: "bg-slate-950 text-white",
+  },
+  perk: {
+    label: "装饰权益",
+    icon: Gift,
+    className: "bg-warning/10 text-warning",
+  },
+};
+
+const benefitStatusLabel: Record<StudentBenefitStatus, string> = {
+  available: "可开始",
+  in_progress: "进行中",
+  locked: "待解锁",
+  claimed: "已点亮",
+};
+
 function formatGeneratedAt(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -84,16 +121,30 @@ function QuestStatusBadge({ status }: { status: StudentQuestStatus }) {
   );
 }
 
-export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayload }) {
+export function StudentQuestDashboard({
+  payload,
+  seasonPayload,
+}: {
+  payload: StudentQuestPayload;
+  seasonPayload: StudentSeasonChallengePayload;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [questPayload, setQuestPayload] = useState(payload);
+  const [season, setSeason] = useState(seasonPayload);
   const [filter, setFilter] = useState<QuestFilter>("all");
   const [claimingQuestId, setClaimingQuestId] = useState<string | null>(null);
+  const [claimingSeason, setClaimingSeason] = useState(false);
   const [claimResult, setClaimResult] = useState<QuestClaimResult | null>(null);
+  const [seasonClaimResult, setSeasonClaimResult] = useState<SeasonClaimResult | null>(null);
   const [claimError, setClaimError] = useState("");
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set("[data-quest-reveal], [data-calendar-cell]", { opacity: 1, clearProps: "transform" });
+        return;
+      }
+
       gsap.from("[data-quest-reveal]", {
         y: 20,
         opacity: 0,
@@ -150,9 +201,36 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
     }
   }
 
+  async function claimSeasonReward() {
+    setClaimingSeason(true);
+    setClaimError("");
+    try {
+      const response = await fetch("/api/student/season", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId: season.id }),
+      });
+      const data = (await response.json()) as {
+        payload?: StudentSeasonChallengePayload;
+        claimed?: SeasonClaimResult;
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok || !data.payload || !data.claimed) {
+        throw new Error(data.message ?? data.error ?? "赛季奖励领取失败，请稍后再试。");
+      }
+      setSeason(data.payload);
+      setSeasonClaimResult(data.claimed);
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : "赛季奖励领取失败，请稍后再试。");
+    } finally {
+      setClaimingSeason(false);
+    }
+  }
+
   return (
     <div ref={rootRef} className="space-y-6">
-      <section data-quest-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
+      <section data-quest-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
@@ -166,7 +244,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">任务完成度</p>
                 <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                   {questPayload.overview.completed}/{questPayload.overview.total}
@@ -178,7 +256,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
                   />
                 </div>
               </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">净值连升</p>
                 <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                   {questPayload.overview.streakCurrent}
@@ -187,7 +265,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
                 </p>
                 <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续回合</p>
               </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">学习进度</p>
                 <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                   {questPayload.overview.learningCompleted}
@@ -210,7 +288,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
             <p className="mt-4 text-body leading-8 text-white/68">{questPayload.coach.summary}</p>
             <div className="mt-6 space-y-3">
               {questPayload.coach.nextActions.map((action, index) => (
-                <div key={action} className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
+                <div key={action} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                   <div className="flex gap-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
                       {index + 1}
@@ -221,6 +299,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
               ))}
             </div>
             <Link
+              data-motion-button
               href="/student"
               className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-glow"
             >
@@ -248,7 +327,191 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
         </div>
       </section>
 
-      <section data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">
+      <section
+        data-quest-reveal
+        data-motion-reveal
+        data-testid="activity-benefit-center"
+        className="panel overflow-hidden rounded-[2rem] p-0"
+      >
+        <div className="grid gap-0 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <div className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white md:px-7 md:py-7">
+            <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
+            <div className="pointer-events-none absolute -right-20 top-0 h-52 w-52 rounded-full bg-brand/25 blur-3xl" />
+            <div className="relative z-10">
+              <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Activity Shelf</p>
+              <h2 className="mt-3 text-display-md font-semibold md:text-display-lg">
+                {questPayload.benefits.title}
+              </h2>
+              <p className="mt-4 text-body leading-8 text-white/68">{questPayload.benefits.summary}</p>
+              <div className="mt-6 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-warm" />
+                  <p className="text-sm font-semibold leading-6 text-white/68">
+                    {questPayload.benefits.guardrail}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 bg-white p-5 md:p-6 xl:grid-cols-2 2xl:grid-cols-3">
+            {questPayload.benefits.items.map((item) => {
+              const meta = benefitKindMeta[item.kind];
+              const Icon = meta.icon;
+              return (
+                <Link
+                  data-motion-card
+                  key={item.id}
+                  href={item.href}
+                  className="group flex min-h-[236px] flex-col rounded-[1.55rem] border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:bg-brand-subtle hover:shadow-soft"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black", meta.className)}>
+                      <Icon className="h-3.5 w-3.5" />
+                      {meta.label}
+                    </span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-500">
+                      {benefitStatusLabel[item.status]}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex-1">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">{item.label}</p>
+                    <h3 className="mt-2 text-h2 font-black text-slate-950">{item.title}</h3>
+                    <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-600">
+                      {item.summary}
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                      <span>{item.reward}</span>
+                      <span>{Math.round(item.progress * 100)}%</span>
+                    </div>
+                    <div data-motion-viz className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
+                      <div
+                        data-motion-viz-bar
+                        data-motion-origin="left center"
+                        className="h-full rounded-full bg-gradient-to-r from-brand via-warning to-up"
+                        style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{item.guardrail}</p>
+                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-brand-ink">
+                      {item.actionLabel}
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section
+        data-quest-reveal
+        data-motion-reveal
+        data-testid="quest-season-challenge"
+        className="panel overflow-hidden rounded-[2rem] p-0"
+      >
+        <div className="grid gap-0 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white md:px-7 md:py-7">
+            <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
+            <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-brand/25 blur-3xl" />
+            <div className="relative z-10">
+              <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Season Mission</p>
+              <h2 className="mt-3 max-w-xl text-display-md font-semibold md:text-display-lg">
+                {season.title}
+              </h2>
+              <p className="mt-4 max-w-2xl text-body leading-8 text-white/68">{season.summary}</p>
+
+              <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-bold text-white/62">赛季完成度</span>
+                  <span className="text-sm font-black text-brand-warm">
+                    {season.completedObjectives}/{season.totalObjectives} · {season.progress}%
+                  </span>
+                </div>
+                <div data-motion-viz className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    data-motion-viz-bar
+                    data-motion-origin="left center"
+                    className="h-full rounded-full bg-gradient-to-r from-brand via-warning to-up"
+                    style={{ width: `${season.progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <button
+                data-motion-button
+                type="button"
+                data-testid="quest-season-claim"
+                onClick={() => void claimSeasonReward()}
+                disabled={!season.claimable || season.claimed || claimingSeason}
+                className={cn(
+                  "mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition md:w-auto",
+                  season.claimable
+                    ? "bg-brand text-white shadow-glow hover:-translate-y-0.5"
+                    : season.claimed
+                      ? "bg-white text-slate-950"
+                      : "cursor-not-allowed bg-white/10 text-white/42",
+                )}
+              >
+                {claimingSeason ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : season.claimed ? (
+                  <BadgeCheck className="h-4 w-4" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {season.claimed ? "已领取赛季装饰奖励" : season.claimable ? `领取${season.reward}` : `完成后解锁${season.reward}`}
+              </button>
+              {seasonClaimResult ? (
+                <p className="mt-4 rounded-[1.2rem] border border-up/20 bg-up/10 px-4 py-3 text-sm font-bold leading-6 text-up">
+                  {seasonClaimResult.summary}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-3 bg-white p-5 md:p-6 xl:grid-cols-2">
+            {season.objectives.map((objective) => (
+              <Link
+                data-motion-card
+                key={objective.id}
+                href={objective.href}
+                className={cn(
+                  "group rounded-[1.45rem] border p-4 transition hover:-translate-y-0.5",
+                  objective.done
+                    ? "border-up/20 bg-up-soft"
+                    : "border-slate-200 bg-slate-50 hover:border-brand/30 hover:bg-brand-subtle",
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+                      objective.done ? "bg-up text-white" : "bg-white text-slate-400",
+                    )}
+                  >
+                    {objective.done ? <CheckCircle2 className="h-5 w-5" /> : <ArrowRight className="h-4 w-4" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-base font-black text-slate-950">{objective.label}</h3>
+                      <span className="shrink-0 text-xs font-black text-slate-400">
+                        {Math.min(objective.target, Math.round(objective.progress * objective.target))}/{objective.target}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{objective.detail}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section data-quest-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -262,6 +525,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
           <div className="flex flex-wrap gap-2">
             {filterLabels.map((item) => (
               <button
+                data-motion-button
                 key={item.id}
                 type="button"
                 onClick={() => setFilter(item.id)}
@@ -281,6 +545,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {visibleQuests.map((quest) => (
             <article
+              data-motion-card
               key={quest.id}
               className="rounded-[1.7rem] border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-950/5"
             >
@@ -292,8 +557,10 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
                 <QuestStatusBadge status={quest.status} />
               </div>
               <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{quest.target}</p>
-              <div className="mt-5 h-3 rounded-full bg-slate-100">
+              <div data-motion-viz className="mt-5 h-3 rounded-full bg-slate-100">
                 <div
+                  data-motion-viz-bar
+                  data-motion-origin="left center"
                   className={cn(
                     "h-full rounded-full",
                     quest.status === "watch"
@@ -310,6 +577,7 @@ export function StudentQuestDashboard({ payload }: { payload: StudentQuestPayloa
                 <p className="mt-2 text-xs leading-5 text-slate-500">{quest.coachNote}</p>
               </div>
               <button
+                data-motion-button
                 type="button"
                 data-testid={`quest-claim-${quest.id}`}
                 onClick={() => void claimQuest(quest.id)}

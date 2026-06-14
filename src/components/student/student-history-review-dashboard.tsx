@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   Bot,
   ChevronRight,
@@ -116,7 +115,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
   const areaPath = buildAreaPath(values);
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] bg-[#0f1729] p-4 text-white">
+    <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-[#0f1729] p-4 text-white">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">净值趋势</p>
@@ -148,6 +147,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
           <path d={areaPath} fill="url(#history-net-worth-fill)" />
           <path
             d={linePath}
+            data-motion-viz-path
             fill="none"
             stroke="#ffd1a3"
             strokeWidth="4"
@@ -156,7 +156,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
           />
           {values.map((value, index) => {
             const point = chartPoint(index, values.length, value, Math.min(...values), Math.max(...values));
-            return <circle key={`${timeline[index].round}-${value}`} cx={point.x} cy={point.y} r="5" fill="#0f1729" stroke="#ffd1a3" strokeWidth="2.5" />;
+            return <circle key={`${timeline[index].round}-${value}`} data-motion-viz-point cx={point.x} cy={point.y} r="5" fill="#0f1729" stroke="#ffd1a3" strokeWidth="2.5" />;
           })}
         </svg>
       </div>
@@ -192,7 +192,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
     .join(" ");
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] bg-slate-950/[0.03] p-4">
+    <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">风险分 / 纪律分</p>
@@ -215,8 +215,9 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
               strokeDasharray="4 8"
             />
           ))}
-          <path d={riskPath} fill="none" stroke="#f08a38" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <path data-motion-viz-path d={riskPath} fill="none" stroke="#f08a38" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
           <path
+            data-motion-viz-path
             d={disciplinePath}
             fill="none"
             stroke="#6f7ef7"
@@ -244,7 +245,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
   const maxValue = Math.max(...timeline.map((item) => Math.max(item.cash, item.savings, item.debt || 0, 1)));
 
   return (
-    <div className="rounded-[1.5rem] bg-slate-950/[0.03] p-4">
+    <div data-motion-viz className="rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">现金 / 储蓄 / 债务结构</p>
@@ -271,6 +272,8 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
                   <div className="w-12 shrink-0 text-xs font-medium text-slate-500">{row.label}</div>
                   <div className="h-2.5 flex-1 rounded-full bg-white">
                     <div
+                      data-motion-viz-bar
+                      data-motion-origin="left center"
                       className={cn("h-full rounded-full", row.color)}
                       style={{ width: `${Math.max(4, (row.value / maxValue) * 100)}%` }}
                     />
@@ -317,6 +320,22 @@ function eventSignalClasses(signal: string) {
     return "bg-[#eefbf3] text-[#0f9d58]";
   }
   return "bg-slate-100 text-slate-600";
+}
+
+function learningSignalClasses(tone: HistoryReviewPayload["learningSignals"][number]["tone"]) {
+  if (tone === "protect") {
+    return "border-[#0f9d58]/15 bg-[#eefbf3] text-[#0f9d58]";
+  }
+
+  if (tone === "review") {
+    return "border-[#6f7ef7]/15 bg-[#f0f2ff] text-[#4657d4]";
+  }
+
+  if (tone === "build") {
+    return "border-[#f08a38]/18 bg-[#fff4e9] text-[#b96621]";
+  }
+
+  return "border-slate-200 bg-white text-slate-700";
 }
 
 export function StudentHistoryReviewDashboard({
@@ -395,10 +414,8 @@ export function StudentHistoryReviewDashboard({
 
       <div className="grid gap-6 xl:grid-cols-[1.16fr_0.84fr]">
         <div className="space-y-6">
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
+          <section
+            data-motion-reveal
             className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/88 shadow-[0_28px_70px_rgba(15,23,42,0.08)]"
           >
             <div>
@@ -467,12 +484,14 @@ export function StudentHistoryReviewDashboard({
               <div className="bg-white/92 px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
                 <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">历史操作速写</p>
                 <h3 className="mt-3 text-2xl font-semibold text-slate-950">先看节奏，再拆动作</h3>
-                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {[
                     { label: "买入次数", value: `${payload.metrics.buyCount}`, hint: "主动加仓" },
                     { label: "卖出次数", value: `${payload.metrics.sellCount}`, hint: "兑现或回收" },
                     { label: "现金管理", value: `${payload.metrics.cashActions}`, hint: "储蓄 / 贷款 / 偿还" },
                     { label: "扩张动作", value: `${payload.metrics.expansionActions}`, hint: "房产 / 创业" },
+                    { label: "学习动作", value: `${payload.metrics.learningActions}`, hint: "观察 / 实验 / 保护" },
+                    { label: "复盘沉淀", value: `${payload.metrics.reviewActions}`, hint: "计划 / 奖励 / 自选" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.4rem] bg-slate-950/[0.03] px-4 py-4">
                       <p className="text-sm text-slate-500">{item.label}</p>
@@ -489,9 +508,47 @@ export function StudentHistoryReviewDashboard({
                     </p>
                   </div>
                 </div>
+                <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">学习信号已进入复盘</p>
+                      <p className="mt-1 text-xs leading-6 text-slate-500">
+                        机会观察、基金实验、目标账户和保护伞不会直接改变收益，但会影响你的长期决策质量。
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-950/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600">
+                      {payload.learningSignals.length > 0 ? `${payload.learningSignals.length} 类信号` : "待点亮"}
+                    </span>
+                  </div>
+                  {payload.learningSignals.length > 0 ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {payload.learningSignals.map((signal) => (
+                        <div
+                          key={signal.id}
+                          className={cn(
+                            "rounded-[1.2rem] border px-4 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.04)]",
+                            learningSignalClasses(signal.tone),
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold">{signal.label}</p>
+                            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">
+                              ×{signal.count}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-6 opacity-80">{signal.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-500">
+                      还没有明显学习信号。可以先去“机会训练”写一张观察单，或在“我的财富”提交一次持有复盘。
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </motion.section>
+          </section>
 
           <ChartShell
             eyebrow="Trend Board"

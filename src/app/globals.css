@@ -326,8 +326,8 @@ select {
 }
 
 /* A11y: honor the OS "reduce motion" preference for CSS transitions/animations
-   and programmatic smooth scrolling (WCAG 2.3.3). framer-motion entrances are
-   gated in JS where they matter. */
+   and programmatic smooth scrolling (WCAG 2.3.3). GSAP entrances are gated in JS
+   where they matter. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -353,6 +353,29 @@ select {
     linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
   background-position: center center;
   background-size: 64px 64px;
+}
+
+[data-motion-card],
+[data-motion-button],
+[data-motion-depth],
+[data-motion-reveal],
+[data-motion-reward],
+[data-motion-overlay],
+[data-motion-modal],
+[data-motion-drawer],
+[data-motion-scene-item],
+[data-motion-parallax],
+[data-motion-viz-point] {
+  will-change: transform, opacity;
+}
+
+[data-motion-draw],
+[data-motion-bar],
+[data-motion-viz-bar],
+[data-motion-viz-path],
+[data-motion-shine],
+[data-motion-float] {
+  will-change: transform;
 }
 
 @keyframes stock-ticker-marquee {

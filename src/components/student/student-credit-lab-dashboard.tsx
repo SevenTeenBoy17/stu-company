@@ -46,6 +46,11 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set("[data-credit-reveal], [data-credit-card]", { opacity: 1, clearProps: "transform" });
+        return;
+      }
+
       gsap.from("[data-credit-reveal]", {
         y: 18,
         opacity: 0,
@@ -105,7 +110,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="credit-lab-dashboard">
-      <section data-credit-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
+      <section data-credit-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -right-20 top-0 h-72 w-72 rounded-full bg-brand/20 blur-3xl" />
@@ -120,19 +125,19 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-4">
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5 md:col-span-2">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5 md:col-span-2">
                 <p className="text-sm font-semibold text-white/56">信用健康分</p>
                 <p className={cn("mt-3 text-display-xl font-black tabular-nums", scoreTone(payload.overview.creditScore))}>
                   {payload.overview.creditScore}
                 </p>
                 <p className="mt-2 text-sm font-bold text-white/58">{payload.overview.stageLabel}</p>
               </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">债务率</p>
                 <p className="mt-3 text-display-md font-black text-white">{payload.overview.debtToAssets}%</p>
                 <p className="mt-2 text-xs font-semibold text-white/50">债务 / 总资产</p>
               </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
+              <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">月利息估算</p>
                 <p className="mt-3 text-display-md font-black text-white">
                   <MoneyText>{formatCurrency(payload.overview.monthlyInterestEstimate)}</MoneyText>
@@ -168,7 +173,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div data-credit-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <div data-credit-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -190,6 +195,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                 key={scenario.id}
                 type="button"
                 data-credit-card
+                data-motion-card
                   onClick={() => {
                     setScenarioId(scenario.id);
                     setAmount(String(scenario.principal));
@@ -292,7 +298,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
           </div>
         </div>
 
-        <aside data-credit-reveal className="space-y-6">
+        <aside data-credit-reveal data-motion-reveal className="space-y-6">
           <div className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-brand" />

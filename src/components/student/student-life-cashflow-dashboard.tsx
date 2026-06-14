@@ -66,6 +66,11 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        gsap.set("[data-life-reveal], [data-stress-card]", { opacity: 1, clearProps: "transform" });
+        return;
+      }
+
       gsap.from("[data-life-reveal]", {
         y: 20,
         opacity: 0,
@@ -146,7 +151,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="life-cashflow-dashboard">
-      <section data-life-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
+      <section data-life-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -left-20 top-0 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
@@ -280,7 +285,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div data-life-reveal className="space-y-6">
+        <div data-life-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -366,7 +371,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           </section>
         </div>
 
-        <aside data-life-reveal className="space-y-6">
+        <aside data-life-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Umbrella className="h-5 w-5 text-brand" />
@@ -419,7 +424,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             </div>
             <div className="mt-5 space-y-3">
               {payload.stressEvents.map((event) => (
-                <article key={event.id} data-stress-card className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
+                <article key={event.id} data-stress-card data-motion-card className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-body font-black text-slate-950">{event.title}</p>
@@ -447,7 +452,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
         </aside>
       </section>
 
-      <section data-life-reveal className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section data-life-reveal data-motion-reveal className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <CalendarDays className="h-5 w-5 text-brand" />

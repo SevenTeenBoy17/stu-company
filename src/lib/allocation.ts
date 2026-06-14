@@ -78,7 +78,7 @@ const allocationMeta: Record<
     label: "可用现金",
     color: "var(--ink-700)",
     riskBand: "liquid",
-    hint: "应急缓冲，负责给下一回合留出选择权。",
+    hint: "应急缓冲，负责给下一回合留下选择权。",
   },
   savings: {
     label: "稳健储蓄",
@@ -250,6 +250,7 @@ export function buildWealthSummary(run: ScenarioRun): WealthSummary {
     },
   ];
 
+  const debtRatio = run.debt / Math.max(currentNetWorth, 1);
   const missions: WealthSummary["missions"] = [
     {
       id: "buffer",
@@ -268,7 +269,7 @@ export function buildWealthSummary(run: ScenarioRun): WealthSummary {
     {
       id: "debt",
       title: "负债率低于 15%",
-      status: run.debt / Math.max(currentNetWorth, 1) <= 0.15 ? "done" : "watch",
+      status: debtRatio <= 0.15 ? "done" : "watch",
       progress: clamp(1 - run.debt / Math.max(currentNetWorth * 0.15, 1), 0, 1),
       reward: "避免杠杆吞掉收益",
     },
@@ -283,7 +284,7 @@ export function buildWealthSummary(run: ScenarioRun): WealthSummary {
       : "保持分散纪律：继续记录每次调仓理由，而不是只看短期涨跌。",
     run.debt > 0
       ? "检查负债成本：债务会在每回合滚动增加，收益判断要先扣掉利息。"
-      : "没有负债压力：可以把注意力放在节奏、复盘和学习任务上。",
+      : "没有明显负债压力：可以把注意力放在节奏、复盘和学习任务上。",
   ];
 
   return {

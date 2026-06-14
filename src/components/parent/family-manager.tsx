@@ -127,7 +127,7 @@ export function FamilyManager() {
   }
 
   return (
-    <section className="panel rounded-3xl p-6">
+    <section data-motion-reveal className="panel rounded-3xl p-6">
       <p className="bz-eyebrow">家庭高级版</p>
       <h2 className="mt-4 text-2xl font-semibold text-fg-default">家庭组管理</h2>
 
@@ -138,6 +138,7 @@ export function FamilyManager() {
           </p>
           <button
             type="button"
+            data-motion-button
             onClick={buyPremium}
             disabled={pending}
             className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
@@ -145,7 +146,7 @@ export function FamilyManager() {
             {pending ? "处理中…" : "开通家庭高级版 · ¥30/月"}
           </button>
           {order ? (
-            <div className="mt-3 rounded-2xl bg-bg-muted p-4">
+            <div data-motion-card className="mt-3 rounded-2xl bg-bg-muted p-4">
               <p className="text-xs text-fg-muted">订单号：{order.outTradeNo}</p>
               {order.codeUrl ? (
                 <textarea
@@ -157,6 +158,7 @@ export function FamilyManager() {
               {order.mock ? (
                 <button
                   type="button"
+                  data-motion-button
                   onClick={completeMock}
                   disabled={pending}
                   className="mt-2 rounded-full bg-bg-inverse px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
@@ -184,6 +186,7 @@ export function FamilyManager() {
                 </div>
                 <button
                   type="button"
+                  data-motion-button
                   onClick={() => removeMember(member.studentUserId)}
                   disabled={pending}
                   className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-fg-muted transition-colors hover:text-fg-default disabled:opacity-60"
@@ -214,6 +217,7 @@ export function FamilyManager() {
                 </select>
                 <button
                   type="button"
+                  data-motion-button
                   onClick={addMember}
                   disabled={pending || !selectedId}
                   className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"

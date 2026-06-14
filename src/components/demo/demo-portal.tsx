@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   BadgeCheck,
@@ -405,13 +404,10 @@ export function DemoPortal({
         </p>
       ) : null}
 
-      <AnimatePresence>
-        {activeModal ? (
-          <motion.div
+      {activeModal ? (
+          <div
+            data-motion-overlay
             className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-slate-950/54 px-4 py-6 backdrop-blur-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
             <button
               type="button"
@@ -419,18 +415,14 @@ export function DemoPortal({
               className="absolute inset-0 cursor-default"
               onClick={closeModal}
             />
-            <motion.section
+            <section
               ref={dialogRef}
-              data-motion-reveal
+              data-motion-modal
               tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-labelledby="demo-auth-title"
               className="relative w-full max-w-[760px] overflow-hidden rounded-[2.25rem] border border-white/70 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_48%,#fff6ec_100%)] p-5 shadow-[0_34px_120px_rgba(15,23,42,0.32)] focus:outline-none sm:p-7"
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-orange-200/50 blur-3xl" />
               <div className="absolute -bottom-20 left-10 h-52 w-52 rounded-full bg-slate-200/70 blur-3xl" />
@@ -705,10 +697,9 @@ export function DemoPortal({
                   {message.text}
                 </p>
               ) : null}
-            </motion.section>
-          </motion.div>
+            </section>
+          </div>
         ) : null}
-      </AnimatePresence>
     </div>
   );
 }

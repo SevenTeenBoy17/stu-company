@@ -37,7 +37,7 @@ export default async function AdminPage() {
       heading="运营控制台"
       summary="统一管理账号、试用、订阅和课堂授权。超级管理员拥有写权限，普通管理员只读查看运营概览。"
     >
-      <section className="bz-ink-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
+      <section data-motion-reveal className="bz-ink-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
         <p className="bz-eyebrow-inverse">Brown Zone / Admin</p>
         <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div>
@@ -63,7 +63,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {overview.metrics.map((metric) => (
-          <div key={metric.label} className="panel rounded-3xl p-5">
+          <div key={metric.label} data-motion-card className="panel rounded-3xl p-5">
             <p className="text-sm font-bold text-fg-muted">{metric.label}</p>
             <p className="mt-3 text-4xl font-black text-fg-default">{metric.value}</p>
           </div>
@@ -72,7 +72,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {businessCards.map((card) => (
-          <div key={card.label} className="panel rounded-3xl p-5">
+          <div key={card.label} data-motion-card className="panel rounded-3xl p-5">
             <p className="bz-eyebrow">{card.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{card.value}</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{card.hint}</p>
@@ -91,11 +91,11 @@ export default async function AdminPage() {
       <AdminUserManager users={overview.users} canManagePasswords={canManagePasswords} />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">班级榜单头部</p>
           <div className="mt-5 space-y-3">
             {overview.topUsers.map((entry) => (
-              <div key={entry.userId} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-bg-muted px-4 py-4">
+              <div key={entry.userId} data-motion-card className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="min-w-0">
                   <p className="truncate text-lg font-black text-fg-default" title={entry.name}>
                     #{entry.rank} {entry.name}
@@ -110,11 +110,11 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">最近任务</p>
           <div className="mt-5 space-y-3">
             {overview.assignments.map((assignment) => (
-              <div key={assignment.id} className="rounded-2xl bg-bg-muted p-5">
+              <div key={assignment.id} data-motion-card className="rounded-2xl bg-bg-muted p-5">
                 <p className="text-lg font-black text-fg-default">{assignment.title}</p>
                 <p className="mt-2 text-sm font-semibold leading-7 text-fg-muted">{assignment.brief}</p>
               </div>
@@ -124,11 +124,11 @@ export default async function AdminPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">邀请码池</p>
           <div className="mt-5 space-y-3">
             {overview.invites.map((invite) => (
-              <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
+              <div key={invite.id} data-motion-card className="rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="min-w-0 truncate text-lg font-black text-fg-default">{invite.label}</p>
                   <span className="bz-brand-chip shrink-0 rounded-full px-3 py-1 text-xs font-black">
@@ -140,11 +140,11 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">班级与学校授权</p>
           <div className="mt-5 space-y-3">
             {overview.classrooms.map((classroom) => (
-              <div key={classroom.id} className="rounded-2xl bg-bg-muted p-5">
+              <div key={classroom.id} data-motion-card className="rounded-2xl bg-bg-muted p-5">
                 <p className="text-lg font-black text-fg-default">{classroom.name}</p>
                 <p className="mt-2 text-sm font-semibold text-fg-muted">
                   {classroom.region} · 校内排名第 {classroom.schoolRank} 名

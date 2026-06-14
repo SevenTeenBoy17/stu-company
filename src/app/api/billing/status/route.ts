@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/api-guard";
 import { readSession } from "@/lib/auth";
-import { resolveSubscriptionState } from "@/lib/billing/subscription";
+import { evaluatePersonalAiAccess, resolveSubscriptionState } from "@/lib/billing/subscription";
 import { listSubscriptionTargetsForUser } from "@/lib/db/repo";
+import { isEmailVerificationRequired } from "@/lib/email-verification";
 
 export async function GET() {
   const session = await readSession();
@@ -39,10 +40,15 @@ export async function GET() {
     auth.user.trialExpiresAt,
     auth.user.subscriptionExpiresAt,
   );
+  const personalAiAccess = evaluatePersonalAiAccess(state, {
+    emailVerified: Boolean(auth.user.emailVerifiedAt),
+    requireVerification: isEmailVerificationRequired(),
+  });
   const eligibleTargets = await listSubscriptionTargetsForUser(auth.user.id);
 
   return NextResponse.json({
     ...state,
+    canUsePersonalAiAssessment: personalAiAccess.ok,
     viewer: {
       id: auth.user.id,
       role: auth.user.role,

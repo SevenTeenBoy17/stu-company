@@ -30,6 +30,32 @@ import {
   type CreditLabActionInput,
 } from "@/lib/credit-lab";
 import { claimQuestReward } from "@/lib/quests";
+import { claimSeasonChallengeReward } from "@/lib/season-challenges";
+import {
+  createFundLabAction,
+  type FundLabActionInput,
+} from "@/lib/fund-lab";
+import {
+  createOpportunityNote,
+  type OpportunityNoteInput,
+} from "@/lib/opportunity";
+import {
+  createGoalAccountAction,
+  type GoalAccountActionInput,
+} from "@/lib/goal-accounts";
+import {
+  createProtectionUmbrellaAction,
+  type ProtectionUmbrellaActionInput,
+} from "@/lib/protection-umbrella";
+import {
+  createStudentWatchlistAction,
+  type StudentWatchlistActionInput,
+} from "@/lib/student-watchlist";
+import {
+  createWealthReview,
+  type WealthReviewInput,
+} from "@/lib/wealth-review";
+import { buildPeerHeatPayload } from "@/lib/peer-heat";
 import {
   canAddFamilyMember,
   resolveSubscriptionState,
@@ -1421,6 +1447,23 @@ export function getSimulationStateForUser(userId: string) {
   return buildSimulationState(user, classroom, run, relatedRuns, relatedUsers);
 }
 
+export function getPeerHeatForStudent(userId: string) {
+  const store = getStore();
+  const user = findUserById(userId);
+  if (!user || user.role !== "student" || !user.classroomId) {
+    throw new Error("当前账号没有可用的学生沙盘。");
+  }
+
+  const classroom = getClassroomById(user.classroomId);
+  const run = getRunForUser(userId);
+  if (!classroom || !run) {
+    throw new Error("未找到对应的班级或沙盘进度。");
+  }
+
+  const relatedRuns = store.runs.filter((item) => item.classroomId === user.classroomId);
+  return buildPeerHeatPayload(relatedRuns, run, classroom.name);
+}
+
 export function applyActionForUser(userId: string, input: Parameters<typeof applySimulationAction>[1]) {
   const store = getStore();
   const run = getRunForUser(userId);
@@ -1547,6 +1590,104 @@ export function claimQuestRewardForUser(userId: string, questId: string) {
   }
 
   const outcome = claimQuestReward(run, getLearningProgress(userId), questId);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function claimSeasonRewardForUser(userId: string, challengeId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = claimSeasonChallengeReward(run, challengeId);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createOpportunityNoteForUser(userId: string, input: OpportunityNoteInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createOpportunityNote(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createFundLabActionForUser(userId: string, input: FundLabActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createFundLabAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createGoalAccountActionForUser(userId: string, input: GoalAccountActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createGoalAccountAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createProtectionUmbrellaActionForUser(userId: string, input: ProtectionUmbrellaActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createProtectionUmbrellaAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createStudentWatchlistActionForUser(userId: string, input: StudentWatchlistActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createStudentWatchlistAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createWealthReviewForUser(userId: string, input: WealthReviewInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createWealthReview(run, input);
   const index = store.runs.findIndex((item) => item.id === outcome.run.id);
   store.runs[index] = outcome.run;
   syncGrowthReports(userId);

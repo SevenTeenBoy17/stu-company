@@ -1,26 +1,34 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { PointerEvent } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
   Activity,
+  BookmarkCheck,
   Bot,
   Layers3,
   LoaderCircle,
   Newspaper,
   PieChart,
+  Plus,
   Radar,
   Search,
+  ShieldCheck,
   Sparkles,
+  ThermometerSun,
   Trophy,
+  UsersRound,
   Waves,
+  X,
 } from "lucide-react";
 
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
+import type { PeerHeatPayload } from "@/lib/peer-heat";
+import type { StudentWatchlistPayload } from "@/lib/student-watchlist";
 import type { MarketBoardPayload, MarketKlineCandle, MarketWatchlistSymbol } from "@/lib/types";
 import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
 
@@ -127,7 +135,15 @@ function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketBoardPayload }) {
+export function StudentMarketBoard({
+  initialPayload,
+  initialWatchlistPayload,
+  initialPeerHeatPayload,
+}: {
+  initialPayload: MarketBoardPayload;
+  initialWatchlistPayload: StudentWatchlistPayload;
+  initialPeerHeatPayload: PeerHeatPayload;
+}) {
   const marketBoardRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
   const [payloadCache, setPayloadCache] = useState<Record<string, MarketBoardPayload>>({
@@ -136,6 +152,12 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
   const [selectedSymbol, setSelectedSymbol] = useState<MarketWatchlistSymbol>(initialPayload.selected.symbol);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [studentWatchlist, setStudentWatchlist] = useState<StudentWatchlistPayload | null>(initialWatchlistPayload);
+  const [peerHeat, setPeerHeat] = useState<PeerHeatPayload>(initialPeerHeatPayload);
+  const [peerHeatError, setPeerHeatError] = useState<string | null>(null);
+  const [watchReason, setWatchReason] = useState("");
+  const [watchlistPending, setWatchlistPending] = useState(false);
+  const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredSearch = useDeferredValue(search);
 
@@ -156,14 +178,84 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
     }
   }
 
+  const loadStudentWatchlist = useCallback(async (symbol: MarketWatchlistSymbol) => {
+    try {
+      const response = await fetch(`/api/student/watchlist?symbol=${symbol}`, { cache: "no-store" });
+      const nextPayload = (await response.json()) as { payload?: StudentWatchlistPayload; error?: string; message?: string };
+      if (!response.ok || !nextPayload.payload) {
+        throw new Error(nextPayload.message ?? nextPayload.error ?? "自选观察刷新失败。");
+      }
+      setStudentWatchlist(nextPayload.payload);
+      setWatchlistMessage(null);
+    } catch (nextError) {
+      setWatchlistMessage(nextError instanceof Error ? nextError.message : "自选观察刷新失败。");
+    }
+  }, []);
+
+  const loadPeerHeat = useCallback(async () => {
+    try {
+      const response = await fetch("/api/market/peer-heat", { cache: "no-store" });
+      const nextPayload = (await response.json()) as { payload?: PeerHeatPayload; error?: string; message?: string };
+      if (!response.ok || !nextPayload.payload) {
+        throw new Error(nextPayload.message ?? nextPayload.error ?? "同学热度刷新失败。");
+      }
+      setPeerHeat(nextPayload.payload);
+      setPeerHeatError(null);
+    } catch (nextError) {
+      setPeerHeatError(nextError instanceof Error ? nextError.message : "同学热度刷新失败。");
+    }
+  }, []);
+
+  async function updateWatchlist(action: "add" | "remove", symbol: MarketWatchlistSymbol = selectedSymbol) {
+    setWatchlistPending(true);
+    setWatchlistMessage(null);
+    try {
+      const response = await fetch("/api/student/watchlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          symbol,
+          action,
+          reason: action === "add" ? watchReason : "从自选观察移除，等待下一次比较。",
+        }),
+      });
+      const nextPayload = (await response.json()) as {
+        payload?: StudentWatchlistPayload;
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok || !nextPayload.payload) {
+        throw new Error(nextPayload.message ?? nextPayload.error ?? "自选观察更新失败。");
+      }
+      setStudentWatchlist(nextPayload.payload);
+      setWatchlistMessage(nextPayload.message ?? "自选观察已更新。");
+      if (action === "add") setWatchReason("");
+    } catch (nextError) {
+      setWatchlistMessage(nextError instanceof Error ? nextError.message : "自选观察更新失败。");
+    } finally {
+      setWatchlistPending(false);
+    }
+  }
+
   useEffect(() => {
     void loadBoard(selectedSymbol);
   }, [selectedSymbol]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => void loadBoard(selectedSymbol), MARKET_REFRESH_INTERVAL_MS);
+    void loadStudentWatchlist(selectedSymbol);
+  }, [loadStudentWatchlist, selectedSymbol]);
+
+  useEffect(() => {
+    void loadPeerHeat();
+  }, [loadPeerHeat]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadBoard(selectedSymbol);
+      void loadPeerHeat();
+    }, MARKET_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [selectedSymbol]);
+  }, [loadPeerHeat, selectedSymbol]);
 
   const filteredWatchlist = useMemo(() => {
     const keyword = deferredSearch.trim().toLowerCase();
@@ -174,6 +266,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
   }, [deferredSearch, payload.watchlist]);
 
   const selectedMetricValues = payload.selected.metrics.map((item) => item.score);
+  const selectedInStudentWatchlist = studentWatchlist?.items.some((item) => item.symbol === selectedSymbol) ?? false;
   const radarPath = buildRadarShape(selectedMetricValues);
   const linePath = buildLinePath(payload.selected.miniSeries);
   const areaPath = buildAreaPath(payload.selected.miniSeries);
@@ -280,7 +373,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
 
   return (
     <div ref={marketBoardRef} className="space-y-6 pb-24">
-      <section className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+      <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Radar</p>
@@ -313,6 +406,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                     if (cached) setPayload(cached);
                     startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
                   }}
+                  data-motion-card
                   className={cn(
                     "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200 will-change-transform",
                     active
@@ -352,8 +446,189 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
         </div>
       </section>
 
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">My Watchlist</p>
+              <h3 className="mt-3 text-2xl font-black text-slate-950 md:text-3xl">我的自选观察</h3>
+              <p className="mt-2 max-w-2xl text-base font-semibold leading-8 text-slate-600">
+                先把“为什么值得看”写下来，再观察下一次行情是否验证你的判断。
+              </p>
+            </div>
+            <div className="rounded-full bg-slate-50 px-4 py-2 text-sm font-black text-slate-500">
+              已记录 {studentWatchlist?.historyCount ?? 0} 次
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0">
+              {studentWatchlist?.items.length ? (
+                <div className="grid gap-3 2xl:grid-cols-2">
+                  {studentWatchlist.items.map((item) => (
+                    <article key={item.symbol} className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                            style={{ background: `linear-gradient(135deg, ${item.accentColor}, rgba(15,23,42,0.32))` }}
+                          >
+                            {item.monogram}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-lg font-black text-slate-950">{item.name}</p>
+                            <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                              {item.symbol} · {item.concept}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={watchlistPending}
+                          onClick={() => void updateWatchlist("remove", item.symbol)}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                          aria-label={`移除 ${item.name}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-500">
+                          {item.riskLabel}
+                        </span>
+                        <span className={cn("rounded-full px-3 py-1 text-xs font-black", getMarketMoveClasses(item.changePercent).badge)}>
+                          {item.changePercent >= 0 ? "+" : ""}
+                          {item.changePercent.toFixed(2)}%
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">{item.reason}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5">
+                  <p className="text-lg font-black text-slate-950">还没有自选标的</p>
+                  <p className="mt-2 text-base font-semibold leading-8 text-slate-600">
+                    从右侧当前选中股票开始，写一句观察理由；这会进入历史复盘，不影响模拟资产。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {studentWatchlist?.suggested.slice(0, 3).map((item) => (
+                      <button
+                        key={item.symbol}
+                        type="button"
+                        onClick={() => {
+                          const cached = payloadCache[item.symbol];
+                          if (cached) setPayload(cached);
+                          startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
+                          setWatchReason(`${item.name}：${item.concept}值得观察，我想比较它的热度和风险是否同步。`);
+                        }}
+                        className="rounded-full border border-white bg-white px-4 py-2 text-sm font-black text-slate-600 shadow-sm transition-colors hover:border-orange-300 hover:text-orange-700"
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white">
+              <div className="flex items-center gap-2">
+                <BookmarkCheck className="h-4 w-4 text-orange-300" />
+                <p className="text-base font-black">记录当前选中</p>
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-7 text-white/62">
+                当前：{payload.selected.name}（{payload.selected.symbol}）
+              </p>
+              <textarea
+                value={watchReason}
+                onChange={(event) => setWatchReason(event.target.value)}
+                maxLength={120}
+                placeholder="写一句观察理由，例如：AI 服务器需求强，但短期涨幅较快，需要比较板块是否共振。"
+                className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-sm font-semibold leading-7 text-white outline-none placeholder:text-white/36 focus:border-orange-300/70"
+              />
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={watchlistPending}
+                  onClick={() => void updateWatchlist(selectedInStudentWatchlist ? "remove" : "add")}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-orange-400 px-4 text-sm font-black text-slate-950 shadow-[0_16px_34px_rgba(240,138,56,0.28)] transition-colors hover:bg-orange-300 disabled:opacity-55"
+                >
+                  {watchlistPending ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : selectedInStudentWatchlist ? (
+                    <X className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  {selectedInStudentWatchlist ? "移除自选" : "加入自选"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchAssistantOpen({
+                      prompt: `请帮我把 ${payload.selected.name}（${payload.selected.symbol}）的观察理由改写成适合课堂复盘的一句话。`,
+                      autoSend: true,
+                    })
+                  }
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/12 px-4 text-sm font-black text-white/78 transition-colors hover:bg-white/10"
+                >
+                  问 AI
+                </button>
+              </div>
+              {watchlistMessage ? (
+                <p className="mt-3 rounded-[1rem] bg-white/8 px-3 py-2 text-xs font-bold leading-6 text-white/70">
+                  {watchlistMessage}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-1">
+          <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Heat</p>
+                <h3 className="mt-3 text-2xl font-black text-slate-950">市场温度</h3>
+              </div>
+              <ThermometerSun className="h-8 w-8 text-orange-500" />
+            </div>
+            <div className="mt-5 rounded-[1.5rem] bg-slate-950 p-5 text-white">
+              <div className="flex items-end justify-between gap-4">
+                <p className="text-3xl font-black">{studentWatchlist?.temperature.label ?? "读取中"}</p>
+                <p className="text-4xl font-black text-orange-300">{studentWatchlist?.temperature.score ?? "--"}</p>
+              </div>
+              <div className="mt-4 h-3 rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-orange-300 to-rose-400"
+                  style={{ width: `${studentWatchlist?.temperature.score ?? 0}%` }}
+                />
+              </div>
+              <p className="mt-4 text-sm font-semibold leading-7 text-white/68">
+                {studentWatchlist?.temperature.summary ?? "正在根据观察池涨跌分布生成课堂温度提示。"}
+              </p>
+            </div>
+          </div>
+
+          <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Daily Brief</p>
+            <h3 className="mt-3 text-2xl font-black text-slate-950">每日必看</h3>
+            <div className="mt-5 rounded-[1.5rem] bg-orange-50 p-5">
+              <p className="text-lg font-black text-slate-950">{studentWatchlist?.dailyBrief.title ?? "正在生成今日观察题"}</p>
+              <p className="mt-3 text-base font-semibold leading-8 text-slate-600">
+                {studentWatchlist?.dailyBrief.summary ?? "系统会从观察池里挑出一个最适合课堂讨论的样本。"}
+              </p>
+              <p className="mt-4 rounded-[1.25rem] bg-white px-4 py-3 text-sm font-black leading-7 text-orange-700">
+                {studentWatchlist?.dailyBrief.question ?? "先选择一只股票加入自选，再写下你的观察理由。"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
+        <div data-motion-reveal className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
             <div className="relative min-w-0 overflow-hidden p-5 sm:p-6 lg:p-7">
               <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
@@ -383,6 +658,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                         autoSend: true,
                       })
                     }
+                    data-motion-button
                     className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-base font-bold text-white transition-colors hover:bg-white/15 will-change-transform"
                   >
                     <Bot className="h-4 w-4" />
@@ -463,7 +739,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                   </svg>
                   <div className="mt-4 grid gap-2 text-xs font-bold text-white/72 sm:grid-cols-3">
                     {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
-                      <span key={task} className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
+                      <span key={task} data-motion-card className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
                         {task}
                       </span>
                     ))}
@@ -498,7 +774,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <aside className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <aside data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Snapshot</p>
           <h3 className="mt-3 text-2xl font-black text-slate-950">关键字段</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -513,7 +789,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
-        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Radar className="h-5 w-5 text-orange-500" />
@@ -522,7 +798,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
             <p className="text-sm font-bold text-slate-400">文字说明移到右侧，避免图内拥挤。</p>
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
+            <div data-motion-viz className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
               <svg aria-hidden="true" viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-72 w-full max-w-[300px]">
                 {[0.25, 0.5, 0.75, 1].map((ratio) => (
                   <polygon
@@ -550,8 +826,8 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
                     />
                   );
                 })}
-                <path d={radarPath} fill={`${payload.selected.accentColor}2b`} stroke={payload.selected.accentColor} strokeWidth="3" />
-                <circle cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
+                <path data-motion-viz-path d={radarPath} fill={`${payload.selected.accentColor}2b`} stroke={payload.selected.accentColor} strokeWidth="3" />
+                <circle data-motion-viz-point cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
               </svg>
             </div>
             <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-1">
@@ -568,7 +844,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <PieChart className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">观察池结构拆解</h3>
@@ -611,8 +887,64 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
-        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+      <section className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+        <div data-testid="peer-heat-card" data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <UsersRound className="h-5 w-5 text-orange-500" />
+            <h3 className="text-2xl font-black text-slate-950">同学热度</h3>
+          </div>
+          <div className="mt-4 rounded-[1.5rem] bg-slate-950 p-4 text-white">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300">
+              {peerHeat.classroomName} · {peerHeat.totalStudents} 人
+            </p>
+            <p className="mt-3 text-xl font-black leading-7">{peerHeat.headline}</p>
+            <p className="mt-3 text-sm font-semibold leading-6 text-white/64">{peerHeat.summary}</p>
+          </div>
+          <div className="mt-4 space-y-3">
+            {peerHeat.items.length > 0 ? (
+              peerHeat.items.slice(0, 4).map((item, index) => (
+                <div key={`${item.source}-${item.symbol}`} className="rounded-[1.35rem] bg-slate-50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-base font-black text-slate-950">
+                        #{index + 1} {item.name}
+                      </p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+                        {item.symbol} · {item.source === "holding" ? "模拟持有" : "自选观察"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-black text-orange-700">{item.count}人</p>
+                      <p className="text-xs font-black text-slate-400">{item.ratio}%</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-rose-300"
+                      style={{ width: `${Math.max(8, item.ratio)}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">
+                    {item.concept} · {item.coachNote}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.35rem] bg-slate-50 px-4 py-5 text-sm font-semibold leading-6 text-slate-500">
+                还没有足够的班级持有或自选观察记录。完成一笔模拟持有或加入自选后，这里会出现脱敏聚合热度。
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex items-start gap-2 rounded-[1.25rem] bg-orange-50 px-4 py-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+            <p className="text-xs font-bold leading-5 text-slate-600">
+              {peerHeat.privacyNote}
+              {peerHeatError ? ` 刷新提示：${peerHeatError}` : ""}
+            </p>
+          </div>
+        </div>
+
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">观察池排行</h3>
@@ -638,7 +970,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Layers3 className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">板块热度条</h3>
@@ -665,7 +997,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
           </div>
         </div>
 
-        <div className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Waves className="h-5 w-5 text-orange-500" />
             <h3 className="text-2xl font-black text-slate-950">课堂提示</h3>
@@ -682,6 +1014,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
 
       <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
         <div
+          data-motion-reveal
           className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.12)]"
           style={{
             backgroundImage: `radial-gradient(circle at top left, ${payload.contentCards[0]?.accentColor ?? "#f08a38"}22, transparent 24%), linear-gradient(135deg,#0f1729 0%,#182338 100%)`,
@@ -698,7 +1031,7 @@ export function StudentMarketBoard({ initialPayload }: { initialPayload: MarketB
 
         <div className="grid gap-4">
           {payload.contentCards.slice(1).map((card) => (
-            <div key={card.id} className="market-motion-panel panel rounded-[2rem] p-5">
+            <div key={card.id} data-motion-card className="market-motion-panel panel rounded-[2rem] p-5">
               <div className="flex items-center gap-2">
                 <Newspaper className="h-4 w-4" style={{ color: card.accentColor }} />
                 <p className="text-xs font-bold uppercase tracking-[0.22em]" style={{ color: card.accentColor }}>

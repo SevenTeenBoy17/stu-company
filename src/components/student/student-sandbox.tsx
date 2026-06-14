@@ -16,10 +16,14 @@ import { MoneyText } from "@/components/shared/money-text";
 import { SeasonLeaderboard } from "@/components/student/season-leaderboard";
 import { PowerRankTeaser } from "@/components/student/rank/power-rank-teaser";
 import { StudentAllocationPanel } from "@/components/student/student-allocation-panel";
+import { StudentHomeHub } from "@/components/student/student-home-hub";
+import { StudentPetRewardStudio } from "@/components/student/student-pet-reward-studio";
 import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
+import { buildStudentPetPayload } from "@/lib/pet-rewards";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
+import { buildStudentHomeHubPayload } from "@/lib/student-service-map";
 import type { AdaptiveEvent } from "@/lib/adaptive-events";
 import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
@@ -73,6 +77,12 @@ const readableActionTypeLabel: Record<ActionLog["type"], string> = {
   event: actionTypeLabel.event ?? "事件决策",
   auto_invest: "定投机器人",
   quest: "任务奖励",
+  opportunity: "机会观察",
+  fund_lab: "基金实验",
+  goal_account: "目标账户",
+  protection: "风险保护",
+  watchlist: "自选观察",
+  wealth_review: "财富复盘",
 };
 
 function actionDirection(amount: number) {
@@ -311,27 +321,56 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const rank = currentRank(state);
   const recentActions = state.run.actionLog.slice().reverse().slice(0, 7);
   const topLeaderboard = state.leaderboard.slice(0, 5);
+  const homeHubPayload = buildStudentHomeHubPayload(state.run);
+  const petRewardPayload = buildStudentPetPayload(state.run);
 
   const heroMetrics = [
     {
       label: "当前净值",
       value: formatCurrency(netWorth),
+      motionValue: netWorth,
+      motionPrefix: "¥",
+      motionFormat: "currency",
       meta: netWorthDelta === 0 ? "本回合保持观察" : `较上回合 ${formatCurrency(netWorthDelta)}`,
       icon: WalletCards,
       money: true,
     },
-    { label: "可用现金", value: formatCurrency(state.run.cash), meta: "行动前先留安全垫", icon: Landmark, money: true },
+    {
+      label: "可用现金",
+      value: formatCurrency(state.run.cash),
+      motionValue: state.run.cash,
+      motionPrefix: "¥",
+      motionFormat: "currency",
+      meta: "行动前先留安全垫",
+      icon: Landmark,
+      money: true,
+    },
     {
       label: "持仓市值",
       value: formatCurrency(holdingsValue),
+      motionValue: holdingsValue,
+      motionPrefix: "¥",
+      motionFormat: "currency",
       meta: `${holdingsRows.length} 个资产正在观察`,
       icon: LineChart,
       money: true,
     },
-    { label: "班级排名", value: `#${rank}`, meta: state.classroom.name, icon: Trophy, money: false },
+    {
+      label: "班级排名",
+      value: `#${rank}`,
+      motionValue: rank,
+      motionPrefix: "#",
+      motionFormat: "integer",
+      meta: state.classroom.name,
+      icon: Trophy,
+      money: false,
+    },
     {
       label: "风险评分",
       value: `${latestSnapshot?.riskScore ?? "--"}`,
+      motionValue: latestSnapshot?.riskScore ?? 0,
+      motionPrefix: "",
+      motionFormat: "integer",
       meta: `纪律分 ${latestSnapshot?.disciplineScore ?? "--"}`,
       icon: ShieldCheck,
       money: false,
@@ -348,7 +387,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
 
   return (
     <div className="space-y-6 pb-24">
-      <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6">
+      <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6" data-motion-reveal>
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Brown Zone</p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">学生策略台</h1>
       </header>
@@ -356,14 +395,25 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         {heroMetrics.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 transition-transform hover:-translate-y-1 sm:p-5">
+            <div
+              key={item.label}
+              className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 sm:p-5"
+              data-motion-card
+              data-motion-reveal
+            >
               <div className="flex items-start justify-between gap-4">
                 <p className="min-w-0 text-base font-bold text-slate-500">{item.label}</p>
                 <span className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <p className="mt-3 max-w-full text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950">
+              <p
+                className="mt-3 max-w-full text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950"
+                data-motion-number
+                data-motion-value={item.motionValue}
+                data-motion-prefix={item.motionPrefix}
+                data-motion-format={item.motionFormat}
+              >
                 {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
               </p>
               <p className="mt-3 line-clamp-2 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
@@ -371,6 +421,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           );
         })}
       </section>
+
+      <StudentHomeHub payload={homeHubPayload} />
+
+      <StudentPetRewardStudio initialPayload={petRewardPayload} />
 
       <StudentAllocationPanel
         intel={portfolioIntel}

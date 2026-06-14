@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Check, Crown, Info, Share2, TrendingUp, X } from "lucide-react";
 
 import { buildPowerShareText } from "@/lib/leaderboard/share";
@@ -87,10 +86,8 @@ export function PowerCard({
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
       {/* Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+      <section
+        data-motion-reveal
         className={`relative overflow-hidden rounded-[1.7rem] bg-gradient-to-br ${tierAccent(card.tier.tier)} p-6 text-white shadow-[0_18px_44px_rgba(15,23,42,0.16)]`}
       >
         <div className="flex items-center justify-between">
@@ -141,11 +138,11 @@ export function PowerCard({
               </span>
             </div>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/20">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.round(tierProgress * 100)}%` }}
-                transition={{ duration: 0.7, ease: "easeOut", delay: 0.25 }}
+              <div
+                data-motion-bar
+                data-motion-delay="0.25"
                 className="h-full rounded-full bg-white/90"
+                style={{ width: `${Math.round(tierProgress * 100)}%` }}
               />
             </div>
           </div>
@@ -209,7 +206,7 @@ export function PowerCard({
             你当前「仅校内」可见，校外榜单不显示你的昵称。
           </p>
         ) : null}
-      </motion.section>
+      </section>
 
       {/* Transparency panel — decision 1: show composition + weights */}
       <section className="rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">

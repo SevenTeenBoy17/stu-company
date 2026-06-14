@@ -54,7 +54,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
   }
 
   return (
-    <div className="space-y-6">
+    <div data-motion-reveal className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-4">
         {[
           ["班级名称", data.classroom.name],
@@ -62,7 +62,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
           ["当前主题", data.classroom.challengeTheme],
           ["校内排名", `第 ${data.classroom.schoolRank} 名`],
         ].map(([label, value]) => (
-          <div key={label} className="panel rounded-3xl p-5">
+          <div key={label} data-motion-card className="panel rounded-3xl p-5">
             <p className="text-sm text-fg-muted">{label}</p>
             <p className="mt-3 break-words text-2xl font-semibold text-fg-default">{value}</p>
           </div>
@@ -70,11 +70,11 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">班级排行</p>
           <div className="mt-5 space-y-3">
             {data.leaderboard.map((entry) => (
-              <div key={entry.userId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bg-muted px-4 py-4">
+              <div key={entry.userId} data-motion-card className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="min-w-0">
                   <p className="text-lg font-semibold text-fg-default">
                     #{entry.rank} {entry.name}
@@ -89,7 +89,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
           </div>
         </section>
 
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">发起任务</p>
           <div className="mt-5 space-y-4">
             <input
@@ -116,6 +116,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
               />
             </div>
             <button
+              data-motion-button
               type="button"
               disabled={pending}
               onClick={() =>
@@ -135,11 +136,11 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">学生行为标签</p>
           <div className="mt-5 space-y-4">
             {data.students.map((student) => (
-              <div key={student.id} className="rounded-2xl bg-bg-muted p-5">
+              <div key={student.id} data-motion-card className="rounded-2xl bg-bg-muted p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-lg font-semibold text-fg-default">{student.name}</p>
@@ -169,11 +170,11 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
           </div>
         </section>
 
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">邀请码池</p>
           <div className="mt-5 space-y-3">
             {data.invites.map((invite) => (
-              <div key={invite.id} className="rounded-2xl bg-bg-muted px-4 py-4">
+              <div key={invite.id} data-motion-card className="rounded-2xl bg-bg-muted px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="min-w-0 truncate text-lg font-semibold text-fg-default">{invite.label}</p>
                   <span className="bz-brand-chip shrink-0 rounded-full px-3 py-1 text-xs font-semibold">

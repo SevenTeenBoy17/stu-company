@@ -76,6 +76,118 @@ describe("buildStudentQuestPayload", () => {
     expect(cooldown).toMatchObject({ status: "locked", progress: 0 });
   });
 
+  it("turns new diversified finance modules into claimable learning quests", () => {
+    const run = runWithSnapshots([100000, 101500]);
+    run.actionLog.unshift(
+      {
+        id: "opportunity-1",
+        round: 2,
+        type: "opportunity",
+        label: "机会观察单：AI 算力主题",
+        amount: 0,
+        timestamp: new Date("2026-06-02T00:00:00.000Z").toISOString(),
+        meta: { kind: "opportunity_note" },
+      },
+      {
+        id: "fund-1",
+        round: 2,
+        type: "fund_lab",
+        label: "基金实验：均衡组合",
+        amount: 0,
+        timestamp: new Date("2026-06-02T00:00:01.000Z").toISOString(),
+        meta: { kind: "fund_lab_action" },
+      },
+      {
+        id: "goal-1",
+        round: 2,
+        type: "goal_account",
+        label: "目标账户：转入研学基金",
+        amount: -800,
+        timestamp: new Date("2026-06-02T00:00:02.000Z").toISOString(),
+        meta: { kind: "goal_account_action" },
+      },
+      {
+        id: "protection-1",
+        round: 2,
+        type: "protection",
+        label: "保护伞：突发事件压力测试",
+        amount: 0,
+        timestamp: new Date("2026-06-02T00:00:03.000Z").toISOString(),
+        meta: { kind: "protection_review" },
+      },
+      {
+        id: "wealth-1",
+        round: 2,
+        type: "wealth_review",
+        label: "财富复盘：持有计划",
+        amount: 0,
+        timestamp: new Date("2026-06-02T00:00:04.000Z").toISOString(),
+        meta: { kind: "wealth_review" },
+      },
+    );
+
+    const payload = buildStudentQuestPayload(run, learning());
+
+    expect(payload.quests.find((quest) => quest.id === "opportunity-first-note")).toMatchObject({
+      status: "done",
+      claimable: true,
+    });
+    expect(payload.quests.find((quest) => quest.id === "fund-lab-first-plan")).toMatchObject({
+      status: "done",
+      claimable: true,
+    });
+    expect(payload.quests.find((quest) => quest.id === "goal-protection-pair")).toMatchObject({
+      status: "done",
+      claimable: true,
+    });
+    expect(payload.quests.find((quest) => quest.id === "wealth-review-plan")).toMatchObject({
+      status: "done",
+      claimable: true,
+    });
+    expect(payload.achievements.find((item) => item.id === "opportunity-scout")?.unlocked).toBe(true);
+    expect(payload.achievements.find((item) => item.id === "portfolio-researcher")?.unlocked).toBe(true);
+    expect(payload.achievements.find((item) => item.id === "life-planner")?.unlocked).toBe(true);
+    expect(payload.quests.every((quest) => !/战力|power/i.test(quest.reward))).toBe(true);
+  });
+
+  it("builds an activity benefit shelf without power or net-worth rewards", () => {
+    const run = runWithSnapshots([100000, 101500]);
+    run.actionLog.unshift(
+      {
+        id: "trade-1",
+        round: 2,
+        type: "trade",
+        label: "买入模拟资产",
+        amount: -1000,
+        timestamp: new Date("2026-06-02T00:00:00.000Z").toISOString(),
+      },
+      {
+        id: "opportunity-1",
+        round: 2,
+        type: "opportunity",
+        label: "机会观察单：AI 算力主题",
+        amount: 0,
+        timestamp: new Date("2026-06-02T00:00:01.000Z").toISOString(),
+        meta: { kind: "opportunity_note" },
+      },
+    );
+
+    const payload = buildStudentQuestPayload(run, learning({ completed: 1, completedKeys: ["stock"] }));
+
+    expect(payload.benefits.title).toBe("活动权益中心");
+    expect(payload.benefits.items).toHaveLength(5);
+    expect(payload.benefits.items.find((item) => item.id === "guess-direction")).toMatchObject({
+      status: "claimed",
+      reward: expect.stringContaining("波动侦探"),
+    });
+    expect(payload.benefits.items.find((item) => item.id === "trial-cash-lab")).toMatchObject({
+      status: "claimed",
+      reward: expect.stringContaining("第一笔模拟单"),
+    });
+    expect(payload.benefits.guardrail).toContain("不直接改变净值、战力");
+    expect(payload.benefits.items.every((item) => !/真实资金|保证收益|战力奖励/.test(item.summary + item.reward))).toBe(true);
+  });
+
   it("claims a completed decorative quest reward without changing net worth", () => {
     const run = runWithSnapshots([100000]);
     run.actionLog.unshift({

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
   History,
@@ -453,10 +452,9 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   return (
     <>
       <div className="safe-floating-offset pointer-events-none fixed z-[70]">
-        <motion.button
+        <button
           type="button"
-          whileHover={{ y: -4, scale: 1.03 }}
-          whileTap={{ scale: 0.96 }}
+          data-motion-button
           onClick={() => {
             setIsOpen(true);
             setIsHistoryOpen(false);
@@ -475,32 +473,27 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
             <span className="absolute right-1 h-2.5 w-1 rounded-full bg-brand sm:right-1.5 sm:h-3" />
             <span className="text-xs font-bold tracking-tight sm:text-sm">AI</span>
           </span>
-        </motion.button>
+        </button>
       </div>
 
-      <AnimatePresence>
-        {isOpen ? (
+      {isOpen ? (
           <>
-            <motion.button
+            <button
               type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              data-motion-overlay
               onClick={() => setIsOpen(false)}
               className="fixed inset-0 z-[71] bg-slate-950/18 backdrop-blur-[2px]"
               aria-label="关闭 KeyAI 面板"
             />
 
-            <motion.div
+            <div
               ref={panelRef}
               tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-label="KeyAI 助手"
-              initial={{ opacity: 0, y: 28, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              data-motion-drawer
+              data-motion-side="bottom"
               className="fixed inset-x-3 bottom-3 top-3 z-[72] flex flex-col overflow-hidden rounded-[1.85rem] border border-white/12 bg-bg-app shadow-2xl shadow-slate-950/20 focus:outline-none sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-auto sm:h-[min(760px,calc(100svh-32px))] sm:w-[min(420px,calc(100vw-32px))] sm:rounded-[2rem]"
             >
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
@@ -541,12 +534,10 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               </div>
 
               <div className="relative flex-1 overflow-hidden bg-bg-muted">
-                <AnimatePresence>
-                  {isHistoryOpen ? (
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
+                {isHistoryOpen ? (
+                    <div
+                      data-motion-drawer
+                      data-motion-side="right"
                       className="absolute inset-0 z-10 overflow-y-auto bg-white/96 p-5"
                     >
                       <div className="flex items-center justify-between">
@@ -595,9 +586,8 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                           </div>
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   ) : null}
-                </AnimatePresence>
 
                 <div className="h-full overflow-y-auto px-5 py-5">
                   {messages.length ? (
@@ -726,10 +716,9 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </>
         ) : null}
-      </AnimatePresence>
     </>
   );
 }

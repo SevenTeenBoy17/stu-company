@@ -72,13 +72,17 @@ export default async function HomePage() {
         </SectionReveal>
       </section>
 
-      <section id="method" className="page-shell mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <section
+        id="method"
+        data-motion-scene
+        className="page-shell mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      >
         {[
           ["学", "把 AP / 国标经济学拆成剧情式微任务，降低理解门槛。"],
           ["用", "在 12 回合市场中交易、储蓄、买房和创业，低成本试错。"],
           ["评", "AI 导师与成长报告同步给出行为偏差与下一回合建议。"],
         ].map(([title, text], index) => (
-          <SectionReveal key={title} delay={index * 0.06} className="panel rounded-3xl p-6">
+          <SectionReveal key={title} reveal={false} sceneItem className="panel rounded-3xl p-6">
             <p className="bz-eyebrow">0{index + 1}</p>
             <h2 className="mt-4 text-3xl font-semibold text-slate-950">{title}</h2>
             <p className="mt-3 text-base leading-8 text-slate-600">{text}</p>

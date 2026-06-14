@@ -81,6 +81,32 @@ import {
   type AutoInvestInput,
 } from "@/lib/auto-invest";
 import { claimQuestReward } from "@/lib/quests";
+import { claimSeasonChallengeReward } from "@/lib/season-challenges";
+import {
+  createFundLabAction,
+  type FundLabActionInput,
+} from "@/lib/fund-lab";
+import {
+  createOpportunityNote,
+  type OpportunityNoteInput,
+} from "@/lib/opportunity";
+import {
+  createGoalAccountAction,
+  type GoalAccountActionInput,
+} from "@/lib/goal-accounts";
+import {
+  createProtectionUmbrellaAction,
+  type ProtectionUmbrellaActionInput,
+} from "@/lib/protection-umbrella";
+import {
+  createStudentWatchlistAction,
+  type StudentWatchlistActionInput,
+} from "@/lib/student-watchlist";
+import {
+  createWealthReview,
+  type WealthReviewInput,
+} from "@/lib/wealth-review";
+import { buildPeerHeatPayload } from "@/lib/peer-heat";
 import * as store from "@/lib/store";
 import type {
   AiChatMessage,
@@ -263,7 +289,7 @@ const WRITE_FNS = new Set<string>([
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
   "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
   "upsertAppSetting", "createAutoInvestPlanForUser", "cancelAutoInvestPlanForUser", "applyLifeCashflowChallengeForUser",
-  "claimQuestRewardForUser", "applyCreditLabActionForUser",
+  "claimQuestRewardForUser", "claimSeasonRewardForUser", "applyCreditLabActionForUser",
 ]);
 
 async function withDbExecutor<T>(
@@ -1159,6 +1185,27 @@ export async function getSimulationStateForUser(userId: string) {
   );
 }
 
+export async function getPeerHeatForStudent(userId: string) {
+  return withDb(
+    "getPeerHeatForStudent",
+    async (db) => {
+      const user = await selectUserById(db, userId);
+      if (!user || user.role !== "student") {
+        throw new Error("当前账号没有可用的学生沙盘。");
+      }
+
+      const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
+      const rows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(eq(scenarioRuns.classroomId, ready.run.classroomId));
+
+      return buildPeerHeatPayload(rows.map(toRun), ready.run, ready.classroom.name);
+    },
+    () => store.getPeerHeatForStudent(userId),
+  );
+}
+
 export async function applyActionForUser(
   userId: string,
   input: Parameters<typeof store.applyActionForUser>[1],
@@ -1548,6 +1595,125 @@ export async function claimQuestRewardForUser(userId: string, questId: string) {
         return outcome;
       }),
     () => store.claimQuestRewardForUser(userId, questId),
+  );
+}
+
+export async function claimSeasonRewardForUser(userId: string, challengeId: string) {
+  return withDb(
+    "claimSeasonRewardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = claimSeasonChallengeReward(run, challengeId);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.claimSeasonRewardForUser(userId, challengeId),
+  );
+}
+
+export async function createOpportunityNoteForUser(userId: string, input: OpportunityNoteInput) {
+  return withDb(
+    "createOpportunityNoteForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createOpportunityNote(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createOpportunityNoteForUser(userId, input),
+  );
+}
+
+export async function createFundLabActionForUser(userId: string, input: FundLabActionInput) {
+  return withDb(
+    "createFundLabActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createFundLabAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createFundLabActionForUser(userId, input),
+  );
+}
+
+export async function createGoalAccountActionForUser(userId: string, input: GoalAccountActionInput) {
+  return withDb(
+    "createGoalAccountActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createGoalAccountAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createGoalAccountActionForUser(userId, input),
+  );
+}
+
+export async function createProtectionUmbrellaActionForUser(userId: string, input: ProtectionUmbrellaActionInput) {
+  return withDb(
+    "createProtectionUmbrellaActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createProtectionUmbrellaAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createProtectionUmbrellaActionForUser(userId, input),
+  );
+}
+
+export async function createStudentWatchlistActionForUser(userId: string, input: StudentWatchlistActionInput) {
+  return withDb(
+    "createStudentWatchlistActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createStudentWatchlistAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createStudentWatchlistActionForUser(userId, input),
+  );
+}
+
+export async function createWealthReviewForUser(userId: string, input: WealthReviewInput) {
+  return withDb(
+    "createWealthReviewForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createWealthReview(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createWealthReviewForUser(userId, input),
   );
 }
 

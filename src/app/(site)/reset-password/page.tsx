@@ -36,15 +36,16 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="page-shell flex min-h-[60vh] items-center justify-center py-16">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--ink-200)] bg-[var(--surface)] p-7 shadow-sm">
+      <div data-motion-reveal data-motion-card className="w-full max-w-md rounded-3xl border border-[var(--ink-200)] bg-[var(--surface)] p-7 shadow-sm">
         <h1 className="text-xl font-semibold text-[var(--ink-900)]">重置密码</h1>
 
         {phase === "done" ? (
-          <div className="mt-4 space-y-4">
+          <div data-motion-card className="mt-4 space-y-4">
             <p className="text-sm leading-7 text-[var(--ink-600)]">
               密码已重置成功，旧的登录状态已失效，请用新密码重新登录。
             </p>
             <a
+              data-motion-button
               href="/demo"
               className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
             >
@@ -53,7 +54,7 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           token ? (
-            <div className="mt-4 space-y-4">
+            <div data-motion-card className="mt-4 space-y-4">
               <p className="text-sm leading-6 text-[var(--ink-500)]">
                 请设置一个新密码（至少 8 位，含字母和数字）。
               </p>
@@ -70,6 +71,7 @@ export default function ResetPasswordPage() {
               </label>
               {error ? <p className="text-sm font-medium text-[var(--error-500)]">{error}</p> : null}
               <button
+                data-motion-button
                 type="button"
                 onClick={submit}
                 disabled={isPending || password.length < 8}
@@ -79,11 +81,12 @@ export default function ResetPasswordPage() {
               </button>
             </div>
           ) : (
-            <div className="mt-4 space-y-4">
+            <div data-motion-card className="mt-4 space-y-4">
               <p className="text-sm leading-6 text-[var(--ink-500)]">
                 这个链接缺少有效的重置令牌，可能已过期。请重新发起找回密码。
               </p>
               <a
+                data-motion-button
                 href="/demo"
                 className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
               >

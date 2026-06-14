@@ -148,11 +148,12 @@ Token spec: `docs/ui-spec/01-tokens.md`
 src/components/
   site/       — public pages (header, footer, hero, ticker tape, learn catalog)
   platform/   — authenticated shell (platform-layout)
-  student/    — student dashboard, market board, history review, allocation, tutor radar
+  student/    — student dashboards (market board, history review, allocation, tutor radar, 理财 dashboards); rank/ subfolder = 财商战力 power-rank UI
   teacher/    — teacher console
-  admin/      — admin user manager
+  admin/      — admin user manager + manual-payment review
+  billing/    — checkout buttons (WeChat checkout, guest-upgrade)
   demo/       — demo portal
-  shared/     — cross-cutting (money-text, access-gate, global-ai-assistant)
+  shared/     — cross-cutting (money-text, access-gate, subscription-banner, global-ai-assistant)
 ```
 
 ### API Error Shape

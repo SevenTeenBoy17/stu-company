@@ -4,6 +4,7 @@ import { PlatformLayout } from "@/components/platform/platform-layout";
 import { StudentQuestDashboard } from "@/components/student/student-quest-dashboard";
 import { getLearningProgress, getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 import { buildStudentQuestPayload } from "@/lib/quests";
+import { buildStudentSeasonChallengePayload } from "@/lib/season-challenges";
 import { getCurrentUser } from "@/lib/session-user";
 
 export const metadata = {
@@ -21,6 +22,7 @@ export default async function StudentQuestsPage() {
     getLearningProgress(user.id),
   ]);
   const payload = buildStudentQuestPayload(state.run, learning);
+  const seasonPayload = buildStudentSeasonChallengePayload(state.run);
 
   return (
     <PlatformLayout
@@ -28,7 +30,7 @@ export default async function StudentQuestsPage() {
       heading="学生策略台"
       summary="围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
-      <StudentQuestDashboard payload={payload} />
+      <StudentQuestDashboard payload={payload} seasonPayload={seasonPayload} />
     </PlatformLayout>
   );
 }

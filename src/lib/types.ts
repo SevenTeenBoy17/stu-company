@@ -110,7 +110,21 @@ export type FinancialEventCard = EventCard;
 export interface ActionLog {
   id: string;
   round: number;
-  type: "trade" | "bank" | "property" | "venture" | "advance" | "event" | "auto_invest" | "quest";
+  type:
+    | "trade"
+    | "bank"
+    | "property"
+    | "venture"
+    | "advance"
+    | "event"
+    | "auto_invest"
+    | "quest"
+    | "opportunity"
+    | "fund_lab"
+    | "goal_account"
+    | "protection"
+    | "watchlist"
+    | "wealth_review";
   label: string;
   amount: number;
   timestamp: string;
@@ -630,6 +644,15 @@ export interface HistoryHighlight {
   metricValue: string;
 }
 
+export interface HistoryLearningSignal {
+  id: string;
+  label: string;
+  count: number;
+  latestRound?: number;
+  tone: "observe" | "build" | "protect" | "review";
+  detail: string;
+}
+
 export interface HistoryReviewInsight {
   summary: string;
   analysis: string[];
@@ -650,12 +673,15 @@ export interface HistoryReviewPayload {
     sellCount: number;
     cashActions: number;
     expansionActions: number;
+    learningActions: number;
+    reviewActions: number;
     maxDrawdown: number;
     stageLabel: string;
     riskRange: [number, number];
     disciplineTrend: number;
   };
   highlights: HistoryHighlight[];
+  learningSignals: HistoryLearningSignal[];
   aiReview: HistoryReviewInsight;
 }
 

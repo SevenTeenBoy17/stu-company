@@ -79,13 +79,14 @@ export function LearnCatalog() {
 
   return (
     <div className="space-y-8">
-      <div className="panel rounded-3xl p-5 sm:p-6">
+      <div data-motion-reveal className="panel rounded-3xl p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-3">
             {levelFilters.map((filter) => (
               <button
                 key={filter}
                 type="button"
+                data-motion-button
                 onClick={() => setActiveLevel(filter)}
                 className={cn(
                   "min-h-11 rounded-full px-4 text-sm font-semibold transition-colors",
@@ -109,7 +110,7 @@ export function LearnCatalog() {
       </div>
 
       {completedKeys ? (
-        <div className="panel flex flex-col gap-1 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div data-motion-reveal className="panel flex flex-col gap-1 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-slate-700">
             学习打卡：已完成{" "}
             <span className="font-bold text-brand-ink">
@@ -123,7 +124,7 @@ export function LearnCatalog() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {filteredModules.map((module) => (
-          <article key={module.key} className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
+          <article key={module.key} data-motion-card className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
             <div className={`p-4 ${levelTints[module.level] ?? "bg-[var(--ink-50)]"}`}>
               <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
             </div>
@@ -151,6 +152,7 @@ export function LearnCatalog() {
               <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
                 <Link
                   href="/demo"
+                  data-motion-button
                   className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 shadow-sm transition-colors hover:bg-slate-800"
                 >
                   {/* White label lives on a <span>: the global `a { color: inherit }`
@@ -161,6 +163,7 @@ export function LearnCatalog() {
                 {completedKeys ? (
                   <button
                     type="button"
+                    data-motion-button
                     onClick={() => markLearned(module.key)}
                     disabled={completedKeys.has(module.key) || pendingKey === module.key}
                     className={cn(

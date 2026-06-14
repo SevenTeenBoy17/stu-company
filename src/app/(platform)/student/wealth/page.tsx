@@ -5,6 +5,7 @@ import { StudentWealthDashboard } from "@/components/student/student-wealth-dash
 import { buildWealthSummary } from "@/lib/allocation";
 import { getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
 import { getCurrentUser } from "@/lib/session-user";
+import { buildWealthReviewPayload } from "@/lib/wealth-review";
 
 export const metadata = {
   title: "我的财富 - Brown Zone",
@@ -18,6 +19,7 @@ export default async function StudentWealthPage() {
 
   const state = await getSimulationStateForUser(user.id);
   const summary = buildWealthSummary(state.run);
+  const review = buildWealthReviewPayload(state.run, summary);
 
   return (
     <PlatformLayout
@@ -25,7 +27,7 @@ export default async function StudentWealthPage() {
       heading="学生策略台"
       summary="围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
-      <StudentWealthDashboard summary={summary} />
+      <StudentWealthDashboard summary={summary} review={review} />
     </PlatformLayout>
   );
 }

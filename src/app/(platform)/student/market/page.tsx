@@ -1,8 +1,10 @@
 import { PlatformLayout } from "@/components/platform/platform-layout";
 import { AccessGate } from "@/components/shared/access-gate";
 import { StudentMarketBoard } from "@/components/student/student-market-board";
+import { getPeerHeatForStudent, getSimulationStateForUser } from "@/lib/db/repo";
 import { getMarketBoardPayload } from "@/lib/market-data";
 import { getCurrentUser } from "@/lib/session-user";
+import { buildStudentWatchlistPayload } from "@/lib/student-watchlist";
 
 // UI-DEBT: Market board layout was refactored, but component-level hardcoded class cleanup is not complete; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentMarketPage() {
@@ -20,6 +22,11 @@ export default async function StudentMarketPage() {
   }
 
   const initialPayload = await getMarketBoardPayload("MU");
+  const [state, initialPeerHeatPayload] = await Promise.all([
+    getSimulationStateForUser(user.id),
+    getPeerHeatForStudent(user.id),
+  ]);
+  const initialWatchlistPayload = buildStudentWatchlistPayload(state.run, initialPayload);
 
   return (
     <PlatformLayout
@@ -27,7 +34,11 @@ export default async function StudentMarketPage() {
       heading="学生策略台"
       summary="先看市场主线，再看结构和节奏。市场信息页只做观察与理解，不直接做下单入口。"
     >
-      <StudentMarketBoard initialPayload={initialPayload} />
+      <StudentMarketBoard
+        initialPayload={initialPayload}
+        initialWatchlistPayload={initialWatchlistPayload}
+        initialPeerHeatPayload={initialPeerHeatPayload}
+      />
     </PlatformLayout>
   );
 }

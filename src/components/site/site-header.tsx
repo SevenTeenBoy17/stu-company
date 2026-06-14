@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Globe,
   LaptopMinimal,
@@ -135,13 +134,10 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.24 }}
+      {menuOpen ? (
+          <div
+            data-motion-drawer
+            data-motion-side="none"
             className="hidden border-t border-white/8 bg-bg-inverse/95 xl:block"
           >
             <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 lg:grid-cols-[280px_1fr] lg:px-8">
@@ -180,28 +176,22 @@ export function SiteHeader() {
                 ))}
               </div>
             </div>
-          </motion.div>
+          </div>
         ) : null}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {drawerOpen ? (
+      {drawerOpen ? (
           <>
-            <motion.button
+            <button
               type="button"
               aria-label="关闭导航菜单"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              data-motion-overlay
               onClick={() => setDrawerOpen(false)}
               className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-[2px] xl:hidden"
             />
 
-            <motion.aside
-              initial={{ opacity: 0, x: 28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            <aside
+              data-motion-drawer
+              data-motion-side="right"
               className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-bg-inverse px-5 pb-5 pt-4 text-white shadow-2xl shadow-slate-950/25 xl:hidden"
             >
               <div className="flex items-center justify-between gap-3">
@@ -287,10 +277,9 @@ export function SiteHeader() {
                   浏览器即开即用
                 </div>
               </div>
-            </motion.aside>
+            </aside>
           </>
         ) : null}
-      </AnimatePresence>
     </header>
   );
 }

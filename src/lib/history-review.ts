@@ -48,10 +48,51 @@ function describeActionImpact(entry: ActionLog) {
     return "创业投入更看重退出节奏和项目集中度，不适合情绪化加码。";
   }
 
+  if (entry.type === "opportunity") {
+    return "这不是买卖动作，而是一次机会观察训练：重点看理由是否有证据、风险和下一步验证。";
+  }
+
+  if (entry.type === "fund_lab") {
+    return "这次基金实验用于比较分散、回撤和长期节奏，不会直接改变净值。";
+  }
+
+  if (entry.type === "goal_account") {
+    return "这次目标转入把现金变成有用途的储蓄，训练延迟满足和目标优先级。";
+  }
+
+  if (entry.type === "protection") {
+    return "这次保护伞复盘用于观察坏情况里的现金流韧性，不是收益动作。";
+  }
+
+  if (entry.type === "watchlist") {
+    return "这次自选观察把行情阅读变成了可复盘的学习记录，重点看理由是否能被后续数据验证。";
+  }
+
+  if (entry.type === "wealth_review") {
+    return "这次财富复盘没有改变净值，但把持有理由、风险关注点和下一步动作写成了可回看的计划。";
+  }
+
+  if (entry.type === "quest") {
+    return "这次任务奖励代表你把某个学习动作完成并领取了反馈，重点不在金额，而在习惯是否能重复。";
+  }
+
   return "这一步改变了你的回合节奏，适合结合前后两轮净值一起回看。";
 }
 
 function getDirection(entry: ActionLog): HistoryActionGroupItem["direction"] {
+  if (
+    [
+      "quest",
+      "opportunity",
+      "fund_lab",
+      "goal_account",
+      "protection",
+      "watchlist",
+      "wealth_review",
+    ].includes(entry.type)
+  ) {
+    return "neutral";
+  }
   if (entry.amount > 0) return "inflow";
   if (entry.amount < 0) return "outflow";
   return "neutral";
@@ -127,6 +168,20 @@ function buildMetrics(timeline: HistoryRoundSummary[], actionLog: ActionLog[]) {
   const expansionActions = actionLog.filter(
     (entry) => entry.type === "property" || entry.type === "venture",
   ).length;
+  const learningActions = actionLog.filter((entry) =>
+    [
+      "quest",
+      "opportunity",
+      "fund_lab",
+      "goal_account",
+      "protection",
+      "watchlist",
+      "wealth_review",
+    ].includes(entry.type),
+  ).length;
+  const reviewActions = actionLog.filter((entry) =>
+    ["quest", "watchlist", "wealth_review"].includes(entry.type),
+  ).length;
 
   let peak = timeline[0]?.netWorth ?? 0;
   let maxDrawdown = 0;
@@ -145,6 +200,8 @@ function buildMetrics(timeline: HistoryRoundSummary[], actionLog: ActionLog[]) {
     sellCount,
     cashActions,
     expansionActions,
+    learningActions,
+    reviewActions,
     maxDrawdown,
     stageLabel: getStageLabel(latest?.round ?? 1),
     riskRange: [
@@ -213,6 +270,81 @@ function buildHighlights(timeline: HistoryRoundSummary[]): HistoryHighlight[] {
   ];
 }
 
+function buildLearningSignals(actionLog: ActionLog[]): HistoryReviewPayload["learningSignals"] {
+  const signalConfigs: Array<{
+    id: ActionLog["type"];
+    label: string;
+    tone: HistoryReviewPayload["learningSignals"][number]["tone"];
+    activeDetail: (count: number, latestRound?: number) => string;
+  }> = [
+    {
+      id: "opportunity",
+      label: "机会观察",
+      tone: "observe",
+      activeDetail: (count, latestRound) =>
+        `已写下 ${count} 张机会观察单${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "fund_lab",
+      label: "基金实验",
+      tone: "build",
+      activeDetail: (count, latestRound) =>
+        `完成 ${count} 次基金/ETF实验${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "goal_account",
+      label: "目标账户",
+      tone: "build",
+      activeDetail: (count, latestRound) =>
+        `累计 ${count} 次目标账户动作${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "protection",
+      label: "保护伞",
+      tone: "protect",
+      activeDetail: (count, latestRound) =>
+        `完成 ${count} 次风险保护复盘${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "watchlist",
+      label: "自选观察",
+      tone: "observe",
+      activeDetail: (count, latestRound) =>
+        `留下 ${count} 条自选股观察记录${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "wealth_review",
+      label: "持有复盘",
+      tone: "review",
+      activeDetail: (count, latestRound) =>
+        `提交 ${count} 次持有计划复盘${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+    {
+      id: "quest",
+      label: "任务奖励",
+      tone: "review",
+      activeDetail: (count, latestRound) =>
+        `领取 ${count} 次装饰奖励${latestRound ? `，最近出现在第 ${latestRound} 回合` : ""}。`,
+    },
+  ];
+
+  return signalConfigs
+    .map((config) => {
+      const entries = actionLog.filter((entry) => entry.type === config.id);
+      const latestRound = entries.length > 0 ? Math.max(...entries.map((entry) => entry.round)) : undefined;
+
+      return {
+        id: config.id,
+        label: config.label,
+        count: entries.length,
+        latestRound,
+        tone: config.tone,
+        detail: config.activeDetail(entries.length, latestRound),
+      };
+    })
+    .filter((signal) => signal.count > 0);
+}
+
 export function buildFallbackHistoryReview(
   state: SimulationState,
   metrics: HistoryReviewPayload["metrics"],
@@ -233,6 +365,9 @@ export function buildFallbackHistoryReview(
       `从净值曲线看，最大回撤约为 ${formatPercentValue(metrics.maxDrawdown)}，这意味着你的组合并不是没有增长，而是节奏控制还在影响最终留存收益。`,
       `从风控表现看，风险分区间在 ${metrics.riskRange[0]} 到 ${metrics.riskRange[1]} 之间，说明仓位曾${riskDirection}；纪律分趋势 ${disciplineDirection}。`,
       `从动作结构看，你累计买入 ${metrics.buyCount} 次、卖出 ${metrics.sellCount} 次、现金管理 ${metrics.cashActions} 次、扩张动作 ${metrics.expansionActions} 次，说明你已经不只是“下单”，而是在试着经营整套资金流。`,
+      metrics.learningActions > 0
+        ? `从学习轨迹看，你留下 ${metrics.learningActions} 条机会、基金、目标、保护或复盘类记录，其中 ${metrics.reviewActions} 条更偏复盘沉淀，说明你开始把“做了什么”转成“为什么这么做”。`
+        : "从学习轨迹看，目前复盘记录还偏少，下一步可以先写下一条机会观察或持有计划，让决策留下证据。",
     ],
     nextSteps: [
       latest && latest.cash < latest.netWorth * 0.16
@@ -261,6 +396,7 @@ export function buildHistoryReviewPayload(
     actionGroups: buildActionGroups(state, timeline),
     metrics,
     highlights: buildHighlights(timeline),
+    learningSignals: buildLearningSignals(state.run.actionLog),
     aiReview: aiReview ?? buildFallbackHistoryReview(state, metrics, timeline),
   };
 
@@ -293,6 +429,12 @@ export function buildHistoryReviewAiContext(
   const highlightSummary = payload.highlights
     .map((highlight) => `R${highlight.round} ${highlight.title}(${highlight.metricValue})`)
     .join(" | ");
+  const learningSummary =
+    payload.learningSignals.length > 0
+      ? payload.learningSignals
+          .map((signal) => `${signal.label}×${signal.count}${signal.latestRound ? `(最近R${signal.latestRound})` : ""}`)
+          .join(" | ")
+      : "尚未形成明显学习信号";
 
   return [
     `学生：${state.user.name} / ${state.user.title}`,
@@ -302,6 +444,7 @@ export function buildHistoryReviewAiContext(
     `风险区间：${payload.metrics.riskRange[0]} - ${payload.metrics.riskRange[1]}`,
     `纪律趋势：${payload.metrics.disciplineTrend >= 0 ? "+" : ""}${payload.metrics.disciplineTrend}`,
     `关键节点：${highlightSummary}`,
+    `学习信号：${learningSummary}`,
     `最近动作：${latestGroups}`,
     "请站在学生财商教育和模拟盘复盘的角度，不给保证式荐股结论，只做总结、诊断和下一步建议。",
   ].join("\n");
