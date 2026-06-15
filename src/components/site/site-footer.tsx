@@ -19,7 +19,12 @@ export function SiteFooter() {
             </p>
             <div className="mt-6 space-y-2 text-sm text-white/48">
               <p>成都市树德实验中学 · 学生创意公司计划书 Demo</p>
-              <p className="break-words">contact@brownzone.ai</p>
+              <a
+                href="mailto:contact@brownzone.ai"
+                className="inline-block break-words transition-colors hover:text-white"
+              >
+                contact@brownzone.ai
+              </a>
             </div>
           </div>
 

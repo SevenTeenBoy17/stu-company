@@ -122,8 +122,25 @@ export function LearnCatalog() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {filteredModules.map((module) => (
+      {filteredModules.length === 0 ? (
+        <div data-motion-reveal className="panel rounded-3xl p-8 text-center">
+          <p className="text-lg font-semibold text-slate-950">没有匹配的课程</p>
+          <p className="mt-2 text-sm leading-7 text-slate-500">换个关键词，或清除筛选查看全部课程。</p>
+          <button
+            type="button"
+            data-motion-button
+            onClick={() => {
+              setActiveLevel("全部");
+              setQuery("");
+            }}
+            className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-slate-950 transition hover:bg-[var(--amber-600)]"
+          >
+            清除筛选
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {filteredModules.map((module) => (
           <article key={module.key} data-motion-card className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
             <div className={`p-4 ${levelTints[module.level] ?? "bg-[var(--ink-50)]"}`}>
               <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
@@ -183,8 +200,9 @@ export function LearnCatalog() {
               </div>
             </div>
           </article>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -18,7 +18,7 @@ const plans = [
       "试用结束后仍可查看历史",
     ],
     cta: "立即注册",
-    href: "/demo",
+    href: "/demo?auth=register",
     highlight: false,
   },
   {
@@ -74,7 +74,7 @@ const plans = [
       "优先支持与培训",
     ],
     cta: "联系开通",
-    href: "/demo",
+    href: "mailto:contact@brownzone.ai?subject=学校授权咨询&body=学校名称：%0A班级数与年级：%0A联系人/电话：%0A期望开通学期：",
     highlight: false,
   },
 ];
