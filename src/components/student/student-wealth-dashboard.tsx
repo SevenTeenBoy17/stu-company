@@ -65,7 +65,7 @@ function MissionBadge({ status }: { status: WealthSummary["missions"][number]["s
       className={cn(
         "rounded-full px-3 py-1 text-xs font-bold",
         status === "done" && "bg-emerald-50 text-emerald-700",
-        status === "watch" && "bg-warning/10 text-warning",
+        status === "watch" && "bg-warning/10 text-amber-800",
         status === "doing" && "bg-brand-soft text-brand-ink",
       )}
     >

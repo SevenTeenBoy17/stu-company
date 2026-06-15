@@ -400,7 +400,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   return (
     <div className="space-y-6 pb-24">
       <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6" data-motion-reveal>
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Brown Zone</p>
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Brown Zone</p>
         <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">学生策略台</h2>
       </header>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -454,7 +454,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Round {state.run.currentRound}</p>
                 {streak.current > 0 ? (
                   <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
                     🔥 连胜 {streak.current} 回合
@@ -810,7 +810,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Holdings</p>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Holdings</p>
                 <h3 className="mt-2 text-2xl font-black text-slate-950">持仓与现金温度</h3>
               </div>
               <Sparkles className="h-5 w-5 text-orange-500" />
@@ -845,7 +845,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           </section>
 
           <section className="panel rounded-[2rem] p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Timeline</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Timeline</p>
             <h3 className="mt-2 text-2xl font-black text-slate-950">最近操作流</h3>
             <div className="mt-5 space-y-3">
               {recentActions.length > 0 ? (
@@ -892,7 +892,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">KeyAI / Mr.Brown</p>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">KeyAI / Mr.Brown</p>
               <h2 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">实时导师点评</h2>
             </div>
             <button
@@ -929,7 +929,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         </section>
 
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Leaderboard</p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Leaderboard</p>
           <h2 className="mt-3 text-3xl font-black text-slate-950">排行榜与当前位置</h2>
           <div className="mt-5 space-y-3">
             {topLeaderboard.map((entry) => {

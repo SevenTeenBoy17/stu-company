@@ -22,7 +22,7 @@ const statusLabel: Record<GoalAccountPayload["goals"][number]["status"], string>
 const statusClass: Record<GoalAccountPayload["goals"][number]["status"], string> = {
   ahead: "bg-down-soft text-down",
   on_track: "bg-brand-soft text-brand",
-  needs_attention: "bg-warning/10 text-warning",
+  needs_attention: "bg-warning/10 text-amber-800",
 };
 
 export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayload: GoalAccountPayload }) {
@@ -250,7 +250,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
             payload.history.slice(0, 6).map((entry) => (
               <article key={entry.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
                 <p className="text-lg font-black text-slate-950">{entry.title}</p>
-                <p className="mt-1 text-sm font-bold text-orange-500">{formatCurrency(entry.amount)}</p>
+                <p className="mt-1 text-sm font-bold text-orange-700">{formatCurrency(entry.amount)}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{entry.note}</p>
               </article>
             ))

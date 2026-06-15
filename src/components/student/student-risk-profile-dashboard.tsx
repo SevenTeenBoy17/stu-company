@@ -32,7 +32,7 @@ const bandClass: Record<RiskProfilePayload["band"], string> = {
 };
 
 const allocationTone: Record<RiskProfilePayload["allocation"][number]["tone"], string> = {
-  low: "bg-warning/10 text-warning",
+  low: "bg-warning/10 text-amber-800",
   fit: "bg-down-soft text-down",
   high: "bg-error-soft text-error",
 };

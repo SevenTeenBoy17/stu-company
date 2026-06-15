@@ -176,7 +176,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
         <div data-hub-item data-testid="student-season-challenge" className="panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-500">Season</p>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-700">Season</p>
               <h3 className="mt-3 text-2xl font-black leading-tight text-slate-950">{season.title}</h3>
             </div>
             <Trophy className="h-6 w-6 shrink-0 text-orange-500" />
@@ -289,7 +289,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-orange-600">
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-orange-700">
                         {item.tag}
                       </span>
                       <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-slate-600">
@@ -308,7 +308,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                       <span className={cn("text-xs font-black", item.done ? "text-emerald-700" : "text-slate-600")}>
                         {item.progressLabel}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-xs font-black text-orange-600">
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-orange-700">
                         {item.actionLabel}
                         <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
                       </span>
@@ -329,7 +329,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-orange-600">
+            <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-orange-700">
               <Layers3 className="h-4 w-4" />
               Finance Map
             </div>
@@ -376,7 +376,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                       </span>
                     </div>
                     <h4 className="mt-4 text-2xl font-black tracking-tight text-slate-950">{group.label}</h4>
-                    <p className="mt-2 text-sm font-bold leading-6 text-orange-600">{group.concept}</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-orange-700">{group.concept}</p>
                     <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">{group.summary}</p>
 
                     <div className="mt-4 rounded-2xl bg-slate-50 p-3">

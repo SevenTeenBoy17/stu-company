@@ -59,7 +59,7 @@ const statusMeta: Record<
   watch: {
     label: "需观察",
     icon: Clock3,
-    className: "bg-warning/10 text-warning",
+    className: "bg-warning/10 text-amber-800",
   },
   locked: {
     label: "待解锁",
@@ -89,7 +89,7 @@ const benefitKindMeta: Record<
   perk: {
     label: "装饰权益",
     icon: Gift,
-    className: "bg-warning/10 text-warning",
+    className: "bg-warning/10 text-amber-800",
   },
 };
 

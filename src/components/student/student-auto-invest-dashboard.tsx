@@ -36,7 +36,7 @@ const strategies: Array<{ id: AutoInvestStrategy; label: string; summary: string
 const badgeTone: Record<AutoInvestPayload["badges"][number]["tone"], string> = {
   brand: "bg-brand-soft text-brand-ink",
   info: "bg-info/10 text-info",
-  warning: "bg-warning/10 text-warning",
+  warning: "bg-warning/10 text-amber-800",
   danger: "bg-error-soft text-error",
 };
 
@@ -455,7 +455,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                       <span
                         className={cn(
                           "rounded-full px-3 py-1 text-xs font-black",
-                          row.status === "executed" ? "bg-info/10 text-info" : "bg-warning/10 text-warning",
+                          row.status === "executed" ? "bg-info/10 text-info" : "bg-warning/10 text-amber-800",
                         )}
                       >
                         {row.status === "executed" ? "已执行" : "已跳过"}

@@ -33,7 +33,7 @@ type LoadState = "idle" | "loading" | "success" | "error";
 
 const stressTone: Record<LifeCashflowPayload["stressEvents"][number]["status"], string> = {
   safe: "bg-info/10 text-info",
-  watch: "bg-warning/10 text-warning",
+  watch: "bg-warning/10 text-amber-800",
   danger: "bg-error-soft text-error",
 };
 

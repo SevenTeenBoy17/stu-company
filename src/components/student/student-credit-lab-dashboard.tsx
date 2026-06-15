@@ -24,7 +24,7 @@ gsap.registerPlugin(useGSAP);
 
 const statusClass: Record<CreditLabPayload["selectedScenario"]["status"], string> = {
   healthy: "border-down/20 bg-down-soft text-down",
-  watch: "border-warning/20 bg-warning/10 text-warning",
+  watch: "border-warning/20 bg-warning/10 text-amber-800",
   danger: "border-error/20 bg-error-soft text-error",
 };
 

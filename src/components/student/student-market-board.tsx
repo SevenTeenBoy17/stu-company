@@ -411,7 +411,7 @@ export function StudentMarketBoard({
       <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Radar</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Market Radar</p>
             <h2 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">市场信息</h2>
             <p className="mt-3 text-base leading-8 text-slate-600">
               这里是只读观察台，先看主线，再看结构，最后再去问 AI。
@@ -484,7 +484,7 @@ export function StudentMarketBoard({
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">My Watchlist</p>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">My Watchlist</p>
               <h3 className="mt-3 text-2xl font-black text-slate-950 md:text-3xl">我的自选观察</h3>
               <p className="mt-2 max-w-2xl text-base font-semibold leading-8 text-slate-600">
                 先把“为什么值得看”写下来，再观察下一次行情是否验证你的判断。
@@ -520,7 +520,7 @@ export function StudentMarketBoard({
                           type="button"
                           disabled={watchlistPending}
                           onClick={() => void updateWatchlist("remove", item.symbol)}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-orange-300 hover:text-orange-700 disabled:opacity-50"
                           aria-label={`移除 ${item.name}`}
                         >
                           <X className="h-4 w-4" />
@@ -627,7 +627,7 @@ export function StudentMarketBoard({
           <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Heat</p>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Market Heat</p>
                 <h3 className="mt-3 text-2xl font-black text-slate-950">市场温度</h3>
               </div>
               <ThermometerSun className="h-8 w-8 text-orange-500" />
@@ -650,7 +650,7 @@ export function StudentMarketBoard({
           </div>
 
           <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Daily Brief</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Daily Brief</p>
             <h3 className="mt-3 text-2xl font-black text-slate-950">每日必看</h3>
             <div className="mt-5 rounded-[1.5rem] bg-orange-50 p-5">
               <p className="text-lg font-black text-slate-950">{studentWatchlist?.dailyBrief.title ?? "正在生成今日观察题"}</p>
@@ -816,7 +816,7 @@ export function StudentMarketBoard({
         </div>
 
         <aside data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Snapshot</p>
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700">Snapshot</p>
           <h3 className="mt-3 text-2xl font-black text-slate-950">关键字段</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {payload.selected.facts.map((fact) => (

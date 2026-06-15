@@ -132,9 +132,9 @@ npx playwright test tests/e2e/student-internal-test.spec.ts --project=chromium -
 > 备注：内测复跑本轮 `REQUEST_FAILED` = 17（上轮 5），全部 `net::ERR_ABORTED`；数量随导航时机波动（热服务器下更多慢 AI 请求在途被取消），无 5xx 伴随，仍非缺陷。
 
 ### 8.5 仍建议跟进（非本轮范围）
-1. **`color-contrast` 专项**：调深语义灰 token 至 AA，逐页视觉回归（影响面大，需设计确认）。→ 部分已做，见 §9。
+1. **`color-contrast` 专项**：调深语义灰 token 至 AA，逐页视觉回归（影响面大，需设计确认）。→ 已做完安全子集，见 §9 + §10。
 2. **`svg-img-alt`**：给 wealth 那个装饰性 `<svg>` 加 `aria-hidden` 或 alt（小改）。→ ✅ 已做，见 §9。
-3. 风险测评是否要求「全部答完」而非仅 ≥1（产品决策）。
+3. 风险测评是否要求「全部答完」而非仅 ≥1：→ 核查后 **MOOT**，见 §10.4。
 
 ## 9. 第三轮：a11y 对比度专项（安全子集已修，品牌色留给设计）
 
@@ -157,3 +157,37 @@ npx playwright test tests/e2e/student-internal-test.spec.ts --project=chromium -
 | 暗底淡白字 | `text-white/42`、`/45`（3.7–4.5）| ~11 | 提一档不透明度即可 |
 
 → 建议设计侧确认：品牌橙的「达标深色变体」(如用于小字/正文时切到 orange-700)、`--color-fg-muted`/`--color-info` 调深、`white/42→white/60`。逐项有精确 fg/bg/ratio 在 `contrast-detail.json`。
+
+## 10. 第四轮：全量优化收口 + 跨角色深度内测（交付）
+
+按「优化全部 → 深度内测 → 无误再交付」执行。
+
+### 10.1 全量 a11y/色彩优化（在 §9 灰字/svg/淡白字基础上）
+- **语义/品牌 token（`globals.css`，单点、纯文字、不碰图标）**：`--color-fg-muted` ink-500→ink-600、`--color-info` info-500→info-600、`--color-brand-ink` amber-700→amber-800。
+- **橙色文字 → `orange-700`**（仅文字：眉标 `uppercase` 行、小数字 `font-bold/black`、`text-orange-600`/小徽标）；**装饰图标的 `text-orange-500` 与大号 `text-brand` 数字保留橙**（按「保留橙」）。已核验无图标被误改。
+- **黄色警示徽标**：`bg-warning/10 text-warning`（黄字配浅黄底 = 1.7:1，几乎不可读）→ 文字改 `text-amber-800`、**保留黄色调底**，可读且不失警示语义。
+
+### 10.2 深度内测（新增 `tests/e2e/cross-role-a11y.spec.ts`，覆盖全角色）
+登录 student/teacher/parent/admin 四角色，逐页滚动揭示后抓运行期错误 + axe 对比度，专门验证「app-wide token 调深」不回归其他角色。
+
+| 角色 | login | 运行期问题 | color-contrast 节点 |
+|---|---|---|---|
+| student | ✅ | **0** | 19（home）|
+| teacher | ✅ | **0** | **0** |
+| parent | ✅ | **0** | 1 |
+| admin | ✅ | **0** | 10（admin 既有 `text-slate-400/500` 灰字，本轮未在 admin 组件动手）|
+
+**关键结论：token 调深无任何暗底回归**（teacher/parent/admin 未出现新的 fg-muted/info 失败）。
+
+### 10.3 最终成绩（四测全过，6.5m）
+- **运行期：4 角色全 `ok` / 0 错误**；学生端内测 **0 崩溃 / 0 5xx / 0 4xx / 0 console error / 0 GSAP 噪声**（仅 4 条 `ERR_ABORTED` 取消，非缺陷）。
+- **揭示：14 页 0 残留隐藏**；**校验门用例通过**。
+- **学生端 color-contrast：330 → 87（约 −74%）**。
+- 回归门：`tsc` ✅ · `lint` ✅ · `npm run test`(456) ✅ · e2e 四测 ✅。
+
+### 10.4 剩余 87 节点的定性（均为「设计取舍 / 误报 / 边缘」，非缺陷）
+- **~46** 大号 `text-brand` 橙色数字（白底 2.5:1）+ **~15** 白字配橙底 → **按「保留橙」刻意保留**（达标须舍弃品牌活力，属设计取舍）。
+- **4** `#101726 on #020618`(1.12) = **axe 误报**：该 `<a>` 实为 `text-white` on `bg-slate-950`（≈18:1），被在揭示动画半透明瞬间扫到（白字按低透明度混色成近黑）。
+- 其余为边缘项（财务红 `利好` 4.24、个别 amber 3.9–4.1 临界）属财务/状态色身份。
+- **风险测评要求全答 = MOOT**：`normalizeRiskProfileAnswers`(risk-profile.ts:254) 对未答题回退默认 option、page 走 `defaultAnswers` → 永远每题都有选项、永不空提交，原本无漏洞。
+- **跨角色提示**：admin/parent 仍有既有 `text-slate-400/500` 灰字（同款修法可一键对齐），但属学生端任务范围外，列为可选跟进。
