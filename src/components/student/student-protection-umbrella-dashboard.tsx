@@ -150,7 +150,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
           </div>
           <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-white/45">保护分</p>
+              <p className="text-sm font-bold text-white/60">保护分</p>
               <span className="rounded-full bg-white/[0.08] px-3 py-1 text-xs font-black text-orange-100">
                 {previewPending ? "预览刷新中" : "选择方案即刻预览"}
               </span>
@@ -401,7 +401,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
 function Metric({ label, value, light = false }: { label: string; value: ReactNode; light?: boolean }) {
   return (
     <div className={cn("rounded-2xl p-3", light ? "bg-slate-50" : "bg-white/[0.07]")}>
-      <p className={cn("text-xs font-black uppercase tracking-[0.16em]", light ? "text-slate-600" : "text-white/45")}>
+      <p className={cn("text-xs font-black uppercase tracking-[0.16em]", light ? "text-slate-600" : "text-white/60")}>
         {label}
       </p>
       <p className={cn("mt-1 text-lg font-black", light ? "text-slate-950" : "text-orange-100")}>{value}</p>

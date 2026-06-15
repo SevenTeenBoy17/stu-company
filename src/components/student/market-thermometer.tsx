@@ -132,7 +132,7 @@ export function MarketThermometer({
                 style={{ width: `${payload.score}%` }}
               />
             </div>
-            <div className="mt-3 flex justify-between text-[0.72rem] font-black uppercase tracking-[0.16em] text-white/45">
+            <div className="mt-3 flex justify-between text-[0.72rem] font-black uppercase tracking-[0.16em] text-white/60">
               <span>冷静</span>
               <span>均衡</span>
               <span>过热</span>

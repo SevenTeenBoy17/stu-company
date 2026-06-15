@@ -370,7 +370,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     style={{ width: `${stat.value}%` }}
                   />
                 </div>
-                <p className="mt-3 text-xs font-bold text-white/45">{stat.detail}</p>
+                <p className="mt-3 text-xs font-bold text-white/60">{stat.detail}</p>
               </div>
             ))}
           </div>

@@ -453,7 +453,7 @@ export function StudentQuestDashboard({
                     ? "bg-brand text-white shadow-glow hover:-translate-y-0.5"
                     : season.claimed
                       ? "bg-white text-slate-950"
-                      : "cursor-not-allowed bg-white/10 text-white/42",
+                      : "cursor-not-allowed bg-white/10 text-white/60",
                 )}
               >
                 {claimingSeason ? (

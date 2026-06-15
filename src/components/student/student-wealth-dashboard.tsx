@@ -316,7 +316,7 @@ export function StudentWealthDashboard({
                       <span className="h-3 w-3 rounded-full" style={{ background: slice.color }} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-white">{slice.label}</p>
-                        <p className="mt-1 truncate text-xs text-white/42">{slice.hint}</p>
+                        <p className="mt-1 truncate text-xs text-white/60">{slice.hint}</p>
                       </div>
                     </div>
                     <p className="shrink-0 text-sm font-black text-white">{slice.weight.toFixed(1)}%</p>

@@ -268,7 +268,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
 function HeroMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">{label}</p>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-white/60">{label}</p>
       <p className="mt-2 text-2xl font-black text-orange-100">{value}</p>
     </div>
   );
