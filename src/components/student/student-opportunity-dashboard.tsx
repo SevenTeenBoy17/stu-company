@@ -22,6 +22,8 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
   const [message, setMessage] = useState<MessageState>(null);
   const [pending, startTransition] = useTransition();
   const selected = payload.cards.find((item) => item.id === selectedCardId) ?? payload.cards[0];
+  const trimmedNote = note.trim();
+  const noteReady = trimmedNote.length >= 8;
 
   useGSAP(
     () => {
@@ -42,6 +44,10 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
   );
 
   function submitNote() {
+    if (!noteReady) {
+      setMessage({ tone: "error", text: "请先写下至少 8 个字的观察说明，再记录观察单。" });
+      return;
+    }
     setMessage(null);
     startTransition(() => {
       void fetch("/api/student/opportunity", {
@@ -82,9 +88,9 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300">Opportunity Lab</p>
-            <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-4 max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
               机会训练场：先写观察单，再谈模拟配置
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-base leading-8 text-white/70">
               把热门板块、资金流和政策主题转成青少年能理解的训练任务。目标不是猜涨跌，而是练习证据链、风险意识和复盘表达。
             </p>
@@ -203,13 +209,21 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                 placeholder="例如：AI 算力需求还在增长，但估值和集中度较高，我下一回合要观察是否出现回撤。"
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold leading-7 outline-none focus:border-orange-400"
               />
+              <span
+                className={cn(
+                  "mt-1 block text-xs font-bold",
+                  noteReady ? "text-emerald-600" : "text-slate-400",
+                )}
+              >
+                {noteReady ? "可以记录啦 ✓" : `还需 ${8 - trimmedNote.length} 个字（至少写 8 个字）`}
+              </span>
             </label>
 
             <button
               data-motion-button
               type="button"
               data-testid="opportunity-submit"
-              disabled={pending}
+              disabled={pending || !noteReady}
               onClick={submitNote}
               className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-400 px-5 text-base font-black text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-60"
             >
@@ -218,6 +232,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             </button>
             {message ? (
               <p
+                role={message.tone === "success" ? "status" : "alert"}
                 className={cn(
                   "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
                   message.tone === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700",

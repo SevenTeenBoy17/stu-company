@@ -160,6 +160,10 @@ export function StudentWealthDashboard({
 
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (form.note.trim().length < 8) {
+      setStatus({ type: "error", message: "请先写下至少 8 个字的复盘理由，再记录持有计划。" });
+      return;
+    }
     setStatus({ type: "loading", message: "正在记录持有计划..." });
 
     try {
@@ -205,7 +209,7 @@ export function StudentWealthDashboard({
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-[0.22em] text-brand-warm">My Wealth Map</p>
-                  <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">我的财富持有总入口</h1>
+                  <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">我的财富持有总入口</h2>
                   <p className="mt-3 max-w-2xl text-body-lg leading-8 text-white/68">
                     把现金、储蓄、股票、ETF、债券、房产、创业和负债放到一张地图里，先看全局，再决定下一步模拟动作。
                   </p>
@@ -547,11 +551,20 @@ export function StudentWealthDashboard({
                   className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand focus:bg-white"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs font-semibold text-slate-400">{form.note.length}/240</p>
+                  <p
+                    className={cn(
+                      "text-xs font-semibold",
+                      form.note.trim().length < 8 ? "text-rose-500" : "text-slate-400",
+                    )}
+                  >
+                    {form.note.trim().length < 8
+                      ? `还需 ${8 - form.note.trim().length} 个字（至少写 8 个字）`
+                      : `${form.note.length}/240`}
+                  </p>
                   <button
                     type="submit"
                     data-testid="wealth-review-submit"
-                    disabled={status.type === "loading"}
+                    disabled={status.type === "loading" || form.note.trim().length < 8}
                     className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-white shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <CheckCircle2 className="h-4 w-4" />

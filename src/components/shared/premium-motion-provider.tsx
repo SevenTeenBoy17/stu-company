@@ -9,6 +9,11 @@ import { formatMotionNumber, premiumMotion, type MotionNumberFormat } from "@/li
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
+// Scroll-reveal + conditionally-rendered elements legitimately mean some per-page
+// animations target nodes that aren't mounted at run time. GSAP's missing-target
+// warnings are benign here (it no-ops) but flood the console and mask real errors.
+gsap.config({ nullTargetWarn: false });
+
 function prefersReducedMotion() {
   return (
     typeof window !== "undefined" &&
@@ -316,6 +321,13 @@ function addVizTimeline(group: HTMLElement) {
 function observeOnce(targets: HTMLElement[], callback: (target: HTMLElement) => void) {
   if (!targets.length) return () => {};
 
+  // No IntersectionObserver (very old / limited client): run immediately so reveal
+  // targets can never get stuck at visibility:hidden.
+  if (typeof IntersectionObserver === "undefined") {
+    targets.forEach((target) => callback(target));
+    return () => {};
+  }
+
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -534,20 +546,31 @@ export function PremiumMotionProvider() {
       };
 
       if (revealTargets.length) {
+        const revealNow = (target: HTMLElement) => {
+          gsap.to(target, {
+            autoAlpha: 1,
+            y: 0,
+            duration: premiumMotion.duration.reveal,
+            delay: motionDelay(target),
+            ease: premiumMotion.ease.standard,
+            overwrite: "auto",
+          });
+        };
+
         revealTargets.forEach((target) => revealAttached.add(target));
         gsap.set(revealTargets, { autoAlpha: 0, y: 24 });
-        cleanups.push(
-          observeOnce(revealTargets, (target) => {
-            gsap.to(target, {
-              autoAlpha: 1,
-              y: 0,
-              duration: premiumMotion.duration.reveal,
-              delay: motionDelay(target),
-              ease: premiumMotion.ease.standard,
-              overwrite: "auto",
-            });
-          }),
-        );
+        cleanups.push(observeOnce(revealTargets, revealNow));
+
+        // Safety net (mirrors addSceneTimeline): if the observer never fires for an
+        // element already within / above the viewport, force-reveal it so primary
+        // content can never get stuck at visibility:hidden.
+        const revealSafety = window.setTimeout(() => {
+          revealTargets.forEach((target) => {
+            if (Number(gsap.getProperty(target, "opacity")) > 0.01) return;
+            if (target.getBoundingClientRect().top < window.innerHeight) revealNow(target);
+          });
+        }, 1400);
+        cleanups.push(() => window.clearTimeout(revealSafety));
       }
 
       if (numberTargets.length) {

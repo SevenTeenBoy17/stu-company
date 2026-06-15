@@ -213,12 +213,17 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
         return;
       }
 
-      gsap.from("[data-pet-panel]", {
-        y: 22,
-        opacity: 0,
-        duration: 0.62,
-        ease: "power3.out",
-      });
+      // `data-pet-panel` is the useGSAP scope root (rootRef); a scoped
+      // "[data-pet-panel]" selector matches no descendant, so the panel entrance
+      // was silently dropped. Target the root element directly.
+      if (rootRef.current) {
+        gsap.from(rootRef.current, {
+          y: 22,
+          opacity: 0,
+          duration: 0.62,
+          ease: "power3.out",
+        });
+      }
       gsap.from("[data-pet-stat]", {
         y: 12,
         opacity: 0,
@@ -505,7 +510,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                   autoSend: true,
                 })
               }
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5"
             >
               让 KeyAI 解释奖励建议
               <ArrowRight className="h-4 w-4" />

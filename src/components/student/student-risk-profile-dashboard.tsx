@@ -174,6 +174,11 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
   const completed = answers.filter((answer) => selectedMap.get(answer.questionId)).length;
 
   async function submitProfile() {
+    if (completed === 0) {
+      setSubmitState("error");
+      setErrorMessage("请至少完成 1 题，再生成你的投资人格。");
+      return;
+    }
     setSubmitState("loading");
     setErrorMessage("");
     try {
@@ -214,9 +219,9 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
                 <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Risk Lab</p>
-                <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">
+                <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">
                   投资人格实验室
-                </h1>
+                </h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   通过真实生活情境测一测你的风险承受方式，再把结果映射到当前沙盘资产配置。
                   它不是买卖建议，而是一张帮助你“认识自己”的训练地图。
@@ -356,7 +361,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
               type="button"
               data-testid="risk-profile-submit"
               onClick={submitProfile}
-              disabled={submitState === "loading"}
+              disabled={submitState === "loading" || completed === 0}
               className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
