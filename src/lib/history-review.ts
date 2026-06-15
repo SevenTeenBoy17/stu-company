@@ -1,3 +1,4 @@
+import { eventIdForRound } from "@/lib/event-engine";
 import { marketRounds } from "@/lib/market-data";
 import { getEventCard } from "@/lib/simulation";
 import type {
@@ -103,7 +104,12 @@ function buildTimeline(state: SimulationState): HistoryRoundSummary[] {
     .sort((left, right) => left.round - right.round)
     .map((snapshot) => {
       const round = getRoundMeta(snapshot.round);
-      const event = getEventCard(round.eventId);
+      // Resolve the actual per-round event from the run's seeded timeline (mirrors
+      // buildSimulationState); round.eventId is only the legacy fallback when a run
+      // predates eventTimeline. Using the static script here showed wrong events in
+      // replay and fed them to the AI review.
+      const eventId = eventIdForRound(state.run.eventTimeline, snapshot.round, round.eventId);
+      const event = getEventCard(eventId);
 
       return {
         round: snapshot.round,

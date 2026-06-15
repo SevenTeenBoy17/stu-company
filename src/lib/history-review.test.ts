@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { buildHistoryReviewAiContext, buildHistoryReviewPayload } from "@/lib/history-review";
+import { getEventCard } from "@/lib/simulation";
 import { getSimulationStateForUser, resetStoreForTests } from "@/lib/store";
 
 describe("history review", () => {
@@ -84,5 +85,22 @@ describe("history review", () => {
     expect(latestGroup?.items.find((item) => item.type === "quest")?.impact).toContain("任务奖励");
     expect(context).toContain("学习信号");
     expect(context).toContain("机会观察");
+  });
+
+  it("resolves each round's event from the run's seeded eventTimeline, not the static market script", () => {
+    const state = getSimulationStateForUser("student-1");
+    // Force a distinctive timeline so a regression (reading the static round.eventId)
+    // would surface as a mismatch. These are real event ids used across the suite.
+    state.run.eventTimeline = (state.run.eventTimeline ?? []).map((_, index) =>
+      index % 2 === 0 ? "event-liquidity-crisis" : "event-leverage-temptation",
+    );
+
+    const payload = buildHistoryReviewPayload(state);
+
+    expect(payload.timeline.length).toBeGreaterThan(0);
+    for (const entry of payload.timeline) {
+      const expectedEventId = state.run.eventTimeline[entry.round - 1];
+      expect(entry.eventTitle).toBe(getEventCard(expectedEventId).title);
+    }
   });
 });
