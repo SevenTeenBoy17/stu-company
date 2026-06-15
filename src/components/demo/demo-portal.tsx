@@ -19,7 +19,7 @@ import {
 } from "@/lib/auth-validation";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
-type Credentials = { label: string; email: string; password: string; trial?: boolean };
+type Credentials = { label: string; email: string; trial?: boolean };
 type InviteHint = { role: string; code: string; note: string };
 
 type AuthMode = "login" | "register" | "invite";
@@ -125,20 +125,13 @@ export function DemoPortal({
       credentials.find((item) => item.trial) ?? {
         label: "游客试玩",
         email: "guest@brownzone.ai",
-        password: "Guest001!!!",
         trial: true,
       },
     [credentials],
   );
 
   const demoCredentials = useMemo(
-    () =>
-      credentials.filter(
-        (item) =>
-          !item.trial &&
-          item.email.toLowerCase() !== "superadmin" &&
-          !item.label.includes("超级"),
-      ),
+    () => credentials.filter((item) => !item.trial),
     [credentials],
   );
 
@@ -236,9 +229,27 @@ export function DemoPortal({
       window.localStorage.setItem(key, String(nextCount));
     }
 
-    const nextLogin = { email: item.email, password: item.password };
-    setLoginForm(nextLogin);
-    await submitLogin(nextLogin, item.trial ? "guest" : `credential-${item.email}`);
+    // Demo passwords stay server-side: send email only; the server looks up the
+    // built-in demo password and establishes the session.
+    setBusyAction(item.trial ? "guest" : `credential-${item.email}`);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/auth/demo-login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: item.email }),
+      });
+      const payload = await readPayload(response);
+      if (!response.ok) {
+        throw new Error(normalizeLoginError(payload.message ?? payload.error));
+      }
+      setMessage({ tone: "success", text: payload.message ?? "正在进入演示账号。" });
+      redirectAfterLogin(payload.redirectTo ?? "/demo");
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "登录失败，请稍后重试。" });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function submitInvite() {

@@ -2,11 +2,14 @@ import { DemoPortal } from "@/components/demo/demo-portal";
 import { getQuickDemoCredentials } from "@/lib/db/repo";
 
 export default async function DemoPage() {
-  const credentials = (await getQuickDemoCredentials()).filter(
-    (item) =>
-      item.email.toLowerCase() !== "superadmin" &&
-      !item.label.includes("超级"),
-  );
+  // Security: never serialize demo passwords into the client RSC payload.
+  // One-click login goes through /api/auth/demo-login (email only); the server
+  // looks up the password. The client only needs label/email/trial.
+  const credentials = (await getQuickDemoCredentials()).map((item) => ({
+    label: item.label,
+    email: item.email,
+    trial: item.trial ?? false,
+  }));
   return (
     <div className="pb-24">
       <section className="page-shell pt-8">
