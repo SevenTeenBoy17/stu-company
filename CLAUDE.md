@@ -35,7 +35,7 @@ Unit tests live next to their source as `*.test.ts` / `*.test.tsx`. Integration 
 Two Next.js route groups under `src/app/`:
 
 - `(site)` — public marketing/auth pages: landing `/`, `/learn`, `/demo`, `/pricing`, `/reset-password`
-- `(platform)` — authenticated app: `/student` (+ the 理财 sub-pages `/student/market`, `/student/history`, `/student/rank`, `/student/wealth`, `/student/risk-profile`, `/student/auto-invest`, `/student/life`, `/student/credit`, `/student/quests`), `/teacher`, `/parent`, `/admin`
+- `(platform)` — authenticated app: `/student` (+ the 理财 sub-pages `/student/market`, `/student/history`, `/student/rank`, `/student/wealth`, `/student/risk-profile`, `/student/auto-invest`, `/student/life`, `/student/credit`, `/student/quests`, `/student/fund-lab`, `/student/goal-accounts`, `/student/protection`, `/student/opportunity`), `/teacher`, `/parent`, `/admin`
 
 `(platform)/layout.tsx` is the single auth boundary — redirects unauthenticated users to `/demo?reason=login_required`. Individual pages enforce their own role check.
 
@@ -93,8 +93,12 @@ The 2.0 multi-tool teaching layer — pure-core modules (each with a sibling `*.
 - `life-cashflow.ts` — household budgeting + insurance plan teaching (budget/insurance presets).
 - `quests.ts` — financial-literacy quest/checklist progression.
 - `credit-lab.ts` — credit-score sandbox.
+- `fund-lab.ts` — 基金 (mutual-fund) lab: compare index ETF / bond / gold / theme funds and build a balanced/growth/defensive fund portfolio.
+- `goal-accounts.ts` — goal-based saving (目标账户): earmark cash toward goals (emergency / laptop / study-trip / startup) with a horizon + suggested per-round contribution.
+- `protection-umbrella.ts` — protection/insurance "umbrella" (保障伞): scores protection across emergency/insurance/debt/income/diversification/discipline and stress-tests "what if" scenarios (builds on `allocation.ts` + `life-cashflow.ts`).
+- `opportunity.ts` — opportunity radar (机会雷达): themed cards (AI infra / cashflow / green energy / safe haven) where students log an investment thesis (reason + confidence) and get feedback.
 
-Thin routes under `src/app/api/student/**` (`wealth-summary`, `risk-profile`, `auto-invest`, `life-cashflow`, `quests`, `credit-lab`) feed the matching `(platform)/student/*` pages.
+Thin routes under `src/app/api/student/**` (`wealth-summary`, `risk-profile`, `auto-invest`, `life-cashflow`, `quests`, `credit-lab`, `fund-lab`, `goal-accounts`, `protection`, `opportunity`) feed the matching `(platform)/student/*` pages.
 
 ### Subscription & Billing
 
