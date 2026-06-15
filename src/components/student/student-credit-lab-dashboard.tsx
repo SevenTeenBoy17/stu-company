@@ -117,9 +117,9 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
 
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Credit Lab</p>
-            <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               先算清利息，再决定要不要借
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
               信用实验室把分期、应急借款和提前还款放进同一张沙盘。借款会增加现金，也会同步增加债务；真正要学的是未来现金流能不能承受。
             </p>
@@ -215,14 +215,14 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   </div>
                   <WalletCards className="h-5 w-5 text-brand" />
                 </div>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{scenario.purpose}</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{scenario.purpose}</p>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                   <div className="rounded-2xl bg-slate-950/[0.035] p-3">
-                    <p className="font-bold text-slate-500">本金</p>
+                    <p className="font-bold text-slate-600">本金</p>
                     <p className="mt-1 font-black text-slate-950">{formatCurrency(scenario.principal)}</p>
                   </div>
                   <div className="rounded-2xl bg-slate-950/[0.035] p-3">
-                    <p className="font-bold text-slate-500">总利息</p>
+                    <p className="font-bold text-slate-600">总利息</p>
                     <p className="mt-1 font-black text-slate-950">{formatCurrency(scenario.totalInterest)}</p>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
           <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
               <h3 className="text-h2 font-black text-slate-950">{selected.title}</h3>
-              <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{selected.concept}</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{selected.concept}</p>
               <div className="mt-5 grid gap-3 sm:grid-cols-4">
                 {[
                   ["月供", selected.monthlyPayment],
@@ -242,7 +242,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   ["借后债务率", `${selected.debtRatioAfter}%`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-2xl bg-slate-950/[0.035] p-4">
-                    <p className="text-xs font-bold text-slate-500">{label}</p>
+                    <p className="text-xs font-bold text-slate-600">{label}</p>
                     <p className="mt-2 text-lg font-black text-slate-950">
                       {typeof value === "number" ? formatCurrency(value) : value}
                     </p>
@@ -317,7 +317,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                     <p className="text-sm font-black text-slate-950">{option.label}</p>
                     <p className="text-sm font-black text-brand-ink">{formatCurrency(option.amount)}</p>
                   </div>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
                     预计少付利息约 {formatCurrency(option.interestSavedEstimate)}，还款后债务{" "}
                     {formatCurrency(option.afterDebt)}。
                   </p>
@@ -344,11 +344,11 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   {result && (
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-2xl bg-white p-3">
-                        <p className="font-bold text-slate-500">现金</p>
+                        <p className="font-bold text-slate-600">现金</p>
                         <p className="mt-1 font-black text-slate-950">{formatCurrency(result.cashAfter)}</p>
                       </div>
                       <div className="rounded-2xl bg-white p-3">
-                        <p className="font-bold text-slate-500">债务</p>
+                        <p className="font-bold text-slate-600">债务</p>
                         <p className="mt-1 font-black text-slate-950">{formatCurrency(result.debtAfter)}</p>
                       </div>
                     </div>

@@ -136,7 +136,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xl font-black text-slate-950">{card.title}</p>
-                      <p className="mt-1 text-sm font-bold text-slate-400">{card.category}</p>
+                      <p className="mt-1 text-sm font-bold text-slate-600">{card.category}</p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-600">
                       热度 {card.heat}
@@ -145,7 +145,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                   <p className="mt-4 text-sm leading-7 text-slate-600">{card.summary}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {card.evidence.map((item) => (
-                      <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                      <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                         {item}
                       </span>
                     ))}
@@ -164,7 +164,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             </div>
             <div className="mt-5 rounded-[1.4rem] bg-slate-50 p-4">
               <p className="text-lg font-black text-slate-950">{selected.title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{selected.concept}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{selected.concept}</p>
               <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-bold text-slate-600">
                 思考题：{selected.watchQuestion}
               </p>
@@ -212,7 +212,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
               <span
                 className={cn(
                   "mt-1 block text-xs font-bold",
-                  noteReady ? "text-emerald-600" : "text-slate-400",
+                  noteReady ? "text-emerald-600" : "text-slate-600",
                 )}
               >
                 {noteReady ? "可以记录啦 ✓" : `还需 ${8 - trimmedNote.length} 个字（至少写 8 个字）`}
@@ -267,7 +267,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-500">Observation History</p>
             <h2 className="mt-2 text-2xl font-black text-slate-950">我的机会观察记录</h2>
           </div>
-          <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-500">
+          <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">
             最佳主题：{payload.overview.bestTheme}
           </span>
         </div>
@@ -280,13 +280,13 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                   观察力 {entry.score} · 信心 {entry.confidence} · {entry.reasonLabel}
                 </p>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.note}</p>
-                <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
+                <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
                   {entry.feedback}
                 </p>
               </article>
             ))
           ) : (
-            <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500 lg:col-span-3">
+            <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-600 lg:col-span-3">
               还没有观察单。先选一个主题，写下证据和风险，历史复盘就会多一条可讨论的线索。
             </div>
           )}

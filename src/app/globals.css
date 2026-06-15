@@ -90,9 +90,9 @@
   --color-brand-ink: var(--amber-700);
   --color-brand-on: #ffffff;
 
-  --color-up: var(--up-500);
+  --color-up: var(--up-600);
   --color-up-soft: var(--up-50);
-  --color-down: var(--down-500);
+  --color-down: var(--down-600);
   --color-down-soft: var(--down-50);
   --color-neutral: var(--ink-500);
 

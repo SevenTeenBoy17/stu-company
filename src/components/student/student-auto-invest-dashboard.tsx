@@ -170,7 +170,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">
                   Auto Invest Robot
                 </p>
-                <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h1>
+                <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是“猜最低点”，而是现金安全、平均成本和长期纪律。
                 </p>
@@ -337,7 +337,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                     <p className="text-body font-black text-slate-950">{item.label}</p>
                     {active ? <CheckCircle2 className="h-5 w-5 text-brand" /> : null}
                   </div>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{item.summary}</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{item.summary}</p>
                 </button>
               );
             })}
@@ -461,13 +461,13 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                         {row.status === "executed" ? "已执行" : "已跳过"}
                       </span>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold text-slate-500">
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold text-slate-600">
                       <span>价格 {formatCurrency(row.price)}</span>
                       <span>份额 {row.quantity}</span>
                       <span>投入 {formatCurrency(row.invested)}</span>
                       <span>均价 {formatCurrency(row.averageCost)}</span>
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{row.note}</p>
+                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{row.note}</p>
                   </article>
                 ))}
               </div>
@@ -491,7 +491,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   </p>
                 </div>
                 <div className="rounded-[1.5rem] bg-slate-100 p-5">
-                  <p className="text-sm font-bold text-slate-500">一次性买入</p>
+                  <p className="text-sm font-bold text-slate-600">一次性买入</p>
                   <p className="mt-3 text-h1 font-black">
                     <MoneyText>{formatCurrency(payload.comparison.lumpSumTerminalValue)}</MoneyText>
                   </p>

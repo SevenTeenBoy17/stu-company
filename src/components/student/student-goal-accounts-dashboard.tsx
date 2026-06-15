@@ -96,9 +96,9 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300">Goal Accounts</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-5xl">
               目标账户：把未来想要的东西拆成今天的小动作
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">{payload.overview.learningPrompt}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -123,7 +123,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               <Target className="h-5 w-5 text-orange-500" />
               <h2 className="text-2xl font-black text-slate-950">我的生活目标</h2>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">
               投资服务于目标，不反过来绑架生活
             </span>
           </div>
@@ -143,7 +143,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xl font-black text-slate-950">{goal.title}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-400">{goal.concept}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-600">{goal.concept}</p>
                   </div>
                   <span className={cn("rounded-full px-3 py-1 text-xs font-black", statusClass[goal.status])}>
                     {statusLabel[goal.status]}
@@ -153,7 +153,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
                 <div className="mt-5">
                   <div className="flex items-end justify-between gap-3">
                     <span className="text-3xl font-black text-slate-950">{goal.progress}%</span>
-                    <span className="text-sm font-bold text-slate-500">
+                    <span className="text-sm font-bold text-slate-600">
                       <MoneyText>{formatCurrency(goal.saved)}</MoneyText> / <MoneyText>{formatCurrency(goal.target)}</MoneyText>
                     </span>
                   </div>
@@ -175,7 +175,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               <PiggyBank className="h-5 w-5 text-orange-500" />
               <h2 className="text-2xl font-black text-slate-950">转入目标账户</h2>
             </div>
-            <p className="mt-3 text-sm leading-7 text-slate-500">
+            <p className="mt-3 text-sm leading-7 text-slate-600">
               这一步会把现金转入储蓄目标桶，净值不变，但“可随手花的钱”会减少。
             </p>
 
@@ -214,6 +214,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
             </button>
             {message ? (
               <p
+                role={message.tone === "success" ? "status" : "alert"}
                 className={cn(
                   "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
                   message.tone === "success" ? "bg-down-soft text-down" : "bg-error-soft text-error",
@@ -250,11 +251,11 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               <article key={entry.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
                 <p className="text-lg font-black text-slate-950">{entry.title}</p>
                 <p className="mt-1 text-sm font-bold text-orange-500">{formatCurrency(entry.amount)}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-500">{entry.note}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{entry.note}</p>
               </article>
             ))
           ) : (
-            <p className="rounded-[1.35rem] bg-slate-50 p-5 text-sm font-bold text-slate-500">
+            <p className="rounded-[1.35rem] bg-slate-50 p-5 text-sm font-bold text-slate-600">
               还没有目标账户记录。先选一个真实生活目标，写下为什么要为它留钱。
             </p>
           )}

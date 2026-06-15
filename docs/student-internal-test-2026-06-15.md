@@ -132,6 +132,28 @@ npx playwright test tests/e2e/student-internal-test.spec.ts --project=chromium -
 > 备注：内测复跑本轮 `REQUEST_FAILED` = 17（上轮 5），全部 `net::ERR_ABORTED`；数量随导航时机波动（热服务器下更多慢 AI 请求在途被取消），无 5xx 伴随，仍非缺陷。
 
 ### 8.5 仍建议跟进（非本轮范围）
-1. **`color-contrast` 专项**：调深语义灰 token 至 AA，逐页视觉回归（影响面大，需设计确认）。
-2. **`svg-img-alt`**：给 wealth 那个装饰性 `<svg>` 加 `aria-hidden` 或 alt（小改）。
+1. **`color-contrast` 专项**：调深语义灰 token 至 AA，逐页视觉回归（影响面大，需设计确认）。→ 部分已做，见 §9。
+2. **`svg-img-alt`**：给 wealth 那个装饰性 `<svg>` 加 `aria-hidden` 或 alt（小改）。→ ✅ 已做，见 §9。
 3. 风险测评是否要求「全部答完」而非仅 ≥1（产品决策）。
+
+## 9. 第三轮：a11y 对比度专项（安全子集已修，品牌色留给设计）
+
+数据驱动（新增 axe 明细抓取 → `test-results/student-reveal-a11y/contrast-detail.json`，按 fg/bg 对聚合 43 类失败）。
+
+**已修（安全、明确的可读性问题）：**
+- **灰色二级文字**：`text-slate-400`(#90a1b9, 2.5:1)、`text-slate-500`(#62748e, ~4.3:1 在 off-white 上) → 统一调深到 `text-slate-600`。全部在浅色底（已核验暗色侧栏用的是 `text-white/xx`，无暗底 slate 回归）。覆盖 27 个文件（26 student + platform-layout shell）。
+- **`svg-img-alt`**：wealth 净资产走势 `<svg role="img">` 补 `aria-label="净资产走势图"`。
+
+**实测改善：color-contrast 节点 330 → 175（−155，约 47%↓）**，`svg-img-alt` 归零（serious 15→14），揭示仍 0 残留隐藏，无新增暗底回归。回归门 tsc/lint/test(456) 全绿。
+
+**仍剩 ~171，全是品牌/设计 token 决策（不擅自改）：**
+| 类别 | 样例 | 节点 | 说明 |
+|---|---|---|---|
+| 品牌橙大数字 | `text-brand` #f08a38 on 白 (2.4–2.5) | ~43 | 大字号只需 3:1 但仍不达；改即动品牌色 |
+| `text-brand-ink` on `brand-subtle` | #b85715 on #ffeacc (4.05) | ~27 | 品牌深橙在浅橙底，临界 |
+| 橙色描述/徽标 | `text-orange-500/600` (2.75–3.59) | ~18 | 品牌强调色 |
+| 白字 on 橙底 | #fff on #f08a38 (2.5) | ~12 | 橙色按钮/徽标背景决策 |
+| 语义 token | `text-fg-muted`/`text-info`（临界 4.3–4.4）| ~13 | 改 globals.css token |
+| 暗底淡白字 | `text-white/42`、`/45`（3.7–4.5）| ~11 | 提一档不透明度即可 |
+
+→ 建议设计侧确认：品牌橙的「达标深色变体」(如用于小字/正文时切到 orange-700)、`--color-fg-muted`/`--color-info` 调深、`white/42→white/60`。逐项有精确 fg/bg/ratio 在 `contrast-detail.json`。

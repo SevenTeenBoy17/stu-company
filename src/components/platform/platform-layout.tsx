@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -77,6 +78,7 @@ function CompactNavLink({ item, active, index }: { item: NavItem; active: boolea
   return (
     <Link
       href={item.href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "shrink-0 rounded-full border px-4 py-3 text-body font-semibold transition-colors",
         active
@@ -85,7 +87,7 @@ function CompactNavLink({ item, active, index }: { item: NavItem; active: boolea
       )}
     >
       <span>{item.label}</span>
-      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-400")}>
+      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-600")}>
         {navIndexLabel(index)}
       </span>
     </Link>
@@ -96,6 +98,7 @@ function SidebarNavLink({ item, active, index }: { item: NavItem; active: boolea
   return (
     <Link
       href={item.href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "flex min-w-0 items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/12",
         active ? "bg-white/14 text-white" : "bg-white/[0.05] text-white/70",
@@ -119,6 +122,7 @@ export function PlatformLayout({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const [isWideViewport, setIsWideViewport] = useState(false);
   const activeHref =
     navMap[role]
       .map((item) => item.href)
@@ -128,11 +132,21 @@ export function PlatformLayout({
   const navItems = navMap[role];
   const studentPrimaryItems = role === "student" ? navItems.filter((item) => item.group === "primary") : [];
   const studentSecondaryItems = role === "student" ? navItems.filter((item) => item.group !== "primary") : navItems;
+  const navAriaLabel = role === "student" ? "学生功能导航" : "平台功能导航";
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const syncViewport = () => setIsWideViewport(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
 
   return (
     <div className="bz-page-bg min-h-screen overflow-x-clip">
       <div className="mx-auto max-w-screen-2xl px-4 py-4 md:px-5 md:py-5 lg:px-8 lg:py-6">
-        <div className="xl:hidden">
+        <div className="xl:hidden" aria-hidden={isWideViewport ? true : undefined}>
           <div className="bz-ink-panel rounded-3xl px-5 py-5 sm:px-6">
             <div className="flex items-start gap-4">
               <Image
@@ -144,7 +158,7 @@ export function PlatformLayout({
               />
               <div className="min-w-0">
                 <p className="bz-eyebrow-inverse">Brown Zone</p>
-                <p className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</p>
+                <h1 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h1>
                 <p className="mt-3 text-body leading-8 text-white/60 sm:text-body-lg">{summary}</p>
               </div>
             </div>
@@ -152,12 +166,13 @@ export function PlatformLayout({
 
           <div className="bz-surface-panel mt-4 rounded-3xl p-3">
             {role === "student" ? (
-              <div className="space-y-3">
+              <nav aria-label={navAriaLabel} className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {studentPrimaryItems.map((item, index) => (
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={isActiveNav(item, activeHref) ? "page" : undefined}
                       className={cn(
                         "rounded-2xl border p-3 transition-colors",
                         isActiveNav(item, activeHref)
@@ -166,7 +181,7 @@ export function PlatformLayout({
                       )}
                     >
                       <span className="block text-body font-black">{item.label}</span>
-                      <span className="mt-1 line-clamp-1 block text-xs font-semibold text-slate-500">
+                      <span className="mt-1 line-clamp-1 block text-xs font-semibold text-slate-600">
                         {item.summary}
                       </span>
                       <span className="mt-2 block text-xs font-black text-brand-ink">{navIndexLabel(index)}</span>
@@ -183,9 +198,9 @@ export function PlatformLayout({
                     />
                   ))}
                 </div>
-              </div>
+              </nav>
             ) : (
-              <div className="flex flex-wrap gap-2 pb-1">
+              <nav aria-label={navAriaLabel} className="flex flex-wrap gap-2 pb-1">
                 {navItems.map((item, index) => (
                   <CompactNavLink
                     key={item.href}
@@ -194,13 +209,13 @@ export function PlatformLayout({
                     index={index}
                   />
                 ))}
-              </div>
+              </nav>
             )}
           </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="bz-ink-panel hidden rounded-3xl p-6 xl:block">
+          <aside className="bz-ink-panel hidden rounded-3xl p-6 xl:block" aria-hidden={isWideViewport ? undefined : true}>
             <Image
               src={roleAsset.src}
               alt={roleAsset.label}
@@ -209,11 +224,11 @@ export function PlatformLayout({
               className="h-20 w-20 rounded-3xl shadow-glow"
             />
             <p className="bz-eyebrow-inverse mt-5">Brown Zone</p>
-            <p className="mt-3 text-h1 font-semibold">{heading}</p>
+            <h1 className="mt-3 text-h1 font-semibold">{heading}</h1>
             <p className="mt-3 text-body leading-8 text-white/60">{summary}</p>
 
             {role === "student" ? (
-              <div className="mt-8 space-y-6">
+              <nav aria-label={navAriaLabel} className="mt-8 space-y-6">
                 <div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-warm">四大主域</p>
@@ -228,6 +243,7 @@ export function PlatformLayout({
                         <Link
                           key={item.href}
                           href={item.href}
+                          aria-current={active ? "page" : undefined}
                           className={cn(
                             "rounded-3xl border px-4 py-4 transition-colors hover:bg-white/12",
                             active
@@ -275,9 +291,9 @@ export function PlatformLayout({
                     );
                   })}
                 </div>
-              </div>
+              </nav>
             ) : (
-              <div className="mt-8 space-y-2">
+              <nav aria-label={navAriaLabel} className="mt-8 space-y-2">
                 {navItems.map((item, index) => (
                   <SidebarNavLink
                     key={item.href}
@@ -286,7 +302,7 @@ export function PlatformLayout({
                     index={index}
                   />
                 ))}
-              </div>
+              </nav>
             )}
           </aside>
 

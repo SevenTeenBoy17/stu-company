@@ -79,7 +79,7 @@ function ChartShell({
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-semibold text-slate-950">{title}</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">{description}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">{description}</p>
         </div>
       </div>
       <div className="mt-5">{children}</div>
@@ -98,9 +98,9 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="text-sm font-medium text-slate-600">{label}</p>
       <p className="mt-3 text-3xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-500">{hint}</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{hint}</p>
     </div>
   );
 }
@@ -196,7 +196,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">风险分 / 纪律分</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-600">
             两条线一起看，更容易区分“赚得快”和“留得住”之间的差别。
           </p>
         </div>
@@ -249,7 +249,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">现金 / 储蓄 / 债务结构</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-600">
             先看资金结构有没有呼吸感，再决定下一轮要不要扩张。
           </p>
         </div>
@@ -258,7 +258,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
       <div className="mt-5 space-y-4">
         {timeline.map((item) => (
           <div key={`capital-${item.round}`}>
-            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-600">
               <span>R{item.round}</span>
               <span>{item.theme}</span>
             </div>
@@ -269,7 +269,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
                 { label: "债务", value: item.debt, color: "bg-[#f08a38]" },
               ].map((row) => (
                 <div key={`${item.round}-${row.label}`} className="flex items-center gap-3">
-                  <div className="w-12 shrink-0 text-xs font-medium text-slate-500">{row.label}</div>
+                  <div className="w-12 shrink-0 text-xs font-medium text-slate-600">{row.label}</div>
                   <div className="h-2.5 flex-1 rounded-full bg-white">
                     <div
                       data-motion-viz-bar
@@ -494,9 +494,9 @@ export function StudentHistoryReviewDashboard({
                     { label: "复盘沉淀", value: `${payload.metrics.reviewActions}`, hint: "计划 / 奖励 / 自选" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.4rem] bg-slate-950/[0.03] px-4 py-4">
-                      <p className="text-sm text-slate-500">{item.label}</p>
+                      <p className="text-sm text-slate-600">{item.label}</p>
                       <p className="mt-2 text-2xl font-semibold text-slate-950">{item.value}</p>
-                      <p className="mt-2 text-xs text-slate-500">{item.hint}</p>
+                      <p className="mt-2 text-xs text-slate-600">{item.hint}</p>
                     </div>
                   ))}
                 </div>
@@ -512,7 +512,7 @@ export function StudentHistoryReviewDashboard({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-950">学习信号已进入复盘</p>
-                      <p className="mt-1 text-xs leading-6 text-slate-500">
+                      <p className="mt-1 text-xs leading-6 text-slate-600">
                         机会观察、基金实验、目标账户和保护伞不会直接改变收益，但会影响你的长期决策质量。
                       </p>
                     </div>
@@ -541,7 +541,7 @@ export function StudentHistoryReviewDashboard({
                       ))}
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-500">
+                    <div className="mt-4 rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-600">
                       还没有明显学习信号。可以先去“机会训练”写一张观察单，或在“我的财富”提交一次持有复盘。
                     </div>
                   )}
@@ -582,7 +582,7 @@ export function StudentHistoryReviewDashboard({
                         <span className="rounded-full bg-[#f08a38]/10 px-2.5 py-1 text-xs font-semibold text-[#b96621]">
                           R{group.round}
                         </span>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
                           {group.theme}
                         </span>
                         <span
@@ -595,9 +595,9 @@ export function StudentHistoryReviewDashboard({
                         </span>
                       </div>
                       <h4 className="mt-3 text-lg font-semibold text-slate-950">{group.headline}</h4>
-                      <p className="mt-2 text-sm leading-7 text-slate-500">{group.summary}</p>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">{group.summary}</p>
                     </div>
-                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-400 transition-transform group-open:rotate-90" />
+                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-600 transition-transform group-open:rotate-90" />
                   </summary>
 
                   <div className="mt-5 space-y-3">
@@ -616,12 +616,12 @@ export function StudentHistoryReviewDashboard({
                                 <span className="rounded-full bg-slate-950/[0.04] px-2.5 py-1 text-xs font-semibold text-slate-600">
                                   {item.type}
                                 </span>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-slate-600">
                                   {formatDateLabel(new Date(item.timestamp))}
                                 </span>
                               </div>
                               <p className="mt-2 line-clamp-2 break-all text-base font-semibold text-slate-950">{item.label}</p>
-                              <p className="mt-2 text-sm leading-7 text-slate-500">{item.impact}</p>
+                              <p className="mt-2 text-sm leading-7 text-slate-600">{item.impact}</p>
                             </div>
                             <div className="text-right">
                               <p
@@ -631,7 +631,7 @@ export function StudentHistoryReviewDashboard({
                                     ? getMarketMoveClasses(item.amount).text
                                     : item.amount < 0
                                       ? getMarketMoveClasses(item.amount).text
-                                      : "text-slate-500",
+                                      : "text-slate-600",
                                 )}
                               >
                                 {item.amount === 0 ? "节奏推进" : <MoneyText>{formatCurrency(item.amount)}</MoneyText>}
@@ -655,7 +655,7 @@ export function StudentHistoryReviewDashboard({
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-sm leading-7 text-slate-500">
+                      <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-sm leading-7 text-slate-600">
                         这一回合没有新增动作，适合重点看净值、风险分和纪律分为什么仍在变化。
                       </div>
                     )}
@@ -747,7 +747,7 @@ export function StudentHistoryReviewDashboard({
               再次让 AI 解释
             </button>
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
               {loading ? <span>正在刷新最新历史复盘...</span> : <span>页面会在进入时拉取最新 AI 复盘。</span>}
             </div>
           </section>

@@ -50,6 +50,18 @@ const factorTone: Record<MarketTemperatureFactor["tone"], string> = {
   negative: "bg-emerald-100 text-emerald-700",
 };
 
+const factorToneCue: Record<MarketTemperatureFactor["tone"], string> = {
+  positive: "▲ 利好",
+  neutral: "— 中性",
+  negative: "▼ 利空",
+};
+
+function formatSignalCue(signal: string) {
+  if (signal === "利好" || signal === "鍒╁ソ") return "▲ 利好";
+  if (signal === "利空" || signal === "鍒╃┖") return "▼ 利空";
+  return `— ${signal}`;
+}
+
 export function MarketThermometer({
   payload,
   className,
@@ -131,7 +143,7 @@ export function MarketThermometer({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950">
                 <Activity className="h-3.5 w-3.5 text-orange-500" />
-                {payload.eventSignal}
+                {formatSignalCue(payload.eventSignal)}
               </span>
               <span className="text-base font-black text-white">{payload.eventTitle}</span>
             </div>
@@ -147,7 +159,7 @@ export function MarketThermometer({
             <div key={factor.label} className="min-h-[92px] rounded-[1.18rem] border border-white/10 bg-white/[0.06] px-4 py-4">
               <p className="text-sm font-bold text-white/55">{factor.label}</p>
               <span className={cn("mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-black", factorTone[factor.tone])}>
-                {factor.value}
+                {factorToneCue[factor.tone]} · {factor.value}
               </span>
             </div>
           ))}

@@ -48,8 +48,20 @@ const ROUTES: Array<{ name: string; path: string }> = [
 type RevealFinding = { route: string; totalReveal: number; stillHidden: number; samples: string[] };
 type A11yViolation = { route: string; id: string; impact: string; nodes: number; help: string };
 
+type ContrastNode = {
+  route: string;
+  ratio: number;
+  expected: number;
+  fg: string;
+  bg: string;
+  fontSize: string;
+  fontWeight: string;
+  html: string;
+};
+
 const reveals: RevealFinding[] = [];
 const a11y: A11yViolation[] = [];
+const contrast: ContrastNode[] = [];
 
 async function loginApi(page: Page): Promise<boolean> {
   const res = await page
@@ -125,6 +137,22 @@ test.describe("学生端 P2 复测：揭示 / 无障碍 / 校验门", () => {
         if (v.impact === "serious" || v.impact === "critical") {
           a11y.push({ route: route.path, id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help });
         }
+        if (v.id === "color-contrast") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const node of v.nodes as any[]) {
+            const d = (node.any && node.any[0] && node.any[0].data) || {};
+            contrast.push({
+              route: route.path,
+              ratio: Number(d.contrastRatio) || 0,
+              expected: Number(d.expectedContrastRatio) || 0,
+              fg: String(d.fgColor || ""),
+              bg: String(d.bgColor || ""),
+              fontSize: String(d.fontSize || ""),
+              fontWeight: String(d.fontWeight || ""),
+              html: String(node.html || "").slice(0, 150),
+            });
+          }
+        }
       }
       console.log(
         `[reveal] ${route.name}: reveal ${reveal.total - reveal.hidden.length}/${reveal.total} shown, ` +
@@ -170,7 +198,29 @@ test.describe("学生端 P2 复测：揭示 / 无障碍 / 校验门", () => {
       }, {}),
     };
     fs.writeFileSync(path.join(OUT_DIR, "report.json"), JSON.stringify(report, null, 2));
+
+    // Aggregate color-contrast failures by fg-on-bg pair to expose the systemic offenders.
+    const byPair = contrast.reduce<Record<string, { count: number; ratio: number; sample: string }>>(
+      (acc, c) => {
+        const key = `${c.fg} on ${c.bg}`;
+        if (!acc[key]) acc[key] = { count: 0, ratio: c.ratio, sample: c.html };
+        acc[key].count += 1;
+        return acc;
+      },
+      {},
+    );
+    const pairsSorted = Object.entries(byPair)
+      .map(([pair, v]) => ({ pair, ...v }))
+      .sort((a, b) => b.count - a.count);
+    fs.writeFileSync(
+      path.join(OUT_DIR, "contrast-detail.json"),
+      JSON.stringify({ totalNodes: contrast.length, topPairs: pairsSorted, nodes: contrast.slice(0, 140) }, null, 2),
+    );
+
     const stuck = reveals.filter((r) => r.stillHidden > 0).length;
-    console.log(`[reveal] TOTAL pages with stuck reveal content=${stuck}; axe serious/critical=${a11y.length}`);
+    console.log(
+      `[reveal] TOTAL pages with stuck reveal content=${stuck}; axe serious/critical=${a11y.length}; ` +
+        `contrast nodes=${contrast.length} across ${pairsSorted.length} fg/bg pairs`,
+    );
   });
 });

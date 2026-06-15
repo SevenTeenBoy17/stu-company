@@ -271,13 +271,13 @@ export function StudentAllocationPanel({
                 {intel.coachProvider === "remote" ? "远端模型已参与分析" : "本地教学兜底已接管"}
               </div>
               {loading ? (
-                <span className="text-xs font-medium text-slate-500">正在刷新行情与建议...</span>
+                <span className="text-xs font-medium text-slate-600">正在刷新行情与建议...</span>
               ) : null}
             </div>
             <p className="mt-4 whitespace-pre-line text-sm leading-8 text-slate-700">
               <MoneyInlineText text={stripMarkdown(intel.coachNote)} />
             </p>
-            <p className="mt-4 whitespace-pre-line text-xs leading-6 text-slate-500">
+            <p className="mt-4 whitespace-pre-line text-xs leading-6 text-slate-600">
               <MoneyInlineText text={stripMarkdown(intel.marketNote)} />
             </p>
           </div>
@@ -297,19 +297,19 @@ export function StudentAllocationPanel({
                     <div className="flex items-end justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{slice.label}</p>
-                        <p className="mt-1 text-xs text-slate-500">{slice.hint}</p>
+                        <p className="mt-1 text-xs text-slate-600">{slice.hint}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-900">
                           {slice.weight.toFixed(1)}%
-                          <span className="ml-2 text-xs font-medium text-slate-500">
+                          <span className="ml-2 text-xs font-medium text-slate-600">
                             目标 {target?.weight.toFixed(1) ?? "--"}%
                           </span>
                         </p>
                         <p
                           className={cn(
                             "mt-1 text-xs font-medium",
-                            delta >= 3 ? "text-amber-600" : delta <= -3 ? "text-up" : "text-slate-500",
+                            delta >= 3 ? "text-amber-600" : delta <= -3 ? "text-up" : "text-slate-600",
                           )}
                         >
                           {delta >= 0 ? "高于建议" : "低于建议"} {Math.abs(delta).toFixed(1)}%
