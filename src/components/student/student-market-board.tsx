@@ -464,9 +464,15 @@ export function StudentMarketBoard({
           <div className="mt-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="min-w-0">
               {studentWatchlist?.items.length ? (
-                <div className="grid gap-3 2xl:grid-cols-2">
-                  {studentWatchlist.items.map((item) => (
-                    <article key={item.symbol} className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+                <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
+                  {studentWatchlist.items.map((item, index) => (
+                    <article
+                      key={item.symbol}
+                      data-motion-card
+                      data-motion-reveal
+                      data-motion-delay={(index * 0.06).toFixed(2)}
+                      className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_18px_48px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_24px_60px_rgba(15,23,42,0.1)]"
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <div
@@ -477,7 +483,7 @@ export function StudentMarketBoard({
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-lg font-black text-slate-950">{item.name}</p>
-                            <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                            <p className="mt-0.5 truncate text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
                               {item.symbol} · {item.concept}
                             </p>
                           </div>
