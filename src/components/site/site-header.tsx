@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/site/logo";
@@ -30,8 +30,10 @@ function isLinkActive(pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState("");
 
   useEffect(() => {
     document.body.dataset.scrollLocked = drawerOpen ? "true" : "false";
@@ -59,10 +61,15 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/55 2xl:flex 2xl:max-w-[280px]">
+        <Link
+          href="/learn"
+          data-motion-button
+          aria-label="搜索课程"
+          className="hidden min-w-0 flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/55 transition-colors hover:border-white/20 hover:text-white/80 2xl:flex 2xl:max-w-[280px]"
+        >
           <Search className="size-4" />
           <span className="truncate whitespace-nowrap text-sm">搜索场景、课程或报告</span>
-        </div>
+        </Link>
 
         <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
           {primaryLinks.map((item) => {
@@ -207,13 +214,25 @@ export function SiteHeader() {
                 </button>
               </div>
 
-              <label className="mt-5 flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-white/60">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const q = headerQuery.trim();
+                  setDrawerOpen(false);
+                  router.push(q ? `/learn?q=${encodeURIComponent(q)}` : "/learn");
+                }}
+                className="mt-5 flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-white/60 focus-within:border-white/25"
+              >
                 <Search className="size-4" />
                 <input
+                  value={headerQuery}
+                  onChange={(event) => setHeaderQuery(event.target.value)}
                   placeholder="搜索场景、课程或报告"
+                  enterKeyHint="search"
+                  aria-label="搜索场景、课程或报告"
                   className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/42"
                 />
-              </label>
+              </form>
 
               <div className="mt-6 space-y-2">
                 {primaryLinks.map((item) => {

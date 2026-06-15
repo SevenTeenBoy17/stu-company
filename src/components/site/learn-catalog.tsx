@@ -21,6 +21,13 @@ export function LearnCatalog() {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
+  // Seed the search from a ?q= param (e.g. arriving from the header search).
+  // Client-only effect so SSR never touches window.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setQuery(q);
+  }, []);
+
   const filteredModules = useMemo(() => {
     const normalized = deferredQuery.trim().toLowerCase();
     return learningModules.filter((module) => {
