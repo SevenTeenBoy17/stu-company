@@ -8,7 +8,7 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 
 import { z } from "zod";
 
@@ -746,6 +746,24 @@ async function selectAllRuns(executor: DbExecutor) {
   return rows.map(toRun);
 }
 
+async function selectUsersByClassroom(executor: DbExecutor, classroomId: string) {
+  const rows = await executor
+    .select({ user: users, profile: profiles })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(eq(users.classroomId, classroomId));
+
+  return rows.map((row) => toUserRecord(row.user, row.profile));
+}
+
+async function selectRunsByClassroom(executor: DbExecutor, classroomId: string) {
+  const rows = await executor
+    .select()
+    .from(scenarioRuns)
+    .where(eq(scenarioRuns.classroomId, classroomId));
+  return rows.map(toRun);
+}
+
 async function syncGrowthReportForStudent(executor: DbExecutor, studentUserId: string) {
   const [linkRow] = await executor
     .select()
@@ -801,12 +819,16 @@ async function loadSessionMessages(executor: DbExecutor, sessionId: string) {
   return rows.reverse().map(toAiMessage);
 }
 
-async function listAiSessionRows(executor: DbExecutor, userId: string) {
-  const rows = await executor
+async function listAiSessionRows(executor: DbExecutor, userId: string, limit?: number) {
+  // DB-6: bound the (frequent) list path to `limit` rows in SQL so only that many
+  // JSONB payloads leave the DB, instead of fetching every row then slicing in JS.
+  // Callers that need the full set (e.g. the prune in createAiSession) omit `limit`.
+  const query = executor
     .select()
     .from(aiSessions)
     .where(eq(aiSessions.userId, userId))
     .orderBy(desc(aiSessions.updatedAt));
+  const rows = await (limit === undefined ? query : query.limit(limit));
 
   // H7: session list excludes message bodies; callers load on demand via
   // getAiSessionById. Keep the legacy AiChatSession shape (messages: []) so
@@ -1185,13 +1207,20 @@ export async function getSimulationStateForUser(userId: string) {
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
 
-      const [allUsers, allRuns] = await Promise.all([selectAllUsers(db), selectAllRuns(db)]);
+      // DB-1: scope to the student's classroom in SQL instead of loading every
+      // run/user and filtering in app code. ready.run.classroomId is the same
+      // classroom the old app-filter used and is guaranteed non-null (matches the
+      // proven getPeerHeatForStudent pattern below).
+      const [classroomUsers, classroomRuns] = await Promise.all([
+        selectUsersByClassroom(db, ready.run.classroomId),
+        selectRunsByClassroom(db, ready.run.classroomId),
+      ]);
       return buildSimulationState(
         ready.user,
         ready.classroom,
         ready.run,
-        allRuns.filter((item) => item.classroomId === ready.user.classroomId),
-        allUsers.filter((item) => item.classroomId === ready.user.classroomId),
+        classroomRuns,
+        classroomUsers,
       );
     },
     () => store.getSimulationStateForUser(userId),
@@ -1780,25 +1809,28 @@ export async function getTeacherOverview(userId: string) {
       const classroom = await selectClassroomById(db, teacher.classroomId);
       if (!classroom) throw new Error("班级不存在。");
 
-      const [allUsers, allRuns, assignmentRows, inviteRows] = await Promise.all([
-        selectAllUsers(db),
-        selectAllRuns(db),
+      // DB-2: scope every query to this classroom in SQL (the assignments query
+      // already did). buildLeaderboard only looks users up by run.userId, and all
+      // scoped runs belong to this classroom, so classroom-scoped users suffice.
+      const [classroomUsers, runs, assignmentRows, inviteRows] = await Promise.all([
+        selectUsersByClassroom(db, classroom.id),
+        selectRunsByClassroom(db, classroom.id),
         db.select().from(assignments).where(eq(assignments.classroomId, classroom.id)),
-        db.select().from(inviteCodes),
+        db
+          .select()
+          .from(inviteCodes)
+          .where(or(eq(inviteCodes.classroomId, classroom.id), eq(inviteCodes.createdBy, teacher.id))),
       ]);
-      const studentUsers = allUsers.filter(
-        (user) => user.role === "student" && user.classroomId === classroom.id,
+      const studentUsers = classroomUsers.filter((user) => user.role === "student");
+      const leaderboard = buildLeaderboard(runs, classroomUsers).filter(
+        (entry) => entry.classroomId === classroom.id,
       );
-      const runs = allRuns.filter((run) => run.classroomId === classroom.id);
-      const leaderboard = buildLeaderboard(runs, allUsers).filter((entry) => entry.classroomId === classroom.id);
 
       return {
         teacher,
         classroom,
         assignments: assignmentRows.map(toAssignment),
-        invites: inviteRows
-          .map(toInvite)
-          .filter((invite) => invite.classroomId === classroom.id || invite.createdBy === teacher.id),
+        invites: inviteRows.map(toInvite),
         leaderboard,
         students: studentUsers.map((student) => {
           const run = runs.find((item) => item.userId === student.id);
@@ -2141,8 +2173,10 @@ export async function appendAiMessage(sessionId: string, userId: string, message
 }
 
 export async function listAiSessionsForUser(userId: string) {
-  return withScopedDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
-    store.listAiSessionsForUser(userId),
+  return withScopedDb(
+    "listAiSessionsForUser",
+    (db) => listAiSessionRows(db, userId, 10),
+    () => store.listAiSessionsForUser(userId),
   );
 }
 
