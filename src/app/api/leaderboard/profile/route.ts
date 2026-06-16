@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
-import { findOrCreateSchool, getRankProfile, upsertRankProfile } from "@/lib/db/repo";
+import { findOrCreateSchool, getRankProfile, getSchoolById, upsertRankProfile } from "@/lib/db/repo";
 import { rlsClaimsForUser, withUserRls } from "@/lib/db/rls-context";
 import { isValidCity, isValidProvince } from "@/lib/leaderboard/regions";
 import { sanitizeDisplayText } from "@/lib/leaderboard/school-normalize";
@@ -30,7 +30,10 @@ export async function GET() {
   const profile = await withUserRls(rlsClaimsForUser(auth.user), () =>
     getRankProfile(auth.user.id),
   );
-  return NextResponse.json({ profile });
+  // Resolve the school name so the edit form can pre-fill it (#10 audit: the
+  // profile must be editable, including privacy/consent, after creation).
+  const school = profile ? await getSchoolById(profile.schoolId) : null;
+  return NextResponse.json({ profile, schoolName: school?.name ?? "" });
 }
 
 /** POST — join / update the leaderboard with required school + region. */

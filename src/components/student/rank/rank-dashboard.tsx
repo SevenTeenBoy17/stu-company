@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import { PowerCard } from "./power-card";
 import { RankBoard } from "./rank-board";
-import { RankOnboarding } from "./rank-onboarding";
+import { RankOnboarding, type RankOnboardingInitial } from "./rank-onboarding";
 import type { FormulaDTO, PowerCardDTO, RankScope } from "./types";
 
 interface MeResponse {
@@ -22,6 +22,38 @@ export function RankDashboard() {
   // Region scope is lifted here so the hero's per-region tiles and the board's
   // own selector stay in sync — clicking 全国 on either drives the same board.
   const [scope, setScope] = useState<RankScope>("school");
+  const [editing, setEditing] = useState(false);
+  const [editInitial, setEditInitial] = useState<RankOnboardingInitial | null>(null);
+
+  async function openEdit() {
+    try {
+      const res = await fetch("/api/leaderboard/profile", { cache: "no-store" });
+      const payload = (await res.json().catch(() => null)) as
+        | {
+            profile?: {
+              provinceCode: string;
+              cityCode: string;
+              alias: string;
+              visibility: RankOnboardingInitial["visibility"];
+              consent: number;
+            };
+            schoolName?: string;
+          }
+        | null;
+      if (!payload?.profile) return;
+      setEditInitial({
+        provinceCode: payload.profile.provinceCode,
+        cityCode: payload.profile.cityCode,
+        schoolName: payload.schoolName ?? "",
+        alias: payload.profile.alias,
+        visibility: payload.profile.visibility,
+        consent: Boolean(payload.profile.consent),
+      });
+      setEditing(true);
+    } catch {
+      // keep the card visible; the user can retry the edit button
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -53,8 +85,30 @@ export function RankDashboard() {
     return <RankOnboarding onComplete={() => setRefreshKey((k) => k + 1)} />;
   }
 
+  if (editing && editInitial) {
+    return (
+      <RankOnboarding
+        initial={editInitial}
+        onCancel={() => setEditing(false)}
+        onComplete={() => {
+          setEditing(false);
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={openEdit}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40"
+        >
+          编辑档案 / 隐私设置
+        </button>
+      </div>
       <PowerCard
         card={data.card}
         formula={data.formula}
