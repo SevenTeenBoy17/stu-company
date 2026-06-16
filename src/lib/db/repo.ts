@@ -2088,14 +2088,20 @@ export async function getLeaderboardSnapshot(scope: "classroom" | "school" = "cl
   return withDb(
     "getLeaderboardSnapshot",
     async (db) => {
-      const [allRuns, allUsers] = await Promise.all([selectAllRuns(db), selectAllUsers(db)]);
-      const leaderboard = buildLeaderboard(allRuns, allUsers);
-
-      if (scope === "school") {
-        return leaderboard;
+      // DB-7: scope the classroom view in SQL; only the "school" view needs every
+      // run. (This helper is currently orphaned — kept consistent with the rest.)
+      if (scope === "classroom") {
+        const [classroomRuns, classroomUsers] = await Promise.all([
+          selectRunsByClassroom(db, "class-1"),
+          selectUsersByClassroom(db, "class-1"),
+        ]);
+        return buildLeaderboard(classroomRuns, classroomUsers).filter(
+          (item) => item.classroomId === "class-1",
+        );
       }
 
-      return leaderboard.filter((item) => item.classroomId === "class-1");
+      const [allRuns, allUsers] = await Promise.all([selectAllRuns(db), selectAllUsers(db)]);
+      return buildLeaderboard(allRuns, allUsers);
     },
     () => store.getLeaderboardSnapshot(scope),
   );

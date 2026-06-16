@@ -693,6 +693,7 @@ export function PremiumMotionProvider() {
       rewardTargets.forEach(animateRewardTarget);
 
       floatTargets.forEach((target, index) => {
+        gsap.set(target, { willChange: "transform" });
         gsap.to(target, {
           y: index % 2 === 0 ? -8 : 8,
           scale: 1.012,
@@ -705,6 +706,7 @@ export function PremiumMotionProvider() {
       });
 
       shineTargets.forEach((target) => {
+        gsap.set(target, { willChange: "transform, opacity" });
         gsap.fromTo(
           target,
           { xPercent: -120, autoAlpha: 0.25 },

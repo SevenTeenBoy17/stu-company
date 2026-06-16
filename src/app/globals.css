@@ -355,28 +355,13 @@ select {
   background-size: 64px 64px;
 }
 
-[data-motion-card],
-[data-motion-button],
-[data-motion-depth],
-[data-motion-reveal],
-[data-motion-reward],
-[data-motion-overlay],
-[data-motion-modal],
-[data-motion-drawer],
-[data-motion-scene-item],
-[data-motion-parallax],
-[data-motion-viz-point] {
-  will-change: transform, opacity;
-}
-
-[data-motion-draw],
-[data-motion-bar],
-[data-motion-viz-bar],
-[data-motion-viz-path],
-[data-motion-shine],
-[data-motion-float] {
-  will-change: transform;
-}
+/*
+ * ANIM-JANK-2: no blanket `will-change` on motion markers. One-shot reveals and
+ * hover-transient lifts don't need a permanent compositor layer (the documented
+ * anti-pattern — GPU memory held for the whole page lifetime across 100+ nodes).
+ * The provider sets `will-change` per-tween only on the genuinely-continuous
+ * loops (float/shine); .stock-ticker-marquee keeps its own hint below.
+ */
 
 @keyframes stock-ticker-marquee {
   0% {
