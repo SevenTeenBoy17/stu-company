@@ -74,7 +74,9 @@ export const subscriptionGrants = pgTable("subscription_grants", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("subscription_grants_user_id_idx").on(table.userId),
-  index("subscription_grants_order_id_idx").on(table.orderId),
+  // #3: one grant per order. The unique constraint backstops fulfillPaymentOrder's
+  // row lock so a concurrent double-callback can't double-grant a subscription.
+  uniqueIndex("subscription_grants_order_id_unique").on(table.orderId),
 ]);
 
 export const appSettings = pgTable("app_settings", {

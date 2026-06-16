@@ -2616,11 +2616,15 @@ export async function fulfillPaymentOrder(input: {
     "fulfillPaymentOrder",
     async (db) =>
       db.transaction(async (tx) => {
+        // Row-lock the order so a concurrent SUCCESS callback / manual-confirm blocks
+        // here, then re-reads status="paid" and no-ops via the idempotency gate below,
+        // instead of both passing the gate under READ COMMITTED and double-granting (#3).
         const [order] = await tx
           .select()
           .from(paymentOrders)
           .where(eq(paymentOrders.outTradeNo, input.outTradeNo))
-          .limit(1);
+          .limit(1)
+          .for("update");
         if (!order) throw new Error("支付订单不存在。");
 
         // Defense-in-depth: a SUCCESS callback must report the amount we charged.
