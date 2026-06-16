@@ -263,7 +263,7 @@ export function StudentWealthDashboard({
                   </div>
                   <Route className="h-5 w-5 text-brand-warm" />
                 </div>
-                <svg className="mt-5 h-40 w-full overflow-visible" viewBox="0 0 520 150" role="img">
+                <svg className="mt-5 h-40 w-full overflow-visible" viewBox="0 0 520 150" role="img" aria-label="净值趋势图">
                   <defs>
                     <linearGradient id="wealthTrendFill" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor="var(--amber-400)" stopOpacity="0.28" />

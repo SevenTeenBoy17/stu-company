@@ -87,7 +87,7 @@
   --color-brand-soft: var(--amber-100);
   --color-brand-subtle: var(--amber-50);
   --color-brand-warm: var(--amber-300);
-  --color-brand-ink: var(--amber-700);
+  --color-brand-ink: var(--amber-800); /* a11y: amber-700 on brand-soft is ~4.0:1 (fails AA); amber-800 ~5.8:1 */
   --color-brand-on: #ffffff;
 
   --color-up: var(--up-500);
