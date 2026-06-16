@@ -1,7 +1,6 @@
 import {
   buildEventTimeline,
   eventIdForRound,
-  eventMarketEffect,
   makeRng,
   resolveEventChoice,
 } from "@/lib/event-engine";
@@ -59,32 +58,55 @@ export function getEventCard(eventId: string): EventCard {
 }
 
 /**
- * Event multiplier a run's timeline applies to an asset category in a given round.
- * Returns 1 (neutral) for legacy runs with no `eventTimeline`, preserving the
- * original deterministic market for backward compatibility.
+ * Direction (+1 利好 / -1 利空) the event card a student actually sees imposes on a
+ * category, or `null` when the card doesn't impact it (or is 中性) — in which case
+ * the round's own drift direction is kept. Mirrors `eventMarketEffect`'s
+ * `impactAssets` semantics (undefined impactAssets = impacts every category).
  */
-function runEventMultiplier(
+function cardDirectionForCategory(
+  card: EventCard,
+  category: MarketAsset["category"],
+): number | null {
+  const impacted = card.impactAssets;
+  if (impacted && !impacted.includes(category)) return null;
+  if (card.signal === "利好") return 1;
+  if (card.signal === "利空") return -1;
+  return null;
+}
+
+/**
+ * #6 event-driven pricing — for a real run the price MOVE is driven by the event card
+ * the student actually sees (the run's seeded-timeline event), so the displayed card is
+ * the real cause of the move. The round's tuned magnitude (|assetMultiplier − 1|) is
+ * kept as the volatility envelope — preserving the R1–R4 / R5–R8 / R9–R12 difficulty
+ * ramp and per-asset richness — while the seeded card only sets the DIRECTION for the
+ * categories it impacts (`1 + sign·|base−1|`, so the size never inflates). This both
+ * follows the shown card and silently repairs rounds where the canonical `round.eventId`
+ * card disagreed with its own tuned multipliers. The public ticker and legacy runs with
+ * no `eventTimeline` keep the original market exactly.
+ */
+function roundCategoryMultiplier(
   run: ScenarioRun | undefined,
   roundNumber: number,
   category: MarketAsset["category"],
 ): number {
-  if (!run?.eventTimeline) return 1;
-  const fallbackEventId = getRound(roundNumber).eventId;
-  const eventId = eventIdForRound(run.eventTimeline, roundNumber, fallbackEventId);
-  return eventMarketEffect(getEventCard(eventId), category);
+  const round = getRound(roundNumber);
+  const base = round.assetMultipliers[category];
+  if (!run?.eventTimeline) return base;
+  const magnitude = Math.abs(base - 1);
+  if (magnitude === 0) return base;
+  const eventId = eventIdForRound(run.eventTimeline, roundNumber, round.eventId);
+  const sign = cardDirectionForCategory(getEventCard(eventId), category) ?? Math.sign(base - 1);
+  return 1 + sign * magnitude;
 }
 
 function quoteAsset(asset: MarketAsset, roundNumber: number, run?: ScenarioRun) {
-  const round = getRound(roundNumber);
   const previousRoundNumber = Math.max(1, roundNumber - 1);
-  const previousRound = getRound(previousRoundNumber);
-  const eventMultiplier = runEventMultiplier(run, roundNumber, asset.category);
-  const previousEventMultiplier = runEventMultiplier(run, previousRoundNumber, asset.category);
   const currentPrice = Math.round(
-    asset.basePrice * round.assetMultipliers[asset.category] * eventMultiplier,
+    asset.basePrice * roundCategoryMultiplier(run, roundNumber, asset.category),
   );
   const previousPrice = Math.round(
-    asset.basePrice * previousRound.assetMultipliers[asset.category] * previousEventMultiplier,
+    asset.basePrice * roundCategoryMultiplier(run, previousRoundNumber, asset.category),
   );
   const dayChange = ((currentPrice - previousPrice) / previousPrice) * 100;
 
