@@ -117,10 +117,16 @@ function getHoldingValue(run: ScenarioRun, roundNumber: number) {
   }, 0);
 }
 
-function getPropertyValue(run: ScenarioRun, roundNumber: number) {
+// Property follows a cycle, not a monotonic ramp: it appreciates over the long run
+// but pulls back in the cooldown (R4 地产降温) and recession (R9 衰退) rounds, so
+// "buy property early and forget" is no longer a dominant, risk-free strategy and
+// the diversification lesson holds (#7 audit).
+const PROPERTY_TRAJECTORY = [1.0, 1.03, 1.06, 1.01, 1.04, 1.08, 1.11, 1.13, 1.02, 1.06, 1.1, 1.14];
+
+export function getPropertyValue(run: ScenarioRun, roundNumber: number) {
   if (!run.propertyUnits) return 0;
-  const cycleBoost = 1 + (roundNumber - 1) * 0.024;
-  return Math.round(run.propertyUnits * PROPERTY_UNIT_PRICE * cycleBoost);
+  const index = Math.max(0, Math.min(PROPERTY_TRAJECTORY.length - 1, roundNumber - 1));
+  return Math.round(run.propertyUnits * PROPERTY_UNIT_PRICE * PROPERTY_TRAJECTORY[index]);
 }
 
 function getVentureValue(run: ScenarioRun, roundNumber: number) {
