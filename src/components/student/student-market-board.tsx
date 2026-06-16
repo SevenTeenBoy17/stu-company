@@ -392,7 +392,8 @@ export function StudentMarketBoard({
             </label>
           </div>
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {filteredWatchlist.length > 0 ? (
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {filteredWatchlist.map((item) => {
               const active = item.symbol === selectedSymbol;
               return (
@@ -442,7 +443,12 @@ export function StudentMarketBoard({
                 </button>
               );
             })}
-          </div>
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500">
+              没有匹配“{search}”的股票，换个关键词或代码试试。
+            </div>
+          )}
         </div>
       </section>
 

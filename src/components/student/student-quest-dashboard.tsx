@@ -542,7 +542,8 @@ export function StudentQuestDashboard({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+        {visibleQuests.length > 0 ? (
+          <div className="mt-6 grid gap-4 xl:grid-cols-3">
           {visibleQuests.map((quest) => (
             <article
               data-motion-card
@@ -602,7 +603,12 @@ export function StudentQuestDashboard({
               </button>
             </article>
           ))}
-        </div>
+          </div>
+        ) : (
+          <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
+            该分类暂时没有任务，去完成更多沙盘动作来解锁吧。
+          </p>
+        )}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
