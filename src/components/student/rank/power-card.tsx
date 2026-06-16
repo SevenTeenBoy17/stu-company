@@ -242,7 +242,7 @@ export function PowerCard({
         </ul>
 
         {!card.components ? (
-          <p className="mt-4 rounded-xl bg-bg-muted px-3 py-2 text-xs text-fg-muted">
+          <p className="mt-4 rounded-xl bg-bg-muted px-3 py-2 text-xs text-fg-default">
             完成一局沙盘后，这里会展开你每一项的真实得分。
           </p>
         ) : null}

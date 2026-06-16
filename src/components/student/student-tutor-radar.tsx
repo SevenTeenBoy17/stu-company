@@ -69,7 +69,7 @@ export function StudentTutorRadar({
             <Radar className="h-4 w-4 text-brand" />
             <p className="text-sm font-semibold text-slate-950">AI 决策雷达</p>
           </div>
-          <p className="mt-2 text-xs leading-6 text-slate-500">
+          <p className="mt-2 text-xs leading-6 text-slate-600">
             {payload.provider === "remote" ? "远端模型已生成维度" : "本地规则生成维度"} ·{" "}
             {formatDateLabel(new Date(payload.asOf))}
           </p>
@@ -176,7 +176,7 @@ export function StudentTutorRadar({
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>
-                <p className="mt-2 text-xs leading-5 text-slate-500">{metric.note}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-600">{metric.note}</p>
               </div>
             ))}
           </div>

@@ -49,7 +49,7 @@ const statusMeta: Record<
   done: {
     label: "已完成",
     icon: CheckCircle2,
-    className: "bg-down-soft text-down",
+    className: "bg-down-soft text-[var(--down-700)]",
   },
   active: {
     label: "进行中",
@@ -64,7 +64,7 @@ const statusMeta: Record<
   locked: {
     label: "待解锁",
     icon: Lock,
-    className: "bg-slate-100 text-slate-500",
+    className: "bg-slate-100 text-slate-600",
   },
 };
 
@@ -370,7 +370,7 @@ export function StudentQuestDashboard({
                       <Icon className="h-3.5 w-3.5" />
                       {meta.label}
                     </span>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-500">
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-600">
                       {benefitStatusLabel[item.status]}
                     </span>
                   </div>
@@ -382,7 +382,7 @@ export function StudentQuestDashboard({
                     </p>
                   </div>
                   <div className="mt-4">
-                    <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                    <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
                       <span>{item.reward}</span>
                       <span>{Math.round(item.progress * 100)}%</span>
                     </div>
@@ -394,7 +394,7 @@ export function StudentQuestDashboard({
                         style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
                       />
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{item.guardrail}</p>
+                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{item.guardrail}</p>
                     <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-brand-ink">
                       {item.actionLabel}
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -490,7 +490,7 @@ export function StudentQuestDashboard({
                   <span
                     className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-                      objective.done ? "bg-up text-white" : "bg-white text-slate-400",
+                      objective.done ? "bg-up text-white" : "bg-white text-slate-600",
                     )}
                   >
                     {objective.done ? <CheckCircle2 className="h-5 w-5" /> : <ArrowRight className="h-4 w-4" />}
@@ -498,11 +498,11 @@ export function StudentQuestDashboard({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="text-base font-black text-slate-950">{objective.label}</h3>
-                      <span className="shrink-0 text-xs font-black text-slate-400">
+                      <span className="shrink-0 text-xs font-black text-slate-600">
                         {Math.min(objective.target, Math.round(objective.progress * objective.target))}/{objective.target}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{objective.detail}</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{objective.detail}</p>
                   </div>
                 </div>
               </Link>
@@ -557,7 +557,7 @@ export function StudentQuestDashboard({
                 </div>
                 <QuestStatusBadge status={quest.status} />
               </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{quest.target}</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{quest.target}</p>
               <div data-motion-viz className="mt-5 h-3 rounded-full bg-slate-100">
                 <div
                   data-motion-viz-bar
@@ -575,7 +575,7 @@ export function StudentQuestDashboard({
               </div>
               <div className="mt-4 rounded-[1.2rem] bg-slate-950/[0.035] p-4">
                 <p className="text-sm font-bold text-slate-950">{quest.reward}</p>
-                <p className="mt-2 text-xs leading-5 text-slate-500">{quest.coachNote}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-600">{quest.coachNote}</p>
               </div>
               <button
                 data-motion-button
@@ -589,7 +589,7 @@ export function StudentQuestDashboard({
                     ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                     : quest.claimed
                       ? "bg-slate-950 text-white"
-                      : "cursor-not-allowed bg-slate-100 text-slate-400",
+                      : "cursor-not-allowed bg-slate-100 text-slate-600",
                 )}
               >
                 {claimingQuestId === quest.id ? (
@@ -605,7 +605,7 @@ export function StudentQuestDashboard({
           ))}
           </div>
         ) : (
-          <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-500">
+          <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-600">
             该分类暂时没有任务，去完成更多沙盘动作来解锁吧。
           </p>
         )}
@@ -618,7 +618,7 @@ export function StudentQuestDashboard({
               <CalendarDays className="h-5 w-5 text-brand" />
               <div>
                 <h2 className="text-h1 font-semibold text-slate-950">收益日历</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
+                <p className="mt-1 text-sm font-semibold text-slate-600">
                   更新时间：{formatGeneratedAt(questPayload.generatedAt)}（北京时间）
                 </p>
               </div>
@@ -642,7 +642,7 @@ export function StudentQuestDashboard({
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-black text-slate-950">第 {day.round} 回合</p>
-                  <span className="text-xs font-bold text-slate-500">{day.label}</span>
+                  <span className="text-xs font-bold text-slate-600">{day.label}</span>
                 </div>
                 <p className="mt-3 text-xl font-black">
                   <MoneyText>{formatCurrency(day.netWorth)}</MoneyText>
@@ -678,7 +678,7 @@ export function StudentQuestDashboard({
                   <span
                     className={cn(
                       "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-                      achievement.unlocked ? "bg-brand text-slate-950" : "bg-slate-200 text-slate-500",
+                      achievement.unlocked ? "bg-brand text-slate-950" : "bg-slate-200 text-slate-600",
                     )}
                   >
                     {achievement.unlocked ? <BadgeCheck className="h-5 w-5" /> : <Lock className="h-5 w-5" />}

@@ -97,7 +97,7 @@ function GatewayCard({
             {label}
           </span>
           <h3 className="mt-3 text-lg font-black text-slate-950">{title}</h3>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{summary}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{summary}</p>
         </div>
         <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-orange-500" />
       </div>
@@ -387,7 +387,7 @@ export function StudentWealthDashboard({
                 <div key={item.label}>
                   <div className="flex items-center justify-between gap-4 text-sm">
                     <span className="font-bold text-slate-800">{item.label}</span>
-                    <span className="font-semibold text-slate-500">
+                    <span className="font-semibold text-slate-600">
                       当前 {item.current.toFixed(1)}% / 目标 {item.target.toFixed(1)}%
                     </span>
                   </div>
@@ -446,7 +446,7 @@ export function StudentWealthDashboard({
                       style={{ width: `${mission.progress * 100}%` }}
                     />
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-500">{mission.reward}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-600">{mission.reward}</p>
                 </article>
               ))}
             </div>
@@ -488,7 +488,7 @@ export function StudentWealthDashboard({
                       )}
                     >
                       <span className="block text-base font-black">{option.label}</span>
-                      <span className={cn("mt-1 block text-xs leading-5", form.focus === option.id ? "text-white/72" : "text-slate-500")}>
+                      <span className={cn("mt-1 block text-xs leading-5", form.focus === option.id ? "text-white/72" : "text-slate-600")}>
                         {option.hint}
                       </span>
                     </button>
@@ -512,7 +512,7 @@ export function StudentWealthDashboard({
                       )}
                     >
                       <span className="block text-base font-black">{option.label}</span>
-                      <span className={cn("mt-1 block text-xs leading-5", form.action === option.id ? "text-white/65" : "text-slate-500")}>
+                      <span className={cn("mt-1 block text-xs leading-5", form.action === option.id ? "text-white/65" : "text-slate-600")}>
                         {option.hint}
                       </span>
                     </button>
@@ -535,7 +535,7 @@ export function StudentWealthDashboard({
                   }
                   className="mt-4 w-full accent-orange-500"
                 />
-                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">
+                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">
                   高信心也要写下风险假设，避免把热度当确定性。
                 </span>
               </label>
@@ -548,13 +548,13 @@ export function StudentWealthDashboard({
                   rows={4}
                   maxLength={240}
                   placeholder="例：当前成长资产比例偏高，我先不继续加仓，下一回合观察现金垫是否恢复到目标区间。"
-                  className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand focus:bg-white"
+                  className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-semibold leading-7 text-slate-800 outline-none transition placeholder:text-slate-600 focus:border-brand focus:bg-white"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p
                     className={cn(
                       "text-xs font-semibold",
-                      form.note.trim().length < 8 ? "text-rose-500" : "text-slate-400",
+                      form.note.trim().length < 8 ? "text-rose-500" : "text-slate-600",
                     )}
                   >
                     {form.note.trim().length < 8
@@ -580,7 +580,7 @@ export function StudentWealthDashboard({
                   "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
                   status.type === "error" && "bg-error/10 text-error",
                   status.type === "success" && "bg-emerald-50 text-emerald-700",
-                  status.type === "loading" && "bg-slate-100 text-slate-500",
+                  status.type === "loading" && "bg-slate-100 text-slate-600",
                 )}
               >
                 {status.message}
@@ -608,7 +608,7 @@ export function StudentWealthDashboard({
             <div className="mt-4 rounded-[1.6rem] bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-h3 font-black text-slate-950">最近复盘记录</h3>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
                   {review.reviewCount} 次
                 </span>
               </div>
@@ -622,13 +622,13 @@ export function StudentWealthDashboard({
                           {item.actionLabel} · {item.score}
                         </span>
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-500">
+                      <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-600">
                         {item.note}
                       </p>
                     </article>
                   ))
                 ) : (
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-500">
+                  <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
                     还没有持有计划记录。先写一条理由，下一次历史复盘就能看到它。
                   </div>
                 )}
@@ -643,7 +643,7 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <WalletCards className="h-7 w-7 text-brand" />
             <div>
-              <p className="text-sm font-bold text-slate-500">可用现金</p>
+              <p className="text-sm font-bold text-slate-600">可用现金</p>
               <p className="mt-1 text-xl font-black">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(summary.cash)}</MoneyText>
               </p>
@@ -652,7 +652,7 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <PiggyBank className="h-7 w-7 text-info" />
             <div>
-              <p className="text-sm font-bold text-slate-500">稳健储蓄</p>
+              <p className="text-sm font-bold text-slate-600">稳健储蓄</p>
               <p className="mt-1 text-xl font-black">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(summary.savings)}</MoneyText>
               </p>
@@ -661,7 +661,7 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <Landmark className="h-7 w-7 text-warning" />
             <div>
-              <p className="text-sm font-bold text-slate-500">当前负债</p>
+              <p className="text-sm font-bold text-slate-600">当前负债</p>
               <p className="mt-1 text-xl font-black">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(-summary.debt)}</MoneyText>
               </p>

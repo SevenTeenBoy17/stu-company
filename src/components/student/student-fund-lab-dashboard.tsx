@@ -184,9 +184,9 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xl font-black text-slate-950">{fund.name}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-400">{fund.type}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-600">{fund.type}</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
                     风险 {fund.risk}
                   </span>
                 </div>
@@ -231,7 +231,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                   )}
                 >
                   <p className="text-lg font-black text-slate-950">{item.label}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">{item.summary}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</p>
                 </button>
               ))}
             </div>
@@ -305,7 +305,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-black text-slate-950">{row.fund.name}</p>
-                      <p className="text-sm font-bold text-slate-400">{row.fund.type}</p>
+                      <p className="text-sm font-bold text-slate-600">{row.fund.type}</p>
                     </div>
                     <p className="text-lg font-black text-orange-600">{row.weight}%</p>
                   </div>
@@ -341,11 +341,11 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                 <p className="mt-1 text-sm font-bold text-orange-600">
                   第 {entry.round} 回合 · <MoneyText>{`¥${entry.amount.toLocaleString("zh-CN")}`}</MoneyText>
                 </p>
-                <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">{entry.note}</p>
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.note}</p>
               </article>
             ))
           ) : (
-            <p className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500 lg:col-span-3">
+            <p className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-600 lg:col-span-3">
               还没有基金实验记录。先预览一个组合，再把配置理由记录进历史复盘。
             </p>
           )}
@@ -366,7 +366,7 @@ function Metric({
 }) {
   return (
     <div className={cn("rounded-2xl p-3", light ? "bg-slate-50" : "bg-white/10")}>
-      <p className={cn("text-xs font-bold", light ? "text-slate-400" : "text-white/70")}>{label}</p>
+      <p className={cn("text-xs font-bold", light ? "text-slate-600" : "text-white/70")}>{label}</p>
       <p className={cn("mt-1 text-lg font-black", light ? "text-slate-950" : "text-white")}>{value}</p>
     </div>
   );

@@ -331,7 +331,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                       {active ? <CheckCircle2 className="h-5 w-5 text-brand" /> : <span className="h-5 w-5 rounded-full border border-slate-300" />}
                     </div>
                     <p className="mt-3 text-body font-semibold leading-7 text-slate-600">{plan.tagline}</p>
-                    <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-500">{plan.concept}</p>
+                    <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{plan.concept}</p>
                   </button>
                 );
               })}
@@ -355,7 +355,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                         </span>
                         <div>
                           <h3 className="text-h2 font-black text-slate-950">{row.label}</h3>
-                          <p className="text-sm font-bold text-slate-400">{row.ratio}%</p>
+                          <p className="text-sm font-bold text-slate-600">{row.ratio}%</p>
                         </div>
                       </div>
                       <p className="text-h2 font-black tabular-nums text-brand">{formatCurrency(row.amount)}</p>
@@ -363,7 +363,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     <div className="mt-4 h-3 rounded-full bg-slate-100">
                       <div className="h-full rounded-full bg-slate-950" style={{ width: `${clamp(row.ratio, 4, 100)}%` }} />
                     </div>
-                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{row.hint}</p>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{row.hint}</p>
                   </article>
                 );
               })}
@@ -398,13 +398,13 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-body font-black text-slate-950">{option.title}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
                           保费 {formatCurrency(option.premium)} · 覆盖 {Math.round(option.coverageRate * 100)}%
                         </p>
                       </div>
                       {active && <CheckCircle2 className="h-5 w-5 text-brand" />}
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{option.concept}</p>
+                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{option.concept}</p>
                   </button>
                 );
               })}
@@ -428,7 +428,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-body font-black text-slate-950">{event.title}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">原始成本 {formatCurrency(event.cost)}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">原始成本 {formatCurrency(event.cost)}</p>
                     </div>
                     <span className={cn("rounded-full px-3 py-1 text-xs font-black", stressTone[event.status])}>
                       {event.status === "safe" ? "可承受" : event.status === "watch" ? "需观察" : "现金紧张"}
@@ -436,15 +436,15 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold">
                     <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-slate-400">保险覆盖</p>
+                      <p className="text-slate-600">保险覆盖</p>
                       <p className="mt-1 text-slate-950">{formatCurrency(event.coveredAmount)}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-slate-400">自付金额</p>
+                      <p className="text-slate-600">自付金额</p>
                       <p className="mt-1 text-brand">{formatCurrency(event.outOfPocket)}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">{event.teachingPoint}</p>
+                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{event.teachingPoint}</p>
                 </article>
               ))}
             </div>
@@ -464,7 +464,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Week 0{week.week}</p>
                 <h3 className="mt-3 text-h2 font-black text-slate-950">{week.title}</h3>
                 <p className="mt-3 text-body font-semibold text-slate-600">本周弹性预算 {formatCurrency(week.budget)}</p>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">{week.checkpoint}</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{week.checkpoint}</p>
               </article>
             ))}
           </div>
@@ -485,7 +485,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
               </div>
             ))}
           </div>
-          <p className="mt-5 text-xs font-bold text-slate-400">最近测算：{formatTime(payload.generatedAt)}</p>
+          <p className="mt-5 text-xs font-bold text-slate-600">最近测算：{formatTime(payload.generatedAt)}</p>
           {(state === "success" || applyState === "success") && (
             <p role="status" className="mt-4 flex items-center gap-2 text-sm font-bold text-info">
               <CheckCircle2 className="h-4 w-4" />

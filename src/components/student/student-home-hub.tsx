@@ -205,7 +205,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                 <span
                   className={cn(
                     "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    objective.done ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-500",
+                    objective.done ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-600",
                   )}
                 >
                   {objective.done ? <CheckCircle2 className="h-4 w-4" /> : <ArrowRight className="h-3.5 w-3.5" />}
@@ -213,7 +213,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-black text-slate-950">{objective.label}</span>
-                    <span className="text-xs font-black text-slate-500">
+                    <span className="text-xs font-black text-slate-600">
                       {Math.min(objective.target, Math.round(objective.progress * objective.target))}/{objective.target}
                     </span>
                   </span>
@@ -447,7 +447,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-lg font-black text-slate-950">{service.title}</p>
-                  <p className="mt-1 text-xs font-bold text-slate-500">{studentServiceGroups[service.group]}</p>
+                  <p className="mt-1 text-xs font-bold text-slate-600">{studentServiceGroups[service.group]}</p>
                 </div>
                 <span className={cn("shrink-0 rounded-full px-2 py-1 text-[0.68rem] font-black", statusTone[service.status])}>
                   {service.status === "new" ? "新增" : service.status === "premium" ? "订阅" : "可用"}

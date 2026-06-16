@@ -33,7 +33,7 @@ const bandClass: Record<RiskProfilePayload["band"], string> = {
 
 const allocationTone: Record<RiskProfilePayload["allocation"][number]["tone"], string> = {
   low: "bg-warning/10 text-warning",
-  fit: "bg-down-soft text-down",
+  fit: "bg-down-soft text-[var(--down-700)]",
   high: "bg-error-soft text-error",
 };
 
@@ -361,7 +361,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                           )}
                         </div>
                         <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{option.detail}</p>
-                        <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-500">
+                        <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
                           {option.concept}
                         </span>
                       </button>
@@ -418,7 +418,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-body font-black text-slate-950">{item.label}</p>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{item.hint}</p>
+                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">{item.hint}</p>
                       </div>
                       <span className={cn("rounded-full px-3 py-1 text-xs font-black", allocationTone[item.tone])}>
                         {item.gap > 0 ? "高于" : item.gap < 0 ? "低于" : "贴近"}
@@ -427,7 +427,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                     </div>
                     <div className="mt-4 space-y-2">
                       <div>
-                        <div className="mb-1 flex justify-between text-xs font-bold text-slate-500">
+                        <div className="mb-1 flex justify-between text-xs font-bold text-slate-600">
                           <span>当前 {item.current}%</span>
                           <span>目标 {item.target}%</span>
                         </div>
@@ -485,7 +485,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
                     <p className="text-sm font-black text-slate-950">{metric.label}</p>
                     <span className="text-h2 font-black tabular-nums text-brand">{metric.value}</span>
                   </div>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{metric.hint}</p>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{metric.hint}</p>
                 </div>
               ))}
             </div>

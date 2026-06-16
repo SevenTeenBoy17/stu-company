@@ -31,7 +31,7 @@ function rankBadgeClass(rank: number): string {
     return "bg-gradient-to-br from-slate-100 to-slate-300 text-slate-700 ring-1 ring-slate-300/70";
   if (rank === 3)
     return "bg-gradient-to-br from-amber-500 to-amber-700 text-amber-50 ring-1 ring-amber-600/40";
-  return "bg-bg-muted text-fg-muted";
+  return "bg-bg-muted text-fg-default";
 }
 
 export function RankBoard({
@@ -96,7 +96,7 @@ export function RankBoard({
         </span>
         <h3 className="text-base font-black text-fg-default">战力排行榜</h3>
         {board ? (
-          <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold text-fg-muted">
+          <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold text-fg-default">
             共 {board.total} 人
           </span>
         ) : null}
@@ -172,7 +172,7 @@ export function RankBoard({
           ))}
         </ol>
       ) : !board || board.entries.length === 0 ? (
-        <p className="mt-4 rounded-2xl bg-bg-muted px-3 py-6 text-center text-sm text-fg-muted">
+        <p className="mt-4 rounded-2xl bg-bg-muted px-3 py-6 text-center text-sm text-fg-default">
           本范围本期还没有上榜的同学，完成一局沙盘抢占头名 🏁
         </p>
       ) : (
