@@ -232,7 +232,8 @@ export function PowerCard({
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-bg-muted">
                 <div
-                  className="h-full rounded-full bg-brand transition-all"
+                  data-motion-bar
+                  className="h-full rounded-full bg-brand"
                   style={{ width: `${row.valuePct}%` }}
                 />
               </div>

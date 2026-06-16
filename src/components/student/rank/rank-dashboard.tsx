@@ -24,8 +24,13 @@ export function RankDashboard() {
   const [scope, setScope] = useState<RankScope>("school");
   const [editing, setEditing] = useState(false);
   const [editInitial, setEditInitial] = useState<RankOnboardingInitial | null>(null);
+  const [openingEdit, setOpeningEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   async function openEdit() {
+    if (openingEdit) return;
+    setOpeningEdit(true);
+    setEditError(null);
     try {
       const res = await fetch("/api/leaderboard/profile", { cache: "no-store" });
       const payload = (await res.json().catch(() => null)) as
@@ -40,7 +45,10 @@ export function RankDashboard() {
             schoolName?: string;
           }
         | null;
-      if (!payload?.profile) return;
+      if (!payload?.profile) {
+        setEditError("无法加载档案，请稍后重试。");
+        return;
+      }
       setEditInitial({
         provinceCode: payload.profile.provinceCode,
         cityCode: payload.profile.cityCode,
@@ -51,7 +59,9 @@ export function RankDashboard() {
       });
       setEditing(true);
     } catch {
-      // keep the card visible; the user can retry the edit button
+      setEditError("网络异常，请稍后重试。");
+    } finally {
+      setOpeningEdit(false);
     }
   }
 
@@ -100,14 +110,18 @@ export function RankDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <button
           type="button"
           onClick={openEdit}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40"
+          disabled={openingEdit}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40 disabled:opacity-60"
         >
-          编辑档案 / 隐私设置
+          {openingEdit ? "正在打开…" : "编辑档案 / 隐私设置"}
         </button>
+        {editError ? (
+          <p className="text-xs font-medium text-[var(--error-500)]">{editError}</p>
+        ) : null}
       </div>
       <PowerCard
         card={data.card}

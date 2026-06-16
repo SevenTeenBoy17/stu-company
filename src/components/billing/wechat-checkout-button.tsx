@@ -3,7 +3,6 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import QRCode from "qrcode";
 
 type ManualPaymentConfig = {
   qrUrl?: string;
@@ -155,7 +154,11 @@ export function WechatCheckoutButton({
   useEffect(() => {
     let alive = true;
     if (payload?.codeUrl && payload.paymentMode !== "wechat_manual") {
-      void QRCode.toDataURL(payload.codeUrl, { width: 208, margin: 1 })
+      // Lazy-load the heavy `qrcode` encoder only when a QR is actually needed
+      // (post-click), keeping it out of the public /pricing first-load bundle.
+      const codeUrl = payload.codeUrl;
+      void import("qrcode")
+        .then(({ default: QRCode }) => QRCode.toDataURL(codeUrl, { width: 208, margin: 1 }))
         .then((url) => {
           if (alive) setQrDataUrl(url);
         })
