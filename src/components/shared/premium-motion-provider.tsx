@@ -476,7 +476,7 @@ export function PremiumMotionProvider() {
       const animateOverlayTarget = (target: HTMLElement) => {
         if (entranceAttached.has(target)) return;
         entranceAttached.add(target);
-        gsap.fromTo(
+        const tween = gsap.fromTo(
           target,
           { autoAlpha: 0 },
           {
@@ -486,12 +486,13 @@ export function PremiumMotionProvider() {
             overwrite: "auto",
           },
         );
+        cleanups.push(() => tween.kill());
       };
 
       const animateModalTarget = (target: HTMLElement) => {
         if (entranceAttached.has(target)) return;
         entranceAttached.add(target);
-        gsap.fromTo(
+        const tween = gsap.fromTo(
           target,
           { autoAlpha: 0, y: 18, scale: 0.97 },
           {
@@ -503,6 +504,7 @@ export function PremiumMotionProvider() {
             overwrite: "auto",
           },
         );
+        cleanups.push(() => tween.kill());
       };
 
       const animateDrawerTarget = (target: HTMLElement) => {
@@ -511,7 +513,7 @@ export function PremiumMotionProvider() {
         const side = target.dataset.motionSide ?? "right";
         const fromX = side === "left" ? -32 : side === "none" ? 0 : 32;
         const fromY = side === "bottom" ? 28 : 0;
-        gsap.fromTo(
+        const tween = gsap.fromTo(
           target,
           { autoAlpha: 0, x: fromX, y: fromY, scale: side === "bottom" ? 0.98 : 1 },
           {
@@ -524,12 +526,13 @@ export function PremiumMotionProvider() {
             overwrite: "auto",
           },
         );
+        cleanups.push(() => tween.kill());
       };
 
       const animateRewardTarget = (target: HTMLElement) => {
         if (entranceAttached.has(target)) return;
         entranceAttached.add(target);
-        gsap.fromTo(
+        const tween = gsap.fromTo(
           target,
           { scale: 1, boxShadow: "0 0 0 rgba(240,138,56,0)" },
           {
@@ -543,6 +546,7 @@ export function PremiumMotionProvider() {
             overwrite: "auto",
           },
         );
+        cleanups.push(() => tween.kill());
       };
 
       if (revealTargets.length) {
@@ -598,29 +602,90 @@ export function PremiumMotionProvider() {
       parallaxTargets.forEach((target) => cleanups.push(addParallaxScroll(target)));
       vizTargets.forEach((target) => attachVizTarget(target));
 
-      const dynamicObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.reveal).forEach(attachRevealTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.card).forEach((target) =>
-              attachLiftTarget(target, premiumMotion.lift.card),
-            );
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.button).forEach((target) =>
-              attachLiftTarget(target, premiumMotion.lift.button),
-            );
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.depth).forEach(attachDepthTarget);
-            motionElementsFromNode<SVGGeometryElement>(node, premiumMotion.selector.draw).forEach(attachDrawTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.bar).forEach(attachBarTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.viz).forEach(attachVizTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.overlay).forEach(animateOverlayTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.modal).forEach(animateModalTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.drawer).forEach(animateDrawerTarget);
-            motionElementsFromNode<HTMLElement>(node, premiumMotion.selector.reward).forEach(animateRewardTarget);
-          });
+      // GSAP-2: one combined querySelectorAll per node (was 11 separate scans),
+      // dispatched by which selector each element matches; mutations are coalesced
+      // into a single rAF instead of processed synchronously per DOM insertion.
+      const motionHandlers: Array<[string, (el: HTMLElement) => void]> = [
+        [premiumMotion.selector.reveal, attachRevealTarget],
+        [premiumMotion.selector.card, (el) => attachLiftTarget(el, premiumMotion.lift.card)],
+        [premiumMotion.selector.button, (el) => attachLiftTarget(el, premiumMotion.lift.button)],
+        [premiumMotion.selector.depth, attachDepthTarget],
+        [premiumMotion.selector.draw, (el) => attachDrawTarget(el as unknown as SVGGeometryElement)],
+        [premiumMotion.selector.bar, attachBarTarget],
+        [premiumMotion.selector.viz, attachVizTarget],
+        [premiumMotion.selector.overlay, animateOverlayTarget],
+        [premiumMotion.selector.modal, animateModalTarget],
+        [premiumMotion.selector.drawer, animateDrawerTarget],
+        [premiumMotion.selector.reward, animateRewardTarget],
+      ];
+      const combinedMotionSelector = motionHandlers.map(([selector]) => selector).join(",");
+
+      // GSAP-1: track each dynamically-attached element's cleanups so they are
+      // released (pointer listeners + tweens freed, attach-state reset) when the
+      // element leaves the DOM — not only on route change — bounding memory on
+      // long-lived pages where rows/drawers/panels mount and unmount in place.
+      const dynamicCleanups = new Map<Element, Array<() => void>>();
+      const attachElement = (element: HTMLElement) => {
+        for (const [selector, handler] of motionHandlers) {
+          if (!element.matches(selector)) continue;
+          const before = cleanups.length;
+          handler(element);
+          const added = cleanups.slice(before);
+          if (added.length) {
+            dynamicCleanups.set(element, [...(dynamicCleanups.get(element) ?? []), ...added]);
+          }
+        }
+      };
+      const releaseElement = (element: Element) => {
+        if (element.isConnected) return; // moved / still mounted — keep its handlers
+        const fns = dynamicCleanups.get(element);
+        if (!fns) return;
+        fns.forEach((fn) => fn());
+        dynamicCleanups.delete(element);
+        const el = element as HTMLElement;
+        liftAttached.delete(el);
+        depthAttached.delete(el);
+        revealAttached.delete(el);
+        vizAttached.delete(el);
+        barAttached.delete(el);
+        entranceAttached.delete(el);
+        drawAttached.delete(el as unknown as SVGGeometryElement);
+      };
+
+      let pendingAdded: HTMLElement[] = [];
+      let pendingRemoved: Element[] = [];
+      let flushHandle = 0;
+      const flushMutations = () => {
+        flushHandle = 0;
+        const added = pendingAdded;
+        const removed = pendingRemoved;
+        pendingAdded = [];
+        pendingRemoved = [];
+        added.forEach(attachElement); // attach before release so add+remove in one frame nets out
+        removed.forEach((node) => {
+          releaseElement(node);
+          if (node instanceof HTMLElement || node instanceof SVGElement) {
+            node.querySelectorAll<HTMLElement>(combinedMotionSelector).forEach(releaseElement);
+          }
         });
+      };
+
+      const dynamicObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach((node) => {
+            pendingAdded.push(...motionElementsFromNode<HTMLElement>(node, combinedMotionSelector));
+          });
+          mutation.removedNodes.forEach((node) => {
+            if (node instanceof HTMLElement || node instanceof SVGElement) pendingRemoved.push(node);
+          });
+        }
+        if (!flushHandle) flushHandle = requestAnimationFrame(flushMutations);
       });
       dynamicObserver.observe(document.body, { childList: true, subtree: true });
-      cleanups.push(() => dynamicObserver.disconnect());
+      cleanups.push(() => {
+        if (flushHandle) cancelAnimationFrame(flushHandle);
+        dynamicObserver.disconnect();
+      });
 
       overlayTargets.forEach(animateOverlayTarget);
       modalTargets.forEach(animateModalTarget);
