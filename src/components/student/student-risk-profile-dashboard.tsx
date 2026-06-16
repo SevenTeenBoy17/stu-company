@@ -139,7 +139,10 @@ function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
 export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload: RiskProfilePayload }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
-  const [answers, setAnswers] = useState<RiskProfileAnswer[]>(initialPayload.selectedAnswers);
+  // Start unanswered: the profile is never persisted (GET always returns defaults),
+  // so pre-filling middle options biased answers and showed a 6/6 badge + a computed
+  // persona before the student interacted. Real clicks populate this.
+  const [answers, setAnswers] = useState<RiskProfileAnswer[]>([]);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -202,6 +205,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="risk-profile-dashboard">
+      {submitState === "success" ? (
       <section
         data-risk-reveal
         data-motion-reveal
@@ -280,6 +284,19 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
           </aside>
         </div>
       </section>
+      ) : (
+        <section
+          data-risk-reveal
+          data-motion-reveal
+          className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center"
+        >
+          <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Risk Lab</p>
+          <h2 className="mt-3 text-2xl font-black text-slate-950">先完成下方 6 个情境测评</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">
+            还没有生成投资人格。答完下面 6 题后点击「生成我的投资人格」，这里会显示你的人格分、雷达图与配置地图——答案没有对错，请凭真实直觉选择。
+          </p>
+        </section>
+      )}
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <div data-risk-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
