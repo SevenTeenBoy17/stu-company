@@ -95,4 +95,28 @@ describe("buildAutoInvestPayload", () => {
     run = executeAutoInvestForRound(advanceSimulationRun(run));
     expect(run.cash).toBe(cashBefore);
   });
+
+  it("preview schedule aligns with the actual plan window (starts next round, not current)", () => {
+    const run = createInitialRun("student-1", "class-1", "test", 20260613);
+    const payload = buildAutoInvestPayload(run, {
+      assetId: "asset-etf",
+      amountPerRound: 3000,
+      durationRounds: 3,
+      strategy: "steady",
+    });
+    const planned = createAutoInvestPlan(run, {
+      assetId: "asset-etf",
+      amountPerRound: 3000,
+      durationRounds: 3,
+      strategy: "steady",
+    });
+    const plan = getActiveAutoInvestPlan(planned);
+
+    expect(plan).not.toBeNull();
+    // Preview window must equal the real execution window, else the headline
+    // DCA-vs-lumpsum numbers are computed over rounds the robot never trades.
+    expect(payload.schedule[0]?.round).toBe(run.currentRound + 1);
+    expect(payload.schedule[0]?.round).toBe(plan?.startRound);
+    expect(payload.schedule.at(-1)?.round).toBe(plan?.endRound);
+  });
 });

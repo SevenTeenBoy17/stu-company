@@ -477,7 +477,10 @@ export function buildAutoInvestPayload(
   const plan = normalizeInput(run, input ?? activePlan);
   const options = buildOptions(run);
   const asset = marketAssets.find((item) => item.id === plan.assetId) ?? marketAssets[0];
-  const startRound = run.currentRound;
+  // Preview must mirror the real plan window (createAutoInvestPlan starts next round),
+  // otherwise averageCost / terminalValue / autoInvestEdge are computed over a
+  // round the robot never trades and omit the real final round.
+  const startRound = run.currentRound + 1;
   const endRound = Math.min(run.totalRounds, startRound + plan.durationRounds - 1);
   const schedule: AutoInvestPayload["schedule"] = [];
 
