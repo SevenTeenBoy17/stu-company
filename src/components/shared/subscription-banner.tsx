@@ -42,7 +42,7 @@ export function SubscriptionBanner({ state, role }: Props) {
       {!isStudent && (
         <a
           href="/pricing"
-          className="shrink-0 rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
+          className="shrink-0 rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)]"
         >
           {isExpired ? "了解升级方案" : "了解方案"}
         </a>

@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
             <a
               data-motion-button
               href="/demo"
-              className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
+              className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)]"
             >
               去登录
             </a>
@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
                 type="button"
                 onClick={submit}
                 disabled={isPending || password.length < 8}
-                className="w-full rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
+                className="w-full rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
               >
                 {isPending ? "正在重置…" : "确认重置密码"}
               </button>
@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
               <a
                 data-motion-button
                 href="/demo"
-                className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--amber-600)]"
+                className="inline-block rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)]"
               >
                 去登录页重新发起
               </a>

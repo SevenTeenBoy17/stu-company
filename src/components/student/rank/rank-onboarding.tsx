@@ -235,7 +235,7 @@ export function RankOnboarding({
           type="button"
           onClick={submit}
           disabled={!canSubmit}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {editing ? "保存修改" : consent ? "加入排行榜" : "保存信息"}

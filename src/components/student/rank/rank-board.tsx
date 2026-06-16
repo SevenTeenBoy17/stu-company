@@ -207,7 +207,7 @@ export function RankBoard({
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ring-1",
                     entry.isViewer
-                      ? "bg-brand text-white ring-brand"
+                      ? "bg-brand text-slate-950 ring-brand"
                       : anonymous
                         ? "bg-bg-muted text-fg-subtle ring-border"
                         : "bg-white text-fg-default ring-border",

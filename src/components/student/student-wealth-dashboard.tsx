@@ -417,7 +417,7 @@ export function StudentWealthDashboard({
             <div className="mt-5 space-y-3">
               {summary.coaching.nextSteps.map((step, index) => (
                 <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-brand-subtle p-4">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
                     {index + 1}
                   </span>
                   <p className="text-sm font-semibold leading-6 text-slate-700">{step}</p>
@@ -483,7 +483,7 @@ export function StudentWealthDashboard({
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-left transition",
                         form.focus === option.id
-                          ? "border-brand bg-brand text-white shadow-[0_16px_34px_rgba(249,115,22,0.22)]"
+                          ? "border-brand bg-brand text-slate-950 shadow-[0_16px_34px_rgba(249,115,22,0.22)]"
                           : "border-slate-200 bg-white text-slate-700 hover:border-brand/40 hover:bg-brand-subtle",
                       )}
                     >
@@ -565,7 +565,7 @@ export function StudentWealthDashboard({
                     type="submit"
                     data-testid="wealth-review-submit"
                     disabled={status.type === "loading" || form.note.trim().length < 8}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-white shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     {status.type === "loading" ? "正在记录" : "记录持有计划"}

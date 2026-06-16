@@ -127,7 +127,7 @@ export default async function PricingPage() {
               }`}
             >
               {plan.highlight ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--brand)] px-4 py-1 text-xs font-bold text-white shadow-md">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--brand)] px-4 py-1 text-xs font-bold text-slate-950 shadow-md">
                   推荐体验
                 </span>
               ) : null}
@@ -161,7 +161,7 @@ export default async function PricingPage() {
                   data-motion-button
                   className={`mt-8 block rounded-full px-6 py-3 text-center text-sm font-semibold transition-all ${
                     plan.highlight
-                      ? "bg-[var(--brand)] text-white shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
+                      ? "bg-[var(--brand)] text-slate-950 shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
                       : "border border-[var(--ink-200)] text-[var(--ink-700)] hover:border-[var(--ink-300)] hover:bg-[var(--ink-50)]"
                   }`}
                 >

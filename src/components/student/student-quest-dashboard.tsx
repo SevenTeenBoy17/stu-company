@@ -290,7 +290,7 @@ export function StudentQuestDashboard({
               {questPayload.coach.nextActions.map((action, index) => (
                 <div key={action} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                   <div className="flex gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
                       {index + 1}
                     </span>
                     <p className="text-sm font-semibold leading-6 text-white/74">{action}</p>
@@ -301,7 +301,7 @@ export function StudentQuestDashboard({
             <Link
               data-motion-button
               href="/student"
-              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-glow"
+              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-glow"
             >
               回到策略台执行
               <ArrowRight className="h-4 w-4" />
@@ -450,7 +450,7 @@ export function StudentQuestDashboard({
                 className={cn(
                   "mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition md:w-auto",
                   season.claimable
-                    ? "bg-brand text-white shadow-glow hover:-translate-y-0.5"
+                    ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                     : season.claimed
                       ? "bg-white text-slate-950"
                       : "cursor-not-allowed bg-white/10 text-white/70",
@@ -532,7 +532,7 @@ export function StudentQuestDashboard({
                 className={cn(
                   "min-h-10 rounded-full border px-4 text-sm font-bold transition",
                   filter === item.id
-                    ? "border-border-brand bg-brand text-white shadow-glow"
+                    ? "border-border-brand bg-brand text-slate-950 shadow-glow"
                     : "border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand-ink",
                 )}
               >
@@ -586,7 +586,7 @@ export function StudentQuestDashboard({
                 className={cn(
                   "mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition",
                   quest.claimable
-                    ? "bg-brand text-white shadow-glow hover:-translate-y-0.5"
+                    ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                     : quest.claimed
                       ? "bg-slate-950 text-white"
                       : "cursor-not-allowed bg-slate-100 text-slate-400",
@@ -678,7 +678,7 @@ export function StudentQuestDashboard({
                   <span
                     className={cn(
                       "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-                      achievement.unlocked ? "bg-brand text-white" : "bg-slate-200 text-slate-500",
+                      achievement.unlocked ? "bg-brand text-slate-950" : "bg-slate-200 text-slate-500",
                     )}
                   >
                     {achievement.unlocked ? <BadgeCheck className="h-5 w-5" /> : <Lock className="h-5 w-5" />}

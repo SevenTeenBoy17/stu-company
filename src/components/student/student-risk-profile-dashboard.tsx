@@ -241,7 +241,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
             <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
               <div data-motion-card className="rounded-[1.8rem] border border-white/10 bg-white/[0.07] p-5 md:p-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-white">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-slate-950">
                     <Brain className="h-5 w-5" />
                   </span>
                   <div>
@@ -379,7 +379,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
               data-testid="risk-profile-submit"
               onClick={submitProfile}
               disabled={submitState === "loading" || completed === 0}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               生成我的投资人格
@@ -454,7 +454,7 @@ export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload
             <div className="mt-5 space-y-3">
               {payload.coach.nextSteps.map((step, index) => (
                 <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
                     {index + 1}
                   </span>
                   <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>

@@ -141,7 +141,7 @@ export function FamilyManager() {
             data-motion-button
             onClick={buyPremium}
             disabled={pending}
-            className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
+            className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:opacity-90 disabled:opacity-60"
           >
             {pending ? "处理中…" : "开通家庭高级版 · ¥30/月"}
           </button>
@@ -220,7 +220,7 @@ export function FamilyManager() {
                   data-motion-button
                   onClick={addMember}
                   disabled={pending || !selectedId}
-                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
+                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:opacity-90 disabled:opacity-60"
                 >
                   添加孩子
                 </button>

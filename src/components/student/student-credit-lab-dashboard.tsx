@@ -278,7 +278,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   data-testid="credit-lab-borrow"
                   onClick={() => void submit("borrow")}
                   disabled={pendingIntent !== null}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:opacity-60"
                 >
                   {pendingIntent === "borrow" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpCircle className="h-4 w-4" />}
                   执行教学借款

@@ -414,7 +414,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                       className={cn(
                         "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-black",
                         item.unlocked
-                          ? "border-brand/40 bg-brand text-white"
+                          ? "border-brand/40 bg-brand text-slate-950"
                           : "border-white/10 bg-white/[0.05] text-white/70",
                       )}
                     >

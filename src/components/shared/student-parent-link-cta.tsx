@@ -51,7 +51,7 @@ export function StudentParentLinkCTA() {
           type="button"
           onClick={generate}
           disabled={isPending}
-          className="self-start rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
+          className="self-start rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
         >
           {isPending ? "正在生成…" : "生成家长付款链接"}
         </button>

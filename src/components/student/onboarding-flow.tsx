@@ -535,7 +535,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--amber-600)]"
+                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm transition-colors hover:bg-[var(--amber-600)]"
               >
                 {current.interactive === "trade" && !tradeExecuted ? "确认买入 10 股" : current.action}
               </button>

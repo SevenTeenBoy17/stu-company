@@ -249,7 +249,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 data-testid="life-cashflow-apply"
                 onClick={() => void applyChallenge()}
                 disabled={busy}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {applyState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 执行本月预算挑战
@@ -302,7 +302,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 data-testid="life-cashflow-submit"
                 onClick={() => recalculate()}
                 disabled={busy}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                 重新测算
@@ -478,7 +478,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           <div className="mt-5 space-y-3">
             {payload.coach.nextSteps.map((step, index) => (
               <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
                   {index + 1}
                 </span>
                 <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>

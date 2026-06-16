@@ -123,7 +123,7 @@ export function StudentTutorRadar({
           {persona ? (
             <div className="mb-3 rounded-[1.35rem] border border-brand-warm bg-gradient-to-br from-brand-subtle to-brand-soft px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-white">
+                <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-slate-950">
                   高级版 · 投资人格
                 </span>
                 <span className="min-w-0 text-base font-black text-brand-ink">{persona.label}</span>

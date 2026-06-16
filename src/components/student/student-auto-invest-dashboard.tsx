@@ -358,7 +358,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               type="button"
               onClick={() => submit("activate")}
               disabled={Boolean(activePlan) || state === "loading"}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-white shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busyIntent === "activate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
               启动真实定投

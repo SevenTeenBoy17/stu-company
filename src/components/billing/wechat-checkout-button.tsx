@@ -368,7 +368,7 @@ export function WechatCheckoutButton({
         type="button"
         onClick={startCheckout}
         disabled={isPending}
-        className="block w-full rounded-full bg-[var(--brand)] px-6 py-3 text-center text-sm font-semibold text-white shadow-md transition-all hover:bg-[var(--amber-600)] hover:shadow-lg disabled:opacity-60"
+        className="block w-full rounded-full bg-[var(--brand)] px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-md transition-all hover:bg-[var(--amber-600)] hover:shadow-lg disabled:opacity-60"
       >
         {isPending ? "正在创建微信订单..." : TIER_LABEL[tier]}
       </button>
@@ -438,7 +438,7 @@ export function WechatCheckoutButton({
               </div>
               <Link
                 href="/student"
-                className="mt-4 inline-flex rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[var(--amber-600)]"
+                className="mt-4 inline-flex rounded-full bg-[var(--brand)] px-4 py-2 text-xs font-bold text-slate-950 shadow-sm transition hover:bg-[var(--amber-600)]"
               >
                 进入学生策略台
               </Link>
@@ -603,7 +603,7 @@ export function WechatCheckoutButton({
                   ) : null}
                   <Link
                     href="/student"
-                    className="mt-2 inline-flex rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-bold text-white"
+                    className="mt-2 inline-flex rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-bold text-slate-950"
                   >
                     进入学生策略台
                   </Link>
