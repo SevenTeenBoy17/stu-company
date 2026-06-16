@@ -2017,15 +2017,25 @@ export async function getAdminOverview() {
     return await withDb(
       "getAdminOverview",
       async (db) => {
-        const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows, orderRows] = await Promise.all([
+        // DB-5: the admin board only needs the top few runs by net worth. Rank by
+        // the materialized scenario_runs.netWorth column (kept == the latest
+        // snapshot's netWorth via run.netWorth/toRunUpdate, which is buildLeaderboard's
+        // sort key) and fetch just those, instead of every run's full JSONB. No
+        // migration needed — netWorth is already materialized; disciplineScore for the
+        // few comes from their snapshots. NULLS LAST so an unset netWorth can't rank top.
+        const [allUsers, topRuns, classroomRows, inviteRows, assignmentRows, orderRows] = await Promise.all([
           selectAllUsers(db),
-          selectAllRuns(db),
+          db
+            .select()
+            .from(scenarioRuns)
+            .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
+            .limit(5),
           db.select().from(classrooms),
           db.select().from(inviteCodes),
           db.select().from(assignments).orderBy(desc(assignments.createdAt)),
           db.select().from(paymentOrders),
         ]);
-        const leaderboard = buildLeaderboard(allRuns, allUsers);
+        const leaderboard = buildLeaderboard(topRuns.map(toRun), allUsers);
         const now = Date.now();
         const standardUsers = allUsers.filter((user) => user.subscriptionTier === "standard" || user.subscriptionTier === "premium");
         const trialUsers = allUsers.filter(
