@@ -224,7 +224,7 @@ export function PowerCard({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-fg-default">
                   {row.label}
-                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-fg-muted">
+                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-fg-default">
                     权重 {row.weightPct}%
                   </span>
                 </span>
