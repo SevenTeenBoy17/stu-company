@@ -65,4 +65,13 @@ describe("life cashflow", () => {
     expect(outcome.run.snapshots.at(-1)?.round).toBe(outcome.run.currentRound);
     expect(outcome.payload.overview.emergencyFund).toBe(outcome.result.emergencyFundAfter);
   });
+
+  it("a fresh sandbox run is not trivially over-funded (#5 scale fix)", () => {
+    const run = createInitialRun("student-life-5", "classroom-1");
+    const payload = buildLifeCashflowPayload(run, "balanced", "basic", new Date("2026-06-01T00:00:00.000Z"));
+    // The six-figure investment portfolio must not make personal budgeting trivially
+    // safe: runway should be realistic and at least one stress event should bite.
+    expect(payload.overview.runwayMonths).toBeLessThan(12);
+    expect(payload.stressEvents.some((event) => event.status !== "safe")).toBe(true);
+  });
 });

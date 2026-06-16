@@ -346,7 +346,12 @@ export function buildLifeCashflowPayload(
   const debtPayment = Math.round(Math.min(monthlyIncome * 0.18, run.debt * 0.025));
   const requiredExpense = baseExpense + debtPayment + insurance.premium;
   const plannedSaving = Math.round((monthlyIncome * plan.ratios.saving) / 100);
-  const emergencyFund = Math.max(0, Math.round(run.cash + run.savings));
+  // Personal-finance reserve for the budgeting exercise: bank savings plus a
+  // personal-scale slice of investable cash. Using the full six-figure sandbox
+  // portfolio as the emergency fund made every budget trivially over-funded
+  // (runway ~120 months, all stress events safe), defeating the lesson (#5 audit).
+  const personalCashReserve = Math.min(run.cash, monthlyIncome);
+  const emergencyFund = Math.max(0, Math.round(run.savings + personalCashReserve));
   const emergencyTarget = Math.round((baseExpense + insurance.premium) * 3);
   const emergencyGap = Math.max(0, emergencyTarget - emergencyFund);
   const runwayMonths = Number((emergencyFund / Math.max(baseExpense + insurance.premium, 1)).toFixed(1));
@@ -397,7 +402,7 @@ export function buildLifeCashflowPayload(
     hint: budgetLabels[id].hint,
   }));
 
-  const liquidBase = run.cash + run.savings - plannedSaving - requiredExpense;
+  const liquidBase = run.savings + personalCashReserve - plannedSaving - requiredExpense;
   const stressEvents = stressEventTemplates.map((event) => {
     const { outOfPocket, coveredAmount } = computeOutOfPocket(event.cost, event.category, insurance);
     const liquidityAfter = Math.round(liquidBase - outOfPocket);
