@@ -135,14 +135,14 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">债务率</p>
                 <p className="mt-3 text-display-md font-black text-white">{payload.overview.debtToAssets}%</p>
-                <p className="mt-2 text-xs font-semibold text-white/50">债务 / 总资产</p>
+                <p className="mt-2 text-xs font-semibold text-white/70">债务 / 总资产</p>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">月利息估算</p>
                 <p className="mt-3 text-display-md font-black text-white">
                   <MoneyText>{formatCurrency(payload.overview.monthlyInterestEstimate)}</MoneyText>
                 </p>
-                <p className="mt-2 text-xs font-semibold text-white/50">用于教学估算</p>
+                <p className="mt-2 text-xs font-semibold text-white/70">用于教学估算</p>
               </div>
             </div>
           </div>

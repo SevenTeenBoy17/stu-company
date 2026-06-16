@@ -156,7 +156,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
           </div>
           <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.06] p-5" aria-busy={previewPending}>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-white/50">当前实验组合</p>
+              <p className="text-sm font-bold text-white/70">当前实验组合</p>
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-orange-200">
                 {previewPending ? "正在刷新预览" : "选择即刻预览"}
               </span>
@@ -366,7 +366,7 @@ function Metric({
 }) {
   return (
     <div className={cn("rounded-2xl p-3", light ? "bg-slate-50" : "bg-white/10")}>
-      <p className={cn("text-xs font-bold", light ? "text-slate-400" : "text-white/50")}>{label}</p>
+      <p className={cn("text-xs font-bold", light ? "text-slate-400" : "text-white/70")}>{label}</p>
       <p className={cn("mt-1 text-lg font-black", light ? "text-slate-950" : "text-white")}>{value}</p>
     </div>
   );

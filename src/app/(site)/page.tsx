@@ -46,7 +46,7 @@ export default async function HomePage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
             {showcaseStats.map((stat) => (
               <div key={stat.label} data-motion-card className="bz-inverse-tile p-5">
-                <p className="text-caption uppercase tracking-wide text-white/40">{stat.label}</p>
+                <p className="text-caption uppercase tracking-wide text-white/70">{stat.label}</p>
                 <p className="mt-3 text-2xl font-semibold text-white">{stat.value}</p>
                 <p className="mt-2 text-sm leading-6 text-white/60">{stat.detail}</p>
               </div>

@@ -260,7 +260,7 @@ export function StudentQuestDashboard({
                 <p className="text-sm font-semibold text-white/56">净值连升</p>
                 <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                   {questPayload.overview.streakCurrent}
-                  <span className="mx-2 text-h2 text-white/28">/</span>
+                  <span className="mx-2 text-h2 text-white/70">/</span>
                   {questPayload.overview.streakBest}
                 </p>
                 <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续回合</p>
@@ -269,7 +269,7 @@ export function StudentQuestDashboard({
                 <p className="text-sm font-semibold text-white/56">学习进度</p>
                 <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                   {questPayload.overview.learningCompleted}
-                  <span className="mx-2 text-h2 text-white/28">/</span>
+                  <span className="mx-2 text-h2 text-white/70">/</span>
                   {questPayload.overview.learningTotal}
                 </p>
                 <p className="mt-3 text-sm text-white/58">课程模块完成数</p>
@@ -453,7 +453,7 @@ export function StudentQuestDashboard({
                     ? "bg-brand text-white shadow-glow hover:-translate-y-0.5"
                     : season.claimed
                       ? "bg-white text-slate-950"
-                      : "cursor-not-allowed bg-white/10 text-white/42",
+                      : "cursor-not-allowed bg-white/10 text-white/70",
                 )}
               >
                 {claimingSeason ? (

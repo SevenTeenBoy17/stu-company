@@ -237,11 +237,11 @@ export function PlatformLayout({
                         >
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-body-lg font-black">{item.label}</span>
-                            <span className={cn("text-sm font-black", active ? "text-brand-warm" : "text-white/45")}>
+                            <span className={cn("text-sm font-black", active ? "text-brand-warm" : "text-white/70")}>
                               {navIndexLabel(index)}
                             </span>
                           </div>
-                          <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/45">{item.summary}</p>
+                          <p className="mt-1 line-clamp-1 text-sm font-semibold text-white/70">{item.summary}</p>
                         </Link>
                       );
                     })}
@@ -255,8 +255,8 @@ export function PlatformLayout({
                     return (
                       <div key={group.key}>
                         <div className="mb-2 px-1">
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/45">{group.label}</p>
-                          <p className="mt-1 text-xs font-semibold text-white/32">{group.summary}</p>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">{group.label}</p>
+                          <p className="mt-1 text-xs font-semibold text-white/70">{group.summary}</p>
                         </div>
                         <div className="space-y-2">
                           {items.map((item) => {

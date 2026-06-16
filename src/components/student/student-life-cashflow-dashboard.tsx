@@ -209,7 +209,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     <p className="text-sm font-bold">{item.label}</p>
                   </div>
                     <p className="mt-3 whitespace-nowrap text-h1 font-black tabular-nums text-white">{item.value}</p>
-                    <p className="mt-2 text-xs font-semibold leading-5 text-white/52">{item.hint}</p>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-white/70">{item.hint}</p>
                   </div>
                 );
               })}
@@ -262,19 +262,19 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 <p className="mt-3 text-body font-semibold leading-7 text-white/76">{lastApplied.summary}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-bold">
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/48">转入储蓄</p>
+                    <p className="text-white/70">转入储蓄</p>
                     <p className="mt-1 text-brand-warm">{formatCurrency(lastApplied.savingTransferred)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/48">偿还债务</p>
+                    <p className="text-white/70">偿还债务</p>
                     <p className="mt-1 text-brand-warm">{formatCurrency(lastApplied.debtPaid)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/48">应急金</p>
+                    <p className="text-white/70">应急金</p>
                     <p className="mt-1 text-white">{formatCurrency(lastApplied.emergencyFundAfter)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/48">新评分</p>
+                    <p className="text-white/70">新评分</p>
                     <p className="mt-1 text-white">{lastApplied.cashflowScoreAfter}</p>
                   </div>
                 </div>

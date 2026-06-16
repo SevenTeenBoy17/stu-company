@@ -248,7 +248,7 @@ export function StudentWealthDashboard({
                   <p className="text-sm font-semibold text-white/56">风险 / 纪律</p>
                   <p className="mt-3 text-display-lg font-black tabular-nums text-white">
                     {summary.riskScore}
-                    <span className="mx-2 text-h2 text-white/28">/</span>
+                    <span className="mx-2 text-h2 text-white/70">/</span>
                     {summary.disciplineScore}
                   </p>
                   <p className="mt-3 text-sm text-white/58">风险不是敌人，失控才是。</p>
@@ -259,7 +259,7 @@ export function StudentWealthDashboard({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-bold text-white">净值趋势</p>
-                    <p className="mt-1 text-sm text-white/52">用回合趋势看节奏，而不是被单次涨跌牵着走。</p>
+                    <p className="mt-1 text-sm text-white/70">用回合趋势看节奏，而不是被单次涨跌牵着走。</p>
                   </div>
                   <Route className="h-5 w-5 text-brand-warm" />
                 </div>
@@ -300,11 +300,11 @@ export function StudentWealthDashboard({
                 style={{ background: `conic-gradient(${buildDonut(summary)})` }}
               >
                 <div className="absolute inset-[24px] flex flex-col items-center justify-center rounded-full bg-bg-inverse">
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/46">总资产</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">总资产</span>
                   <span className="mt-2 text-2xl font-black">
                     <MoneyText tone="dark">{hideMoney ? "¥••••••" : formatCurrency(summary.grossAssets)}</MoneyText>
                   </span>
-                  <span className="mt-1 text-xs text-white/46">未扣除负债</span>
+                  <span className="mt-1 text-xs text-white/70">未扣除负债</span>
                 </div>
               </div>
             </div>
@@ -316,7 +316,7 @@ export function StudentWealthDashboard({
                       <span className="h-3 w-3 rounded-full" style={{ background: slice.color }} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-white">{slice.label}</p>
-                        <p className="mt-1 truncate text-xs text-white/42">{slice.hint}</p>
+                        <p className="mt-1 truncate text-xs text-white/70">{slice.hint}</p>
                       </div>
                     </div>
                     <p className="shrink-0 text-sm font-black text-white">{slice.weight.toFixed(1)}%</p>
@@ -672,7 +672,7 @@ export function StudentWealthDashboard({
             className="group flex items-center justify-between gap-4 rounded-[1.5rem] bg-bg-inverse p-5 text-white transition hover:-translate-y-0.5 hover:shadow-glow"
           >
             <div>
-              <p className="text-sm font-bold text-white/52">下一步</p>
+              <p className="text-sm font-bold text-white/70">下一步</p>
               <p className="mt-1 text-xl font-black">回到策略台执行</p>
             </div>
             <ArrowRight className="h-6 w-6 text-brand-warm transition group-hover:translate-x-1" />

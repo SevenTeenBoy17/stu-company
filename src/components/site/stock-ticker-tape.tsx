@@ -94,7 +94,7 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-semibold text-white sm:text-sm">{item.symbol}</span>
-                      <span className="text-xs text-white/48">{item.name}</span>
+                      <span className="text-xs text-white/70">{item.name}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[13px] sm:gap-3 sm:text-sm">
                       <span className="font-medium text-white/88">{formatPrice(item.currentPrice)}</span>

@@ -293,7 +293,8 @@ select {
 
 .bz-brand-chip {
   background: var(--color-brand-soft);
-  color: var(--color-brand-ink);
+  /* ANIM-A11Y: amber-700 on amber-100 is ~4.0:1 (fails WCAG AA); amber-800 is ~5.8:1. */
+  color: var(--amber-800);
 }
 
 .bz-brand-note {

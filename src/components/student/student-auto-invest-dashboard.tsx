@@ -183,7 +183,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 <p className="mt-2 text-h1 font-black text-white">
                   {activePlan ? "真实计划执行中" : payload.summary.stageLabel}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-white/48">
+                <p className="mt-1 text-xs font-semibold text-white/70">
                   更新于 {formatGeneratedAt(payload.generatedAt)}
                 </p>
               </div>
@@ -218,7 +218,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-h1 font-semibold text-white">{selectedOption?.name}</h2>
-                  <p className="mt-1 text-sm font-bold text-white/42">{selectedOption?.symbol}</p>
+                  <p className="mt-1 text-sm font-bold text-white/70">{selectedOption?.symbol}</p>
                 </div>
                 <span className={cn("rounded-full px-3 py-1 text-sm font-black", moveClasses.darkBadge)}>
                   {formatPercent(selectedOption?.dayChange ?? 0)}
@@ -427,19 +427,19 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 </svg>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs font-bold text-white/42">总投入</p>
+                    <p className="text-xs font-bold text-white/70">总投入</p>
                     <p className="mt-1 text-h2 font-black">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.totalInvested)}</MoneyText>
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white/42">模拟收益</p>
+                    <p className="text-xs font-bold text-white/70">模拟收益</p>
                     <p className="mt-1 text-h2 font-black">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.simulatedReturn)}</MoneyText>
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-white/42">收益率</p>
+                    <p className="text-xs font-bold text-white/70">收益率</p>
                     <p className={cn("mt-1 text-h2 font-black", getMarketMoveClasses(payload.summary.simulatedReturnRate).darkText)}>
                       {formatPercent(payload.summary.simulatedReturnRate)}
                     </p>

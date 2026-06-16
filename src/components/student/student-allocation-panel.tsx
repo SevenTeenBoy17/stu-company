@@ -101,7 +101,7 @@ export function StudentAllocationPanel({
               <div className="rounded-[1.8rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/48">配置倾向</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/70">配置倾向</p>
                     <p className="mt-2 text-[1.65rem] font-semibold">{intel.regimeLabel}</p>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-white/72">
@@ -115,7 +115,7 @@ export function StudentAllocationPanel({
                     style={{ backgroundImage: buildConicGradient(intel) }}
                   >
                     <div className="absolute inset-[18px] flex flex-col items-center justify-center rounded-full bg-[var(--ink-800)]">
-                      <span className="text-xs uppercase tracking-[0.2em] text-white/48">总资产</span>
+                      <span className="text-xs uppercase tracking-[0.2em] text-white/70">总资产</span>
                       <span className="mt-2 text-2xl font-semibold">
                         <MoneyText tone="dark">
                           {formatCurrency(intel.allocation.reduce((sum, item) => sum + item.value, 0))}
@@ -133,7 +133,7 @@ export function StudentAllocationPanel({
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
                         <div>
                           <p className="text-sm font-medium text-white">{slice.label}</p>
-                          <p className="text-xs text-white/46">{slice.hint}</p>
+                          <p className="text-xs text-white/70">{slice.hint}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -157,7 +157,7 @@ export function StudentAllocationPanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="break-all text-xs font-semibold leading-5 text-white sm:text-sm">{signal.label}</p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/42">
+                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/70">
                             {signal.code} · {signal.region}
                           </p>
                         </div>
@@ -185,7 +185,7 @@ export function StudentAllocationPanel({
                 <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-white/48">当前持有热区</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-white/70">当前持有热区</p>
                       <p className="mt-2 text-[1.35rem] font-semibold text-white">重点持有与仓位温度</p>
                     </div>
                     <Sparkles className="h-4 w-4 text-brand-warm" />
@@ -197,9 +197,9 @@ export function StudentAllocationPanel({
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-white">
-                                {holding.label} <span className="text-white/38">{holding.symbol}</span>
+                                {holding.label} <span className="text-white/70">{holding.symbol}</span>
                               </p>
-                              <p className="mt-1 text-xs text-white/48">
+                              <p className="mt-1 text-xs text-white/70">
                                 {holding.weight.toFixed(1)}% 总资产 · 风险 {holding.risk}
                               </p>
                             </div>

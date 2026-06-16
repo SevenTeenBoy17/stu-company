@@ -158,12 +158,12 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                       <span className="rounded-2xl bg-white/10 p-3 text-orange-200">
                         <Icon className="h-5 w-5" />
                       </span>
-                      <ArrowRight className="h-4 w-4 text-white/45 transition group-hover:translate-x-1 group-hover:text-orange-200" />
+                      <ArrowRight className="h-4 w-4 text-white/70 transition group-hover:translate-x-1 group-hover:text-orange-200" />
                     </div>
                     <p className="mt-4 text-xl font-black text-white">{domain.label}</p>
                     <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/64">{domain.summary}</p>
                     <div className="mt-4 rounded-2xl bg-slate-900/80 px-3 py-2">
-                      <p className="text-xs font-bold text-white/52">{domain.metricLabel}</p>
+                      <p className="text-xs font-bold text-white/70">{domain.metricLabel}</p>
                       <p className="mt-1 text-lg font-black text-orange-200">{domain.metricValue}</p>
                     </div>
                   </Link>

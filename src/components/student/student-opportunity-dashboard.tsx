@@ -102,7 +102,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
               ["阶段", payload.overview.stageLabel],
             ].map(([label, value]) => (
               <div key={String(label)} data-motion-card className="rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-4">
-                <p className="text-sm font-bold text-white/50">{label}</p>
+                <p className="text-sm font-bold text-white/70">{label}</p>
                 <p className="mt-2 text-2xl font-black text-orange-200">{value}</p>
               </div>
             ))}

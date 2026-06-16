@@ -564,7 +564,7 @@ export function StudentMarketBoard({
                 onChange={(event) => setWatchReason(event.target.value)}
                 maxLength={120}
                 placeholder="写一句观察理由，例如：AI 服务器需求强，但短期涨幅较快，需要比较板块是否共振。"
-                className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-sm font-semibold leading-7 text-white outline-none placeholder:text-white/36 focus:border-orange-300/70"
+                className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-sm font-semibold leading-7 text-white outline-none placeholder:text-white/70 focus:border-orange-300/70"
               />
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
@@ -693,7 +693,7 @@ export function StudentMarketBoard({
                     {payload.selected.changePercent >= 0 ? "+" : ""}
                     {payload.selected.changePercent.toFixed(2)}%
                   </p>
-                  <p className="text-sm font-semibold text-white/50">{payload.selected.companyName}</p>
+                  <p className="text-sm font-semibold text-white/70">{payload.selected.companyName}</p>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -708,7 +708,7 @@ export function StudentMarketBoard({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-base font-black text-white">日 K 线与趋势速写</p>
-                      <p className="mt-1 text-sm font-semibold text-white/50">实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。</p>
+                      <p className="mt-1 text-sm font-semibold text-white/70">实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。</p>
                     </div>
                     <Activity className="h-5 w-5 text-orange-300" />
                   </div>

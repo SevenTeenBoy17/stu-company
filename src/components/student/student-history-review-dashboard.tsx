@@ -119,7 +119,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">净值趋势</p>
-          <p className="mt-1 text-xs text-white/48">
+          <p className="mt-1 text-xs text-white/70">
             先看账户走势，再看单笔输赢，复盘会更稳定。
           </p>
         </div>
@@ -453,7 +453,7 @@ export function StudentHistoryReviewDashboard({
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/42">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/70">
                               R{highlight.round}
                             </p>
                             <span

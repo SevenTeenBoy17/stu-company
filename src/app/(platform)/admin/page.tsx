@@ -50,7 +50,7 @@ export default async function AdminPage() {
             </p>
           </div>
           <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-5">
-            <p className="text-sm font-semibold text-white/54">当前身份</p>
+            <p className="text-sm font-semibold text-white/70">当前身份</p>
             <p className="mt-2 text-2xl font-black text-white">{canManagePasswords ? "超级管理员" : "普通管理员"}</p>
             <p className="mt-3 text-sm leading-7 text-white/58">
               {canManagePasswords

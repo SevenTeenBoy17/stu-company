@@ -355,7 +355,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
               每一步只学习一个概念，先做轻量选择，再进入正式沙盘。
             </p>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/8 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/45">本步概念</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/70">本步概念</p>
               <p className="mt-2 text-xl font-semibold">{current.concept}</p>
               <p className="mt-2 text-xs leading-6 text-white/58">进度 {step + 1}/{STEPS.length}</p>
             </div>

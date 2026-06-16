@@ -306,7 +306,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <div>
               <p className="text-xs font-black uppercase tracking-[0.24em] text-brand-warm">Pet Studio</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">{payload.pet.name}</h2>
-              <p className="mt-1 text-sm font-bold text-white/50">
+              <p className="mt-1 text-sm font-bold text-white/70">
                 {payload.pet.species} / {payload.pet.stageLabel}
               </p>
             </div>
@@ -370,7 +370,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     style={{ width: `${stat.value}%` }}
                   />
                 </div>
-                <p className="mt-3 text-xs font-bold text-white/45">{stat.detail}</p>
+                <p className="mt-3 text-xs font-bold text-white/70">{stat.detail}</p>
               </div>
             ))}
           </div>
@@ -395,7 +395,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-black text-white">{action.title}</p>
-                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/48">{action.detail}</p>
+                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/70">{action.detail}</p>
                       </div>
                       <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-brand-warm transition group-hover:translate-x-1" />
                     </div>
@@ -415,14 +415,14 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                         "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-black",
                         item.unlocked
                           ? "border-brand/40 bg-brand text-white"
-                          : "border-white/10 bg-white/[0.05] text-white/34",
+                          : "border-white/10 bg-white/[0.05] text-white/70",
                       )}
                     >
                       {item.unlocked ? <BadgeCheck className="h-4 w-4" /> : item.round}
                     </span>
                     <div>
-                      <p className={cn("text-sm font-black", item.unlocked ? "text-white" : "text-white/40")}>{item.label}</p>
-                      <p className="mt-1 text-xs font-semibold leading-5 text-white/46">{item.detail}</p>
+                      <p className={cn("text-sm font-black", item.unlocked ? "text-white" : "text-white/70")}>{item.label}</p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-white/70">{item.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -442,7 +442,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-warm">Reward Codex</p>
               <h3 className="mt-2 text-2xl font-black">奖励图鉴</h3>
-              <p className="mt-2 text-sm font-semibold text-white/50">
+              <p className="mt-2 text-sm font-semibold text-white/70">
                 {payload.summary.unlocked}/{payload.summary.total} 已点亮 / 下一件：{payload.summary.nextRewardTitle}
               </p>
             </div>
@@ -476,7 +476,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                 >
                   <div className="flex items-start gap-3">
                     <div className={cn("rounded-2xl p-2", reward.unlocked ? "bg-white/[0.08]" : "bg-white/[0.04] grayscale")}>
-                      {reward.unlocked ? <RewardGlyph reward={reward} small /> : <Lock className="h-8 w-8 text-white/30" />}
+                      {reward.unlocked ? <RewardGlyph reward={reward} small /> : <Lock className="h-8 w-8 text-white/70" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -485,7 +485,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                           {rarityLabel[reward.rarity]}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/50">
+                      <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/70">
                         {reward.unlocked ? reward.description : reward.unlockHint}
                       </p>
                       <p className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-brand-warm">{reward.source}</p>
@@ -515,7 +515,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
               让 KeyAI 解释奖励建议
               <ArrowRight className="h-4 w-4" />
             </button>
-            <p className="mt-3 text-xs font-bold text-white/38">更新于 {formatTime(payload.generatedAt)}</p>
+            <p className="mt-3 text-xs font-bold text-white/70">更新于 {formatTime(payload.generatedAt)}</p>
           </div>
         </aside>
       </div>

@@ -175,7 +175,7 @@ export function SiteHeader() {
                           className="group block rounded-2xl bg-white/[0.04] px-4 py-3 transition-colors hover:bg-white/[0.08]"
                         >
                           <p className="font-semibold text-white">{item.label}</p>
-                          <p className="mt-1 text-sm leading-6 text-white/54">{item.description}</p>
+                          <p className="mt-1 text-sm leading-6 text-white/70">{item.description}</p>
                         </Link>
                       ))}
                     </div>
@@ -230,7 +230,7 @@ export function SiteHeader() {
                   placeholder="搜索场景、课程或报告"
                   enterKeyHint="search"
                   aria-label="搜索场景、课程或报告"
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/42"
+                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/70"
                 />
               </form>
 
@@ -251,7 +251,7 @@ export function SiteHeader() {
                       )}
                     >
                       <span>{item.label}</span>
-                      <span className="text-xs text-white/38">入口</span>
+                      <span className="text-xs text-white/70">入口</span>
                     </Link>
                   );
                 })}
