@@ -265,21 +265,28 @@ export function StudentMarketBoard({
     );
   }, [deferredSearch, payload.watchlist]);
 
-  const selectedMetricValues = payload.selected.metrics.map((item) => item.score);
-  const selectedInStudentWatchlist = studentWatchlist?.items.some((item) => item.symbol === selectedSymbol) ?? false;
-  const radarPath = buildRadarShape(selectedMetricValues);
-  const linePath = buildLinePath(payload.selected.miniSeries);
-  const areaPath = buildAreaPath(payload.selected.miniSeries);
-  const candleGeometry = useMemo(() => buildCandleGeometry(payload.selected.candles), [payload.selected.candles]);
-  const sectorTotal = payload.sectorPerformance.reduce(
-    (total, item) => total + Math.max(Math.abs(item.changePercent), 0.4),
-    0,
+  const selectedMetricValues = useMemo(
+    () => payload.selected.metrics.map((item) => item.score),
+    [payload.selected.metrics],
   );
-  const sectorSlices = payload.sectorPerformance.map((item, index) => ({
-    ...item,
-    color: ["#f08a38", "#d43c33", "#0f9d58", "#6f7ef7", "#f59e0b", "#64748b"][index % 6],
-    weight: (Math.max(Math.abs(item.changePercent), 0.4) / sectorTotal) * 100,
-  }));
+  const selectedInStudentWatchlist = studentWatchlist?.items.some((item) => item.symbol === selectedSymbol) ?? false;
+  const radarPath = useMemo(() => buildRadarShape(selectedMetricValues), [selectedMetricValues]);
+  const linePath = useMemo(() => buildLinePath(payload.selected.miniSeries), [payload.selected.miniSeries]);
+  const areaPath = useMemo(() => buildAreaPath(payload.selected.miniSeries), [payload.selected.miniSeries]);
+  const candleGeometry = useMemo(() => buildCandleGeometry(payload.selected.candles), [payload.selected.candles]);
+  const sectorTotal = useMemo(
+    () => payload.sectorPerformance.reduce((total, item) => total + Math.max(Math.abs(item.changePercent), 0.4), 0),
+    [payload.sectorPerformance],
+  );
+  const sectorSlices = useMemo(
+    () =>
+      payload.sectorPerformance.map((item, index) => ({
+        ...item,
+        color: ["#f08a38", "#d43c33", "#0f9d58", "#6f7ef7", "#f59e0b", "#64748b"][index % 6],
+        weight: (Math.max(Math.abs(item.changePercent), 0.4) / sectorTotal) * 100,
+      })),
+    [payload.sectorPerformance, sectorTotal],
+  );
 
   const { contextSafe } = useGSAP(
     () => {

@@ -321,8 +321,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const rank = currentRank(state);
   const recentActions = state.run.actionLog.slice().reverse().slice(0, 7);
   const topLeaderboard = state.leaderboard.slice(0, 5);
-  const homeHubPayload = buildStudentHomeHubPayload(state.run);
-  const petRewardPayload = buildStudentPetPayload(state.run);
+  const homeHubPayload = useMemo(() => buildStudentHomeHubPayload(state.run), [state.run]);
+  const petRewardPayload = useMemo(() => buildStudentPetPayload(state.run), [state.run]);
 
   const heroMetrics = [
     {
