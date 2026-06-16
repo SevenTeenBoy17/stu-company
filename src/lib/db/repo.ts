@@ -1008,12 +1008,25 @@ export async function registerUserByInvite(input: {
 
           if (link && linkedRun) {
             const report = buildGrowthReport(linkedRun, link.studentUserId, newUser.id);
-            await tx.insert(growthReports).values({
-              id: createId("growth-report"),
-              studentUserId: link.studentUserId,
-              parentUserId: newUser.id,
-              payload: report,
-            });
+            // H8: a student has exactly one current growth report (unique index on
+            // student_user_id). A returning/seeded student already has one, so a plain
+            // insert here threw a unique violation and rolled back the whole parent
+            // registration. Upsert, mirroring syncGrowthReportForStudent.
+            await tx
+              .insert(growthReports)
+              .values({
+                id: createId("growth-report"),
+                studentUserId: link.studentUserId,
+                parentUserId: newUser.id,
+                payload: report,
+              })
+              .onConflictDoUpdate({
+                target: growthReports.studentUserId,
+                set: {
+                  parentUserId: newUser.id,
+                  payload: report,
+                },
+              });
           }
         }
 
