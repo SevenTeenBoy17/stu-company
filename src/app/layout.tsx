@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { GlobalAiAssistant } from "@/components/shared/global-ai-assistant";
+import { DeferredAiAssistant } from "@/components/shared/deferred-ai-assistant";
 import { PremiumMotionProvider } from "@/components/shared/premium-motion-provider";
 import { getCurrentUser } from "@/lib/session-user";
 
@@ -24,7 +24,7 @@ export default async function RootLayout({
       <body className="min-h-full bg-bg-app text-fg-default">
         {children}
         <PremiumMotionProvider />
-        <GlobalAiAssistant
+        <DeferredAiAssistant
           viewer={
             currentUser
               ? {
