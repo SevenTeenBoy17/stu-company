@@ -19,8 +19,22 @@ export async function POST(request: Request) {
   }
 
   try {
+    // The sandbox is a fixed 12-round game. If it is already on the final round
+    // there is nothing to advance — report completion instead of a phantom advance
+    // (#4 audit).
+    const before = await getSimulationStateForUser(auth.user.id);
+    if (before.run.currentRound >= before.run.totalRounds) {
+      return NextResponse.json({
+        state: before,
+        adaptiveEvents: [],
+        finished: true,
+        message: "本局 12 回合已结束，前往历史复盘查看结算。",
+      });
+    }
+
     await advanceRunForUser(auth.user.id);
     const state = await getSimulationStateForUser(auth.user.id);
+    const finished = state.run.currentRound >= state.run.totalRounds;
     const adaptiveEvents = detectAdaptiveEvents(state.run);
     // Best-effort: refresh the player's 财商战力 for the weekly board. Never let
     // a leaderboard hiccup block round advance.
@@ -29,7 +43,14 @@ export async function POST(request: Request) {
     } catch {
       // swallow — leaderboard is non-critical to gameplay
     }
-    return NextResponse.json({ state, adaptiveEvents, message: "已推进到下一回合。" });
+    return NextResponse.json({
+      state,
+      adaptiveEvents,
+      finished,
+      message: finished
+        ? "已完成最后一回合，本局结束，可前往历史复盘查看结算。"
+        : "已推进到下一回合。",
+    });
   } catch (error) {
     return handleRouteError(error, "推进回合失败，请稍后再试。");
   }

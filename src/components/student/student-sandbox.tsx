@@ -519,15 +519,29 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               ) : null}
             </div>
             <div className="flex flex-col items-stretch gap-2">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => submitAction(undefined, "/api/sim/advance-round")}
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-              >
-                推进下一回合
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </button>
+              {state.run.currentRound >= state.run.totalRounds ? (
+                <a
+                  href="/student/history"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 transition-transform hover:-translate-y-0.5"
+                >
+                  {/* Game over: the 12-round sandbox has a terminus now. White label on a
+                      span so the global a{color:inherit} reset doesn't grey it out (#4 audit). */}
+                  <span className="inline-flex items-center text-base font-bold text-white">
+                    本局已结束 · 查看复盘结算
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => submitAction(undefined, "/api/sim/advance-round")}
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  推进下一回合
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </button>
+              )}
               {canReplay ? (
                 <button
                   type="button"
