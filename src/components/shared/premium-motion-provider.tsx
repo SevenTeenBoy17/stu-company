@@ -353,7 +353,7 @@ function motionElementsFromNode<T extends Element>(node: Node, selector: string)
   return matches;
 }
 
-export function PremiumMotionProvider() {
+export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean } = {}) {
   const pathname = usePathname();
 
   useGSAP(
@@ -562,19 +562,28 @@ export function PremiumMotionProvider() {
         };
 
         revealTargets.forEach((target) => revealAttached.add(target));
-        gsap.set(revealTargets, { autoAlpha: 0, y: 24 });
-        cleanups.push(observeOnce(revealTargets, revealNow));
+        // BUNDLE-1: when this provider is deferred off the critical path (public
+        // site), leave already-visible above-the-fold reveals untouched so the LCP
+        // content never flashes when the chunk loads — only hide + scroll-reveal
+        // what's below the fold. When eager (in-bundle), the full set fades up.
+        const revealHidden = deferred
+          ? revealTargets.filter((target) => target.getBoundingClientRect().top >= window.innerHeight)
+          : revealTargets;
+        if (revealHidden.length) {
+          gsap.set(revealHidden, { autoAlpha: 0, y: 24 });
+          cleanups.push(observeOnce(revealHidden, revealNow));
 
-        // Safety net (mirrors addSceneTimeline): if the observer never fires for an
-        // element already within / above the viewport, force-reveal it so primary
-        // content can never get stuck at visibility:hidden.
-        const revealSafety = window.setTimeout(() => {
-          revealTargets.forEach((target) => {
-            if (Number(gsap.getProperty(target, "opacity")) > 0.01) return;
-            if (target.getBoundingClientRect().top < window.innerHeight) revealNow(target);
-          });
-        }, 1400);
-        cleanups.push(() => window.clearTimeout(revealSafety));
+          // Safety net (mirrors addSceneTimeline): if the observer never fires for an
+          // element already within / above the viewport, force-reveal it so primary
+          // content can never get stuck at visibility:hidden.
+          const revealSafety = window.setTimeout(() => {
+            revealHidden.forEach((target) => {
+              if (Number(gsap.getProperty(target, "opacity")) > 0.01) return;
+              if (target.getBoundingClientRect().top < window.innerHeight) revealNow(target);
+            });
+          }, 1400);
+          cleanups.push(() => window.clearTimeout(revealSafety));
+        }
       }
 
       if (numberTargets.length) {
@@ -748,7 +757,7 @@ export function PremiumMotionProvider() {
         ]);
       };
     },
-    { dependencies: [pathname], revertOnUpdate: true },
+    { dependencies: [pathname, deferred], revertOnUpdate: true },
   );
 
   return null;

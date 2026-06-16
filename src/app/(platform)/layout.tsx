@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { PremiumMotionProvider } from "@/components/shared/premium-motion-provider";
 import { getCurrentUser } from "@/lib/session-user";
 
 // M1: single authentication boundary for every (platform)/* route. Pages
@@ -12,5 +13,10 @@ export default async function PlatformRoutesLayout({ children }: { children: Rea
   if (!user) {
     redirect("/demo?reason=login_required");
   }
-  return <>{children}</>;
+  return (
+    <>
+      <PremiumMotionProvider />
+      {children}
+    </>
+  );
 }
