@@ -197,10 +197,16 @@ export async function recomputeAllRankedUsers(
   opts: { now?: Date } = {},
 ): Promise<{ processed: number }> {
   const userIds = await listRankedUserIds();
+  // DB-4: process in small concurrent batches instead of strictly one-at-a-time.
+  // Capped at 2 to stay within the max-3 connection pool (each user's recompute
+  // holds at most one connection at a time) while roughly halving the daily cron's
+  // wall-clock; users are independent so order does not matter.
+  const CONCURRENCY = 2;
   let processed = 0;
-  for (const userId of userIds) {
-    const result = await recomputePowerForUser(userId, opts);
-    if (result) processed += 1;
+  for (let i = 0; i < userIds.length; i += CONCURRENCY) {
+    const batch = userIds.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map((userId) => recomputePowerForUser(userId, opts)));
+    processed += results.filter(Boolean).length;
   }
   return { processed };
 }

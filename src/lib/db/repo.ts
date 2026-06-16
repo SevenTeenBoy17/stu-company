@@ -764,6 +764,16 @@ async function selectRunsByClassroom(executor: DbExecutor, classroomId: string) 
   return rows.map(toRun);
 }
 
+async function selectUsersByIds(executor: DbExecutor, ids: string[]) {
+  if (ids.length === 0) return [];
+  const rows = await executor
+    .select({ user: users, profile: profiles })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(inArray(users.id, ids));
+  return rows.map((row) => toUserRecord(row.user, row.profile));
+}
+
 async function syncGrowthReportForStudent(executor: DbExecutor, studentUserId: string) {
   const [linkRow] = await executor
     .select()
@@ -1469,25 +1479,43 @@ export async function listPremiumFamilyDigests(): Promise<FamilyDigest[]> {
   return withDb(
     "listPremiumFamilyDigests",
     async (db) => {
+      // DB-3: batch the per-member lookups (was 1 + 3*M serial round-trips) into
+      // set-based queries — owners, students, and one run per student via inArray.
       const members = await db.select().from(familyMembers);
-      const digests: FamilyDigest[] = [];
-      for (const member of members) {
-        const owner = await selectUserById(db, member.ownerUserId);
-        if (!owner) continue;
+      if (members.length === 0) return [];
+
+      const owners = await selectUsersByIds(db, [...new Set(members.map((m) => m.ownerUserId))]);
+      const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
+      const eligible = members.filter((member) => {
+        const owner = ownerById.get(member.ownerUserId);
+        if (!owner) return false;
         const state = resolveSubscriptionState(
           owner.subscriptionTier,
           owner.trialExpiresAt,
           owner.subscriptionExpiresAt,
         );
-        if (!(state.status === "active" && owner.subscriptionTier === "premium")) continue;
+        return state.status === "active" && owner.subscriptionTier === "premium";
+      });
+      if (eligible.length === 0) return [];
 
-        const student = await selectUserById(db, member.studentUserId);
-        const [runRow] = await db
-          .select()
-          .from(scenarioRuns)
-          .where(eq(scenarioRuns.userId, member.studentUserId))
-          .limit(1);
-        if (!student || !runRow) continue;
+      const studentIds = [...new Set(eligible.map((member) => member.studentUserId))];
+      const students = await selectUsersByIds(db, studentIds);
+      const studentById = new Map(students.map((student) => [student.id, student]));
+      const runRows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(inArray(scenarioRuns.userId, studentIds));
+      const runByUserId = new Map<string, (typeof runRows)[number]>();
+      for (const row of runRows) {
+        if (!runByUserId.has(row.userId)) runByUserId.set(row.userId, row);
+      }
+
+      const digests: FamilyDigest[] = [];
+      for (const member of eligible) {
+        const owner = ownerById.get(member.ownerUserId);
+        const student = studentById.get(member.studentUserId);
+        const runRow = runByUserId.get(member.studentUserId);
+        if (!owner || !student || !runRow) continue;
         const run = toRun(runRow);
         digests.push({
           ownerEmail: owner.email,
