@@ -114,11 +114,19 @@ function monthlyPayment(principal: number, annualRate: number, months: number) {
   return Math.round(principal * factor);
 }
 
-function buildScenarioView(run: ScenarioRun, scenario: CreditScenario, totalAssets: number): CreditScenarioView {
+// Consumer-credit risk is measured against personal repayment capacity, not the
+// six-figure investment portfolio. Using net worth made every loan read ~5%
+// ("healthy") and the 0.58 leverage guard unreachable (#5 audit).
+const CREDIT_CAPACITY_CAP = 6000;
+function creditCapacityBase(run: ScenarioRun) {
+  return Math.max(0, run.savings + Math.min(run.cash, CREDIT_CAPACITY_CAP));
+}
+
+function buildScenarioView(run: ScenarioRun, scenario: CreditScenario, capacityBase: number): CreditScenarioView {
   const payment = monthlyPayment(scenario.principal, scenario.annualRate, scenario.months);
   const totalRepayment = payment * scenario.months;
   const debtAfter = run.debt + scenario.principal;
-  const debtRatioAfter = Math.round((debtAfter / Math.max(totalAssets + scenario.principal, 1)) * 100);
+  const debtRatioAfter = Math.round((debtAfter / Math.max(capacityBase + scenario.principal, 1)) * 100);
   const status = debtRatioAfter >= 45 ? "danger" : debtRatioAfter >= 28 ? "watch" : "healthy";
 
   return {
@@ -188,7 +196,7 @@ export function buildCreditLabPayload(
           ? "债务降温"
           : "暂停加杠杆";
 
-  const scenarios = creditScenarios.map((scenario) => buildScenarioView(run, scenario, totalAssets));
+  const scenarios = creditScenarios.map((scenario) => buildScenarioView(run, scenario, creditCapacityBase(run)));
   const selectedScenario = scenarios.find((scenario) => scenario.id === scenarioId) ?? scenarios[0];
   const repaymentOptions = buildRepaymentOptions(run);
   const nextSteps = [
@@ -272,8 +280,9 @@ export function applyCreditLabAction(
   if (intent === "borrow") {
     const selected = buildCreditLabPayload(nextRun, input.scenarioId).selectedScenario;
     amount = Math.min(requestedAmount ?? selected.principal, selected.principal);
-    const totalAssetsAfter = evaluateRun(nextRun, nextRun.currentRound).netWorth + nextRun.debt + amount;
-    const ratioAfter = (nextRun.debt + amount) / Math.max(totalAssetsAfter, 1);
+    // Leverage is gauged against personal repayment capacity, not the investment
+    // portfolio, so the 0.58 guard actually engages on over-borrowing (#5 audit).
+    const ratioAfter = (nextRun.debt + amount) / Math.max(creditCapacityBase(nextRun) + amount, 1);
     if (ratioAfter > 0.58) {
       throw new Error("这笔借款会让债务率过高，请先降低金额或先还款。");
     }

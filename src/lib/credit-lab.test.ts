@@ -67,4 +67,15 @@ describe("credit lab", () => {
       }),
     ).toThrow("债务率过高");
   });
+
+  it("consumer-credit risk uses personal capacity, not the investment portfolio (#5 part 2)", () => {
+    const run = createInitialRun("student-credit-5", "classroom-1");
+    const payload = buildCreditLabPayload(run, "device-installment", new Date("2026-06-01T00:00:00.000Z"));
+    // On a fresh six-figure-cash run, at least one scenario must carry real leverage risk.
+    expect(payload.scenarios.some((scenario) => scenario.status !== "healthy")).toBe(true);
+    // ...and the 0.58 leverage guard is reachable: a large loan vs capacity is blocked.
+    expect(() =>
+      applyCreditLabAction(run, { intent: "borrow", scenarioId: "startup-bridge", amount: 9000 }),
+    ).toThrow("债务率过高");
+  });
 });
