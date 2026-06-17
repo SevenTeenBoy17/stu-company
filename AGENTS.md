@@ -52,6 +52,13 @@ Red lines:
 - Do not use `git add .`; stage explicit paths only when the user asks for a commit.
 - Do not fetch AI providers directly outside `src/lib/ai.ts`.
 
+## Definition of Done (强制)
+
+- "完成" means the named acceptance commands are green and all `git grep` gates pass; do not accept "应该可以" or "稍后处理".
+- Every task must append the real command output to `progress.md`, including tests, grep gates, build output, and failure text when a gate fails.
+- Do not mark work complete with `TODO`, `FIXME`, placeholder implementations, or edits outside the prompt's declared allowed scope.
+- Any write-path change must be verified once while `npm run db:up` is healthy and once through the stopped-DB failure path.
+
 ## 3.1 Agency Agents Stage Routing
 
 This repository also installs the full `agency-agents-zh` Codex agent set under `.codex/agents/`. Use those agents as a specialist pool, but keep Brown Zone custom agents as the first-choice owners when their scope matches.

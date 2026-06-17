@@ -193,3 +193,1797 @@
 - Added `quest` action-log support and JSONB schema coverage. Quest rewards are recorded with `meta.kind = "quest_reward_claim"`, `amount = 0`, and no net-worth, power, or ranking mutation.
 - Repaired the task-center Chinese copy and JSX after detecting mojibake in the in-progress files; the visible quest hub now has clean labels, loading/disabled/claimed states, success status, and friendly API errors.
 - Verification passed: focused quest/schema tests (13 passed), `npx tsc --noEmit`, `npm run lint`, full `npm run test` (57 files / 393 tests), `npm run build`, Playwright student login -> `/student/quests` -> claim reward smoke, raw AI fetch grep, leaderboard/rank coupling grep, mojibake grep, and code-review-graph detect-changes.
+
+## 2026-06-17 Phase 0.1 Step 1-2 Stop-Gate
+
+Status: STOP-GATE reached after Step 2. Per manual, package.json/docs wiring is not started yet.
+
+Command: git status --short -- docker-compose.local.yml scripts/db-up.ts
+Output:
+`	ext
+?? docker-compose.local.yml ?? scripts/db-up.ts
+`
+
+Command: Get-Content docker-compose.local.yml -Raw
+Output:
+`yaml
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: brownzone-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brownzone
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - brownzone_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brownzone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  brownzone_pgdata:
+    name: brownzone_pgdata
+
+`
+
+Command: Get-Content scripts/db-up.ts -Raw
+Output:
+`	s
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+
+const composeFile = "docker-compose.local.yml";
+const containerName = "brownzone-pg";
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+function run(command: string, args: string[], options: { input?: string } = {}) {
+  const result = spawnSync(command, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    input: options.input,
+    stdio: options.input ? ["pipe", "inherit", "inherit"] : "inherit",
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    const rendered = [command, ...args].join(" ");
+    throw new Error(`Command failed (${result.status ?? "unknown"}): ${rendered}`);
+  }
+}
+
+function inspectHealth() {
+  const result = spawnSync("docker", ["inspect", "-f", "{{.State.Health.Status}}", containerName], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  if (result.status !== 0) {
+    return "";
+  }
+
+  return result.stdout.trim();
+}
+
+function sleep(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function waitForHealthy(timeoutMs = 60_000) {
+  const startedAt = Date.now();
+  let lastStatus = "";
+
+  while (Date.now() - startedAt < timeoutMs) {
+    lastStatus = inspectHealth();
+
+    if (lastStatus === "healthy") {
+      console.log("Postgres container is healthy.");
+      return;
+    }
+
+    const label = lastStatus || "starting";
+    console.log(`Waiting for ${containerName} healthcheck: ${label}`);
+    sleep(2_000);
+  }
+
+  throw new Error(`${containerName} did not become healthy within ${timeoutMs / 1000}s. Last status: ${lastStatus || "unknown"}`);
+}
+
+function applySupabaseShims() {
+  const shimPath = resolve(process.cwd(), "scripts", "ci-supabase-shims.sql");
+  const sql = readFileSync(shimPath, "utf8");
+
+  run("docker", [
+    "exec",
+    "-i",
+    containerName,
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "brownzone",
+    "-v",
+    "ON_ERROR_STOP=1",
+  ], { input: sql });
+}
+
+console.log("Starting local Postgres with Docker Compose...");
+run("docker", ["compose", "-f", composeFile, "up", "-d"]);
+waitForHealthy();
+
+console.log("Applying Supabase-compatible shims...");
+applySupabaseShims();
+
+console.log("Running Drizzle migrations...");
+run(npmCommand, ["run", "db:migrate"]);
+
+console.log("Applying RLS policies...");
+run(npmCommand, ["run", "db:apply-policies"]);
+
+console.log("Seeding local data...");
+run(npmCommand, ["run", "db:seed"]);
+
+console.log("鉁?鏈湴搴撳氨缁?-> http://localhost:3000");
+
+`
+
+Notes:
+- Created only the two Step 1-2 files named by prompt 0.1.
+- Did not edit package.json, docs/db-region-latency-and-local-dev.md, src/**, or drizzle/** in this Step 1-2 stop-gate.
+- The requested AGENTS.md Definition of Done is pending because prompt 0.1 write scope does not include AGENTS.md.
+
+### Phase 0.1 Step 1-2 Encoding Fix
+
+Command: git status --short -- docker-compose.local.yml scripts/db-up.ts progress.md package.json docs\db-region-latency-and-local-dev.md src drizzle
+Output:
+`	ext
+ M progress.md  M src/components/billing/wechat-checkout-button.tsx  M src/components/site/site-header.tsx  M src/components/student/student-home-hub.tsx  M src/components/student/student-sandbox.tsx ?? docker-compose.local.yml ?? scripts/db-up.ts
+`
+
+Command: Get-Content scripts/db-up.ts -Raw
+Output:
+`	s
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+
+const composeFile = "docker-compose.local.yml";
+const containerName = "brownzone-pg";
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+function run(command: string, args: string[], options: { input?: string } = {}) {
+  const result = spawnSync(command, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    input: options.input,
+    stdio: options.input ? ["pipe", "inherit", "inherit"] : "inherit",
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    const rendered = [command, ...args].join(" ");
+    throw new Error(`Command failed (${result.status ?? "unknown"}): ${rendered}`);
+  }
+}
+
+function inspectHealth() {
+  const result = spawnSync("docker", ["inspect", "-f", "{{.State.Health.Status}}", containerName], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  if (result.status !== 0) {
+    return "";
+  }
+
+  return result.stdout.trim();
+}
+
+function sleep(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function waitForHealthy(timeoutMs = 60_000) {
+  const startedAt = Date.now();
+  let lastStatus = "";
+
+  while (Date.now() - startedAt < timeoutMs) {
+    lastStatus = inspectHealth();
+
+    if (lastStatus === "healthy") {
+      console.log("Postgres container is healthy.");
+      return;
+    }
+
+    const label = lastStatus || "starting";
+    console.log(`Waiting for ${containerName} healthcheck: ${label}`);
+    sleep(2_000);
+  }
+
+  throw new Error(`${containerName} did not become healthy within ${timeoutMs / 1000}s. Last status: ${lastStatus || "unknown"}`);
+}
+
+function applySupabaseShims() {
+  const shimPath = resolve(process.cwd(), "scripts", "ci-supabase-shims.sql");
+  const sql = readFileSync(shimPath, "utf8");
+
+  run("docker", [
+    "exec",
+    "-i",
+    containerName,
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    "brownzone",
+    "-v",
+    "ON_ERROR_STOP=1",
+  ], { input: sql });
+}
+
+console.log("Starting local Postgres with Docker Compose...");
+run("docker", ["compose", "-f", composeFile, "up", "-d"]);
+waitForHealthy();
+
+console.log("Applying Supabase-compatible shims...");
+applySupabaseShims();
+
+console.log("Running Drizzle migrations...");
+run(npmCommand, ["run", "db:migrate"]);
+
+console.log("Applying RLS policies...");
+run(npmCommand, ["run", "db:apply-policies"]);
+
+console.log("Seeding local data...");
+run(npmCommand, ["run", "db:seed"]);
+
+console.log("OK local database ready -> http://localhost:3000");
+
+`
+
+Stop-gate remains active: package.json/docs wiring not started.
+
+### Phase 0.1 Step 1-2 Logging Command Failure
+
+Command: attempted combined tsc + progress append using PowerShell here-string
+Exit code: 1
+Output:
+```text
+The string is missing the terminator: "@.
+CategoryInfo: ParserError
+FullyQualifiedErrorId: TerminatorExpectedAtEndOfString
+```
+
+### Phase 0.1 Step 1-2 TypeScript Check
+
+Command: npx tsc --noEmit
+Exit code: 0
+Output:
+```text
+
+```
+
+
+## 2026-06-17 Phase 0.1 Step 3-4
+
+Command: git status --short -- docker-compose.local.yml scripts/db-up.ts package.json docs/db-region-latency-and-local-dev.md progress.md src drizzle
+Output:
+```text
+ M docs/db-region-latency-and-local-dev.md  M package.json  M progress.md  M src/components/billing/wechat-checkout-button.tsx  M src/components/site/site-header.tsx  M src/components/student/student-home-hub.tsx  M src/components/student/student-sandbox.tsx ?? docker-compose.local.yml ?? scripts/db-up.ts
+```
+
+Command: git diff -- package.json docs/db-region-latency-and-local-dev.md scripts/db-up.ts
+Output:
+```diff
+diff --git a/docs/db-region-latency-and-local-dev.md b/docs/db-region-latency-and-local-dev.md index 466624e..0dc6571 100644 --- a/docs/db-region-latency-and-local-dev.md +++ b/docs/db-region-latency-and-local-dev.md @@ -1,12 +1,13 @@  # DB latency, production region, and fast local dev   -> Written 2026-06-04 after diagnosing the `findOrCreateSchool timed out after 5000ms` -> failure on the 财商战力榜 (PR #4). Companion to the code hardening in commit `089ecfa`. +> Written 2026-06-04 after diagnosing the remote database timeout failure on +> classroom onboarding and leaderboard paths. This document explains the latency +> tradeoff and the local-first Postgres workflow used for development.    ## The diagnosis    The Supabase database is in **`aws-1-us-east-2`** (US East / Ohio). The school and -its students are in **成都 (China)**. Every DB round-trip crosses the Pacific. +its students are in **Chengdu, China**. Every DB round-trip crosses the Pacific.    Measured from a China dev machine (through the local TUN proxy):   @@ -17,77 +18,101 @@ Measured from a China dev machine (through the local TUN proxy):    The leaderboard onboarding is the most round-trip-heavy write path, so it was the  first to blow past the 5 s client query budget. Two code fixes already reduced the -exposure (commit `089ecfa`): a calm Chinese 503 instead of leaking the raw timeout, -and `findOrCreateSchool` collapsed from 2 round-trips to 1. But the **root cause is -physical distance** — code can only do so much. +exposure: a calm Chinese 503 instead of leaking the raw timeout, and +`findOrCreateSchool` collapsed from 2 round-trips to 1. But the **root cause is +physical distance**; code can only do so much.   -Note: this is also the latency class already flagged for `getTeacherOverview` / -`getAdminOverview`. The remote **schema is fully applied and healthy** (verified -2026-06-04, ledger at migration 0012) — this is *not* a missing-migration problem. +Note: this is also the latency class already flagged for `getTeacherOverview` and +`getAdminOverview`. The remote schema was fully applied and healthy when this note +was first written; this is not a missing-migration problem.   -## Production options (your decision) +## Production options    1. **Move Supabase to a closer region — recommended first step.** -   `ap-southeast-1` (Singapore) or `ap-northeast-1` (Tokyo) cut RTT from ~230 ms to -   ~tens of ms for China users. Caveat: traffic still crosses the GFW, so it helps -   a lot but is not as bulletproof as in-country hosting. Supabase can't change a -   project's region in place — you create a new project in the target region and -   migrate data (runbook below). +   `ap-southeast-1` (Singapore) or `ap-northeast-1` (Tokyo) can cut RTT from +   hundreds of ms to tens of ms for China users. Caveat: traffic still crosses the +   GFW, so it helps a lot but is not as bulletproof as in-country hosting. +   Supabase cannot change a project's region in place; create a new project in the +   target region and migrate data.    2. **China-hosted Postgres (Aliyun RDS / Tencent Cloud / Huawei Cloud).** -   Best possible latency + stability for a China-only user base, and avoids the GFW -   entirely. Bigger lift: you leave Supabase (lose Auth/Storage/Studio niceties) and -   re-point `DATABASE_URL`. The app only needs a Postgres URL (Drizzle + `postgres` -   driver), so the data layer ports cleanly; re-create the `auth` shim + roles -   (`scripts/ci-supabase-shims.sql`) and re-apply `drizzle/policies.sql`. - -3. **Stay in us-east-2 + mitigate.** Keep the round-trip minimization, ensure the -   Supabase **transaction pooler** (port 6543, already in use) with adequate -   `default_pool_size`, and size compute for classroom concurrency. Optionally raise -   `DB_QUERY_TIMEOUT_MS` for the slow link (trade-off: users wait longer on real -   failures). This is the least robust option for CN users under load. - -### Region-migration runbook (option 1) - -1. Create a new Supabase project in `ap-southeast-1` (or `ap-northeast-1`). -2. Export from old, import to new (use the **direct** connection, not the pooler): +   Best possible latency and stability for a China-only user base. Bigger lift: +   you leave Supabase conveniences and re-point `DATABASE_URL`. The app only needs +   a Postgres URL through Drizzle + `postgres`, so the data layer ports cleanly. +   Re-create the `auth` shim + roles (`scripts/ci-supabase-shims.sql`) and re-apply +   `drizzle/policies.sql`. + +3. **Stay in us-east-2 + mitigate.** +   Keep round-trip minimization, ensure the Supabase transaction pooler is used +   with adequate `default_pool_size`, and size compute for classroom concurrency. +   Optionally raise `DB_QUERY_TIMEOUT_MS` for the slow link. This is the least +   robust option for China users under load. + +### Region-migration runbook + +1. Create a new Supabase project in `ap-southeast-1` or `ap-northeast-1`. +2. Export from old, import to new using the **direct** connection, not the pooler: +     ```bash     pg_dump "postgresql://...OLD-direct..." --no-owner --no-privileges -Fc -f bz.dump     pg_restore --no-owner --no-privileges -d "postgresql://...NEW-direct..." bz.dump     ``` -   (Or `npm run db:migrate` against the new project, then `pg_dump --data-only`.) -3. `npm run db:apply-policies` against the new project (re-applies RLS). -4. Smoke-test against the new URL locally, then update `DATABASE_URL` in **Vercel** -   (and `.env.local`) to the new project's **pooler** URL (`:6543`). -5. Redeploy; verify the 战力榜 onboarding and a teacher/admin overview. Decommission -   the old project once confirmed. + +3. Run `npm run db:apply-policies` against the new project. +4. Smoke-test against the new URL locally, then update `DATABASE_URL` in Vercel +   and `.env.local` to the new project's pooler URL. +5. Redeploy and verify onboarding plus teacher/admin overview paths.    ## Fast local dev with Docker Postgres   -Local dev against the us-east-2 DB is trans-Pacific and slow. Run a local Postgres -instead — onboarding drops from a 5 s timeout to **~114 ms**: +Local dev against the us-east-2 DB is trans-Pacific and slow. Use the checked-in +Docker Compose runbook instead of an ad-hoc `docker run` container. The Compose +service creates a named volume, restarts unless stopped, waits for a Postgres +healthcheck, applies the Supabase-compatible shims before migrations, then runs +migrations, RLS policies, and seed data in the required order. + +Before running the local DB, make sure `.env.local` points to the local database: + +```powershell +DATABASE_URL=postgres://postgres:postgres@localhost:5433/brownzone +SESSION_SECRET=<at least 32 random characters> +``` + +Start or repair the local database from scratch: + +```powershell +npm run db:up +``` + +`npm run db:up` performs the full chain: + +1. `docker compose -f docker-compose.local.yml up -d` +2. wait until `brownzone-pg` reports `healthy` +3. pipe `scripts/ci-supabase-shims.sql` into the container +4. `npm run db:migrate` +5. `npm run db:apply-policies` +6. `npm run db:seed` + +Check the container health:    ```powershell -# 1. start a local Postgres -docker run -d --name brownzone-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres ` -  -e POSTGRES_DB=brownzone -p 5433:5432 postgres:16 +docker compose -f docker-compose.local.yml ps +```   -# 2. provide the Supabase-compatible shims (roles + auth schema) BEFORE migrating -Get-Content scripts/ci-supabase-shims.sql | docker exec -i brownzone-pg psql -U postgres -d brownzone +Stop the local database but keep data:   -# 3. point DATABASE_URL at it (in .env.local), then: -npm run db:migrate         # applies 0000-0012 -npm run db:apply-policies   # RLS policies -npm run db:seed             # demo users / runs +```powershell +npm run db:down +``` + +Reset the local database and delete the named volume:   -# .env.local: -# DATABASE_URL=postgres://postgres:postgres@localhost:5433/brownzone +```powershell +npm run db:down:hard +npm run db:up  ```    To switch back to the remote DB, restore the original `DATABASE_URL` line in -`.env.local`. The `brownzone-pg` container stops on machine restart — `docker start -brownzone-pg` to resume (data persists until the container is removed). - -Alternatively, for a no-DB demo, comment out `DATABASE_URL` entirely — the app falls -back to the in-memory store (`src/lib/store.ts`), which also serves the full -leaderboard with seeded data. +`.env.local`. Alternatively, for a no-DB demo, comment out `DATABASE_URL` entirely: +the app falls back to the in-memory store (`src/lib/store.ts`), which also serves +the full leaderboard with seeded data. diff --git a/package.json b/package.json index 0bfb9b3..4ece5df 100644 --- a/package.json +++ b/package.json @@ -12,6 +12,9 @@      "test:integration": "vitest run tests/integration --config vitest.integration.config.ts",      "test:coverage": "vitest run --coverage",      "db:generate": "drizzle-kit generate", +    "db:up": "tsx scripts/db-up.ts", +    "db:down": "docker compose -f docker-compose.local.yml down", +    "db:down:hard": "docker compose -f docker-compose.local.yml down -v",      "db:migrate": "tsx scripts/migrate.ts",      "db:seed": "tsx scripts/seed.ts",      "db:apply-policies": "tsx scripts/apply-policies.ts",
+```
+
+Command: Get-Content docker-compose.local.yml -Raw
+Output:
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: brownzone-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brownzone
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - brownzone_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brownzone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  brownzone_pgdata:
+    name: brownzone_pgdata
+
+```
+
+
+### Phase 0.1 Acceptance - npm run db:down:hard
+
+Exit code: 0
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:down:hard
+> docker compose -f docker-compose.local.yml down -v
+
+
+```
+
+
+### Phase 0.1 Acceptance - npm run db:up
+
+Exit code: 1
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:up
+> tsx scripts/db-up.ts
+
+Starting local Postgres with Docker Compose...
+node.exe :  Network brown-zone-web_default  Creating
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Network brown-zone-web_default  Created
+ Volume brownzone_pgdata  Creating
+ Volume brownzone_pgdata  Created
+ Container brownzone-pg  Creating
+ Container brownzone-pg  Error response from daemon: Conflict. The container name "/brownzone-pg" is already in use by 
+container "af2a66c8833fe124d6bcbb1c5866dfbc86eff471ba3926f5a2f0387638aa5f90". You have to remove (or rename) that conta
+iner to be able to reuse that name.
+Error response from daemon: Conflict. The container name "/brownzone-pg" is already in use by container "af2a66c8833fe1
+24d6bcbb1c5866dfbc86eff471ba3926f5a2f0387638aa5f90". You have to remove (or rename) that container to be able to reuse 
+that name.
+D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:23
+    throw new Error(`Command failed (${result.status ?? "unknown"}): ${rendered}`);
+          ^
+
+Error: Command failed (1): docker compose -f docker-compose.local.yml up -d
+    at run (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:23:11)
+    at <anonymous> (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:84:1)
+    at Object.<anonymous> (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:99:77)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object.transformer (D:\树德实验中学（清波）\C2\brown-zone-web\node_modules\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:336:3)
+
+Node.js v24.11.1
+
+```
+
+
+### Phase 0.1 Fix - legacy brownzone-pg name conflict
+
+Reason: npm run db:up failed because an existing ad-hoc brownzone-pg container occupied the Compose container name. The fix preserves that container by renaming it before Compose startup.
+
+Command: git diff -- scripts/db-up.ts
+Output:
+```diff
+
+```
+
+
+### Phase 0.1 Acceptance Retry - npm run db:down:hard
+
+Exit code: 0
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:down:hard
+> docker compose -f docker-compose.local.yml down -v
+
+node.exe :  Volume brownzone_pgdata  Removing
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Volume brownzone_pgdata  Removing:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Network brown-zone-web_default  Removing
+ Volume brownzone_pgdata  Removed
+ Network brown-zone-web_default  Removed
+
+```
+
+
+### Phase 0.1 Acceptance Retry - npm run db:up
+
+Exit code: 1
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:up
+> tsx scripts/db-up.ts
+
+Starting local Postgres with Docker Compose...
+node.exe : Existing non-Compose brownzone-pg found. Renaming it to brownzone-pg-legacy-1781719828579 before Compose sta
+rtup.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Existing non-Co...ompose startup.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Network brown-zone-web_default  Creating
+ Network brown-zone-web_default  Created
+ Volume brownzone_pgdata  Creating
+ Volume brownzone_pgdata  Created
+ Container brownzone-pg  Creating
+ Container brownzone-pg  Created
+ Container brownzone-pg  Starting
+ Container brownzone-pg  Started
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Postgres container is healthy.
+Applying Supabase-compatible shims...
+DO
+DO
+CREATE SCHEMA
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+Running Drizzle migrations...
+node:internal/child_process:1120
+    result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
+                   ^
+
+Error: spawnSync npm.cmd EINVAL
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at spawnSync (node:child_process:911:24)
+    at run (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:10:18)
+    at <anonymous> (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:118:1)
+    at Object.<anonymous> (D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:126:77)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object.transformer (D:\树德实验中学（清波）\C2\brown-zone-web\node_modules\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'spawnSync npm.cmd',
+  path: 'npm.cmd',
+  spawnargs: [ 'run', 'db:migrate' ]
+}
+
+Node.js v24.11.1
+
+```
+
+
+### Phase 0.1 Fix - Windows npm spawnSync EINVAL
+
+Reason: npm run db:up failed at npm.cmd spawnSync with EINVAL on Windows/Node 24. Docker commands remain shell-free; npm scripts use shell only on Windows.
+
+Command: git diff -- scripts/db-up.ts
+Output:
+```diff
+
+```
+
+
+### Phase 0.1 Acceptance Retry 2 - npm run db:down:hard
+
+Exit code: 0
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:down:hard
+> docker compose -f docker-compose.local.yml down -v
+
+node.exe :  Container brownzone-pg  Stopping
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container brownzone-pg  Stopping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container brownzone-pg  Stopped
+ Container brownzone-pg  Removing
+ Container brownzone-pg  Removed
+ Volume brownzone_pgdata  Removing
+ Network brown-zone-web_default  Removing
+ Volume brownzone_pgdata  Removed
+ Network brown-zone-web_default  Removed
+
+```
+
+
+### Phase 0.1 Acceptance Retry 2 - npm run db:up
+
+Exit code: 0
+Output:
+```text
+
+> brown-zone-web@0.1.0 db:up
+> tsx scripts/db-up.ts
+
+Starting local Postgres with Docker Compose...
+node.exe :  Network brown-zone-web_default  Creating
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Network brown-zone-web_default  Created
+ Volume brownzone_pgdata  Creating
+ Volume brownzone_pgdata  Created
+ Container brownzone-pg  Creating
+ Container brownzone-pg  Created
+ Container brownzone-pg  Starting
+ Container brownzone-pg  Started
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Postgres container is healthy.
+Applying Supabase-compatible shims...
+DO
+DO
+CREATE SCHEMA
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+Running Drizzle migrations...
+
+> brown-zone-web@0.1.0 db:migrate
+> tsx scripts/migrate.ts
+
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "users_select_own" for relation "public.users" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_student_select_own" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_teacher_select_classroom" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_parent_select_bonded" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_admin_select_all" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_sessions_select_own" for relation "public.ai_sessions" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_sessions_update_own" for relation "public.ai_sessions" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_student_select_own" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_parent_select_bonded" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_admin_select_all" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "assignments_select_classroom_members" for relation "public.assignments" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "assignments_write_teacher_admin" for relation "public.assignments" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "invite_codes_teacher_admin_only" for relation "public.invite_codes" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+Migrations up to date
+Applying RLS policies...
+
+> brown-zone-web@0.1.0 db:apply-policies
+> tsx scripts/apply-policies.ts
+
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "app_private" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_select_related" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_insert_payer" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_update_admin" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "subscription_grants_select_related" for relation "public.subscription_grants" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "schools_select_all" for relation "public.schools" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "schools_insert_authenticated" for relation "public.schools" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_select_board" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_insert_own" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_update_own" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_select_board" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_insert_own" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_update_own" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_select_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_insert_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_delete_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_select_related" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_insert_owner" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_delete_owner" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_select_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_insert_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_update_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "classrooms_select_related" for relation "public.classrooms" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "classrooms_write_teacher_admin" for relation "public.classrooms" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_select_related" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_insert_party" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_delete_party" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_select_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_insert_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_delete_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "app_settings_admin_only" for relation "public.app_settings" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+RLS policies applied
+Seeding local data...
+
+> brown-zone-web@0.1.0 db:seed
+> tsx scripts/seed.ts
+
+Brown Zone seed starting...
+DATABASE_URL: postgres:***@localhost:5433/brownzone
+Seeding users + profiles...
+Seeding classrooms...
+Seeding parent links...
+Syncing user classroom/link relationships...
+Seeding invite codes...
+Seeding assignments...
+Seeding scenario runs...
+Seeding growth reports...
+Seed verification counts: {
+  users: 8,
+  classrooms: 1,
+  invites: 3,
+  assignments: 2,
+  runs: 4,
+  growthReports: 1
+}
+Seed complete.
+✅ 本地库就绪 -> http://localhost:3000
+(node:19912) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security 
+vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+```
+
+
+## 2026-06-17 Phase 0.1 Continuation - Acceptance Commands
+
+### Env preflight (sanitized)
+Output:
+`	ext
+DATABASE_URL_LOCAL=True
+SESSION_SECRET_PRESENT=True
+SESSION_SECRET_LENGTH=64
+`
+
+### Phase 0.1 Acceptance - npm run db:down:hard
+Output:
+`	ext
+
+> brown-zone-web@0.1.0 db:down:hard
+> docker compose -f docker-compose.local.yml down -v
+
+node.exe :  Container brownzone-pg  Stopping
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container brownzone-pg  Stopping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container brownzone-pg  Stopped
+ Container brownzone-pg  Removing
+ Container brownzone-pg  Removed
+ Network brown-zone-web_default  Removing
+ Volume brownzone_pgdata  Removing
+ Volume brownzone_pgdata  Removed
+ Network brown-zone-web_default  Removed
+
+``n
+### Phase 0.1 Acceptance - npm run db:up
+Output:
+``text
+
+> brown-zone-web@0.1.0 db:up
+> tsx scripts/db-up.ts
+
+Starting local Postgres with Docker Compose...
+node.exe :  Network brown-zone-web_default  Creating
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Network brown-zone-web_default  Created
+ Volume brownzone_pgdata  Creating
+ Volume brownzone_pgdata  Created
+ Container brownzone-pg  Creating
+ Container brownzone-pg  Created
+ Container brownzone-pg  Starting
+ Container brownzone-pg  Started
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Waiting for brownzone-pg healthcheck: starting
+Postgres container is healthy.
+Applying Supabase-compatible shims...
+DO
+DO
+CREATE SCHEMA
+CREATE FUNCTION
+CREATE FUNCTION
+GRANT
+Running Drizzle migrations...
+
+> brown-zone-web@0.1.0 db:migrate
+> tsx scripts/migrate.ts
+
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "users_select_own" for relation "public.users" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_student_select_own" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_teacher_select_classroom" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_parent_select_bonded" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "scenario_runs_admin_select_all" for relation "public.scenario_runs" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_sessions_select_own" for relation "public.ai_sessions" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_sessions_update_own" for relation "public.ai_sessions" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_student_select_own" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_parent_select_bonded" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "growth_reports_admin_select_all" for relation "public.growth_reports" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "assignments_select_classroom_members" for relation "public.assignments" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "assignments_write_teacher_admin" for relation "public.assignments" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "invite_codes_teacher_admin_only" for relation "public.invite_codes" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+Migrations up to date
+Applying RLS policies...
+
+> brown-zone-web@0.1.0 db:apply-policies
+> tsx scripts/apply-policies.ts
+
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P06',
+  message: 'schema "app_private" already exists, skipping',
+  file: 'schemacmds.c',
+  line: '132',
+  routine: 'CreateSchemaCommand'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_select_related" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_insert_payer" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "payment_orders_update_admin" for relation "public.payment_orders" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "subscription_grants_select_related" for relation "public.subscription_grants" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "schools_select_all" for relation "public.schools" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "schools_insert_authenticated" for relation "public.schools" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_select_board" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_insert_own" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "rank_profiles_update_own" for relation "public.rank_profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_select_board" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_insert_own" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "leaderboard_snapshots_update_own" for relation "public.leaderboard_snapshots" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_select_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_insert_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "learning_progress_delete_own" for relation "public.learning_progress" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_select_related" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_insert_owner" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "family_members_delete_owner" for relation "public.family_members" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_select_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_insert_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "profiles_update_own" for relation "public.profiles" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "classrooms_select_related" for relation "public.classrooms" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "classrooms_write_teacher_admin" for relation "public.classrooms" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_select_related" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_insert_party" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "student_parent_links_delete_party" for relation "public.student_parent_links" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_select_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_insert_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "ai_messages_delete_own_session" for relation "public.ai_messages" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'policy "app_settings_admin_only" for relation "public.app_settings" does not exist, skipping',
+  file: 'dropcmds.c',
+  line: '528',
+  routine: 'does_not_exist_skipping'
+}
+RLS policies applied
+Seeding local data...
+
+> brown-zone-web@0.1.0 db:seed
+> tsx scripts/seed.ts
+
+Brown Zone seed starting...
+DATABASE_URL: postgres:***@localhost:5433/brownzone
+Seeding users + profiles...
+Seeding classrooms...
+Seeding parent links...
+Syncing user classroom/link relationships...
+Seeding invite codes...
+Seeding assignments...
+Seeding scenario runs...
+Seeding growth reports...
+Seed verification counts: {
+  users: 8,
+  classrooms: 1,
+  invites: 3,
+  assignments: 2,
+  runs: 4,
+  growthReports: 1
+}
+Seed complete.
+✅ 本地库就绪 -> http://localhost:3000
+
+``n
+### Phase 0.1 Acceptance - docker compose ps
+Output:
+``text
+NAME           IMAGE                COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+brownzone-pg   postgres:16-alpine   "docker-entrypoint.s…"   db        54 seconds ago   Up 11 seconds (healthy)   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+
+``n
+### Phase 0.1 Acceptance - npm run dev smoke
+Output:
+``text
+process_started=True
+process_still_running_after_10s=False
+exit_code=
+--- stdout ---
+
+> brown-zone-web@0.1.0 dev
+> next dev
+
+鈻?Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://198.18.0.1:3000
+- Environments: .env.local
+鉁?Ready in 912ms
+[?25h
+
+--- stderr ---
+猕?Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          49292
+- Dir:          D:\鏍戝痉瀹為獙涓锛堟竻娉級\C2\brown-zone-web
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 49292 /F to stop it.
+
+``n
+### Phase 0.1 Acceptance - student login real-data smoke
+Output:
+``text
+{
+  "url": "http://127.0.0.1:3000/student",
+  "hasStudentTitle": false,
+  "hasNetWorth": false,
+  "hasSeededScenario": false,
+  "bodySample": "BROWN ZONE 学生策略台 围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。 四大主域 学 · 用 · 评 首页服务台 01 今日任务与沙盘总览 市场雷达 02 观察市场温度 机会训练 03 写观察单而非冲动交易 我的财富 04 持有、目标与配置 资产成长 基金、定投和风险画像 基金实验 05 定投机器人 06 生活理财 预算、目标、信用和保护伞 生活账本 08 目标账户 09 保护伞 10 "
+}
+node : [stdin]:21
+At line:30 char:25
++ $cmdOutput = ($script | node - 2>&1 | Out-String)
++                         ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([stdin]:21:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    throw new Error('Student real-data smoke failed');
+          ^
+
+Error: Student real-data smoke failed
+    at [stdin]:21:11
+
+Node.js v24.11.1
+
+``n
+### Phase 0.1 Acceptance Retry - student login real-data smoke
+Output:
+``text
+node : [stdin]:11
+At line:33 char:25
++ $cmdOutput = ($script | node - 2>&1 | Out-String)
++                         ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([stdin]:11:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  const titleCount = await page.getByText(/?????/).count();
+                                          ^^^^^^^
+
+SyntaxError: Invalid regular expression: /?????/: Nothing to repeat
+    at makeContextifyScript (node:internal/vm:194:14)
+    at compileScript (node:internal/process/execution:388:10)
+    at evalTypeScript (node:internal/process/execution:270:24)
+    at node:internal/main/eval_stdin:51:5
+    at Socket.<anonymous> (node:internal/process/execution:205:5)
+    at Socket.emit (node:events:520:35)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+Node.js v24.11.1
+
+``n
+### Phase 0.1 Acceptance Retry 2 - student login real-data smoke
+Output:
+``text
+{
+  "url": "http://127.0.0.1:3000/student",
+  "titleCount": 4,
+  "taskCount": 15,
+  "hasStudentRoute": true,
+  "hasStudentDashboardText": true,
+  "bodySample": "BROWN ZONE 学生策略台 围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。 四大主域 学 · 用 · 评 首页服务台 01 今日任务与沙盘总览 市场雷达 02 观察市场温度 机会训练 03 写观察单而非冲动交易 我的财富 04 持有、目标与配置 资产成长 基金、定投和风险画像 基金实验 05 定投机器人 06 生活理财 预算、目标、信用和保护伞 生活账本 08 目标账户 09 保护伞 10 信用实验室 11 学习留存 任务、复盘、课程与排行榜 风险测评 07 任务中心 "
+}
+
+``n
+### Phase 0.2 Optional data migration
+Output:
+```text
+SKIPPED: no manual old ad-hoc container data needs to be preserved. Phase 0.1 rebuilt the local compose database from migrations + policies + seed data, which is the intended path when no manual data is required.
+```
+### Phase 0 Full Gate - npm run lint
+Output:
+``text
+
+> brown-zone-web@0.1.0 lint
+> eslint
+
+
+``n
+### Phase 0 Full Gate - npx tsc --noEmit
+Output:
+``text
+
+``n
+### Phase 0 Full Gate - npm run test
+Output:
+``text
+
+> brown-zone-web@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.8 D:/树德实验中学（清波）/C2/brown-zone-web
+
+
+ Test Files  73 passed (73)
+      Tests  465 passed (465)
+   Start at  12:13:44
+   Duration  43.71s (transform 9.81s, setup 142.68s, import 33.86s, tests 47.45s, environment 546.06s)
+
+
+``n
+### Phase 0 Full Gate - npm run build
+Output:
+``text
+
+> brown-zone-web@0.1.0 build
+> next build
+
+▲ Next.js 16.2.3 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 5.3s
+  Running TypeScript ...
+  Finished TypeScript in 13.7s ...
+  Collecting page data using 21 workers ...
+  Generating static pages using 21 workers (0/60) ...
+  Generating static pages using 21 workers (15/60) 
+  Generating static pages using 21 workers (30/60) 
+  Generating static pages using 21 workers (45/60) 
+✓ Generating static pages using 21 workers (60/60) in 733ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /admin
+├ ƒ /api/admin/billing/manual-config
+├ ƒ /api/admin/billing/manual-confirm
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/[userId]
+├ ƒ /api/admin/users/email
+├ ƒ /api/admin/users/password
+├ ƒ /api/ai/chat
+├ ƒ /api/ai/history
+├ ƒ /api/ai/history/[sessionId]
+├ ƒ /api/ai/onboarding
+├ ƒ /api/ai/radar-chart
+├ ƒ /api/ai/tutor
+├ ƒ /api/auth/demo-login
+├ ƒ /api/auth/forgot
+├ ƒ /api/auth/guest-upgrade
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/onboarding
+├ ƒ /api/auth/register
+├ ƒ /api/auth/register-by-invite
+├ ƒ /api/auth/reset
+├ ƒ /api/auth/verify
+├ ƒ /api/billing/manual-proof
+├ ƒ /api/billing/mock-complete
+├ ƒ /api/billing/notify
+├ ƒ /api/billing/order-status
+├ ƒ /api/billing/parent-link
+├ ƒ /api/billing/prepay
+├ ƒ /api/billing/status
+├ ƒ /api/cron/recompute-leaderboard
+├ ƒ /api/cron/weekly-report
+├ ƒ /api/family/members
+├ ƒ /api/invites/validate
+├ ƒ /api/leaderboard/board
+├ ƒ /api/leaderboard/me
+├ ƒ /api/leaderboard/profile
+├ ƒ /api/leaderboard/regions
+├ ƒ /api/leaderboard/schools
+├ ƒ /api/learn/complete
+├ ƒ /api/learn/progress
+├ ƒ /api/market/board
+├ ƒ /api/market/peer-heat
+├ ƒ /api/market/portfolio-intel
+├ ƒ /api/market/season-leaderboard
+├ ƒ /api/market/ticker-tape
+├ ƒ /api/parent/report
+├ ƒ /api/sim/actions
+├ ƒ /api/sim/advance-round
+├ ƒ /api/sim/event-choice
+├ ƒ /api/sim/replay
+├ ƒ /api/sim/state
+├ ƒ /api/student/auto-invest
+├ ƒ /api/student/credit-lab
+├ ƒ /api/student/fund-lab
+├ ƒ /api/student/goal-accounts
+├ ƒ /api/student/history-review
+├ ƒ /api/student/life-cashflow
+├ ƒ /api/student/opportunity
+├ ƒ /api/student/pet-rewards
+├ ƒ /api/student/protection
+├ ƒ /api/student/quests
+├ ƒ /api/student/risk-profile
+├ ƒ /api/student/season
+├ ƒ /api/student/watchlist
+├ ƒ /api/student/wealth-summary
+├ ƒ /api/teacher/assignments
+├ ƒ /api/teacher/classroom
+├ ƒ /demo
+├ ƒ /learn
+├ ƒ /parent
+├ ƒ /pricing
+├ ƒ /reset-password
+├ ƒ /student
+├ ƒ /student/auto-invest
+├ ƒ /student/credit
+├ ƒ /student/fund-lab
+├ ƒ /student/goal-accounts
+├ ƒ /student/history
+├ ƒ /student/life
+├ ƒ /student/market
+├ ƒ /student/opportunity
+├ ƒ /student/protection
+├ ƒ /student/quests
+├ ƒ /student/rank
+├ ƒ /student/risk-profile
+├ ƒ /student/wealth
+└ ƒ /teacher
+
+
+ƒ  (Dynamic)  server-rendered on demand
+
+
+``n
+### Phase 0 Reviewer Audit
+Output:
+```text
+Reviewer role: read-only scope audit for Phase 0.1.
+Commands reviewed:
+- git diff --name-only -- AGENTS.md docker-compose.local.yml scripts/db-up.ts package.json docs/db-region-latency-and-local-dev.md progress.md
+- git diff --name-only -- src drizzle
+- python -m code_review_graph update
+- python -m code_review_graph detect-changes --base HEAD --brief
+
+Findings:
+- Phase 0 files are limited to AGENTS.md, docker-compose.local.yml, scripts/db-up.ts, package.json, docs/db-region-latency-and-local-dev.md, progress.md.
+- Existing unrelated working-tree changes under src/components/** are present from earlier work, but this Phase 0 scope did not edit them and they will not be staged.
+- No drizzle/** changes are part of Phase 0.
+- code-review-graph: 0 changed functions/classes, 0 affected flows, 0 test gaps, risk score 0.00.
+- Acceptance passed: db:down:hard, db:up, docker compose ps healthy, dev server smoke, student login real-data smoke, lint, tsc, test, build.
+
+Verdict: APPROVE for Phase 0.1 commit scope, with explicit caveat that unrelated pre-existing src/ changes remain unstaged.
+```
+### Phase 0 Staged Commit Scope Gate
+Output:
+``text
+--- cached files ---
+AGENTS.md
+docker-compose.local.yml
+docs/db-region-latency-and-local-dev.md
+package.json
+progress.md
+scripts/db-up.ts
+--- cached src/drizzle gate ---
+``n
