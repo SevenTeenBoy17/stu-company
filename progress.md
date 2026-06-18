@@ -2168,3 +2168,71 @@ Command: `npm run test`
 Test Files  74 passed (74)
 Tests  467 passed (467)
 ```
+
+## Phase 2.2 Step 1 — learning module quiz content gate
+
+User confirmed entry into Phase 2.2. The manual requires stopping after Step 1 for question review, so this round only edited `src/lib/content.ts`.
+
+Implemented:
+
+- Added an internal `learningModuleDefinitions` list with `quiz` content for all 8 learning modules.
+- Added 16 total age-appropriate quiz questions, each with options, `answerIndex`, and explanation.
+- Kept the public `learningModules` export sanitized: it maps only the original public fields and does not serialize `quiz` or `answerIndex`.
+- Did not touch API routes, DB schema, migrations, or UI components.
+
+Command: content shape check
+
+```text
+{
+  "moduleCount": 8,
+  "quizCount": 8,
+  "answerCount": 17,
+  "note": "answerCount includes the type declaration"
+}
+```
+
+Command: `npx tsx -e "import { learningModules } from './src/lib/content'; ..."`
+
+```text
+{
+  "exportedModules": 8,
+  "hasQuiz": false,
+  "hasAnswerIndex": false
+}
+```
+
+Command: `git grep -n "answerIndex" -- src/app src/components`
+
+```text
+PASS: answerIndex absent from src/app and src/components
+```
+
+Command: `npm run lint && npx tsc --noEmit && npm run build`
+
+```text
+eslint passed.
+TypeScript passed.
+next build: Compiled successfully; 60/60 static pages generated.
+```
+
+Command: `python -m code_review_graph update && python -m code_review_graph detect-changes`
+
+```text
+Incremental: 136 files updated, 127 nodes, 1028 edges (postprocess=full)
+Overall risk score: 0.00
+0 affected flow(s)
+0 test gap(s)
+```
+
+Command: `git diff --name-only -- src/app src/components src/lib/db drizzle`
+
+```text
+src/components/billing/wechat-checkout-button.tsx
+src/components/student/market-thermometer.tsx
+src/components/student/student-home-hub.tsx
+src/components/student/student-sandbox.tsx
+```
+
+Those component diffs existed before this Phase 2.2 Step 1 round and remain unstaged; this step only stages `src/lib/content.ts` and `progress.md`.
+
+STOP-GATE: Phase 2.2 Step 1 content questions are ready for user review. API route and frontend modal are NOT wired yet.

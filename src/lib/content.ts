@@ -1,5 +1,16 @@
 import type { LearningModule, NavGroup } from "@/lib/types";
 
+export type LearningModuleQuiz = {
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+};
+
+type LearningModuleDefinition = LearningModule & {
+  quiz: LearningModuleQuiz[];
+};
+
 export const siteNavGroups: NavGroup[] = [
   {
     title: "市场情景",
@@ -87,7 +98,7 @@ export const siteNavGroups: NavGroup[] = [
   },
 ];
 
-export const learningModules: LearningModule[] = [
+const learningModuleDefinitions: LearningModuleDefinition[] = [
   {
     key: "equities",
     title: "股市交易仿真",
@@ -98,6 +109,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["市价 / 限价指令", "板块轮动提示", "行为偏差识别"],
     href: "https://www.bilibili.com/video/BV1AnSvB8EZY/",
     hrefLabel: "B站 · 从零开始学炒股",
+    quiz: [
+      {
+        question: "在模拟股票交易里，限价单最适合用来训练哪一种能力？",
+        options: ["先设定可接受价格再等待成交", "看到上涨就立刻全仓追入", "忽略波动只看同学排名", "把所有现金都换成单只股票"],
+        answerIndex: 0,
+        explanation: "限价单让学生先写下交易边界，练的是计划性，而不是追涨冲动。",
+      },
+      {
+        question: "如果某只股票连续大涨，下一步最合理的课堂观察动作是什么？",
+        options: ["只看涨幅就判断一定会继续涨", "同时检查消息、估值压力和仓位占比", "马上借钱加仓", "不记录原因直接退出课程"],
+        answerIndex: 1,
+        explanation: "涨幅只是现象，复盘原因、风险和仓位才是可迁移的投资能力。",
+      },
+    ],
   },
   {
     key: "portfolio",
@@ -109,6 +134,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["ETF 组合", "债券缓冲", "外汇与商品对冲"],
     href: "https://www.bilibili.com/video/BV1364y1S7wK/",
     hrefLabel: "B站 · 理财与资产配置",
+    quiz: [
+      {
+        question: "多元投资组合最想解决的核心问题是什么？",
+        options: ["让每个资产每天都上涨", "把风险分散到不同来源", "保证本金永远不会亏损", "让交易次数越多越好"],
+        answerIndex: 1,
+        explanation: "分散配置不能消灭风险，但能避免单一资产决定整个结果。",
+      },
+      {
+        question: "债券在组合里常被当作什么角色来理解？",
+        options: ["只负责制造高波动", "在部分情境下缓冲股票波动", "一定比股票收益更高", "和现金完全一样"],
+        answerIndex: 1,
+        explanation: "债券通常更像稳定器，但仍会受利率、信用和期限影响。",
+      },
+    ],
   },
   {
     key: "banking",
@@ -120,6 +159,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["复利计算", "贷款成本", "流动性管理"],
     href: "https://www.bilibili.com/video/BV1ZY97YQEN8/",
     hrefLabel: "B站 · 个人理财公开课",
+    quiz: [
+      {
+        question: "应急现金垫的主要作用是什么？",
+        options: ["让账户看起来更无聊", "在突发支出时减少被迫卖出资产", "提高每次交易的杠杆", "替代所有长期投资"],
+        answerIndex: 1,
+        explanation: "流动性不是躺平，而是给决策争取时间和选择空间。",
+      },
+      {
+        question: "贷款成本最应该关注哪一类信息？",
+        options: ["利息、期限和还款压力", "同学有没有贷款", "按钮颜色是否好看", "排行榜是否马上上升"],
+        answerIndex: 0,
+        explanation: "贷款会改变现金流，必须把利息和还款节奏一起看。",
+      },
+    ],
   },
   {
     key: "property",
@@ -131,6 +184,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["首付压力测试", "租售比判断", "房产周期感知"],
     href: "https://www.bilibili.com/video/BV1Nt411v7CD/",
     hrefLabel: "B站 · 房地产投资分析",
+    quiz: [
+      {
+        question: "买房决策里，首付之外还应该一起观察什么？",
+        options: ["月供、现金流和机会成本", "只看房价会不会涨", "只看装修图片", "只看同学是否购买"],
+        answerIndex: 0,
+        explanation: "房产是长期现金流决策，不只是一次购买动作。",
+      },
+      {
+        question: "租售比在课堂模拟中可以帮助学生比较什么？",
+        options: ["租金收入和房产价格之间的关系", "股票 K 线的颜色", "创业团队人数", "AI 导师的语气"],
+        answerIndex: 0,
+        explanation: "租售比能帮助学生把房价和现金流联系起来，而不是只看总价。",
+      },
+    ],
   },
   {
     key: "venture",
@@ -142,6 +209,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["现金流经营", "股权结构", "并购窗口"],
     href: "https://www.bilibili.com/video/BV1KK4y1s7mY/",
     hrefLabel: "B站 · 斯坦福《如何创业》",
+    quiz: [
+      {
+        question: "创业项目看起来很火时，学生最应该先检查什么？",
+        options: ["现金流、成本和能否持续经营", "名字是否足够酷", "是否能立刻超过全班", "有没有一次性投完所有资金"],
+        answerIndex: 0,
+        explanation: "热度不等于质量，经营现金流能帮助判断项目是否可持续。",
+      },
+      {
+        question: "并购窗口在沙盘里主要训练哪种思维？",
+        options: ["比较价格、协同和风险后再行动", "看到便宜就全部买下", "完全不看负债", "只听传闻做决定"],
+        answerIndex: 0,
+        explanation: "并购不是捡便宜，而是比较协同价值和整合风险。",
+      },
+    ],
   },
   {
     key: "events",
@@ -153,6 +234,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["政策扰动", "舆情冲击", "危机复盘"],
     href: "https://www.bilibili.com/video/BV14L4y157Ft/",
     hrefLabel: "B站 · 金融史黑天鹅事件",
+    quiz: [
+      {
+        question: "黑天鹅事件在课堂里最适合作为什么材料？",
+        options: ["训练应对不确定性和复盘", "证明市场永远无法学习", "让学生停止记录", "保证某个资产一定上涨"],
+        answerIndex: 0,
+        explanation: "突发事件的价值在于训练预案、情绪管理和事后复盘。",
+      },
+      {
+        question: "面对突发政策变化，最稳妥的第一步是什么？",
+        options: ["识别影响哪些资产和现金流", "立刻全仓反向操作", "忽略事件继续点完成", "只看排行榜名次"],
+        answerIndex: 0,
+        explanation: "先判断影响范围，再决定动作，能降低情绪化操作。",
+      },
+    ],
   },
   {
     key: "competition",
@@ -164,6 +259,20 @@ export const learningModules: LearningModule[] = [
     highlights: ["班级榜", "校际榜", "每周挑战"],
     href: "https://www.bilibili.com/video/BV1As4y1U7e5/",
     hrefLabel: "B站 · 模拟投资实训竞赛",
+    quiz: [
+      {
+        question: "班级榜单最健康的使用方式是什么？",
+        options: ["把榜单当作复盘线索，而不是唯一目标", "只追求短期冲分", "不记录任何策略", "输了就删除账户"],
+        answerIndex: 0,
+        explanation: "榜单能提供反馈，但学习价值来自解释差异和修正策略。",
+      },
+      {
+        question: "每周挑战赛应该鼓励学生提交什么？",
+        options: ["策略理由和风险复盘", "只提交最终净值", "只截图最高排名", "完全不解释操作"],
+        answerIndex: 0,
+        explanation: "有理由、有证据、有复盘的挑战才有教学价值。",
+      },
+    ],
   },
   {
     key: "guardian",
@@ -175,8 +284,33 @@ export const learningModules: LearningModule[] = [
     highlights: ["教学脚本", "成长报告", "行为标签"],
     href: "https://www.bilibili.com/video/BV1rR4y1i7nC/",
     hrefLabel: "B站 · 少儿财商启蒙课",
+    quiz: [
+      {
+        question: "教师和家长端最应该共同关注哪类变化？",
+        options: ["学生决策习惯和风险意识是否进步", "学生是否每天排名第一", "学生是否每次都买股票", "学生是否跳过所有复盘"],
+        answerIndex: 0,
+        explanation: "家校共育关注的是长期行为变化，而不是单次胜负。",
+      },
+      {
+        question: "行为标签的教育用途是什么？",
+        options: ["帮助学生看见自己的决策模式", "给学生贴永久标签", "替代所有教师判断", "直接给真实投资建议"],
+        answerIndex: 0,
+        explanation: "标签应作为对话入口，帮助学生理解并修正习惯。",
+      },
+    ],
   },
 ];
+
+export const learningModules: LearningModule[] = learningModuleDefinitions.map((module) => ({
+  key: module.key,
+  title: module.title,
+  tagline: module.tagline,
+  description: module.description,
+  level: module.level,
+  highlights: module.highlights,
+  href: module.href,
+  hrefLabel: module.hrefLabel,
+}));
 
 export const showcaseStats = [
   { label: "目标赛道", value: "青少年财商教育", detail: "2032 年全球规模预计 938 亿美元" },
