@@ -42,6 +42,7 @@ import {
   profiles,
   rankProfiles,
   riskProfiles,
+  roundPredictions,
   scenarioRuns,
   schools,
   studentParentLinks,
@@ -66,6 +67,7 @@ import {
   buildSimulationState,
   createInitialRun,
   deriveInvestorPersona,
+  getRoundQuotesForRun,
 } from "@/lib/simulation";
 import {
   applyLifeCashflowChallenge,
@@ -130,6 +132,8 @@ import type {
   RankPeriod,
   RankProfile,
   RankVisibility,
+  RoundPrediction,
+  RoundPredictionGuess,
   Role,
   ScenarioRun,
   School,
@@ -154,6 +158,7 @@ type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
 type DbSchool = typeof schools.$inferSelect;
 type DbRankProfile = typeof rankProfiles.$inferSelect;
 type DbRiskProfile = typeof riskProfiles.$inferSelect;
+type DbRoundPrediction = typeof roundPredictions.$inferSelect;
 type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
 
@@ -173,6 +178,7 @@ const ALLOW_MEMORY_FALLBACK =
   process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
 
 const fallbackRiskProfiles = new Map<string, RiskProfileRecord>();
+const fallbackRoundPredictions = new Map<string, RoundPrediction>();
 
 // P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
 // greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
@@ -293,6 +299,7 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
 // fall back to seed/demo data when ALLOW_MEMORY_FALLBACK is on (offline demo).
 const WRITE_FNS = new Set<string>([
   "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
+  "createRoundPredictionForUser", "settleRoundPredictionsForRun",
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
   "markModuleQuizPassed",
   "upsertRiskProfile",
@@ -645,6 +652,83 @@ function toRunUpdate(run: ScenarioRun) {
   };
 }
 
+function toRoundPrediction(row: DbRoundPrediction): RoundPrediction {
+  return {
+    id: row.id,
+    userId: row.userId,
+    runId: row.runId,
+    round: row.round,
+    guess: row.guess === "down" ? "down" : "up",
+    resolved: row.resolved,
+    correct: row.correct,
+    createdAt: row.createdAt.toISOString(),
+    resolvedAt: maybeIso(row.resolvedAt),
+  };
+}
+
+function predictionTargetPrice(run: ScenarioRun, roundNumber: number) {
+  const quotes = getRoundQuotesForRun(run, roundNumber);
+  return quotes.find((quote) => quote.id === "asset-index")
+    ?? quotes.find((quote) => quote.id === "asset-stock")
+    ?? quotes[0];
+}
+
+function resolvePredictionCorrect(before: ScenarioRun, after: ScenarioRun, guess: RoundPredictionGuess) {
+  const beforePrice = predictionTargetPrice(before, before.currentRound)?.currentPrice ?? 0;
+  const afterPrice = predictionTargetPrice(after, after.currentRound)?.currentPrice ?? beforePrice;
+  if (afterPrice === beforePrice) return false;
+  return guess === (afterPrice > beforePrice ? "up" : "down");
+}
+
+async function settleRoundPredictionsForRun(
+  executor: DbExecutor,
+  before: ScenarioRun,
+  after: ScenarioRun,
+) {
+  const pending = await executor
+    .select()
+    .from(roundPredictions)
+    .where(
+      and(
+        eq(roundPredictions.runId, before.id),
+        eq(roundPredictions.round, before.currentRound),
+        eq(roundPredictions.resolved, false),
+      ),
+    );
+
+  const resolvedAt = new Date();
+  for (const prediction of pending) {
+    const guess: RoundPredictionGuess = prediction.guess === "down" ? "down" : "up";
+    await executor
+      .update(roundPredictions)
+      .set({
+        resolved: true,
+        correct: resolvePredictionCorrect(before, after, guess),
+        resolvedAt,
+      })
+      .where(and(eq(roundPredictions.id, prediction.id), eq(roundPredictions.resolved, false)));
+  }
+}
+
+function listFallbackRoundPredictionsForRun(runId: string) {
+  return [...fallbackRoundPredictions.values()]
+    .filter((prediction) => prediction.runId === runId)
+    .sort((left, right) => left.round - right.round || left.createdAt.localeCompare(right.createdAt));
+}
+
+function settleFallbackRoundPredictions(before: ScenarioRun, after: ScenarioRun) {
+  const resolvedAt = new Date().toISOString();
+  for (const prediction of listFallbackRoundPredictionsForRun(before.id)) {
+    if (prediction.round !== before.currentRound || prediction.resolved) continue;
+    fallbackRoundPredictions.set(prediction.id, {
+      ...prediction,
+      resolved: true,
+      correct: resolvePredictionCorrect(before, after, prediction.guess),
+      resolvedAt,
+    });
+  }
+}
+
 function toAssignment(row: DbAssignment): Assignment {
   return {
     id: row.id,
@@ -877,6 +961,7 @@ async function listAiSessionRows(executor: DbExecutor, userId: string, limit?: n
 
 export async function resetStoreForTests() {
   fallbackRiskProfiles.clear();
+  fallbackRoundPredictions.clear();
   return store.resetStoreForTests();
 }
 
@@ -1284,6 +1369,92 @@ export async function getRunForUser(userId: string) {
   return withDb("getRunForUser", (db) => selectRunForUser(db, userId), () => store.getRunForUser(userId));
 }
 
+export async function listRoundPredictionsForRun(runId: string) {
+  return withDb(
+    "listRoundPredictionsForRun",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(roundPredictions)
+        .where(eq(roundPredictions.runId, runId))
+        .orderBy(roundPredictions.round, roundPredictions.createdAt);
+      return rows.map(toRoundPrediction);
+    },
+    () => listFallbackRoundPredictionsForRun(runId),
+  );
+}
+
+export async function createRoundPredictionForUser(
+  userId: string,
+  input: { guess: RoundPredictionGuess },
+): Promise<RoundPrediction> {
+  return withDb(
+    "createRoundPredictionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (run.currentRound >= run.totalRounds) {
+          throw new Error("本局已经结束，不能继续提交涨跌预测。");
+        }
+
+        const [existing] = await tx
+          .select()
+          .from(roundPredictions)
+          .where(
+            and(
+              eq(roundPredictions.userId, userId),
+              eq(roundPredictions.runId, run.id),
+              eq(roundPredictions.round, run.currentRound),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          throw new Error("本回合已经提交过预测。");
+        }
+
+        const [row] = await tx
+          .insert(roundPredictions)
+          .values({
+            id: createId("pred"),
+            userId,
+            runId: run.id,
+            round: run.currentRound,
+            guess: input.guess,
+          })
+          .returning();
+        return toRoundPrediction(row);
+      }),
+    () => {
+      const run = store.getRunForUser(userId);
+      if (!run) throw new Error("未找到对应的学生沙盘。");
+      if (run.currentRound >= run.totalRounds) {
+        throw new Error("本局已经结束，不能继续提交涨跌预测。");
+      }
+
+      const existing = listFallbackRoundPredictionsForRun(run.id).find(
+        (prediction) => prediction.userId === userId && prediction.round === run.currentRound,
+      );
+      if (existing) {
+        throw new Error("本回合已经提交过预测。");
+      }
+
+      const record: RoundPrediction = {
+        id: createId("pred"),
+        userId,
+        runId: run.id,
+        round: run.currentRound,
+        guess: input.guess,
+        resolved: false,
+        correct: false,
+        createdAt: new Date().toISOString(),
+      };
+      fallbackRoundPredictions.set(record.id, record);
+      return record;
+    },
+  );
+}
+
 export async function getSimulationStateForUser(userId: string) {
   return withDb(
     "getSimulationStateForUser",
@@ -1645,11 +1816,17 @@ export async function advanceRunForUser(userId: string) {
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = executeAutoInvestForRound(advanceSimulationRun(run));
+        await settleRoundPredictionsForRun(tx, run, updated);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
         await syncGrowthReportForStudent(tx, userId);
         return updated;
       }),
-    () => store.advanceRunForUser(userId),
+    () => {
+      const before = store.getRunForUser(userId);
+      const updated = store.advanceRunForUser(userId);
+      if (before) settleFallbackRoundPredictions(before, updated);
+      return updated;
+    },
   );
 }
 

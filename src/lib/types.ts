@@ -175,6 +175,20 @@ export interface ScenarioRun {
   netWorth?: number;
 }
 
+export type RoundPredictionGuess = "up" | "down";
+
+export interface RoundPrediction {
+  id: string;
+  userId: string;
+  runId: string;
+  round: number;
+  guess: RoundPredictionGuess;
+  resolved: boolean;
+  correct: boolean;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export type SubscriptionTier = "free" | "standard" | "premium";
 export type PaymentChannel = "native" | "jsapi" | "mock" | "manual";
 export type PaymentStatus = "pending" | "paid" | "closed" | "failed";

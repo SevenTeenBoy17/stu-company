@@ -120,6 +120,20 @@
       "when": 1780000150000,
       "tag": "0016_learning_progress_quiz_passed",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780000160000,
+      "tag": "0017_round_predictions",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780000170000,
+      "tag": "0018_round_predictions_cascade",
+      "breakpoints": true
     }
   ]
 }

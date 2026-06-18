@@ -2503,3 +2503,110 @@ Verification evidence:
 - `python -m code_review_graph update` + `python -m code_review_graph detect-changes --brief` ? graph refreshed; no affected flow/test gap reported.
 
 Reviewer result: APPROVE. Gold is not modeled as risk-free appreciation; tests assert mixed positive and negative deltas and risk-off opposite movement against stocks.
+
+
+## 2026-06-18 Phase 3.2 Step 1 ? round_predictions schema SQL generated, not applied
+
+Goal: prepare the DB table for the decorative guess-the-direction game without coupling it to net worth or financial-power scoring.
+
+Scope check:
+- Touched: `src/lib/db/schema.ts`, `drizzle/0017_round_predictions.sql`, `drizzle/meta/_journal.json`, `progress.md`.
+- Did not touch API routes, UI components, `src/lib/simulation.ts` settlement, or power-score code in this step.
+- `npm run db:generate` could not run non-interactively because drizzle-kit requested a TTY for historical snapshot/name conflict prompts; this project already has hand-authored migrations after the initial snapshot, so `0017_round_predictions.sql` was hand-authored to match `schema.ts` and appended to `_journal.json`.
+
+Generated table:
+- `round_predictions(id, user_id, run_id, round, guess, resolved, correct, created_at, resolved_at)`.
+- Foreign keys to `users(id)` and `scenario_runs(id)`.
+- Unique index: `(user_id, run_id, round)` to reject duplicate predictions for the same round.
+- Query indexes: `(run_id, round)` and `(user_id)`.
+
+Verification:
+- `npx tsc --noEmit` ? PASS.
+
+Stop gate: migration SQL is generated but NOT applied. Awaiting review/approval before Phase 3.2 Step 2.
+
+
+## 2026-06-18 Phase 3.2 ? C-9 ??? API + ????
+
+Goal: implement the decorative guess-the-direction game without coupling predictions to net worth or financial-power scoring.
+
+Test-first failure evidence:
+```text
+> brown-zone-web@0.1.0 test
+> vitest run repo.test.ts sim/predict
+
+FAIL src/app/api/sim/predict/route.test.ts
+Error: Failed to resolve import "./route" from "src/app/api/sim/predict/route.test.ts". Does the file exist?
+FAIL src/lib/db/repo.test.ts > records one decorative prediction per round and settles it without changing net worth
+TypeError: createRoundPredictionForUser is not a function
+```
+
+Implementation summary:
+- Added `round_predictions` schema and migrations `0017_round_predictions.sql` + `0018_round_predictions_cascade.sql`.
+- `0018` was required because the first DB-up failure exposed a real reset/seed bug: `round_predictions.run_id` blocked deletion of `scenario_runs`. Prediction records now cascade with their run/user lifecycle.
+- Added `RoundPrediction` / `RoundPredictionGuess` types.
+- Added repo APIs: `createRoundPredictionForUser`, `listRoundPredictionsForRun`.
+- `advanceRunForUser` now resolves unresolved predictions for the previous round exactly once.
+- Added `POST /api/sim/predict` with `checkOrigin`, `requireUser("student")`, subscription gate, zod validation, and standard route errors.
+- No power-score or leaderboard code references prediction tables/functions.
+
+DB-up migration/seed evidence:
+```text
+> brown-zone-web@0.1.0 db:up
+Postgres container is healthy.
+Running Drizzle migrations...
+Migrations up to date
+Applying RLS policies...
+RLS policies applied
+Seeding local data...
+Seed verification counts: { users: 8, classrooms: 1, invites: 3, assignments: 2, runs: 4, growthReports: 1 }
+Seed complete.
+```
+
+Real DB gameplay smoke evidence:
+```json
+{
+  "created": { "round": 6, "guess": "up", "resolved": false },
+  "duplicateRejected": true,
+  "settled": [{ "round": 6, "guess": "up", "resolved": true, "correct": true }],
+  "expectedNetWorth": 124904,
+  "actualNetWorth": 124904,
+  "netWorthUnchangedByPrediction": true
+}
+```
+
+Stopped-DB failure drill evidence:
+```text
+> brown-zone-web@0.1.0 db:down
+> npx tsx tmp-phase32-dbdown.ts
+db-down failure path ok:
+[repo.fallback] fn=createRoundPredictionForUser reason=query_failed ... code=ECONNREFUSED
+> brown-zone-web@0.1.0 db:up
+Postgres container is healthy.
+Seed complete.
+```
+
+Focused verification:
+```text
+> brown-zone-web@0.1.0 test
+> vitest run repo.test.ts sim/predict
+Test Files  2 passed (2)
+Tests  25 passed (25)
+```
+
+Full gate:
+```text
+npm run lint -> PASS
+npx tsc --noEmit -> PASS
+npm run test -> PASS, 76 files / 480 tests
+npm run build -> PASS, route list includes /api/sim/predict
+```
+
+Grep / review gates:
+```text
+todo gate ok: no TODO/FIXME/placeholder in Phase 3.2 touched files
+power gate ok: no prediction coupling in leaderboard paths
+python -m code_review_graph detect-changes --brief -> Overall risk score: 0.00, 0 test gaps
+```
+
+Reviewer result: APPROVE. Predictions are decorative-only records; duplicate prediction is rejected; settlement is idempotent over unresolved records; net worth comparison against a no-prediction simulation is equal; no leaderboard/power path references the new feature.

@@ -190,6 +190,25 @@ export const scenarioRuns = pgTable("scenario_runs", {
   index("scenario_runs_seed_net_worth_idx").on(table.seed, table.netWorth),
 ]);
 
+// Decorative guess-the-direction activity. Predictions are intentionally kept
+// outside leaderboard/power tables: they may unlock badges later, but never
+// change net worth or financial-power scoring.
+export const roundPredictions = pgTable("round_predictions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  guess: varchar("guess", { length: 8 }).notNull(),
+  resolved: boolean("resolved").notNull().default(false),
+  correct: boolean("correct").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  uniqueIndex("round_predictions_user_run_round_unique").on(table.userId, table.runId, table.round),
+  index("round_predictions_run_round_idx").on(table.runId, table.round),
+  index("round_predictions_user_id_idx").on(table.userId),
+]);
+
 // H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,
 // property_positions, venture_positions, event_cards, leaderboards) were
 // defined but never written to. Their data lives in scenario_runs JSONB

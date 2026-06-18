@@ -15,6 +15,7 @@ import {
   attachManualPaymentProof,
   buildTeacherLeaderboardCards,
   canUserPayForTarget,
+  createRoundPredictionForUser,
   createAiSession,
   createAssignmentForTeacher,
   findInviteByCode,
@@ -35,6 +36,7 @@ import {
   getRiskProfile,
   getRunForUser,
   getSimulationStateForUser,
+  listRoundPredictionsForRun,
   getTeacherOverview,
   hasModuleQuizPassed,
   listAiSessionsForUser,
@@ -128,6 +130,32 @@ describe("db repo fallback adapter", () => {
 
     const advanced = await advanceRunForUser("student-1");
     expect(advanced.currentRound).toBe(afterTrade.currentRound + 1);
+  });
+
+  it("records one decorative prediction per round and settles it without changing net worth", async () => {
+    const before = await getRunForUser("student-1");
+    expect(before).toBeTruthy();
+
+    const prediction = await createRoundPredictionForUser("student-1", { guess: "up" });
+    expect(prediction).toMatchObject({
+      userId: "student-1",
+      runId: before!.id,
+      round: before!.currentRound,
+      guess: "up",
+      resolved: false,
+    });
+
+    await expect(createRoundPredictionForUser("student-1", { guess: "down" })).rejects.toThrow(/预测|提交|回合/);
+
+    const advancedWithPrediction = await advanceRunForUser("student-1");
+    const settled = await listRoundPredictionsForRun(before!.id);
+    expect(settled).toHaveLength(1);
+    expect(settled[0]).toMatchObject({ resolved: true });
+    expect(typeof settled[0]?.correct).toBe("boolean");
+
+    await resetStoreForTests();
+    const advancedWithoutPrediction = await advanceRunForUser("student-1");
+    expect(advancedWithPrediction.netWorth).toBe(advancedWithoutPrediction.netWorth);
   });
 
   it("builds teacher, parent and admin overviews and creates assignments", async () => {
