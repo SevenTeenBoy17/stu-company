@@ -3254,3 +3254,84 @@ No DB/API/component/leaderboard/power-score import.
 ```
 
 Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + tests + static grep. B2b is pure deterministic logic and deck content only.
+
+## B2c - student quest decorative card draw route
+
+Timestamp: 2026-06-18 10:59:00 -07:00
+
+Scope:
+- `src/app/api/student/quests/draw/route.ts`
+- `src/app/api/student/quests/draw/route.test.ts`
+- `progress.md`
+
+Spec-light:
+```text
+POST /api/student/quests/draw validates a real student quest server-side,
+draws one decorative card from questCardDeck, stores it in card_collection,
+and remains idempotent for the same quest trigger. It must not touch power,
+leaderboards, scenario financial fields, or AI provider code.
+```
+
+TDD red gate:
+```text
+npm run test -- src/app/api/student/quests/draw/route.test.ts -> FAIL (expected before implementation)
+Error: Failed to resolve import "./route" from "src/app/api/student/quests/draw/route.test.ts". Does the file exist?
+```
+
+Implementation summary:
+- Added `POST /api/student/quests/draw`.
+- Uses `checkOrigin`, `requireUser("student")`, zod request validation, and `{ error, message }` API errors.
+- Loads `getSimulationStateForUser`, `getLearningProgress`, and `listCardCollectionForUser`.
+- Rebuilds quests with `buildStudentQuestPayload` and rejects unfinished tasks before drawing.
+- Uses `drawCard(questCardDeck, ownedCardIds, seedFromString(...))`.
+- Persists only `card_collection` via `drawCardForUser`.
+- Reuses an existing collection row when `meta.questId + source` already match the same trigger.
+
+Acceptance gates:
+```text
+npm run test -- src/app/api/student/quests/draw/route.test.ts -> PASS
+Test Files  1 passed (1)
+Tests       4 passed (4)
+
+npm run test -- quest cards -> PASS
+Test Files  4 passed (4)
+Tests       15 passed (15)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+Runtime HTTP smoke:
+```text
+login 200 cookie-ok
+quests 200 10
+quest diversification-72:claimable
+draw 200 cash-buffer false
+
+repeat_draw 200 cash-buffer true diversification-72
+```
+
+Live Postgres check:
+```text
+select user_id, card_id, source, meta->>'questId' as quest_id, count(*) over() as total
+from card_collection
+where user_id='student-1'
+order by drawn_at desc
+limit 5;
+
+ user_id   | card_id             | source      | quest_id           | total
+ student-1 | cash-buffer         | quest_claim | diversification-72 | 2
+ student-1 | smoke-calm-observer | quest_claim |                    | 2
+```
+
+Scope / red-line gate:
+```text
+rg -n "recomputePowerForUser|leaderboard|scenarioRuns|scenario_runs|netWorth|power" src/app/api/student/quests/draw/route.ts -> no matches
+No AI/provider files changed.
+No leaderboard, power-score, or scenario financial mutation calls introduced.
+```
+
+Review result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + route tests + typecheck/lint + live HTTP/Postgres smoke.
