@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { StudentQuestDashboard } from "@/components/student/student-quest-dashboard";
+import { StudentQuestDashboard, type QuestCardCollectionView } from "@/components/student/student-quest-dashboard";
+import type { QuestCard } from "@/lib/cards";
 import type { StudentQuestPayload } from "@/lib/quests";
 import type { StudentSeasonChallengePayload } from "@/lib/season-challenges";
 
@@ -91,7 +92,35 @@ function makeSeasonPayload(): StudentSeasonChallengePayload {
   };
 }
 
+const drawnCard: QuestCard = {
+  id: "calm-observer",
+  name: "冷静观察者",
+  rarity: "rare",
+  artKey: "calm-observer",
+  teachingLine: "先记录证据，再决定是否行动。",
+};
+
+function makeCollectionItem(): QuestCardCollectionView {
+  return {
+    id: "card-row-1",
+    userId: "student-1",
+    cardId: drawnCard.id,
+    source: "quest_claim",
+    drawnAt: "2026-06-18T08:00:00.000Z",
+    meta: { questId: "observe-quest", questTitle: "先写观察卡" },
+    card: drawnCard,
+  };
+}
+
 describe("StudentQuestDashboard quest flip", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("flips a weekly quest card to reveal reward and coach note", async () => {
     render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
 
@@ -107,5 +136,98 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(flipButton).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("先看证据");
+  });
+
+  it("claims a completed quest, draws a card, reveals it, and adds it to the collection", async () => {
+    const collectionItem = makeCollectionItem();
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === "/api/student/quests") {
+        return Response.json({
+          payload: {
+            ...makeQuestPayload(),
+            quests: [{ ...makeQuestPayload().quests[0], claimable: false, claimed: true }],
+          },
+          claimed: {
+            questId: "observe-quest",
+            title: "observe quest",
+            reward: "decorative badge",
+            claimedAt: "2026-06-18T08:00:00.000Z",
+            summary: "claimed",
+          },
+        });
+      }
+      if (url === "/api/student/quests/draw") {
+        return Response.json({ card: drawnCard, collectionItem, alreadyDrawn: false });
+      }
+      throw new Error("unexpected fetch " + url);
+    });
+
+    render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("quest-flip-observe-quest"));
+    await user.click(screen.getByTestId("quest-claim-observe-quest"));
+
+    expect(await screen.findByTestId("quest-draw-result")).toBeInTheDocument();
+    expect(await screen.findByTestId("quest-drawn-card-observe-quest")).toHaveTextContent(drawnCard.name);
+    expect(screen.getByTestId("collection-card-calm-observer")).toHaveTextContent(drawnCard.name);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url) === "/api/student/quests")).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url) === "/api/student/quests/draw")).toHaveLength(1);
+  });
+
+  it("renders the persisted card collection on refresh", () => {
+    render(
+      <StudentQuestDashboard
+        payload={makeQuestPayload()}
+        seasonPayload={makeSeasonPayload()}
+        initialCollection={[makeCollectionItem()]}
+      />,
+    );
+
+    expect(screen.getByTestId("quest-card-collection")).toBeInTheDocument();
+    expect(screen.getByTestId("collection-card-calm-observer")).toHaveTextContent(drawnCard.name);
+    expect(screen.getByTestId("quest-drawn-card-observe-quest")).toHaveTextContent(drawnCard.teachingLine);
+  });
+
+  it("guards against double submit while a quest claim is pending", async () => {
+    let resolveClaim!: (response: Response) => void;
+    const claimPromise = new Promise<Response>((resolve) => {
+      resolveClaim = resolve;
+    });
+    const fetchMock = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === "/api/student/quests") return claimPromise;
+      if (url === "/api/student/quests/draw") {
+        return Response.json({ card: drawnCard, collectionItem: makeCollectionItem(), alreadyDrawn: false });
+      }
+      throw new Error("unexpected fetch " + url);
+    });
+
+    render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("quest-flip-observe-quest"));
+    await user.click(screen.getByTestId("quest-claim-observe-quest"));
+    await user.click(screen.getByTestId("quest-claim-observe-quest"));
+
+    expect(fetchMock.mock.calls.filter(([url]) => String(url) === "/api/student/quests")).toHaveLength(1);
+
+    resolveClaim(
+      Response.json({
+        payload: {
+          ...makeQuestPayload(),
+          quests: [{ ...makeQuestPayload().quests[0], claimable: false, claimed: true }],
+        },
+        claimed: {
+          questId: "observe-quest",
+          title: "observe quest",
+          reward: "decorative badge",
+          claimedAt: "2026-06-18T08:00:00.000Z",
+          summary: "claimed",
+        },
+      }),
+    );
+    expect(await screen.findByTestId("collection-card-calm-observer")).toBeInTheDocument();
   });
 });

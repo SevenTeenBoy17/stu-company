@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
+import type { QuestCard } from "@/lib/cards";
+import type { CardCollectionItem } from "@/lib/db/repo";
 import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
 import type { SeasonClaimResult, StudentSeasonChallengePayload } from "@/lib/season-challenges";
 import { premiumMotion } from "@/lib/motion-system";
@@ -31,6 +33,18 @@ import { cn, formatCurrency } from "@/lib/utils";
 gsap.registerPlugin(useGSAP);
 
 type QuestFilter = "all" | "active" | "done" | "watch";
+
+export type QuestCardCollectionView = CardCollectionItem & {
+  card: QuestCard;
+};
+
+type DrawQuestCardResponse = {
+  card?: QuestCard;
+  collectionItem?: CardCollectionItem;
+  alreadyDrawn?: boolean;
+  message?: string;
+  error?: string;
+};
 
 const filterLabels: Array<{ id: QuestFilter; label: string }> = [
   { id: "all", label: "全部任务" },
@@ -101,6 +115,85 @@ const benefitStatusLabel: Record<StudentBenefitStatus, string> = {
   claimed: "已点亮",
 };
 
+const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string }> = {
+  common: { label: "COMMON", className: "border-slate-200 bg-slate-50 text-slate-700" },
+  rare: { label: "RARE", className: "border-brand/25 bg-brand-subtle text-brand-ink" },
+  epic: { label: "EPIC", className: "border-warning/35 bg-warning/10 text-warning" },
+};
+
+function questIdFromCard(item: QuestCardCollectionView | CardCollectionItem) {
+  return typeof item.meta?.questId === "string" ? item.meta.questId : null;
+}
+
+function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
+  return (
+    <section
+      data-quest-reveal
+      data-motion-reveal
+      data-testid="quest-card-collection"
+      className="panel rounded-[2rem] p-5 md:p-6"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-brand" />
+            <h2 className="text-h1 font-semibold text-slate-950">我的卡库</h2>
+          </div>
+          <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+            卡片只记录学习与复盘轨迹，不改变净值、战力或排行榜。刷新页面后，已经抽到的卡也会继续保留。
+          </p>
+        </div>
+        <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+          {items.length} 张已收藏
+        </span>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {items.map((item) => {
+            const meta = rarityMeta[item.card.rarity];
+            return (
+              <article
+                data-motion-card
+                data-testid={`collection-card-${item.card.id}`}
+                key={`${item.id}-${item.card.id}`}
+                className="group overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white shadow-lg shadow-slate-950/5"
+              >
+                <div className="relative min-h-36 bg-slate-950 p-4 text-white">
+                  <div className="grid-strokes pointer-events-none absolute inset-0 opacity-16" />
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-brand/35 blur-2xl" />
+                  <div className="relative z-10 flex h-full min-h-28 flex-col justify-between">
+                    <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black", meta.className)}>
+                      {meta.label}
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{item.card.artKey}</p>
+                      <h3 className="mt-2 text-h2 font-black text-white">{item.card.name}</h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <p className="line-clamp-3 text-sm font-semibold leading-6 text-slate-600">{item.card.teachingLine}</p>
+                  <div className="mt-4 rounded-[1.1rem] bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">
+                    来源任务：{typeof item.meta?.questTitle === "string" ? item.meta.questTitle : "任务奖励"}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-[1.6rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+          <p className="text-base font-black text-slate-950">还没有收藏卡片</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+            完成任务后点击“领取并抽卡”，第一张装饰卡就会加入这里。
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function formatGeneratedAt(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -125,19 +218,25 @@ function QuestStatusBadge({ status }: { status: StudentQuestStatus }) {
 export function StudentQuestDashboard({
   payload,
   seasonPayload,
+  initialCollection = [],
 }: {
   payload: StudentQuestPayload;
   seasonPayload: StudentSeasonChallengePayload;
+  initialCollection?: QuestCardCollectionView[];
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [questPayload, setQuestPayload] = useState(payload);
   const [season, setSeason] = useState(seasonPayload);
+  const [cardCollection, setCardCollection] = useState<QuestCardCollectionView[]>(initialCollection);
   const [filter, setFilter] = useState<QuestFilter>("all");
   const [claimingQuestId, setClaimingQuestId] = useState<string | null>(null);
+  const [drawingQuestId, setDrawingQuestId] = useState<string | null>(null);
   const [claimingSeason, setClaimingSeason] = useState(false);
   const [claimResult, setClaimResult] = useState<QuestClaimResult | null>(null);
+  const [drawResult, setDrawResult] = useState<QuestCardCollectionView | null>(null);
   const [seasonClaimResult, setSeasonClaimResult] = useState<SeasonClaimResult | null>(null);
   const [claimError, setClaimError] = useState("");
+  const [drawError, setDrawError] = useState("");
   const [flippedQuestIds, setFlippedQuestIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const { contextSafe } = useGSAP(
@@ -179,10 +278,7 @@ export function StudentQuestDashboard({
     { scope: rootRef },
   );
 
-  const toggleQuestFlip = contextSafe((questId: string) => {
-    const isCurrentlyFlipped = flippedQuestIds.has(questId);
-    const nextFlipped = !isCurrentlyFlipped;
-
+  const animateQuestCard = contextSafe((questId: string, nextFlipped: boolean) => {
     setFlippedQuestIds((current) => {
       const next = new Set(current);
       if (nextFlipped) {
@@ -210,6 +306,10 @@ export function StudentQuestDashboard({
     });
   });
 
+  const toggleQuestFlip = contextSafe((questId: string) => {
+    animateQuestCard(questId, !flippedQuestIds.has(questId));
+  });
+
   const visibleQuests = useMemo(() => {
     if (filter === "all") return questPayload.quests;
     if (filter === "done") return questPayload.quests.filter((quest) => quest.status === "done");
@@ -222,9 +322,65 @@ export function StudentQuestDashboard({
   const completionRate =
     questPayload.overview.total > 0 ? questPayload.overview.completed / questPayload.overview.total : 0;
 
+  const collectionByQuestId = useMemo(() => {
+    const next = new Map<string, QuestCardCollectionView>();
+    for (const item of cardCollection) {
+      const questId = questIdFromCard(item);
+      if (questId && !next.has(questId)) next.set(questId, item);
+    }
+    return next;
+  }, [cardCollection]);
+
+  function addCollectionItem(item: QuestCardCollectionView) {
+    const questId = questIdFromCard(item);
+    setCardCollection((current) => {
+      const next = current.filter((existing) => {
+        if (existing.id === item.id || existing.cardId === item.cardId) return false;
+        return questId ? questIdFromCard(existing) !== questId : true;
+      });
+      return [item, ...next];
+    });
+  }
+
+  async function drawQuestCard(questId: string) {
+    const existing = collectionByQuestId.get(questId);
+    if (existing) {
+      setDrawResult(existing);
+      animateQuestCard(questId, true);
+      return existing;
+    }
+    if (drawingQuestId) return null;
+
+    setDrawingQuestId(questId);
+    setDrawError("");
+    try {
+      const response = await fetch("/api/student/quests/draw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questId, source: "quest_claim" }),
+      });
+      const data = (await response.json()) as DrawQuestCardResponse;
+      if (!response.ok || !data.card || !data.collectionItem) {
+        throw new Error(data.message || "装饰卡抽取失败，请稍后再试。");
+      }
+
+      const item: QuestCardCollectionView = { ...data.collectionItem, card: data.card };
+      addCollectionItem(item);
+      setDrawResult(item);
+      animateQuestCard(questId, true);
+      return item;
+    } catch (error) {
+      setDrawError(error instanceof Error ? error.message : "装饰卡抽取失败，请稍后再试。");
+      return null;
+    } finally {
+      setDrawingQuestId(null);
+    }
+  }
+
   async function claimQuest(questId: string) {
     setClaimingQuestId(questId);
     setClaimError("");
+    setDrawError("");
     try {
       const response = await fetch("/api/student/quests", {
         method: "POST",
@@ -241,6 +397,7 @@ export function StudentQuestDashboard({
       }
       setQuestPayload(data.payload);
       setClaimResult(data.claimed);
+      await drawQuestCard(questId);
     } catch (error) {
       setClaimError(error instanceof Error ? error.message : "任务奖励领取失败，请稍后再试。");
     } finally {
@@ -365,9 +522,26 @@ export function StudentQuestDashboard({
                 </p>
               </div>
             )}
+            {drawResult && (
+              <div
+                role="status"
+                data-testid="quest-draw-result"
+                className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.08] p-4"
+              >
+                <p className="text-sm font-black text-brand-warm">抽卡揭晓</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
+                  你抽到了 {drawResult.card.name}（{rarityMeta[drawResult.card.rarity].label}）。这张卡已加入“我的卡库”，只做装饰与复盘记录。
+                </p>
+              </div>
+            )}
             {claimError && (
               <p role="alert" className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
                 {claimError}
+              </p>
+            )}
+            {drawError && (
+              <p role="alert" className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
+                {drawError}
               </p>
             )}
           </aside>
@@ -593,6 +767,9 @@ export function StudentQuestDashboard({
           <div className="mt-6 grid gap-4 xl:grid-cols-3">
             {visibleQuests.map((quest) => {
               const isFlipped = flippedQuestIds.has(quest.id);
+              const collectedCard = collectionByQuestId.get(quest.id);
+              const isQuestBusy = claimingQuestId === quest.id || drawingQuestId === quest.id;
+              const canDraw = quest.claimable || quest.claimed;
 
               return (
                 <article
@@ -677,29 +854,55 @@ export function StudentQuestDashboard({
                         <p className="text-xs font-black uppercase tracking-[0.16em] text-white/48">Mr.Brown 提醒</p>
                         <p className="mt-2 text-sm font-semibold leading-6 text-white/82">{quest.coachNote}</p>
                       </div>
+                      {collectedCard ? (
+                        <div
+                          data-testid={`quest-drawn-card-${quest.id}`}
+                          className="mt-4 rounded-[1.3rem] border border-brand/30 bg-brand/12 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">
+                                {rarityMeta[collectedCard.card.rarity].label}
+                              </p>
+                              <h4 className="mt-1 text-lg font-black text-white">{collectedCard.card.name}</h4>
+                            </div>
+                            <BadgeCheck className="h-5 w-5 shrink-0 text-brand-warm" />
+                          </div>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-white/76">
+                            {collectedCard.card.teachingLine}
+                          </p>
+                        </div>
+                      ) : null}
                       <button
                         data-motion-button
                         type="button"
                         data-testid={`quest-claim-${quest.id}`}
-                        onClick={() => void claimQuest(quest.id)}
-                        disabled={!quest.claimable || claimingQuestId !== null}
+                        onClick={() => {
+                          if (quest.claimable) {
+                            void claimQuest(quest.id);
+                            return;
+                          }
+                          void drawQuestCard(quest.id);
+                        }}
+                        disabled={!canDraw || Boolean(collectedCard) || claimingQuestId !== null || drawingQuestId !== null}
                         className={cn(
                           "mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition",
-                          quest.claimable
+                          canDraw && !collectedCard
                             ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
-                            : quest.claimed
+                            : collectedCard
                               ? "bg-white text-slate-950"
                               : "cursor-not-allowed bg-white/12 text-white/55",
                         )}
                       >
-                        {claimingQuestId === quest.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : quest.claimed ? (
-                          <BadgeCheck className="h-4 w-4" />
-                        ) : (
-                          <Sparkles className="h-4 w-4" />
-                        )}
-                        {quest.claimed ? "已领取装饰奖励" : quest.claimable ? "领取装饰奖励" : "完成后可领取"}
+                        {isQuestBusy
+                          ? "抽卡中..."
+                          : collectedCard
+                            ? `已收藏 ${collectedCard.card.name}`
+                            : quest.claimable
+                              ? "领取并抽卡"
+                              : quest.claimed
+                                ? "补抽装饰卡"
+                                : "完成后可抽卡"}
                       </button>
                     </div>
                   </div>
@@ -713,6 +916,8 @@ export function StudentQuestDashboard({
           </p>
         )}
       </section>
+
+      <QuestCardCollection items={cardCollection} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">

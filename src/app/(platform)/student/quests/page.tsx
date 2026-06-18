@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { PlatformLayout } from "@/components/platform/platform-layout";
-import { StudentQuestDashboard } from "@/components/student/student-quest-dashboard";
-import { getLearningProgress, getSimulationStateForUser, roleHomePath } from "@/lib/db/repo";
+import { StudentQuestDashboard, type QuestCardCollectionView } from "@/components/student/student-quest-dashboard";
+import type { QuestCard } from "@/lib/cards";
+import { questCardDeck } from "@/lib/content";
+import { getLearningProgress, getSimulationStateForUser, listCardCollectionForUser, roleHomePath } from "@/lib/db/repo";
 import { buildStudentQuestPayload } from "@/lib/quests";
 import { buildStudentSeasonChallengePayload } from "@/lib/season-challenges";
 import { getCurrentUser } from "@/lib/session-user";
@@ -17,12 +19,18 @@ export default async function StudentQuestsPage() {
   if (!user) redirect("/demo?reason=login_required");
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
-  const [state, learning] = await Promise.all([
+  const [state, learning, collection] = await Promise.all([
     getSimulationStateForUser(user.id),
     getLearningProgress(user.id),
+    listCardCollectionForUser(user.id),
   ]);
   const payload = buildStudentQuestPayload(state.run, learning);
   const seasonPayload = buildStudentSeasonChallengePayload(state.run);
+  const cardCollection = collection.reduce<QuestCardCollectionView[]>((items, item) => {
+    const card = questCardDeck.find((deckCard) => deckCard.id === item.cardId);
+    if (card) items.push({ ...item, card: card as QuestCard });
+    return items;
+  }, []);
 
   return (
     <PlatformLayout
@@ -30,7 +38,7 @@ export default async function StudentQuestsPage() {
       heading="学生策略台"
       summary="围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
-      <StudentQuestDashboard payload={payload} seasonPayload={seasonPayload} />
+      <StudentQuestDashboard payload={payload} seasonPayload={seasonPayload} initialCollection={cardCollection} />
     </PlatformLayout>
   );
 }

@@ -3335,3 +3335,56 @@ No leaderboard, power-score, or scenario financial mutation calls introduced.
 ```
 
 Review result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + route tests + typecheck/lint + live HTTP/Postgres smoke.
+
+## B2d - frontend quest draw wiring and card collection
+
+Timestamp: 2026-06-18 11:41:00 -07:00
+
+Scope:
+- `src/components/student/student-quest-dashboard.tsx`
+- `src/components/student/student-quest-dashboard.test.tsx`
+- `src/app/(platform)/student/quests/page.tsx`
+- `progress.md`
+
+Implementation summary:
+- Wired completed quest rewards to `POST /api/student/quests/draw` after the existing quest claim succeeds.
+- Added a double-submit guard with `claimingQuestId` + `drawingQuestId`.
+- Added drawn-card reveal state on the flipped quest back face.
+- Added `QuestCardCollection` / "我的卡库" grid.
+- Added `initialCollection` prop and passed persisted collection from the server page, so refresh keeps already drawn cards.
+- Kept collection cards decorative-only: no power, leaderboard, or scenario finance mutation paths.
+
+Acceptance gates:
+```text
+npm run test -- src/components/student/student-quest-dashboard.test.tsx -> PASS
+Test Files  1 passed (1)
+Tests       4 passed (4)
+
+npm run test -- student-quest quest cards -> PASS
+Test Files  4 passed (4)
+Tests       18 passed (18)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+HTTP / browser smoke:
+```text
+GET /student/quests after student login:
+quests_page 200 card_collection_section true cash_buffer_card true
+
+Playwright:
+{"collectionVisible":true,"collectionCount":1,"flipCount":10,"overflow":false}
+```
+
+Scope / red-line gate:
+```text
+rg -n "void mutate|recomputePowerForUser|leaderboard" src/components/student/student-quest-dashboard.tsx "src/app/(platform)/student/quests/page.tsx" -> no matches
+No api/lib/db internals were changed in B2d.
+No direct AI/provider calls were added.
+```
+
+Review result: APPROVE. `code_review_graph` remains unavailable (`No module named code_review_graph`), so review degraded to tests + tsc/lint + SSR/Playwright smoke + static grep. Note: the server page was touched only to pass persisted `card_collection` into the client component; this is the minimal path to satisfy "我的卡库刷新仍在" without adding a new API GET.
