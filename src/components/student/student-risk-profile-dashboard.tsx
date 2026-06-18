@@ -182,7 +182,8 @@ export function StudentRiskProfileDashboard({
     () => new Map(answers.map((answer) => [answer.questionId, answer.optionId])),
     [answers],
   );
-  const completed = answers.filter((answer) => selectedMap.get(answer.questionId)).length;
+  const validQuestionIds = useMemo(() => new Set(payload.questions.map((q) => q.id)), [payload.questions]);
+  const completed = answers.filter((answer) => validQuestionIds.has(answer.questionId)).length;
 
   async function submitProfile() {
     if (completed === 0) {
@@ -318,7 +319,7 @@ export function StudentRiskProfileDashboard({
                 每题只测一个概念，降低认知负荷。答案没有对错，关键是看见自己的决策倾向。
               </p>
             </div>
-            <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
+            <span data-testid="risk-counter" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
               {completed}/{payload.questions.length} 已选择
             </span>
           </div>
