@@ -1044,10 +1044,11 @@ export async function upsertRiskProfile(
           riskLabel: input.riskLabel,
           answers: input.answers,
           updatedAt: now,
-          behaviorPersona: input.behaviorPersona ?? null,
-          personaProvider: input.personaProvider ?? null,
-          analyzedAt: analyzedAtValue,
-          inputDigest: input.inputDigest ?? null,
+          // new row has no prior persona to preserve; omit-when-absent keeps INSERT/UPDATE policy symmetric
+          behaviorPersona: hasPersona ? (input.behaviorPersona ?? null) : undefined,
+          personaProvider: hasProvider ? (input.personaProvider ?? null) : undefined,
+          analyzedAt: hasAnalyzedAt ? analyzedAtValue : undefined,
+          inputDigest: hasDigest ? (input.inputDigest ?? null) : undefined,
         })
         .onConflictDoUpdate({
           target: riskProfiles.userId,

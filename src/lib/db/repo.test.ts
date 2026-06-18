@@ -539,6 +539,44 @@ describe("db repo fallback adapter", () => {
     });
   });
 
+  it("preserves existing AI persona when questionnaire is re-saved without persona keys", async () => {
+    const persona: BehaviorPersona = {
+      band: "balanced",
+      label: "均衡配置者",
+      archetype: "稳健型",
+      summary: "在不同市场环境中灵活调整仓位。",
+      evidence: ["第5轮加仓债券", "第8轮减仓股票"],
+      nextSteps: ["继续保持多元化配置"],
+      confidence: "high",
+    };
+
+    // Step 1: upsert with a full persona payload
+    await upsertRiskProfile("student-1", {
+      riskLabel: "均衡配置者",
+      answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "balanced" }] },
+      behaviorPersona: persona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-18T10:00:00.000Z",
+      inputDigest: "digest-preserve-test",
+    });
+
+    // Step 2: re-save with ONLY questionnaire fields — no persona keys at all
+    await upsertRiskProfile("student-1", {
+      riskLabel: "稳健观察者",
+      answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "steady" }] },
+    });
+
+    // Step 3: persona fields must still be intact
+    const profile = await getRiskProfile("student-1");
+    expect(profile).toMatchObject({
+      riskLabel: "稳健观察者",
+      behaviorPersona: persona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-18T10:00:00.000Z",
+      inputDigest: "digest-preserve-test",
+    });
+  });
+
   it("rejects duplicate email in registerUserByEmail", async () => {
     await expect(
       registerUserByEmail({
