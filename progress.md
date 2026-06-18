@@ -554,16 +554,16 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Network brown-zone-web_default  Created
  Volume brownzone_pgdata  Creating
  Volume brownzone_pgdata  Created
  Container brownzone-pg  Creating
- Container brownzone-pg  Error response from daemon: Conflict. The container name "/brownzone-pg" is already in use by 
+ Container brownzone-pg  Error response from daemon: Conflict. The container name "/brownzone-pg" is already in use by
 container "af2a66c8833fe124d6bcbb1c5866dfbc86eff471ba3926f5a2f0387638aa5f90". You have to remove (or rename) that conta
 iner to be able to reuse that name.
 Error response from daemon: Conflict. The container name "/brownzone-pg" is already in use by container "af2a66c8833fe1
-24d6bcbb1c5866dfbc86eff471ba3926f5a2f0387638aa5f90". You have to remove (or rename) that container to be able to reuse 
+24d6bcbb1c5866dfbc86eff471ba3926f5a2f0387638aa5f90". You have to remove (or rename) that container to be able to reuse
 that name.
 D:\树德实验中学（清波）\C2\brown-zone-web\scripts\db-up.ts:23
     throw new Error(`Command failed (${result.status ?? "unknown"}): ${rendered}`);
@@ -612,7 +612,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Volume brownzone_pgdata  Removing:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Network brown-zone-web_default  Removing
  Volume brownzone_pgdata  Removed
  Network brown-zone-web_default  Removed
@@ -637,7 +637,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (Existing non-Co...ompose startup.:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Network brown-zone-web_default  Creating
  Network brown-zone-web_default  Created
  Volume brownzone_pgdata  Creating
@@ -711,7 +711,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Container brownzone-pg  Stopping:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Container brownzone-pg  Stopped
  Container brownzone-pg  Removing
  Container brownzone-pg  Removed
@@ -739,7 +739,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Network brown-zone-web_default  Created
  Volume brownzone_pgdata  Creating
  Volume brownzone_pgdata  Created
@@ -1191,7 +1191,7 @@ Seed verification counts: {
 }
 Seed complete.
 ✅ 本地库就绪 -> http://localhost:3000
-(node:19912) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security 
+(node:19912) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security
 vulnerabilities, as the arguments are not escaped, only concatenated.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 
@@ -1221,7 +1221,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Container brownzone-pg  Stopping:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Container brownzone-pg  Stopped
  Container brownzone-pg  Removing
  Container brownzone-pg  Removed
@@ -1245,7 +1245,7 @@ At line:1 char:1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ( Network brown-...fault  Creating:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
  Network brown-zone-web_default  Created
  Volume brownzone_pgdata  Creating
  Volume brownzone_pgdata  Created
@@ -1751,7 +1751,7 @@ At line:30 char:25
 +                         ~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ([stdin]:21:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
     throw new Error('Student real-data smoke failed');
           ^
 
@@ -1770,7 +1770,7 @@ At line:33 char:25
 +                         ~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: ([stdin]:11:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
- 
+
   const titleCount = await page.getByText(/?????/).count();
                                           ^^^^^^^
 
@@ -1853,9 +1853,9 @@ Output:
   Finished TypeScript in 13.7s ...
   Collecting page data using 21 workers ...
   Generating static pages using 21 workers (0/60) ...
-  Generating static pages using 21 workers (15/60) 
-  Generating static pages using 21 workers (30/60) 
-  Generating static pages using 21 workers (45/60) 
+  Generating static pages using 21 workers (15/60)
+  Generating static pages using 21 workers (30/60)
+  Generating static pages using 21 workers (45/60)
 ✓ Generating static pages using 21 workers (60/60) in 733ms
   Finalizing page optimization ...
 
@@ -1999,3 +1999,172 @@ scripts/db-up.ts
 - Review gate: `python -m code_review_graph update` and `detect-changes --base HEAD --brief` -> 19 changed files, 0 affected flows, 0 test gaps, risk 0.00.
 - Scope gate: cached diff has no `src/app/api`, `src/lib/db`, `src/lib/auth.ts`, `src/lib/ai.ts`, or `.env.local` changes.
 - Staging note: `src/components/student/student-sandbox.tsx` was partially staged to include only the async `submitAction` fix; existing unrelated UI hunks remain unstaged.
+## 2026-06-17 Phase 2.1 Step 1 migration generation attempt
+
+Command: `npm run db:up`
+Result: local Postgres healthy; shims, migrations, policies, and seed completed. `docker compose -f docker-compose.local.yml ps` showed `brownzone-pg` healthy.
+
+Command: `npm run db:generate`
+Result: FAILED to generate migration in non-interactive shell.
+
+```text
+> brown-zone-web@0.1.0 db:generate
+> drizzle-kit generate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'D:\树德实验中学（清波）\C2\brown-zone-web\drizzle.config.ts'
+Error: Interactive prompts require a TTY terminal (process.stdin.isTTY or process.stdout.isTTY is false). This can happen when running in CI, piped input, or non-interactive shells.
+    at render10 (...node_modules\drizzle-kit\bin.cjs:1450:31)
+    at promptNamedWithSchemasConflict (...node_modules\drizzle-kit\bin.cjs:32812:65)
+    at tablesResolver (...node_modules\drizzle-kit\bin.cjs:32001:60)
+    at applyPgSnapshotsDiff (...node_modules\drizzle-kit\bin.cjs:28212:17)
+```
+
+Next action: inspect Drizzle non-interactive generation options and regenerate SQL without applying it.
+## 2026-06-17 Phase 2.1 Step 1 generated migration SQL (STOP before apply)
+
+Command:
+pm run db:up
+Result: passed. Local Postgres reported healthy; shims, existing migrations, policies, and seed completed.
+
+Command: docker compose -f docker-compose.local.yml ps
+Result excerpt:
+`	ext
+brownzone-pg   postgres:16-alpine   ...   Up ... (healthy)   0.0.0.0:5433->5432/tcp
+`
+
+Command:
+pm run db:generate
+Result: failed because drizzle-kit tried to open an interactive rename/conflict prompt for ank_profiles vs isk_profiles in non-TTY. Failure text was recorded above.
+
+Command:
+px drizzle-kit generate --name add_risk_profiles
+Result: same non-TTY interactive prompt failure; no migration file generated.
+
+Resolution: followed existing repo precedent from drizzle/0014_subscription_grant_unique.sql and hand-authored the migration plus journal entry. No
+pm run db:migrate was run.
+
+Command: git status --short -- src/lib/db/schema.ts drizzle/0015_risk_profiles.sql drizzle/meta/_journal.json
+`	ext
+ M drizzle/meta/_journal.json  M src/lib/db/schema.ts ?? drizzle/0015_risk_profiles.sql
+`
+
+Command: git diff --check -- src/lib/db/schema.ts drizzle/0015_risk_profiles.sql drizzle/meta/_journal.json
+Result: passed with no whitespace errors.
+
+Command:
+px tsc --noEmit
+Result: passed.
+
+Generated SQL for review:
+`sql
+-- Migration: persist student risk-profile questionnaire results
+-- Created: 2026-06-17
+-- Context: drizzle-kit generate prompts for a rank_profiles/risk_profiles table
+--          name conflict in non-TTY Codex runs. Hand-authored to match schema.ts
+--          and kept idempotent for local rebuilds.
+
+CREATE TABLE IF NOT EXISTS "risk_profiles" (
+  "user_id" varchar(64) PRIMARY KEY NOT NULL,
+  "risk_label" text NOT NULL,
+  "answers" jsonb NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "risk_profiles_user_id_users_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
+    ON DELETE no action ON UPDATE no action
+);
+
+`
+
+STOP-GATE: migration has NOT been applied. Await user review before running
+pm run db:migrate.
+
+## Phase 2.1 — risk profile migration applied + repo/API persistence
+
+User confirmed the migration apply gate. Continued with the exact Phase 2.1 scope:
+
+- Applied `drizzle/0015_risk_profiles.sql` through `npm run db:up`.
+- Added repo persistence functions `getRiskProfile` / `upsertRiskProfile`.
+- Wired `/api/student/risk-profile` and `/student/risk-profile` to read/write saved answers.
+- Kept unrelated pre-existing UI dirty files unstaged.
+
+Command: `npm run db:up`
+
+```text
+Postgres container is healthy.
+Running Drizzle migrations...
+Migrations up to date
+RLS policies applied
+Seed verification counts: {
+  users: 8,
+  classrooms: 1,
+  invites: 3,
+  assignments: 2,
+  runs: 4,
+  growthReports: 1
+}
+Seed complete.
+```
+
+Command: `docker exec -i brownzone-pg psql -U postgres -d brownzone -c "select to_regclass('public.risk_profiles') as risk_profiles;"`
+
+```text
+ risk_profiles
+---------------
+ risk_profiles
+(1 row)
+```
+
+Command: `npx tsx .codex-supervisor\verify-risk-profile.ts`
+
+```text
+{
+  "status": "risk profile db ok",
+  "userId": "student-1",
+  "riskLabel": "Phase 2.1 验证画像",
+  "selectedAnswers": 2
+}
+```
+
+Command: `docker exec -i brownzone-pg psql -U postgres -d brownzone -c "select user_id, risk_label, jsonb_array_length(answers->'selectedAnswers') as selected_answers from risk_profiles where user_id = 'student-1';"`
+
+```text
+  user_id  |     risk_label     | selected_answers
+-----------+--------------------+------------------
+ student-1 | Phase 2.1 验证画像 |                2
+(1 row)
+```
+
+Command: `npm run db:down; npx tsx .codex-supervisor\verify-risk-profile.ts; npm run db:up`
+
+```text
+Expected stopped DB failure observed (exit 1).
+Postgres container is healthy.
+Migrations up to date
+RLS policies applied
+Seed complete.
+```
+
+Command: `npm run test -- src/lib/db/repo.test.ts src/lib/risk-profile.test.ts`
+
+```text
+Test Files  2 passed (2)
+Tests  22 passed (22)
+```
+
+Command: `npm run lint && npx tsc --noEmit && npm run test -- src/lib/db/repo.test.ts src/lib/risk-profile.test.ts && npm run build`
+
+```text
+eslint passed.
+TypeScript passed.
+Test Files  2 passed (2)
+Tests  22 passed (22)
+next build: Compiled successfully; 60/60 static pages generated.
+```
+
+Command: `npm run test`
+
+```text
+Test Files  74 passed (74)
+Tests  467 passed (467)
+```

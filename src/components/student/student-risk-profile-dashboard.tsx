@@ -136,14 +136,19 @@ function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
   );
 }
 
-export function StudentRiskProfileDashboard({ initialPayload }: { initialPayload: RiskProfilePayload }) {
+export function StudentRiskProfileDashboard({
+  initialPayload,
+  initialAnswersPersisted = false,
+}: {
+  initialPayload: RiskProfilePayload;
+  initialAnswersPersisted?: boolean;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
-  // Start unanswered: the profile is never persisted (GET always returns defaults),
-  // so pre-filling middle options biased answers and showed a 6/6 badge + a computed
-  // persona before the student interacted. Real clicks populate this.
-  const [answers, setAnswers] = useState<RiskProfileAnswer[]>([]);
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [answers, setAnswers] = useState<RiskProfileAnswer[]>(
+    initialAnswersPersisted ? initialPayload.selectedAnswers : [],
+  );
+  const [submitState, setSubmitState] = useState<SubmitState>(initialAnswersPersisted ? "success" : "idle");
   const [errorMessage, setErrorMessage] = useState("");
 
   useGSAP(

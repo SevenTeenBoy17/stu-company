@@ -98,6 +98,13 @@ export const profiles = pgTable("profiles", {
   metrics: jsonb("metrics").$type<Array<{ label: string; value: string }>>().notNull(),
 });
 
+export const riskProfiles = pgTable("risk_profiles", {
+  userId: varchar("user_id", { length: 64 }).primaryKey().references(() => users.id),
+  riskLabel: text("risk_label").notNull(),
+  answers: jsonb("answers").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const classrooms = pgTable("classrooms", {
   id: varchar("id", { length: 64 }).primaryKey(),
   name: varchar("name", { length: 120 }).notNull(),

@@ -31,6 +31,7 @@ import {
   getPaymentOrderByOutTradeNo,
   getParentOverview,
   getQuickDemoCredentials,
+  getRiskProfile,
   getRunForUser,
   getSimulationStateForUser,
   getTeacherOverview,
@@ -41,6 +42,7 @@ import {
   resetStoreForTests,
   roleHomePath,
   upsertAppSetting,
+  upsertRiskProfile,
   validateInviteCode,
 } from "@/lib/db/repo";
 import {
@@ -370,6 +372,55 @@ describe("db repo fallback adapter", () => {
 
     expect(user.role).toBe("student");
     expect(user.classroomId).toBe("class-1");
+  });
+
+  it("persists and overwrites risk-profile answers in fallback mode", async () => {
+    await expect(getRiskProfile("student-1")).resolves.toBeNull();
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "稳健观察者",
+        answers: {
+          selectedAnswers: [
+            { questionId: "loss-reaction", optionId: "steady" },
+            { questionId: "time-horizon", optionId: "long" },
+          ],
+        },
+      }),
+    ).resolves.toMatchObject({
+      userId: "student-1",
+      riskLabel: "稳健观察者",
+      answers: expect.objectContaining({
+        selectedAnswers: expect.any(Array),
+      }),
+      updatedAt: expect.any(String),
+    });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      riskLabel: "稳健观察者",
+      answers: expect.objectContaining({
+        selectedAnswers: expect.arrayContaining([
+          expect.objectContaining({ questionId: "loss-reaction", optionId: "steady" }),
+        ]),
+      }),
+    });
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "成长进攻型",
+        answers: {
+          selectedAnswers: [{ questionId: "loss-reaction", optionId: "growth" }],
+        },
+      }),
+    ).resolves.toMatchObject({
+      riskLabel: "成长进攻型",
+    });
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      riskLabel: "成长进攻型",
+      answers: expect.objectContaining({
+        selectedAnswers: [expect.objectContaining({ optionId: "growth" })],
+      }),
+    });
   });
 
   it("rejects duplicate email in registerUserByEmail", async () => {

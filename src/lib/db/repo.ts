@@ -41,6 +41,7 @@ import {
   paymentOrders,
   profiles,
   rankProfiles,
+  riskProfiles,
   scenarioRuns,
   schools,
   studentParentLinks,
@@ -152,8 +153,16 @@ type DbPaymentOrder = typeof paymentOrders.$inferSelect;
 type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
 type DbSchool = typeof schools.$inferSelect;
 type DbRankProfile = typeof rankProfiles.$inferSelect;
+type DbRiskProfile = typeof riskProfiles.$inferSelect;
 type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
+
+export type RiskProfileRecord = {
+  userId: string;
+  riskLabel: string;
+  answers: Record<string, unknown>;
+  updatedAt: string;
+};
 
 const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 
@@ -162,6 +171,8 @@ const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 // keep the offline teacher-laptop demo behaviour.
 const ALLOW_MEMORY_FALLBACK =
   process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
+
+const fallbackRiskProfiles = new Map<string, RiskProfileRecord>();
 
 // P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
 // greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
@@ -283,6 +294,7 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
 const WRITE_FNS = new Set<string>([
   "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
+  "upsertRiskProfile",
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
@@ -476,6 +488,15 @@ function toProfileRecord(row: DbProfile): ProfileRecord {
     headline: row.headline,
     bio: row.bio,
     metrics: row.metrics as ProfileRecord["metrics"],
+  };
+}
+
+function toRiskProfileRecord(row: DbRiskProfile): RiskProfileRecord {
+  return {
+    userId: row.userId,
+    riskLabel: row.riskLabel,
+    answers: row.answers as Record<string, unknown>,
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
   };
 }
 
@@ -854,6 +875,7 @@ async function listAiSessionRows(executor: DbExecutor, userId: string, limit?: n
 // ---------------------------------------------------------------------------
 
 export async function resetStoreForTests() {
+  fallbackRiskProfiles.clear();
   return store.resetStoreForTests();
 }
 
@@ -877,6 +899,61 @@ export async function findProfileByUserId(userId: string) {
       return row ? toProfileRecord(row) : null;
     },
     () => store.findProfileByUserId(userId),
+  );
+}
+
+export async function getRiskProfile(userId: string): Promise<RiskProfileRecord | null> {
+  return withScopedDb(
+    "getRiskProfile",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(riskProfiles)
+        .where(eq(riskProfiles.userId, userId))
+        .limit(1);
+      return row ? toRiskProfileRecord(row) : null;
+    },
+    () => fallbackRiskProfiles.get(userId) ?? null,
+  );
+}
+
+export async function upsertRiskProfile(
+  userId: string,
+  input: { riskLabel: string; answers: Record<string, unknown> },
+): Promise<RiskProfileRecord> {
+  return withDb(
+    "upsertRiskProfile",
+    async (db) => {
+      const now = new Date();
+      const [row] = await db
+        .insert(riskProfiles)
+        .values({
+          userId,
+          riskLabel: input.riskLabel,
+          answers: input.answers,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: riskProfiles.userId,
+          set: {
+            riskLabel: input.riskLabel,
+            answers: input.answers,
+            updatedAt: now,
+          },
+        })
+        .returning();
+      return toRiskProfileRecord(row);
+    },
+    () => {
+      const record: RiskProfileRecord = {
+        userId,
+        riskLabel: input.riskLabel,
+        answers: input.answers,
+        updatedAt: new Date().toISOString(),
+      };
+      fallbackRiskProfiles.set(userId, record);
+      return record;
+    },
   );
 }
 
