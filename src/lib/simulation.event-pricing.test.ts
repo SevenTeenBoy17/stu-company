@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { eventMarketEffect } from "@/lib/event-engine";
-import { eventCards, marketRounds } from "@/lib/market-data";
+import { eventCards, marketAssets, marketRounds } from "@/lib/market-data";
 import { createInitialRun, getRoundQuotes, getRoundQuotesForRun } from "@/lib/simulation";
 
 type ScenarioRunLike = ReturnType<typeof createInitialRun>;
@@ -42,6 +42,7 @@ describe("event-driven pricing (#6)", () => {
         const card = cardForEventId(timeline[round - 1] ?? marketRounds[round - 1].eventId);
         const multipliers = marketRounds[round - 1].assetMultipliers;
         for (const quote of getRoundQuotesForRun(run, round)) {
+          if (quote.id === "asset-gold" || quote.id === "asset-index") continue;
           const magnitude = Math.abs(multipliers[quote.category] - 1);
           const cardEffect = eventMarketEffect(card, quote.category);
           if (magnitude === 0 || cardEffect === 1) continue; // no move to direct / card neutral here
@@ -61,6 +62,7 @@ describe("event-driven pricing (#6)", () => {
     for (let round = 1; round <= ROUNDS; round++) {
       const multipliers = marketRounds[round - 1].assetMultipliers;
       for (const quote of getRoundQuotesForRun(run, round)) {
+        if (quote.id === "asset-gold" || quote.id === "asset-index") continue;
         const magnitude = Math.abs(multipliers[quote.category] - 1);
         const up = Math.round(quote.basePrice * (1 + magnitude));
         const down = Math.round(quote.basePrice * (1 - magnitude));
@@ -100,5 +102,49 @@ describe("event-driven pricing (#6)", () => {
     expect(bullQuote.currentPrice).toBeGreaterThan(bullQuote.basePrice); // 利好 → up
     expect(bearQuote.currentPrice).toBeLessThan(bearQuote.basePrice); // 利空 → down
     expect(bullQuote.currentPrice).toBeGreaterThan(bearQuote.currentPrice);
+  });
+});
+
+describe("C-7 gold and index market assets", () => {
+  const pathFor = (assetId: string, seed: number) => {
+    const run = createInitialRun(`student-${assetId}`, "class-pricing", "test", seed);
+    return Array.from({ length: ROUNDS }, (_, index) => {
+      const quote = getRoundQuotesForRun(run, index + 1).find((item) => item.id === assetId);
+      return quote?.currentPrice;
+    });
+  };
+
+  it("exposes gold and broad index assets to the simulation market", () => {
+    expect(marketAssets.some((asset) => asset.id === "asset-gold")).toBe(true);
+    expect(marketAssets.some((asset) => asset.id === "asset-index")).toBe(true);
+  });
+
+  it("keeps gold and index trajectories deterministic for the same seed", () => {
+    expect(pathFor("asset-gold", 20260618)).toEqual(pathFor("asset-gold", 20260618));
+    expect(pathFor("asset-index", 20260618)).toEqual(pathFor("asset-index", 20260618));
+  });
+
+  it("moves gold opposite stocks under a risk-off event", () => {
+    const run = createInitialRun("student-risk-off", "class-pricing", "test", 20260618);
+    const timeline = [...(run.eventTimeline ?? [])];
+    timeline[8] = "event-global-recession-warning";
+    run.eventTimeline = timeline;
+
+    const quotes = getRoundQuotesForRun(run, 9);
+    const stock = quotes.find((item) => item.id === "asset-stock");
+    const gold = quotes.find((item) => item.id === "asset-gold");
+
+    expect(stock).toBeDefined();
+    expect(gold).toBeDefined();
+    expect(stock!.currentPrice).toBeLessThan(stock!.basePrice);
+    expect(gold!.currentPrice).toBeGreaterThan(gold!.basePrice);
+  });
+
+  it("does not make gold a risk-free appreciation path", () => {
+    const path = pathFor("asset-gold", 20260618).filter((price): price is number => typeof price === "number");
+    const deltas = path.slice(1).map((price, index) => price - path[index]);
+
+    expect(deltas.some((delta) => delta > 0)).toBe(true);
+    expect(deltas.some((delta) => delta < 0)).toBe(true);
   });
 });

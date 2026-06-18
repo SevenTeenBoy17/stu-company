@@ -55,6 +55,24 @@ export const marketAssets: MarketAsset[] = [
     basePrice: 64,
     risk: "中",
   },
+  {
+    id: "asset-gold",
+    symbol: "AUG",
+    name: "避险黄金",
+    category: "commodity",
+    description: "在恐慌、衰退和地缘冲击中常被当作防守资产，但平静行情里也可能回落。",
+    basePrice: 98,
+    risk: "中",
+  },
+  {
+    id: "asset-index",
+    symbol: "MIX",
+    name: "全市场指数基金",
+    category: "etf",
+    description: "把多类股票打包成一篮子，用较低波动训练长期分散配置。",
+    basePrice: 92,
+    risk: "中",
+  },
 ];
 
 const baseEventCards: EventCard[] = [

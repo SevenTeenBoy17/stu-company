@@ -74,6 +74,42 @@ function cardDirectionForCategory(
   return null;
 }
 
+const RISK_OFF_EVENT_CATEGORIES = new Set<EventCard["category"]>([
+  "macro",
+  "policy",
+  "sentiment",
+  "black_swan",
+]);
+
+function specialAssetMagnitude(asset: MarketAsset, round: MarketRound) {
+  if (asset.id === "asset-gold") {
+    const commodityMagnitude = Math.abs(round.assetMultipliers.commodity - 1);
+    const stockMagnitude = Math.abs(round.assetMultipliers.stock - 1);
+    return Math.max(0.02, Math.min(0.16, Math.max(commodityMagnitude, stockMagnitude * 0.7)));
+  }
+
+  if (asset.id === "asset-index") {
+    const etfMagnitude = Math.abs(round.assetMultipliers.etf - 1);
+    const stockMagnitude = Math.abs(round.assetMultipliers.stock - 1);
+    return Math.max(0.01, Math.min(0.12, etfMagnitude * 0.65 + stockMagnitude * 0.35));
+  }
+
+  return Math.abs(round.assetMultipliers[asset.category] - 1);
+}
+
+function cardDirectionForAsset(card: EventCard, asset: MarketAsset, fallbackSign: number): number {
+  if (asset.id === "asset-gold") {
+    if (card.signal === "利空" && RISK_OFF_EVENT_CATEGORIES.has(card.category)) return 1;
+    if (card.signal === "利好" && RISK_OFF_EVENT_CATEGORIES.has(card.category)) return -1;
+  }
+
+  if (asset.id === "asset-index") {
+    return cardDirectionForCategory(card, "etf") ?? cardDirectionForCategory(card, "stock") ?? fallbackSign;
+  }
+
+  return cardDirectionForCategory(card, asset.category) ?? fallbackSign;
+}
+
 /**
  * #6 event-driven pricing — for a real run the price MOVE is driven by the event card
  * the student actually sees (the run's seeded-timeline event), so the displayed card is
@@ -85,28 +121,29 @@ function cardDirectionForCategory(
  * card disagreed with its own tuned multipliers. The public ticker and legacy runs with
  * no `eventTimeline` keep the original market exactly.
  */
-function roundCategoryMultiplier(
+function roundAssetMultiplier(
   run: ScenarioRun | undefined,
   roundNumber: number,
-  category: MarketAsset["category"],
+  asset: MarketAsset,
 ): number {
   const round = getRound(roundNumber);
-  const base = round.assetMultipliers[category];
+  const base = round.assetMultipliers[asset.category];
   if (!run?.eventTimeline) return base;
-  const magnitude = Math.abs(base - 1);
+  const magnitude = specialAssetMagnitude(asset, round);
   if (magnitude === 0) return base;
   const eventId = eventIdForRound(run.eventTimeline, roundNumber, round.eventId);
-  const sign = cardDirectionForCategory(getEventCard(eventId), category) ?? Math.sign(base - 1);
+  const fallbackSign = Math.sign(base - 1) || Math.sign(round.assetMultipliers.stock - 1) || 1;
+  const sign = cardDirectionForAsset(getEventCard(eventId), asset, fallbackSign);
   return 1 + sign * magnitude;
 }
 
 function quoteAsset(asset: MarketAsset, roundNumber: number, run?: ScenarioRun) {
   const previousRoundNumber = Math.max(1, roundNumber - 1);
   const currentPrice = Math.round(
-    asset.basePrice * roundCategoryMultiplier(run, roundNumber, asset.category),
+    asset.basePrice * roundAssetMultiplier(run, roundNumber, asset),
   );
   const previousPrice = Math.round(
-    asset.basePrice * roundCategoryMultiplier(run, previousRoundNumber, asset.category),
+    asset.basePrice * roundAssetMultiplier(run, previousRoundNumber, asset),
   );
   const dayChange = ((currentPrice - previousPrice) / previousPrice) * 100;
 

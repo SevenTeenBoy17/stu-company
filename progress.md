@@ -2471,3 +2471,35 @@ python -m code_review_graph detect-changes --brief PASS - risk 0.00, 0 affected 
 ```
 
 Degraded check: a direct Playwright script could not run because `@playwright/test` is not installed in this project; no dependency was added for this navigation-only prompt. Fallback used static link audit plus authenticated HTTP smoke.
+
+
+## 2026-06-18 Phase 3.1 ? C-7 gold/index market assets
+
+Goal: add `asset-gold` and `asset-index` to the simulation market with deterministic, event-driven behavior while keeping the public ticker canonical and avoiding API/component/db changes.
+
+Red-line scope check:
+- Touched only: `src/lib/market-data.ts`, `src/lib/simulation.ts`, `src/lib/simulation.event-pricing.test.ts`, `src/lib/simulation.money.test.ts`.
+- Did not touch `src/app/api/**`, `src/components/**`, or DB schema/migrations.
+- Existing unrelated dirty UI files were left untouched and unstaged.
+
+Test-first failure evidence:
+- Ran `npm run test -- market-data simulation determinism` before implementation after adding tests.
+- Expected failures: `asset-gold` / `asset-index` were missing from quotes, risk-off gold quote was undefined, and gold path had no deltas.
+
+Implementation summary:
+- Added `asset-gold` (????) and `asset-index` (???????) to `marketAssets`.
+- Added run-aware special pricing logic in `src/lib/simulation.ts`:
+  - public no-run quotes still use canonical category multipliers;
+  - gold reacts defensively to risk-off macro/policy/sentiment/black-swan events and can fall in risk-on settings;
+  - index uses a blended ETF/stock movement envelope for diversified exposure.
+- Adjusted legacy event-pricing invariants to continue checking ordinary assets while allowing explicit special-asset behavior.
+
+Verification evidence:
+- `npm run test -- market-data simulation determinism` ? PASS, 5 files / 48 tests.
+- `npx tsc --noEmit` ? PASS.
+- `npm run build` ? PASS.
+- Runtime smoke with `npx tsx -e ...` ? `has-gold true`, `has-index true`, risk-off stock `90 < 112`, risk-off gold `112 > 98`.
+- `npm run lint` ? PASS.
+- `python -m code_review_graph update` + `python -m code_review_graph detect-changes --brief` ? graph refreshed; no affected flow/test gap reported.
+
+Reviewer result: APPROVE. Gold is not modeled as risk-free appreciation; tests assert mixed positive and negative deltas and risk-off opposite movement against stocks.

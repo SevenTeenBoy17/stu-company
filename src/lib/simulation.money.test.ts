@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { advanceSimulationRun, createInitialRun } from "@/lib/simulation";
+import {
+  advanceSimulationRun,
+  applySimulationAction,
+  createInitialRun,
+  evaluateRun,
+  getRoundQuotesForRun,
+} from "@/lib/simulation";
 
 // TEST-STRATEGY §4 R4: every money value is Math.round-ed at each step, so 12
 // rounds of compounding must NOT accumulate floating-point drift (a ".0000001"
@@ -40,5 +46,26 @@ describe("money rounding invariants (R4 — no float drift over 12 rounds)", () 
     // Savings compounding varies by round liquidityBoost, but must stay integral.
     expect(Number.isInteger(run.savings)).toBe(true);
     expect(run.savings).toBeGreaterThan(0);
+  });
+
+  it("conserves net worth when buying the gold and index assets at their current quotes", () => {
+    for (const assetId of ["asset-gold", "asset-index"]) {
+      const run = createInitialRun(`student-${assetId}`, "class-test", "test", 20260618);
+      const quote = getRoundQuotesForRun(run, run.currentRound).find((asset) => asset.id === assetId);
+      expect(quote).toBeDefined();
+
+      const before = evaluateRun(run).netWorth;
+      const quantity = 3;
+      const bought = applySimulationAction(run, {
+        type: "trade",
+        assetId,
+        side: "buy",
+        quantity,
+        orderMode: "market",
+      });
+
+      expect(bought.cash).toBe(run.cash - quote!.currentPrice * quantity);
+      expect(evaluateRun(bought).netWorth).toBe(before);
+    }
   });
 });
