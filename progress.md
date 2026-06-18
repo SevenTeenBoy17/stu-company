@@ -3046,3 +3046,72 @@ Pre-existing unrelated untracked items remain untouched:
 ```
 
 Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + focused verification. A2e did not touch API, lib, DB/schema, repo, leaderboard, scenario financial fields, or provider AI calls. The only fetch added is a client-side call to the app route `/api/student/risk-profile/behavior`.
+
+## B1 - weekly quest GSAP flip cards
+
+Timestamp: 2026-06-18 10:04:00 -07:00
+
+Scope:
+- `src/components/student/student-quest-dashboard.tsx`
+- `src/components/student/student-quest-dashboard.test.tsx`
+- `progress.md`
+
+TDD red gate:
+```text
+npm run test -- src/components/student/student-quest-dashboard.test.tsx -> FAIL (expected before implementation)
+TestingLibraryElementError: Unable to find an element by: [data-testid="quest-card-observe-quest"]
+```
+
+Implementation summary:
+- Added a pure-frontend flip interaction for weekly quest cards.
+- Front face shows quest category/title/status, target, progress, and "查看奖励背面".
+- Back face shows reward, Mr.Brown coach note, and the existing decoration-claim button.
+- Flip uses GSAP `rotateY` with `premiumMotion.ease.reward`; state drives `aria-pressed` on the real flip button.
+- Reduced-motion is handled in JS: when `prefers-reduced-motion: reduce` matches, the card uses `gsap.set` to jump to the final face without rotation.
+- Fixed the quest dashboard entrance animation to use `autoAlpha` and clear `visibility`, so global `data-motion-reveal` hiding cannot leave the task cards invisible.
+
+Acceptance gates:
+```text
+npm run test -- src/components/student/student-quest-dashboard.test.tsx -> PASS
+Test Files  1 passed (1)
+Tests       1 passed (1)
+
+npm run test -- quest quests student-quest -> PASS
+Test Files  2 passed (2)
+Tests       8 passed (8)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+Browser smoke:
+```text
+Playwright normal motion:
+POST /api/auth/login as student@brownzone.ai -> 200
+Open /student/quests -> page loaded
+quest-flip count -> 10
+first flip visible -> true
+aria-pressed false -> true after click
+back text includes: 装饰称号：均衡侦探 / Mr.Brown 提醒
+horizontal overflow -> false
+
+Playwright reduced motion:
+POST /api/auth/login as student@brownzone.ai -> 200
+Open /student/quests -> page loaded
+quest-flip count -> 10
+first flip visible -> true
+aria-pressed false -> true after click
+back text includes: 装饰称号：均衡侦探 / Mr.Brown 提醒
+horizontal overflow -> false
+```
+
+Scope gate:
+```text
+No API/lib/db/schema/repo/leaderboard/scenario financial fields were touched for B1.
+The new interaction only uses app-local UI state and GSAP.
+```
+
+Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + tests + Playwright smoke. The B1 implementation keeps claim behavior on the existing `/api/student/quests` route and does not introduce new backend calls.

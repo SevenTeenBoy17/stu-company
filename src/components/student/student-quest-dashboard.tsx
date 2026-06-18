@@ -25,6 +25,7 @@ import {
 import { MoneyText } from "@/components/shared/money-text";
 import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
 import type { SeasonClaimResult, StudentSeasonChallengePayload } from "@/lib/season-challenges";
+import { premiumMotion } from "@/lib/motion-system";
 import { cn, formatCurrency } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
@@ -137,31 +138,77 @@ export function StudentQuestDashboard({
   const [claimResult, setClaimResult] = useState<QuestClaimResult | null>(null);
   const [seasonClaimResult, setSeasonClaimResult] = useState<SeasonClaimResult | null>(null);
   const [claimError, setClaimError] = useState("");
+  const [flippedQuestIds, setFlippedQuestIds] = useState<ReadonlySet<string>>(() => new Set());
 
-  useGSAP(
+  const { contextSafe } = useGSAP(
     () => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        gsap.set("[data-quest-reveal], [data-calendar-cell]", { opacity: 1, clearProps: "transform" });
+        gsap.set("[data-quest-reveal], [data-calendar-cell]", {
+          autoAlpha: 1,
+          clearProps: "transform,opacity,visibility",
+        });
+        gsap.set("[data-quest-card-inner]", { rotateY: 0, transformPerspective: 900 });
         return;
       }
 
-      gsap.from("[data-quest-reveal]", {
-        y: 20,
-        opacity: 0,
-        duration: 0.62,
-        ease: "power3.out",
-        stagger: 0.055,
-      });
-      gsap.from("[data-calendar-cell]", {
-        scale: 0.86,
-        opacity: 0,
-        duration: 0.5,
-        ease: "back.out(1.4)",
-        stagger: 0.025,
-      });
+      gsap.fromTo(
+        "[data-quest-reveal]",
+        { autoAlpha: 0, y: 20 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.62,
+          ease: "power3.out",
+          stagger: 0.055,
+          clearProps: "transform,opacity,visibility",
+        },
+      );
+      gsap.fromTo(
+        "[data-calendar-cell]",
+        { autoAlpha: 0, scale: 0.86 },
+        {
+          autoAlpha: 1,
+          scale: 1,
+          duration: 0.5,
+          ease: "back.out(1.4)",
+          stagger: 0.025,
+          clearProps: "transform,opacity,visibility",
+        },
+      );
     },
     { scope: rootRef },
   );
+
+  const toggleQuestFlip = contextSafe((questId: string) => {
+    const isCurrentlyFlipped = flippedQuestIds.has(questId);
+    const nextFlipped = !isCurrentlyFlipped;
+
+    setFlippedQuestIds((current) => {
+      const next = new Set(current);
+      if (nextFlipped) {
+        next.add(questId);
+      } else {
+        next.delete(questId);
+      }
+      return next;
+    });
+
+    const card = rootRef.current?.querySelector<HTMLElement>(`[data-quest-card-inner="${questId}"]`);
+    if (!card) return;
+
+    const targetRotation = nextFlipped ? 180 : 0;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.set(card, { rotateY: targetRotation, transformPerspective: 900 });
+      return;
+    }
+
+    gsap.to(card, {
+      rotateY: targetRotation,
+      transformPerspective: 900,
+      duration: premiumMotion.duration.reward,
+      ease: premiumMotion.ease.reward,
+    });
+  });
 
   const visibleQuests = useMemo(() => {
     if (filter === "all") return questPayload.quests;
@@ -544,65 +591,121 @@ export function StudentQuestDashboard({
 
         {visibleQuests.length > 0 ? (
           <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {visibleQuests.map((quest) => (
-            <article
-              data-motion-card
-              key={quest.id}
-              className="rounded-[1.7rem] border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-950/5"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{quest.category}</p>
-                  <h3 className="mt-2 text-h2 font-bold text-slate-950">{quest.title}</h3>
-                </div>
-                <QuestStatusBadge status={quest.status} />
-              </div>
-              <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{quest.target}</p>
-              <div data-motion-viz className="mt-5 h-3 rounded-full bg-slate-100">
-                <div
-                  data-motion-viz-bar
-                  data-motion-origin="left center"
-                  className={cn(
-                    "h-full rounded-full",
-                    quest.status === "watch"
-                      ? "bg-warning"
-                      : quest.status === "locked"
-                        ? "bg-slate-300"
-                        : "bg-gradient-to-r from-brand to-down",
-                  )}
-                  style={{ width: `${Math.max(quest.status === "locked" ? 0 : 8, quest.progress * 100)}%` }}
-                />
-              </div>
-              <div className="mt-4 rounded-[1.2rem] bg-slate-950/[0.035] p-4">
-                <p className="text-sm font-bold text-slate-950">{quest.reward}</p>
-                <p className="mt-2 text-xs leading-5 text-slate-600">{quest.coachNote}</p>
-              </div>
-              <button
-                data-motion-button
-                type="button"
-                data-testid={`quest-claim-${quest.id}`}
-                onClick={() => void claimQuest(quest.id)}
-                disabled={!quest.claimable || claimingQuestId !== null}
-                className={cn(
-                  "mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition",
-                  quest.claimable
-                    ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
-                    : quest.claimed
-                      ? "bg-slate-950 text-white"
-                      : "cursor-not-allowed bg-slate-100 text-slate-600",
-                )}
-              >
-                {claimingQuestId === quest.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : quest.claimed ? (
-                  <BadgeCheck className="h-4 w-4" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                {quest.claimed ? "已领取装饰奖励" : quest.claimable ? "领取装饰奖励" : "完成后可领取"}
-              </button>
-            </article>
-          ))}
+            {visibleQuests.map((quest) => {
+              const isFlipped = flippedQuestIds.has(quest.id);
+
+              return (
+                <article
+                  data-motion-card
+                  data-testid={`quest-card-${quest.id}`}
+                  key={quest.id}
+                  className="min-h-[26rem] rounded-[1.7rem] [perspective:1200px]"
+                >
+                  <div
+                    data-quest-card-inner={quest.id}
+                    className="relative h-full min-h-[26rem] rounded-[1.7rem]"
+                    style={{ transformStyle: "preserve-3d" }}
+                  >
+                    <div
+                      data-testid={`quest-card-front-${quest.id}`}
+                      aria-hidden={isFlipped}
+                      className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-950/5"
+                      style={{ backfaceVisibility: "hidden" }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{quest.category}</p>
+                          <h3 className="mt-2 text-h2 font-bold text-slate-950">{quest.title}</h3>
+                        </div>
+                        <QuestStatusBadge status={quest.status} />
+                      </div>
+                      <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{quest.target}</p>
+                      <div data-motion-viz className="mt-5 h-3 rounded-full bg-slate-100">
+                        <div
+                          data-motion-viz-bar
+                          data-motion-origin="left center"
+                          className={cn(
+                            "h-full rounded-full",
+                            quest.status === "watch"
+                              ? "bg-warning"
+                              : quest.status === "locked"
+                                ? "bg-slate-300"
+                                : "bg-gradient-to-r from-brand to-down",
+                          )}
+                          style={{ width: `${Math.max(quest.status === "locked" ? 0 : 8, quest.progress * 100)}%` }}
+                        />
+                      </div>
+                      <div className="mt-5 rounded-[1.2rem] bg-slate-950/[0.035] p-4">
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">任务进度</p>
+                        <p className="mt-2 text-sm font-bold text-slate-950">
+                          {Math.round(quest.progress * 100)}% · {quest.claimable ? "可以领取奖励" : quest.claimed ? "奖励已领取" : "继续完成任务"}
+                        </p>
+                      </div>
+                      <button
+                        data-motion-button
+                        type="button"
+                        data-testid={`quest-flip-${quest.id}`}
+                        aria-pressed={isFlipped}
+                        onClick={() => toggleQuestFlip(quest.id)}
+                        className="mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                      >
+                        <Gift className="h-4 w-4" />
+                        查看奖励背面
+                      </button>
+                    </div>
+
+                    <div
+                      data-testid={`quest-card-back-${quest.id}`}
+                      aria-hidden={!isFlipped}
+                      className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
+                      style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Reward Reveal</p>
+                          <h3 className="mt-2 text-h2 font-black text-white">{quest.reward}</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleQuestFlip(quest.id)}
+                          className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-white transition hover:bg-white/18"
+                        >
+                          返回任务
+                        </button>
+                      </div>
+                      <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/[0.08] p-4">
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-white/48">Mr.Brown 提醒</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-white/82">{quest.coachNote}</p>
+                      </div>
+                      <button
+                        data-motion-button
+                        type="button"
+                        data-testid={`quest-claim-${quest.id}`}
+                        onClick={() => void claimQuest(quest.id)}
+                        disabled={!quest.claimable || claimingQuestId !== null}
+                        className={cn(
+                          "mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition",
+                          quest.claimable
+                            ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
+                            : quest.claimed
+                              ? "bg-white text-slate-950"
+                              : "cursor-not-allowed bg-white/12 text-white/55",
+                        )}
+                      >
+                        {claimingQuestId === quest.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : quest.claimed ? (
+                          <BadgeCheck className="h-4 w-4" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        {quest.claimed ? "已领取装饰奖励" : quest.claimable ? "领取装饰奖励" : "完成后可领取"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-600">
