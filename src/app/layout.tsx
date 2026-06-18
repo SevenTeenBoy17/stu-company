@@ -16,7 +16,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUser().catch(() => null);
 
   return (
     <html lang="zh-CN" className="h-full antialiased" data-scroll-behavior="smooth">

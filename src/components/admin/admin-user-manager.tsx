@@ -149,7 +149,7 @@ export function AdminUserManager({
       params.set("subscription", nextFilters.subscription);
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       const payload = await readPayload<{ users?: AdminUserSummary[] }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号列表读取失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号列表读取失败。");
       const nextUsers = payload.users ?? [];
       setItems(nextUsers);
       if (!nextUsers.some((user) => user.id === selectedUserId)) {
@@ -181,7 +181,7 @@ export function AdminUserManager({
         }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号创建失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号创建失败。");
       if (payload.user) {
         setItems((current) => [payload.user!, ...current]);
         setSelectedUserId(payload.user.id);
@@ -228,7 +228,7 @@ export function AdminUserManager({
         }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号配置更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号配置更新失败。");
       if (payload.user) {
         setItems((current) => current.map((user) => (user.id === payload.user!.id ? payload.user! : user)));
       }
@@ -260,7 +260,7 @@ export function AdminUserManager({
         body: JSON.stringify({ userId: selectedUser.id, password }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "密码更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "密码更新失败。");
       setPassword("");
       setMessage({ tone: "success", text: payload.message ?? "密码已更新，旧会话已失效。" });
       void refreshUsers();
@@ -291,7 +291,7 @@ export function AdminUserManager({
         body: JSON.stringify({ userId: selectedUser.id, email }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "邮箱更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "邮箱更新失败。");
       if (payload.user) {
         setItems((current) => current.map((user) => (user.id === payload.user!.id ? { ...user, ...payload.user! } : user)));
       }

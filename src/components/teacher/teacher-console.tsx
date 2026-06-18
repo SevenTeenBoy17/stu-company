@@ -34,7 +34,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
     const response = await fetch("/api/teacher/classroom", { cache: "no-store" });
     const payload = (await response.json()) as { overview?: TeacherOverview; error?: string; message?: string };
     if (!response.ok || !payload.overview) {
-      throw new Error(payload.message ?? payload.error ?? "班级数据更新失败。");
+      throw new Error(payload.message ?? "班级数据更新失败。");
     }
     setData(payload.overview);
   }
@@ -47,7 +47,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
     });
     const payload = (await response.json()) as { error?: string; message?: string };
     if (!response.ok) {
-      throw new Error(payload.message ?? payload.error ?? "任务创建失败。");
+      throw new Error(payload.message ?? "任务创建失败。");
     }
     setMessage(payload.message ?? "任务已创建。");
     await refreshOverview();

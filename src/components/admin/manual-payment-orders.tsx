@@ -78,7 +78,7 @@ export function ManualPaymentOrders({
       });
       const data = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) {
-        setMessage(data.message ?? data.error ?? "确认订单失败，请稍后重试。");
+        setMessage(data.message ?? "确认订单失败，请稍后重试。");
         setBusyOrder(null);
         return;
       }

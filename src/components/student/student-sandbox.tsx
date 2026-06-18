@@ -129,7 +129,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       adaptiveEvents?: AdaptiveEvent[];
     };
     if (!response.ok || !payload.state) {
-      throw new Error(payload.message ?? payload.error ?? "无法读取当前沙盘。");
+      throw new Error(payload.message ?? "无法读取当前沙盘。");
     }
     setState(payload.state);
     setAdaptiveEvents(payload.adaptiveEvents ?? []);
@@ -157,7 +157,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       adaptiveEvents?: AdaptiveEvent[];
     };
     if (!response.ok) {
-      throw new Error(payload.message ?? payload.error ?? "提交失败。");
+      throw new Error(payload.message ?? "提交失败。");
     }
     if (payload.state) {
       setState(payload.state);
@@ -295,7 +295,10 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     return () => refreshControllerRef.current?.abort();
   }, []);
 
-  if (!state) {
+  const homeHubPayload = useMemo(() => (state ? buildStudentHomeHubPayload(state.run) : null), [state]);
+  const petRewardPayload = useMemo(() => (state ? buildStudentPetPayload(state.run) : null), [state]);
+
+  if (!state || !homeHubPayload || !petRewardPayload) {
     return (
       <div className="panel rounded-[2rem] p-8">
         <p className="text-base font-semibold text-slate-600">正在加载学生沙盘...</p>
@@ -321,8 +324,6 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const rank = currentRank(state);
   const recentActions = state.run.actionLog.slice().reverse().slice(0, 7);
   const topLeaderboard = state.leaderboard.slice(0, 5);
-  const homeHubPayload = useMemo(() => buildStudentHomeHubPayload(state.run), [state.run]);
-  const petRewardPayload = useMemo(() => buildStudentPetPayload(state.run), [state.run]);
 
   const heroMetrics = [
     {
@@ -524,7 +525,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               {state.run.currentRound >= state.run.totalRounds ? (
                 <a
                   href="/student/history"
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 transition-transform hover:-translate-y-0.5"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 !text-white transition-transform hover:-translate-y-0.5 hover:!text-white"
                 >
                   {/* Game over: the 12-round sandbox has a terminus now. White label on a
                       span so the global a{color:inherit} reset doesn't grey it out (#4 audit). */}

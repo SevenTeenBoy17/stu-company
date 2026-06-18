@@ -123,7 +123,7 @@ export function GuestUpgradeCheckout() {
       setProofMessage(
         response.ok
           ? payload.message ?? "付款凭证已提交，等待管理员核验。"
-          : payload.message ?? payload.error ?? "提交付款凭证失败，请稍后重试。",
+          : payload.message ?? "提交付款凭证失败，请稍后重试。",
       );
     } catch {
       setProofMessage("网络异常，提交付款凭证失败，请稍后重试。");

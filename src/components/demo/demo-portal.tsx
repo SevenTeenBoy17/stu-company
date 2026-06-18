@@ -172,7 +172,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(normalizeLoginError(payload.message ?? payload.error));
+        throw new Error(normalizeLoginError(payload.message));
       }
 
       setMessage({ tone: "success", text: payload.message ?? "登录成功，正在进入对应工作台。" });
@@ -199,7 +199,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "发起找回密码失败，请稍后重试。");
+        throw new Error(payload.message ?? "发起找回密码失败，请稍后重试。");
       }
       // Dev convenience: when no email provider is configured the API returns the
       // link directly so it can be opened without an inbox.
@@ -241,7 +241,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(normalizeLoginError(payload.message ?? payload.error));
+        throw new Error(normalizeLoginError(payload.message));
       }
       setMessage({ tone: "success", text: payload.message ?? "正在进入演示账号。" });
       redirectAfterLogin(payload.redirectTo ?? "/demo");
@@ -264,7 +264,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "邀请码注册失败，请检查邀请码是否有效。");
+        throw new Error(payload.message ?? "邀请码注册失败，请检查邀请码是否有效。");
       }
 
       setMessage({ tone: "success", text: payload.message ?? "邀请码注册完成，正在进入对应工作台。" });
@@ -306,7 +306,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "注册失败，请检查邮箱和密码格式。");
+        throw new Error(payload.message ?? "注册失败，请检查邮箱和密码格式。");
       }
 
       setMessage({ tone: "success", text: payload.message ?? "注册成功，正在进入沙盘体验。" });

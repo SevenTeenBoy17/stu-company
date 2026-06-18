@@ -126,7 +126,6 @@ export function WechatCheckoutButton({
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("upgrade");
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- external URL state sync on mount
     if (token) setUpgradeToken(token);
   }, []);
 
@@ -184,7 +183,7 @@ export function WechatCheckoutButton({
         );
         const data = (await response.json()) as OrderStatusPayload;
         if (!response.ok) {
-          if (active) setStatusMessage(data.message ?? data.error ?? "订单状态查询失败，稍后会自动重试。");
+          if (active) setStatusMessage(data.message ?? "订单状态查询失败，稍后会自动重试。");
           return;
         }
         if (active) {
@@ -261,7 +260,7 @@ export function WechatCheckoutButton({
       });
       const data = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) {
-        setCompleteMessage(data.message ?? data.error ?? "模拟支付完成失败，请稍后重试。");
+        setCompleteMessage(data.message ?? "模拟支付完成失败，请稍后重试。");
         return;
       }
       setPaid(true);
@@ -321,7 +320,7 @@ export function WechatCheckoutButton({
       });
       const data = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) {
-        setProofMessage(data.message ?? data.error ?? "提交付款凭证失败，请稍后重试。");
+        setProofMessage(data.message ?? "提交付款凭证失败，请稍后重试。");
         return;
       }
       setProofMessage(data.message ?? "付款凭证已提交，等待管理员核验。");
@@ -377,7 +376,7 @@ export function WechatCheckoutButton({
         <div className="rounded-2xl border border-[var(--amber-200)] bg-[var(--amber-50)] p-4 text-left">
           {payload.error ? (
             <p className="text-sm font-semibold leading-6 text-[var(--error-500)]">
-              {payload.message ?? payload.error}
+              {payload.message ?? "订单创建失败，请稍后重试。"}
             </p>
           ) : paid ? (
             <div className="rounded-2xl border border-[var(--up-300)] bg-white p-4 shadow-sm">

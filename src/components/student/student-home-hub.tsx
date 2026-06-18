@@ -43,7 +43,7 @@ const domainIcons = {
 };
 
 const statusTone: Record<StudentServiceEntry["status"], string> = {
-  ready: "bg-slate-100 text-slate-700",
+  ready: "bg-slate-100 text-slate-800",
   new: "bg-orange-100 text-orange-700",
   premium: "bg-slate-950 text-white",
 };
@@ -108,7 +108,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
         error?: string;
       };
       if (!response.ok || !data.payload || !data.claimed) {
-        throw new Error(data.message ?? data.error ?? "赛季奖励领取失败，请稍后再试。");
+        throw new Error(data.message ?? "赛季奖励领取失败，请稍后再试。");
       }
       setSeason(data.payload);
       setSeasonClaim(data.claimed);
@@ -161,9 +161,9 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                       <ArrowRight className="h-4 w-4 text-white/70 transition group-hover:translate-x-1 group-hover:text-orange-200" />
                     </div>
                     <p className="mt-4 text-xl font-black text-white">{domain.label}</p>
-                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/64">{domain.summary}</p>
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/82">{domain.summary}</p>
                     <div className="mt-4 rounded-2xl bg-slate-900/80 px-3 py-2">
-                      <p className="text-xs font-bold text-white/70">{domain.metricLabel}</p>
+                      <p className="text-xs font-bold text-white/78">{domain.metricLabel}</p>
                       <p className="mt-1 text-lg font-black text-orange-200">{domain.metricValue}</p>
                     </div>
                   </Link>
@@ -349,7 +349,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
           </Link>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        <div className="mt-5 grid gap-4">
           {payload.serviceMap.map((group) => {
             const Icon = mapGroupIcons[group.key];
             const progress = Math.round((group.completedCount / Math.max(group.totalCount, 1)) * 100);
@@ -362,10 +362,10 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                 key={group.key}
                 data-finance-map
                 data-motion-card
-                className="group relative overflow-hidden rounded-[1.7rem] border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 p-4 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_22px_54px_rgba(15,23,42,0.12)] sm:p-5"
+                className="group relative overflow-hidden rounded-[1.7rem] border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 p-5 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_22px_54px_rgba(15,23,42,0.12)] sm:p-6"
               >
                 <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-200/30 blur-3xl transition group-hover:bg-orange-300/35" />
-                <div className="relative grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+                <div className="relative grid gap-5 lg:grid-cols-[minmax(240px,0.78fr)_minmax(0,1.22fr)] lg:items-start">
                   <div className="min-w-0">
                     <div className="flex items-center justify-between gap-3">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-orange-200 shadow-[0_14px_34px_rgba(15,23,42,0.22)]">
@@ -395,27 +395,27 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
 
                     <Link
                       href={group.href}
-                      className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-950 bg-slate-950 px-4 text-sm font-black text-white shadow-[0_16px_36px_rgba(15,23,42,0.20)] transition hover:-translate-y-0.5 hover:border-orange-600 hover:bg-orange-600"
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-950 bg-slate-950 px-5 text-sm font-black leading-none !text-white shadow-[0_16px_36px_rgba(15,23,42,0.20)] transition hover:-translate-y-0.5 hover:border-orange-600 hover:bg-orange-600 hover:!text-white sm:w-auto sm:min-w-48"
                     >
-                      {group.primaryActionLabel}
-                      <ArrowRight className="h-4 w-4" />
+                      <span className="!text-white">{group.primaryActionLabel}</span>
+                      <ArrowRight className="h-4 w-4 shrink-0" />
                     </Link>
                   </div>
 
-                  <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                  <div className="grid min-w-0 auto-rows-min gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
                     {groupServices.slice(0, 4).map((service) => (
                       <Link
                         key={service.id}
                         href={service.href}
-                        className="rounded-[1.2rem] border border-slate-200 bg-white/90 p-3 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/65"
+                        className="self-start rounded-[1.2rem] border border-slate-200 bg-white/[0.92] p-4 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/65"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-black text-slate-950">{service.title}</span>
+                          <span className="min-w-0 text-base font-black leading-6 text-slate-950">{service.title}</span>
                           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] font-black", statusTone[service.status])}>
                             {service.status === "new" ? "新" : service.status === "premium" ? "订阅" : "开"}
                           </span>
                         </div>
-                        <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">
+                        <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-slate-700">
                           {service.learn}
                         </p>
                       </Link>
@@ -442,7 +442,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               key={service.id}
               href={service.href}
               data-motion-card
-              className="group min-h-[158px] rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-md"
+              className="group flex min-h-0 flex-col rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

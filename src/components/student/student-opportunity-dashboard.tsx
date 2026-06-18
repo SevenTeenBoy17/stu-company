@@ -62,7 +62,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             error?: string;
           };
           if (!response.ok || !data.payload) {
-            throw new Error(data.message ?? data.error ?? "观察单提交失败，请稍后再试。");
+            throw new Error(data.message ?? "观察单提交失败，请稍后再试。");
           }
           setPayload(data.payload);
           setNote("");

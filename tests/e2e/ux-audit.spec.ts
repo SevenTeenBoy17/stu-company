@@ -32,12 +32,25 @@ const ROLES: Role[] = [
 ];
 
 async function login(page: Page, email: string) {
-  const response = await page.request.post("/api/auth/login", {
-    data: { email, password: DEMO_PASSWORD },
-  });
-  if (!response.ok()) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await page.request.post("/api/auth/demo-login", {
+      data: { email },
+    });
+    if (response.ok()) return;
+
     const body = await response.text();
-    throw new Error(`login(${email}) failed: ${response.status()} ${body}`);
+    if (response.status() === 429 && attempt < 2) {
+      const waitMatch = body.match(/(\d+)\s*秒/);
+      const waitMs = Math.min(Number(waitMatch?.[1] ?? 10) * 1000 + 1000, 45_000);
+      await page.waitForTimeout(waitMs);
+      continue;
+    }
+
+    const fallback = await page.request.post("/api/auth/login", {
+      data: { email, password: DEMO_PASSWORD },
+    });
+    if (fallback.ok()) return;
+    throw new Error(`login(${email}) failed: ${fallback.status()} ${await fallback.text()}`);
   }
 }
 

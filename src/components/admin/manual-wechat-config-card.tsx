@@ -83,7 +83,7 @@ export function ManualWechatConfigCard({
       });
       const data = (await response.json()) as SaveResponse;
       if (!response.ok || !data.config) {
-        setMessage(data.message ?? data.error ?? "保存失败，请稍后再试。");
+        setMessage(data.message ?? "保存失败，请稍后再试。");
         return;
       }
       setCurrent(data.config);

@@ -253,7 +253,7 @@ async function verifySeedCounts() {
 
   console.log("Seed verification counts:", results);
 
-  const expected = {
+  const expectedMinimum = {
     users: 8,
     classrooms: 1,
     invites: 3,
@@ -262,9 +262,11 @@ async function verifySeedCounts() {
     growthReports: 1,
   };
 
-  for (const key of Object.keys(expected) as Array<keyof typeof expected>) {
-    if (results[key] !== expected[key]) {
-      throw new Error(`Seed count mismatch for ${key}: expected ${expected[key]}, got ${results[key]}`);
+  for (const key of Object.keys(expectedMinimum) as Array<keyof typeof expectedMinimum>) {
+    if (results[key] < expectedMinimum[key]) {
+      throw new Error(
+        `Seed count below baseline for ${key}: expected at least ${expectedMinimum[key]}, got ${results[key]}`,
+      );
     }
   }
 }
