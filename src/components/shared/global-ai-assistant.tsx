@@ -182,6 +182,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
     const response = await fetch(`/api/ai/history/${sessionId}`, { cache: "no-store" });
     const payload = (await response.json()) as {
       error?: string;
+      message?: string;
       messages?: AiChatMessage[];
       id?: string;
       updatedAt?: string;
@@ -201,7 +202,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
         }
       }
 
-      throw new Error(payload.error ?? "无法读取历史会话。");
+      throw new Error(payload.message ?? "无法读取历史会话，请稍后重试。");
     }
 
     setActiveSessionId(sessionId);
@@ -291,6 +292,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
       });
       const payload = (await response.json()) as {
         error?: string;
+        message?: string;
         sessionId?: string;
         reply?: string;
         provider?: "remote" | "fallback";
@@ -298,7 +300,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
       };
 
       if (!response.ok || !payload.reply) {
-        throw new Error(payload.error ?? "KeyAI 暂时不可用。");
+        throw new Error(payload.message ?? "KeyAI 暂时不可用。");
       }
 
       const assistantMessage: AiChatMessage = {

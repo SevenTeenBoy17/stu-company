@@ -44,24 +44,37 @@ export function RankBoard({
   const [period, setPeriod] = useState<RankPeriod>("weekly");
   const [board, setBoard] = useState<BoardDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    void fetch(`/api/leaderboard/board?scope=${scope}&period=${period}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { board: BoardDTO | null } | null) => {
-        if (alive) setBoard(data?.board ?? null);
-      })
-      .catch(() => {
-        if (alive) setBoard(null);
-      })
-      .finally(() => {
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/leaderboard/board?scope=${scope}&period=${period}`, { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as { board?: BoardDTO | null; message?: string } | null;
+        if (!alive) return;
+        if (!response.ok) {
+          setBoard(null);
+          setError(data?.message ?? "战力榜暂时加载失败，请稍后重试。");
+          return;
+        }
+        setBoard(data?.board ?? null);
+      } catch {
+        if (alive) {
+          setBoard(null);
+          setError("网络连接不稳定，战力榜暂时加载失败。");
+        }
+      } finally {
         if (alive) setLoading(false);
-      });
+      }
+    })();
     return () => {
       alive = false;
     };
-  }, [scope, period]);
+  }, [scope, period, retryKey]);
 
   function selectScope(next: RankScope) {
     if (next === scope) return;
@@ -165,7 +178,18 @@ export function RankBoard({
         </div>
       ) : null}
 
-      {showSkeleton ? (
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error-100)] bg-[var(--error-50)] px-4 py-4">
+          <p className="text-sm font-bold text-[var(--error-600)]">{error}</p>
+          <button
+            type="button"
+            onClick={() => setRetryKey((key) => key + 1)}
+            className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
+          >
+            重新加载战力榜
+          </button>
+        </div>
+      ) : showSkeleton ? (
         <ol className="mt-4 space-y-2" aria-hidden="true">
           {[0, 1, 2, 3, 4].map((i) => (
             <li key={i} className="h-14 animate-pulse rounded-2xl bg-bg-muted" />

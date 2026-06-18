@@ -70,7 +70,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         .then(async (response) => {
           const data = (await response.json()) as { payload?: GoalAccountPayload; message?: string; error?: string };
           if (!response.ok || !data.payload) {
-            throw new Error(data.message ?? data.error ?? "目标账户更新失败，请稍后再试。");
+            throw new Error(data.message ?? "目标账户更新失败，请稍后重试。");
           }
           setPayload(data.payload);
           setNote("");

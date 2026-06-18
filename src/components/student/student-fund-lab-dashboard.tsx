@@ -84,7 +84,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
       const response = await fetch(`/api/student/fund-lab?${params.toString()}`, { cache: "no-store" });
       const data = (await response.json()) as { payload?: FundLabPayload; message?: string; error?: string };
       if (!response.ok || !data.payload) {
-        throw new Error(data.message ?? data.error ?? "基金实验预览失败，请稍后再试。");
+        throw new Error(data.message ?? "基金实验预览失败，请稍后重试。");
       }
       if (previewRequestRef.current !== version) return;
       setPayload(data.payload);
@@ -119,7 +119,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
         .then(async (response) => {
           const data = (await response.json()) as { payload?: FundLabPayload; message?: string; error?: string };
           if (!response.ok || !data.payload) {
-            throw new Error(data.message ?? data.error ?? "基金实验记录失败，请稍后再试。");
+            throw new Error(data.message ?? "基金实验记录失败，请稍后重试。");
           }
           setPayload(data.payload);
           setPlan(data.payload.selectedPlan.id);

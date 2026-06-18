@@ -217,7 +217,7 @@ export function StudentQuestDashboard({
         error?: string;
       };
       if (!response.ok || !data.payload || !data.claimed) {
-        throw new Error(data.message ?? data.error ?? "赛季奖励领取失败，请稍后再试。");
+        throw new Error(data.message ?? "赛季奖励领取失败，请稍后重试。");
       }
       setSeason(data.payload);
       setSeasonClaimResult(data.claimed);

@@ -26,6 +26,7 @@ export function RankDashboard() {
   const [editInitial, setEditInitial] = useState<RankOnboardingInitial | null>(null);
   const [openingEdit, setOpeningEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function openEdit() {
     if (openingEdit) return;
@@ -67,16 +68,28 @@ export function RankDashboard() {
 
   useEffect(() => {
     let alive = true;
-    void fetch("/api/leaderboard/me", { cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<MeResponse>) : null))
-      .then((payload) => {
+    setLoading(true);
+    setLoadError(null);
+    void (async () => {
+      try {
+        const response = await fetch("/api/leaderboard/me", { cache: "no-store" });
+        const payload = (await response.json().catch(() => null)) as (MeResponse & { message?: string }) | null;
         if (!alive) return;
+        if (!response.ok || !payload) {
+          setData(null);
+          setLoadError(payload?.message ?? "战力数据暂时加载失败，请稍后重试。");
+          return;
+        }
         setData(payload);
-        setLoading(false);
-      })
-      .catch(() => {
+      } catch {
+        if (alive) {
+          setData(null);
+          setLoadError("网络连接不稳定，战力数据暂时加载失败。");
+        }
+      } finally {
         if (alive) setLoading(false);
-      });
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -87,6 +100,21 @@ export function RankDashboard() {
       <div className="flex items-center justify-center rounded-[1.7rem] border border-border bg-white p-12 text-fg-muted">
         <Loader2 className="h-5 w-5 animate-spin" />
         <span className="ml-2 text-sm">加载战力数据…</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-[1.7rem] border border-[var(--error-100)] bg-[var(--error-50)] p-6">
+        <p className="text-sm font-bold text-[var(--error-600)]">{loadError}</p>
+        <button
+          type="button"
+          onClick={() => setRefreshKey((key) => key + 1)}
+          className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
+        >
+          重新加载战力数据
+        </button>
       </div>
     );
   }

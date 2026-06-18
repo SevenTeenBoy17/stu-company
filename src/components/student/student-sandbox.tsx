@@ -378,10 +378,12 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   ];
 
   const submitAction = (body?: object, url = "/api/sim/actions") => {
-    startTransition(() => {
-      void mutate(url, body).catch((error) => {
-        setMessage(error instanceof Error ? error.message : "操作失败，请稍后再试。");
-      });
+    startTransition(async () => {
+      try {
+        await mutate(url, body);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "操作失败，请重试。");
+      }
     });
   };
 

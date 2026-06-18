@@ -12,26 +12,62 @@ const SCOPE_ORDER: RankScope[] = ["school", "city", "province", "nation"];
 export function PowerRankTeaser() {
   const [card, setCard] = useState<PowerCardDTO | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    void fetch("/api/leaderboard/me", { cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<{ card: PowerCardDTO }>) : null))
-      .then((data) => {
+    setLoaded(false);
+    setError(null);
+    void (async () => {
+      try {
+        const response = await fetch("/api/leaderboard/me", { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as
+          | { card?: PowerCardDTO; message?: string }
+          | null;
         if (!alive) return;
+        if (!response.ok) {
+          setCard(null);
+          setError(data?.message ?? "战力入口暂时加载失败，请重试。");
+          return;
+        }
         setCard(data?.card ?? null);
-        setLoaded(true);
-      })
-      .catch(() => {
+      } catch {
+        if (alive) {
+          setCard(null);
+          setError("网络连接不稳定，战力入口暂时加载失败。");
+        }
+      } finally {
         if (alive) setLoaded(true);
-      });
+      }
+    })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [retryKey]);
 
   if (!loaded) {
     return <div className="mt-5 h-28 animate-pulse rounded-[1.7rem] bg-bg-muted" aria-hidden="true" />;
+  }
+
+  if (error) {
+    return (
+      <div className="mt-5 rounded-[1.7rem] border border-[var(--error-100)] bg-[var(--error-50)] p-5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--error-600)]">
+            <Swords className="h-4 w-4" /> 财商战力
+          </span>
+          <button
+            type="button"
+            onClick={() => setRetryKey((key) => key + 1)}
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
+          >
+            重试
+          </button>
+        </div>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--error-600)]">{error}</p>
+      </div>
+    );
   }
 
   // Most-local available rank (school first), the line a student cares about most.

@@ -1987,3 +1987,15 @@ progress.md
 scripts/db-up.ts
 --- cached src/drizzle gate ---
 ``n
+
+## 2026-06-17 Phase 1 final UI reliability gate
+
+- Removed out-of-scope test assertion drift before commit; `src/components/shared/global-ai-assistant.test.tsx` has no diff.
+- Verified focused KeyAI test: `npm run test -- global-ai-assistant` -> 1 file / 11 tests passed.
+- Verified lint: `npm run lint` -> exit 0.
+- Verified types: `npx tsc --noEmit` -> exit 0.
+- Verified full test suite: `npm run test` -> 74 files / 466 tests passed.
+- Verified production build: `npm run build` -> compiled successfully and generated 60 static pages.
+- Review gate: `python -m code_review_graph update` and `detect-changes --base HEAD --brief` -> 19 changed files, 0 affected flows, 0 test gaps, risk 0.00.
+- Scope gate: cached diff has no `src/app/api`, `src/lib/db`, `src/lib/auth.ts`, `src/lib/ai.ts`, or `.env.local` changes.
+- Staging note: `src/components/student/student-sandbox.tsx` was partially staged to include only the async `submitAction` fix; existing unrelated UI hunks remain unstaged.

@@ -87,7 +87,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
       .then(async (response) => {
         const data = (await response.json()) as { payload?: ProtectionUmbrellaPayload; message?: string; error?: string };
         if (!response.ok || !data.payload) {
-          throw new Error(data.message ?? data.error ?? "保护方案预览失败，请稍后再试。");
+          throw new Error(data.message ?? "保护方案预览失败，请稍后重试。");
         }
         setPayload(data.payload);
         if (!data.payload.scenarios.some((scenario) => scenario.id === stressId)) {
@@ -114,7 +114,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
         .then(async (response) => {
           const data = (await response.json()) as { payload?: ProtectionUmbrellaPayload; message?: string; error?: string };
           if (!response.ok || !data.payload) {
-            throw new Error(data.message ?? data.error ?? "保护伞复盘失败，请稍后再试。");
+            throw new Error(data.message ?? "保护伞复盘失败，请稍后重试。");
           }
           setPayload(data.payload);
           setPlanId(data.payload.selectedPlanId);

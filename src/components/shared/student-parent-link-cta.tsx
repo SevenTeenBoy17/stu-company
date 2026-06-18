@@ -24,12 +24,12 @@ export function StudentParentLinkCTA() {
         const response = await fetch("/api/billing/parent-link", { method: "POST" });
         const data = (await response.json()) as { url?: string; message?: string; error?: string };
         if (!response.ok || !data.url) {
-          setError(data.message ?? "生成链接失败，请稍后再试。");
+          setError(data.message ?? "生成链接失败，请稍后重试。");
           return;
         }
         setLink(new URL(data.url, window.location.origin).toString());
       } catch {
-        setError("网络异常，请稍后再试。");
+        setError("网络连接不稳定，请稍后重试。");
       }
     });
   }

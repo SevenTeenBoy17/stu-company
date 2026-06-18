@@ -271,7 +271,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
       const response = await fetch("/api/student/pet-rewards", { cache: "no-store" });
       const data = (await response.json()) as { payload?: StudentPetPayload; message?: string; error?: string };
       if (!response.ok || !data.payload) {
-        throw new Error(data.message ?? data.error ?? "萌宠奖励刷新失败，请稍后重试。");
+        throw new Error(data.message ?? "萌宠奖励刷新失败，请稍后重试。");
       }
       setPayload(data.payload);
       setStatus("萌宠状态已同步到最新沙盘行为。");

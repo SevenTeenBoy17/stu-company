@@ -167,7 +167,7 @@ export function StudentMarketBoard({
       const nextPayload = (await response.json()) as MarketBoardPayload & { error?: string };
 
       if (!response.ok || nextPayload.error) {
-        throw new Error(nextPayload.error ?? "市场信息刷新失败。");
+        throw new Error("市场信息刷新失败，请稍后重试。");
       }
 
       setPayload(nextPayload);
@@ -183,7 +183,7 @@ export function StudentMarketBoard({
       const response = await fetch(`/api/student/watchlist?symbol=${symbol}`, { cache: "no-store" });
       const nextPayload = (await response.json()) as { payload?: StudentWatchlistPayload; error?: string; message?: string };
       if (!response.ok || !nextPayload.payload) {
-        throw new Error(nextPayload.message ?? nextPayload.error ?? "自选观察刷新失败。");
+        throw new Error(nextPayload.message ?? "自选观察刷新失败，请稍后重试。");
       }
       setStudentWatchlist(nextPayload.payload);
       setWatchlistMessage(null);
@@ -197,7 +197,7 @@ export function StudentMarketBoard({
       const response = await fetch("/api/market/peer-heat", { cache: "no-store" });
       const nextPayload = (await response.json()) as { payload?: PeerHeatPayload; error?: string; message?: string };
       if (!response.ok || !nextPayload.payload) {
-        throw new Error(nextPayload.message ?? nextPayload.error ?? "同学热度刷新失败。");
+        throw new Error(nextPayload.message ?? "同学热度刷新失败，请稍后重试。");
       }
       setPeerHeat(nextPayload.payload);
       setPeerHeatError(null);
@@ -225,7 +225,7 @@ export function StudentMarketBoard({
         error?: string;
       };
       if (!response.ok || !nextPayload.payload) {
-        throw new Error(nextPayload.message ?? nextPayload.error ?? "自选观察更新失败。");
+        throw new Error(nextPayload.message ?? "自选观察更新失败，请稍后重试。");
       }
       setStudentWatchlist(nextPayload.payload);
       setWatchlistMessage(nextPayload.message ?? "自选观察已更新。");
