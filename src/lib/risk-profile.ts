@@ -256,7 +256,7 @@ export function normalizeRiskProfileAnswers(answers: RiskProfileAnswer[] = defau
   });
 }
 
-function bandFromScore(score: number): Pick<RiskProfilePayload, "band" | "label" | "archetype" | "summary" | "learningConcept"> {
+export function bandFromScore(score: number): Pick<RiskProfilePayload, "band" | "label" | "archetype" | "summary" | "learningConcept"> {
   if (score <= 38) {
     return {
       band: "defensive",

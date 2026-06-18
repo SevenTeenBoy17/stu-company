@@ -1,6 +1,6 @@
 import { buildWealthSummary } from "@/lib/allocation";
 import { detectAdaptiveEvents, type AdaptiveEvent, type ConfidenceLevel } from "@/lib/adaptive-events";
-import { buildRiskProfilePayload } from "@/lib/risk-profile";
+import { bandFromScore, buildRiskProfilePayload } from "@/lib/risk-profile";
 import { buildSimulationState } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
 import type {
@@ -163,10 +163,8 @@ export function buildPersonaSignalInput(
 }
 
 /**
- * Band → label/archetype map. `bandFromScore` is private in risk-profile.ts; we
- * match its 0–100 score scale below and use this local Chinese map for the
- * behavior personality (its labels are behavior-flavored, distinct from the
- * questionnaire ones).
+ * Band → label/archetype map. Labels are behavior-flavored, distinct from the
+ * questionnaire labels used by `bandFromScore` in risk-profile.ts.
  */
 const BAND_PRESET: Record<PersonaBand, { label: string; archetype: string }> = {
   defensive: { label: "稳健守门员", archetype: "先守安全垫，再谈进攻" },
@@ -174,18 +172,6 @@ const BAND_PRESET: Record<PersonaBand, { label: string; archetype: string }> = {
   balanced: { label: "均衡配置者", archetype: "用分散换长期通关率" },
   growth: { label: "进取挑战者", archetype: "敢于进攻，但要装好刹车" },
 };
-
-/**
- * Map a behavior score to a band, matching the 0–100 thresholds of
- * `bandFromScore` in risk-profile.ts (≤38 defensive, ≤62 steady, ≤76 balanced,
- * else growth).
- */
-function bandForBehaviorScore(score: number): PersonaBand {
-  if (score <= 38) return "defensive";
-  if (score <= 62) return "steady";
-  if (score <= 76) return "balanced";
-  return "growth";
-}
 
 const TONE_WEIGHT: Record<AdaptiveEvent["tone"], number> = {
   warning: 16,
@@ -228,7 +214,7 @@ function behaviorScore(input: PersonaSignalInput): number {
     score = score * 0.8 + input.questionnaireScore * 0.2;
   }
 
-  return Math.round(clamp(score, 0, 100));
+  return Math.round(clamp(Number.isFinite(score) ? score : 50, 0, 100));
 }
 
 function confidenceForRound(currentRound: number): BehaviorPersona["confidence"] {
@@ -244,7 +230,7 @@ function confidenceForRound(currentRound: number): BehaviorPersona["confidence"]
  */
 export function ruleFallbackPersona(input: PersonaSignalInput): BehaviorPersona {
   const score = behaviorScore(input);
-  const band = bandForBehaviorScore(score);
+  const band = bandFromScore(score).band;
   const preset = BAND_PRESET[band];
 
   // Evidence = teaching points (fallback to titles) of the top 2–3 triggered
@@ -437,8 +423,8 @@ export function personaInputDigest(input: PersonaSignalInput): string {
   const canonical = {
     currentRound: input.currentRound,
     totalRounds: input.totalRounds,
-    eventIds: [...input.adaptiveEvents.map((event) => `${event.id}:${event.confidence}`)].sort(),
-    radar: [...input.radar.map((metric) => `${metric.id}=${Math.round(metric.score)}`)].sort(),
+    eventIds: input.adaptiveEvents.map((event) => `${event.id}:${event.confidence}`).sort(),
+    radar: input.radar.map((metric) => `${metric.id}=${Math.round(metric.score)}`).sort(),
     wealth: [
       Math.round(input.wealth.riskScore),
       Math.round(input.wealth.disciplineScore),
