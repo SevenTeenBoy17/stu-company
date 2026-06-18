@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { BehaviorPersona } from "@/lib/types";
 
 export const roleEnum = pgEnum("role", ["student", "teacher", "parent", "admin"]);
 
@@ -104,6 +105,11 @@ export const riskProfiles = pgTable("risk_profiles", {
   riskLabel: text("risk_label").notNull(),
   answers: jsonb("answers").$type<Record<string, unknown>>().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // A2: AI-generated behavior persona derived from real simulation behavior.
+  behaviorPersona: jsonb("behavior_persona").$type<BehaviorPersona>(),
+  personaProvider: varchar("persona_provider", { length: 16 }),
+  analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
+  inputDigest: varchar("input_digest", { length: 64 }),
 });
 
 export const classrooms = pgTable("classrooms", {

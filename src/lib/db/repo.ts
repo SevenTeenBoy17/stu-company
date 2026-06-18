@@ -117,6 +117,7 @@ import type {
   AiChatSession,
   AppSetting,
   Assignment,
+  BehaviorPersona,
   Classroom,
   FamilyDigest,
   GrowthReport,
@@ -167,6 +168,10 @@ export type RiskProfileRecord = {
   riskLabel: string;
   answers: Record<string, unknown>;
   updatedAt: string;
+  behaviorPersona?: BehaviorPersona | null;
+  personaProvider?: string | null;
+  analyzedAt?: string | null;
+  inputDigest?: string | null;
 };
 
 const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
@@ -505,6 +510,10 @@ function toRiskProfileRecord(row: DbRiskProfile): RiskProfileRecord {
     riskLabel: row.riskLabel,
     answers: row.answers as Record<string, unknown>,
     updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+    behaviorPersona: (row.behaviorPersona as BehaviorPersona | null) ?? null,
+    personaProvider: row.personaProvider ?? null,
+    analyzedAt: maybeIso(row.analyzedAt) ?? null,
+    inputDigest: row.inputDigest ?? null,
   };
 }
 
@@ -1005,8 +1014,25 @@ export async function getRiskProfile(userId: string): Promise<RiskProfileRecord 
 
 export async function upsertRiskProfile(
   userId: string,
-  input: { riskLabel: string; answers: Record<string, unknown> },
+  input: {
+    riskLabel: string;
+    answers: Record<string, unknown>;
+    behaviorPersona?: BehaviorPersona | null;
+    personaProvider?: string | null;
+    analyzedAt?: string | Date | null;
+    inputDigest?: string | null;
+  },
 ): Promise<RiskProfileRecord> {
+  const hasPersona = "behaviorPersona" in input;
+  const hasProvider = "personaProvider" in input;
+  const hasAnalyzedAt = "analyzedAt" in input;
+  const hasDigest = "inputDigest" in input;
+  const analyzedAtValue =
+    input.analyzedAt === null || input.analyzedAt === undefined
+      ? null
+      : input.analyzedAt instanceof Date
+        ? input.analyzedAt
+        : new Date(input.analyzedAt);
   return withDb(
     "upsertRiskProfile",
     async (db) => {
@@ -1018,6 +1044,10 @@ export async function upsertRiskProfile(
           riskLabel: input.riskLabel,
           answers: input.answers,
           updatedAt: now,
+          behaviorPersona: input.behaviorPersona ?? null,
+          personaProvider: input.personaProvider ?? null,
+          analyzedAt: analyzedAtValue,
+          inputDigest: input.inputDigest ?? null,
         })
         .onConflictDoUpdate({
           target: riskProfiles.userId,
@@ -1025,17 +1055,34 @@ export async function upsertRiskProfile(
             riskLabel: input.riskLabel,
             answers: input.answers,
             updatedAt: now,
+            // Only overwrite persona fields when the caller supplied them, so a
+            // plain questionnaire re-save does not wipe an existing AI persona.
+            ...(hasPersona ? { behaviorPersona: input.behaviorPersona ?? null } : {}),
+            ...(hasProvider ? { personaProvider: input.personaProvider ?? null } : {}),
+            ...(hasAnalyzedAt ? { analyzedAt: analyzedAtValue } : {}),
+            ...(hasDigest ? { inputDigest: input.inputDigest ?? null } : {}),
           },
         })
         .returning();
       return toRiskProfileRecord(row);
     },
     () => {
+      const existing = fallbackRiskProfiles.get(userId);
       const record: RiskProfileRecord = {
         userId,
         riskLabel: input.riskLabel,
         answers: input.answers,
         updatedAt: new Date().toISOString(),
+        behaviorPersona: hasPersona
+          ? input.behaviorPersona ?? null
+          : existing?.behaviorPersona ?? null,
+        personaProvider: hasProvider
+          ? input.personaProvider ?? null
+          : existing?.personaProvider ?? null,
+        analyzedAt: hasAnalyzedAt
+          ? maybeIso(analyzedAtValue) ?? null
+          : existing?.analyzedAt ?? null,
+        inputDigest: hasDigest ? input.inputDigest ?? null : existing?.inputDigest ?? null,
       };
       fallbackRiskProfiles.set(userId, record);
       return record;

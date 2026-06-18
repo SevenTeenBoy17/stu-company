@@ -56,6 +56,7 @@ import {
   getManualWechatReadiness,
   saveManualWechatCollectionConfig,
 } from "@/lib/billing/manual-wechat";
+import type { BehaviorPersona } from "@/lib/types";
 
 describe("db repo fallback adapter", () => {
   beforeEach(async () => {
@@ -473,6 +474,68 @@ describe("db repo fallback adapter", () => {
       answers: expect.objectContaining({
         selectedAnswers: [expect.objectContaining({ optionId: "growth" })],
       }),
+    });
+  });
+
+  it("round-trips and updates the AI behavior persona in fallback mode", async () => {
+    const persona: BehaviorPersona = {
+      band: "steady",
+      label: "稳健配置者",
+      archetype: "防守型",
+      summary: "在波动期倾向于保留现金并分散持仓。",
+      evidence: ["第3轮市场下跌时未追涨", "持仓集中度低于同侪"],
+      nextSteps: ["尝试在低波动期建立小额定投", "学习债券资产的稳健作用"],
+      confidence: "medium",
+    };
+    const analyzedAt = "2026-06-18T08:00:00.000Z";
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "稳健观察者",
+        answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "steady" }] },
+        behaviorPersona: persona,
+        personaProvider: "fallback",
+        analyzedAt,
+        inputDigest: "digest-abc123",
+      }),
+    ).resolves.toMatchObject({
+      userId: "student-1",
+      behaviorPersona: persona,
+      personaProvider: "fallback",
+      analyzedAt,
+      inputDigest: "digest-abc123",
+    });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      behaviorPersona: persona,
+      personaProvider: "fallback",
+      analyzedAt,
+      inputDigest: "digest-abc123",
+    });
+
+    const nextPersona: BehaviorPersona = {
+      ...persona,
+      band: "growth",
+      label: "成长进攻者",
+      archetype: "进攻型",
+      confidence: "high",
+    };
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "成长进攻型",
+        answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "growth" }] },
+        behaviorPersona: nextPersona,
+        personaProvider: "ai",
+        analyzedAt: "2026-06-19T09:30:00.000Z",
+        inputDigest: "digest-def456",
+      }),
+    ).resolves.toMatchObject({ personaProvider: "ai" });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      behaviorPersona: nextPersona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-19T09:30:00.000Z",
+      inputDigest: "digest-def456",
     });
   });
 

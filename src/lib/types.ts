@@ -379,6 +379,21 @@ export interface RankProfile {
   updatedAt: string;
 }
 
+/**
+ * A2: AI-generated behavioral persona derived from a student's real simulation
+ * behavior, persisted on `risk_profiles`. Produced and consumed by later tasks
+ * (A2b/A2c/A2d/A2e); this is the shared contract.
+ */
+export interface BehaviorPersona {
+  band: "defensive" | "steady" | "balanced" | "growth";
+  label: string;        // e.g. "稳健配置者"
+  archetype: string;    // short Chinese archetype tag
+  summary: string;      // 1–3 sentence behavioral analysis
+  evidence: string[];   // behavioral evidence bullets (Chinese)
+  nextSteps: string[];  // suggested next actions (Chinese)
+  confidence: "low" | "medium" | "high";
+}
+
 export interface PowerComponentsRecord {
   riskAdjReturn: number;
   discipline: number;

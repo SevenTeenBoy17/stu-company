@@ -134,6 +134,13 @@
       "when": 1780000170000,
       "tag": "0018_round_predictions_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780000180000,
+      "tag": "0019_risk_profile_behavior_persona",
+      "breakpoints": true
     }
   ]
 }
