@@ -376,6 +376,7 @@ export interface PowerComponentsRecord {
 export interface LearningProgressRow {
   userId: string;
   moduleKey: string;
+  quizPassed: boolean;
   completedAt: string;
 }
 

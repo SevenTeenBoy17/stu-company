@@ -2236,3 +2236,179 @@ src/components/student/student-sandbox.tsx
 Those component diffs existed before this Phase 2.2 Step 1 round and remain unstaged; this step only stages `src/lib/content.ts` and `progress.md`.
 
 STOP-GATE: Phase 2.2 Step 1 content questions are ready for user review. API route and frontend modal are NOT wired yet.
+
+
+## Phase 2.2 follow schema stop-gate - quiz_passed migration generation
+
+User approved Step 1 content questions. Step 2 needs persistent `learning_progress.quiz_passed`, so this round hit a schema/migration stop-gate before API/UI wiring.
+
+Command: `npm run db:generate`
+
+```text
+> brown-zone-web@0.1.0 db:generate
+> drizzle-kit generate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'D:\...\brown-zone-web\drizzle.config.ts'
+Error: Interactive prompts require a TTY terminal (process.stdin.isTTY or process.stdout.isTTY is false). This can happen when running in CI, piped input, or non-interactive shells.
+    at render10 (...\node_modules\drizzle-kit\bin.cjs:1450:31)
+    at promptNamedWithSchemasConflict (...\node_modules\drizzle-kit\bin.cjs:32812:65)
+    at tablesResolver (...\node_modules\drizzle-kit\bin.cjs:32001:60)
+    at applyPgSnapshotsDiff (...\node_modules\drizzle-kit\bin.cjs:28212:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async prepareAndMigratePg (...\node_modules\drizzle-kit\bin.cjs:32191:42)
+    at async Object.handler (...\node_modules\drizzle-kit\bin.cjs:91988:7)
+    at async run (...\node_modules\drizzle-kit\bin.cjs:91472:7)
+```
+
+Resolution path: use the repository's existing manual SQL migration pattern for post-0000 schema changes; create a minimal migration and stop before applying.
+
+Manual migration prepared: `drizzle/0016_learning_progress_quiz_passed.sql`
+
+```sql
+-- Migration: require post-module quiz before learning credit
+-- Created: 2026-06-17
+-- Context: Phase 2.2 closes the pure-click scoring loophole. Existing
+--          completed rows predate the quiz gate, so they are trusted and
+--          backfilled as passed; new rows must be explicitly marked by the
+--          server-side quiz grader.
+
+ALTER TABLE "learning_progress"
+  ADD COLUMN IF NOT EXISTS "quiz_passed" boolean DEFAULT false NOT NULL;
+--> statement-breakpoint
+UPDATE "learning_progress"
+SET "quiz_passed" = true
+WHERE "completed_at" IS NOT NULL
+  AND "quiz_passed" = false;
+```
+
+Command: `git diff --check -- src/lib/db/schema.ts drizzle/0016_learning_progress_quiz_passed.sql drizzle/meta/_journal.json progress.md`
+
+```text
+PASS (line-ending warnings only for schema.ts and _journal.json)
+```
+
+Command: `npx tsc --noEmit`
+
+```text
+PASS (no output)
+```
+
+STOP-GATE: schema/migration review required before applying `0016_learning_progress_quiz_passed.sql` or continuing API/UI wiring.
+
+
+## Phase 2.2 follow - quiz gate API/UI completion
+
+User approved applying `0016_learning_progress_quiz_passed.sql`; continued Phase 2.2 API/UI.
+
+Implemented:
+
+- Applied DB-up path with `quiz_passed` column present on `learning_progress`.
+- Added server-only quiz grading helpers; public quiz prompt output excludes `answerIndex`.
+- Added `GET/POST /api/learn/quiz`.
+- Updated `/api/learn/complete` to reject completion until the module quiz is passed.
+- Updated repo/store fallback so learning progress counts only quiz-passed modules.
+- Added Learn catalog quiz modal and completion flow.
+- Added focused tests for quiz prompt safety, grading, and repo learning progress.
+
+Command: `npm run db:up`
+
+```text
+Postgres container is healthy.
+Running Drizzle migrations...
+Migrations up to date
+RLS policies applied
+Seed verification counts: { users: 8, classrooms: 1, invites: 3, assignments: 2, runs: 4, growthReports: 1 }
+Seed complete.
+```
+
+Command: verify `learning_progress.quiz_passed`
+
+```text
+{
+  "columns": [
+    { "column_name": "quiz_passed", "data_type": "boolean", "is_nullable": "NO", "column_default": "false" }
+  ],
+  "counts": [ { "total": 0, "passed": 0 } ]
+}
+```
+
+Command: HTTP smoke via `http://127.0.0.1:3000`
+
+```json
+{
+  "demoStatus": 200,
+  "loginStatus": 200,
+  "beforeCompleted": 0,
+  "completeBeforeQuizStatus": 403,
+  "wrongPassed": false,
+  "wrongScore": 50,
+  "afterWrongCompleted": 0,
+  "rightPassed": true,
+  "rightScore": 100,
+  "afterCompleteCompleted": 1,
+  "afterCompleteKeys": ["equities"]
+}
+```
+
+Command: DB-down failure drill for quiz write
+
+```text
+POST /api/learn/quiz while DB down -> 503
+{"error":"db_unavailable","message":"???????????????"}
+DB restored with npm run db:up and seed completed.
+```
+
+Command: `npx tsc --noEmit`
+
+```text
+PASS (no output)
+```
+
+Command: `npm run test -- src/lib/content.test.ts src/lib/db/repo.test.ts src/lib/leaderboard/learning-progress.test.ts`
+
+```text
+Test Files  3 passed (3)
+Tests  26 passed (26)
+```
+
+Command: `git grep -n "answerIndex" -- src/app src/components`
+
+```text
+PASS: answerIndex absent from src/app and src/components
+```
+
+Command: `npm run lint`
+
+```text
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+Command: `npm run test`
+
+```text
+Test Files  75 passed (75)
+Tests  470 passed (470)
+```
+
+Command: `npm run build`
+
+```text
+Compiled successfully in 5.5s
+Finished TypeScript in 15.9s
+Generated static pages: 60/60
+/api/learn/quiz included in the production route list.
+```
+
+Command: `python -m code_review_graph update && python -m code_review_graph detect-changes`
+
+```text
+Incremental: 240 files updated, 1002 nodes, 10913 edges (postprocess=full)
+Analyzed 14 changed file(s)
+Overall risk score: 0.00
+0 affected flow(s)
+0 test gap(s)
+```
+
+Reviewer audit: APPROVE. Scope matches Phase 2.2; no answer indexes in client app/components; DB-up and DB-down paths were exercised; no forbidden raw AI provider fetch added.

@@ -11,6 +11,18 @@ type LearningModuleDefinition = LearningModule & {
   quiz: LearningModuleQuiz[];
 };
 
+export type LearningModuleQuizPrompt = {
+  question: string;
+  options: string[];
+};
+
+export type LearningModuleQuizGrade = {
+  passed: boolean;
+  score: number;
+  total: number;
+  correct: number;
+};
+
 export const siteNavGroups: NavGroup[] = [
   {
     title: "市场情景",
@@ -311,6 +323,35 @@ export const learningModules: LearningModule[] = learningModuleDefinitions.map((
   href: module.href,
   hrefLabel: module.hrefLabel,
 }));
+
+export function getLearningModuleQuizPrompt(moduleKey: string): LearningModuleQuizPrompt[] | null {
+  const definition = learningModuleDefinitions.find((item) => item.key === moduleKey);
+  if (!definition) return null;
+  return definition.quiz.map((item) => ({
+    question: item.question,
+    options: [...item.options],
+  }));
+}
+
+export function gradeLearningModuleQuiz(
+  moduleKey: string,
+  answers: number[],
+): LearningModuleQuizGrade | null {
+  const definition = learningModuleDefinitions.find((item) => item.key === moduleKey);
+  if (!definition || answers.length !== definition.quiz.length) return null;
+
+  const correct = definition.quiz.reduce(
+    (sum, item, index) => sum + (answers[index] === item.answerIndex ? 1 : 0),
+    0,
+  );
+  const score = Math.round((correct / definition.quiz.length) * 100);
+  return {
+    passed: score >= 80,
+    score,
+    total: definition.quiz.length,
+    correct,
+  };
+}
 
 export const showcaseStats = [
   { label: "目标赛道", value: "青少年财商教育", detail: "2032 年全球规模预计 938 亿美元" },

@@ -1,5 +1,6 @@
 import {
   type AnyPgColumn,
+  boolean,
   index,
   integer,
   jsonb,
@@ -330,6 +331,7 @@ export const learningProgress = pgTable("learning_progress", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
   moduleKey: varchar("module_key", { length: 48 }).notNull(),
+  quizPassed: boolean("quiz_passed").notNull().default(false),
   completedAt: timestamp("completed_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("learning_progress_user_module_unique").on(table.userId, table.moduleKey),

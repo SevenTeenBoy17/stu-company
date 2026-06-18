@@ -25,6 +25,7 @@ import {
   getAiSessionById,
   getAppSetting,
   getClassroomById,
+  getLearningProgress,
   getLeaderboardSnapshot,
   createPaymentOrder,
   fulfillPaymentOrder,
@@ -35,8 +36,11 @@ import {
   getRunForUser,
   getSimulationStateForUser,
   getTeacherOverview,
+  hasModuleQuizPassed,
   listAiSessionsForUser,
   listSubscriptionTargetsForUser,
+  markModuleComplete,
+  markModuleQuizPassed,
   registerUserByEmail,
   registerUserByInvite,
   resetStoreForTests,
@@ -198,6 +202,27 @@ describe("db repo fallback adapter", () => {
     expect(roleHomePath("student")).toBe("/student");
     expect(getQuickDemoCredentials()).toHaveLength(5);
     expect(buildTeacherLeaderboardCards([{ userId: "u", name: "A", classroomId: "c", netWorth: 1, disciplineScore: 1, rank: 1 }])[0]?.headline).toBeTruthy();
+  });
+
+  it("counts learning progress only after quiz pass", async () => {
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 0,
+      completedKeys: [],
+    });
+    await expect(hasModuleQuizPassed("student-1", "equities")).resolves.toBe(false);
+
+    await markModuleQuizPassed("student-1", "equities");
+    await expect(hasModuleQuizPassed("student-1", "equities")).resolves.toBe(true);
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 1,
+      completedKeys: ["equities"],
+    });
+
+    await markModuleComplete("student-1", "equities");
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 1,
+      completedKeys: ["equities"],
+    });
   });
 
   it("checks sponsored subscription target permissions in fallback mode", async () => {

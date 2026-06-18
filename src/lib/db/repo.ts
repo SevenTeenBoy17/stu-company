@@ -294,6 +294,7 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
 const WRITE_FNS = new Set<string>([
   "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
+  "markModuleQuizPassed",
   "upsertRiskProfile",
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
@@ -1731,7 +1732,7 @@ export async function claimQuestRewardForUser(userId: string, questId: string) {
         const rows = await tx
           .select({ moduleKey: learningProgress.moduleKey })
           .from(learningProgress)
-          .where(eq(learningProgress.userId, userId));
+          .where(and(eq(learningProgress.userId, userId), eq(learningProgress.quizPassed, true)));
         const valid = new Set<string>(learningModules.map((module) => module.key));
         const completedKeys = rows.map((row) => row.moduleKey).filter((key) => valid.has(key));
         const learning = { completed: completedKeys.length, total: valid.size, completedKeys };
@@ -3150,11 +3151,49 @@ export async function markModuleComplete(
     async (db) => {
       await db
         .insert(learningProgress)
-        .values({ id: createId("lp"), userId, moduleKey })
-        .onConflictDoNothing({ target: [learningProgress.userId, learningProgress.moduleKey] });
-      return { userId, moduleKey, completedAt: new Date().toISOString() };
+        .values({ id: createId("lp"), userId, moduleKey, quizPassed: true })
+        .onConflictDoUpdate({
+          target: [learningProgress.userId, learningProgress.moduleKey],
+          set: { quizPassed: true, completedAt: sql`now()` },
+        });
+      return { userId, moduleKey, quizPassed: true, completedAt: new Date().toISOString() };
     },
     () => store.markModuleComplete(userId, moduleKey),
+  );
+}
+
+export async function markModuleQuizPassed(
+  userId: string,
+  moduleKey: string,
+): Promise<LearningProgressRow> {
+  return withDb(
+    "markModuleQuizPassed",
+    async (db) => {
+      await db
+        .insert(learningProgress)
+        .values({ id: createId("lp"), userId, moduleKey, quizPassed: true })
+        .onConflictDoUpdate({
+          target: [learningProgress.userId, learningProgress.moduleKey],
+          set: { quizPassed: true },
+        });
+      return { userId, moduleKey, quizPassed: true, completedAt: new Date().toISOString() };
+    },
+    () => store.markModuleQuizPassed(userId, moduleKey),
+  );
+}
+
+export async function hasModuleQuizPassed(userId: string, moduleKey: string): Promise<boolean> {
+  return withDb(
+    "hasModuleQuizPassed",
+    async (db) => {
+      const rows = await db
+        .select({ quizPassed: learningProgress.quizPassed })
+        .from(learningProgress)
+        .where(and(eq(learningProgress.userId, userId), eq(learningProgress.moduleKey, moduleKey)))
+        .limit(1);
+      return rows[0]?.quizPassed === true;
+    },
+    () => store.hasModuleQuizPassed(userId, moduleKey),
   );
 }
 
@@ -3165,7 +3204,7 @@ export async function getLearningProgress(userId: string): Promise<LearningProgr
       const rows = await db
         .select({ moduleKey: learningProgress.moduleKey })
         .from(learningProgress)
-        .where(eq(learningProgress.userId, userId));
+        .where(and(eq(learningProgress.userId, userId), eq(learningProgress.quizPassed, true)));
       const valid = new Set<string>(learningModules.map((m) => m.key));
       const completedKeys = rows.map((r) => r.moduleKey).filter((k) => valid.has(k));
       return { completed: completedKeys.length, total: valid.size, completedKeys };

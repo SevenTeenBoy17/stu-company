@@ -850,19 +850,50 @@ export function markModuleComplete(userId: string, moduleKey: string): LearningP
   const existing = store.learningProgress.find(
     (p) => p.userId === userId && p.moduleKey === moduleKey,
   );
-  if (existing) return existing;
+  if (existing) {
+    existing.quizPassed = true;
+    return existing;
+  }
   const row: LearningProgressRow = {
     userId,
     moduleKey,
+    quizPassed: true,
     completedAt: new Date().toISOString(),
   };
   store.learningProgress.push(row);
   return row;
 }
 
+export function markModuleQuizPassed(userId: string, moduleKey: string): LearningProgressRow {
+  const store = getStore();
+  const existing = store.learningProgress.find(
+    (p) => p.userId === userId && p.moduleKey === moduleKey,
+  );
+  if (existing) {
+    existing.quizPassed = true;
+    return existing;
+  }
+  const row: LearningProgressRow = {
+    userId,
+    moduleKey,
+    quizPassed: true,
+    completedAt: new Date().toISOString(),
+  };
+  store.learningProgress.push(row);
+  return row;
+}
+
+export function hasModuleQuizPassed(userId: string, moduleKey: string): boolean {
+  return getStore().learningProgress.some(
+    (p) => p.userId === userId && p.moduleKey === moduleKey && p.quizPassed,
+  );
+}
+
 export function getLearningProgress(userId: string): LearningProgressSummary {
   const completedKeys = getStore()
-    .learningProgress.filter((p) => p.userId === userId && VALID_MODULE_KEYS.has(p.moduleKey))
+    .learningProgress.filter(
+      (p) => p.userId === userId && p.quizPassed && VALID_MODULE_KEYS.has(p.moduleKey),
+    )
     .map((p) => p.moduleKey);
   return { completed: completedKeys.length, total: VALID_MODULE_KEYS.size, completedKeys };
 }
