@@ -2911,3 +2911,77 @@ Pre-existing unrelated untracked items remain untouched:
 ```
 
 Reviewer result: APPROVE. `python -m code_review_graph update` is unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + focused verification. AI provider access remains centralized in `src/lib/ai.ts`; no components, API routes, DB/schema/repo, `behavior-persona.ts`, or `risk-profile.ts` were modified for A2c. Focused rerun after review: `npm run test -- ai.behavior-persona` PASS, `npm run test -- ai` PASS, `npx tsc --noEmit` PASS, `npm run lint` PASS.
+
+## A2d - behavior re-evaluation student route
+
+Timestamp: 2026-06-18 09:19:16 -07:00
+
+Scope:
+- `src/app/api/student/risk-profile/behavior/route.ts`
+- `src/app/api/student/risk-profile/behavior/route.test.ts`
+- `progress.md`
+
+TDD red gate:
+```text
+npm run test -- src/app/api/student/risk-profile/behavior/route.test.ts -> FAIL (expected before implementation)
+Failed to resolve import "./route" from "src/app/api/student/risk-profile/behavior/route.test.ts"
+```
+
+Implementation summary:
+- Added `POST /api/student/risk-profile/behavior`.
+- Flow: `checkOrigin` -> `requireUser("student")` -> load simulation state + learning progress + existing risk profile -> `buildPersonaSignalInput` -> `personaInputDigest`.
+- If stored `inputDigest` matches and `behaviorPersona` exists, returns cached stored persona without calling AI.
+- Otherwise calls A2c `requestBehaviorPersona(input)` and persists via existing `upsertRiskProfile`.
+- Wrapped auth-time and repo-time DB failures in `handleRouteError`, so DB outage returns a stable Chinese `db_unavailable` response instead of a crash.
+
+Acceptance gates:
+```text
+npm run test -- src/app/api/student/risk-profile/behavior/route.test.ts -> PASS
+Test Files  1 passed (1)
+Tests       4 passed (4)
+
+npm run test -- risk-profile behavior-persona -> PASS
+Test Files  5 passed (5)
+Tests       25 passed (25)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+DB-up route verification:
+```text
+docker compose -f docker-compose.local.yml ps -> brownzone-pg healthy
+
+POST /api/auth/login as student@brownzone.ai -> 200
+POST /api/student/risk-profile/behavior -> 200, cached:false on first call
+POST /api/student/risk-profile/behavior -> 200, cached:true on second call
+
+psql read-only check:
+select user_id, behavior_persona is not null, persona_provider, analyzed_at is not null, input_digest is not null
+from risk_profiles where user_id='student-1';
+
+student-1 | t | remote | t | t
+```
+
+DB-down drill:
+```text
+docker compose -f docker-compose.local.yml down
+POST /api/student/risk-profile/behavior with an existing session -> 503
+{"error":"db_unavailable","message":"数据库暂时不可用，请稍后再试。"}
+docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.local.yml ps -> brownzone-pg healthy
+POST /api/student/risk-profile/behavior after recovery -> 200, cached:true
+```
+
+Scope gate:
+```text
+git status --short shows only A2d route files plus this phase log as new/touched work.
+Pre-existing unrelated untracked items remain untouched:
+?? .claude/
+?? docs/superpowers/plans/2026-06-18-CODEX执行手册-risk-lab-quest-cards.md
+```
+
+Reviewer result: APPROVE. The new route reuses only named A2b/A2c/repo contracts, keeps AI access in `src/lib/ai.ts`, does not touch repo internals/components/schema, and covers success, digest short-circuit, auth block, repo-time DB failure, and auth-time DB failure.
