@@ -2412,3 +2412,62 @@ Overall risk score: 0.00
 ```
 
 Reviewer audit: APPROVE. Scope matches Phase 2.2; no answer indexes in client app/components; DB-up and DB-down paths were exercised; no forbidden raw AI provider fetch added.
+
+
+## Phase 2.3 navigation discoverability - 2026-06-17
+
+Scope: navigation/dashboard reachability only. Forbidden scope respected: no API/DB/schema edits.
+
+Static route matrix:
+
+| Route | Platform nav | Student service map | Page exists |
+| --- | --- | --- | --- |
+| /student | true | true | true |
+| /student/wealth | true | true | true |
+| /student/auto-invest | true | true | true |
+| /student/quests | true | true | true |
+| /student/risk-profile | true | true | true |
+| /student/fund-lab | true | true | true |
+| /student/goal-accounts | true | true | true |
+| /student/opportunity | true | true | true |
+| /student/protection | true | true | true |
+| /student/credit | true | true | true |
+| /student/life | true | true | true |
+| /student/market | true | true | true |
+| /student/history | true | true | true |
+| /student/rank | true | false | true |
+
+Conclusion: all 14 target student routes are reachable from `/student` via the platform navigation. `/student/rank` is not in the service map, but it is present in platform navigation and the rank teaser, so no code patch was required.
+
+Authenticated HTTP smoke after `POST /api/auth/demo-login` with `student@brownzone.ai`:
+
+```text
+Route                  Status ErrorPage Redirect
+/student                  200     False    False
+/student/wealth           200     False    False
+/student/auto-invest      200     False    False
+/student/quests           200     False    False
+/student/risk-profile     200     False    False
+/student/fund-lab         200     False    False
+/student/goal-accounts    200     False    False
+/student/opportunity      200     False    False
+/student/protection       200     False    False
+/student/credit           200     False    False
+/student/life             200     False    False
+/student/market           200     False    False
+/student/history          200     False    False
+/student/rank             200     False    False
+```
+
+Verification:
+
+```text
+npm run lint                    PASS
+npx tsc --noEmit                PASS
+npm run test                    PASS - 75 files / 470 tests
+npm run build                   PASS - 60/60 static pages
+python -m code_review_graph update                 PASS
+python -m code_review_graph detect-changes --brief PASS - risk 0.00, 0 affected flows, 0 test gaps
+```
+
+Degraded check: a direct Playwright script could not run because `@playwright/test` is not installed in this project; no dependency was added for this navigation-only prompt. Fallback used static link audit plus authenticated HTTP smoke.
