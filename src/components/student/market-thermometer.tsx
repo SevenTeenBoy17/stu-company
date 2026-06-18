@@ -45,9 +45,9 @@ const levelCopy: Record<MarketTemperaturePayload["level"], { title: string; tone
 };
 
 const factorTone: Record<MarketTemperatureFactor["tone"], string> = {
-  positive: "bg-rose-100 text-rose-700",
-  neutral: "bg-white/10 text-white/80",
-  negative: "bg-emerald-100 text-emerald-700",
+  positive: "bg-rose-100 text-rose-800",
+  neutral: "bg-white/14 text-white",
+  negative: "bg-emerald-100 text-emerald-800",
 };
 
 export function MarketThermometer({
@@ -96,7 +96,7 @@ export function MarketThermometer({
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">Market Thermometer</p>
             <h3 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">市场温度计</h3>
-            <p className="mt-2 text-sm font-semibold leading-6 text-white/70">{payload.roundLabel}</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-white/84">{payload.roundLabel}</p>
           </div>
           <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black", tone.chip)}>
             <ThermometerSun className="h-4 w-4" />
@@ -108,7 +108,7 @@ export function MarketThermometer({
           <div className="min-h-[252px] rounded-[1.55rem] border border-white/10 bg-white/[0.06] p-5">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-bold text-white/60">情绪温度</p>
+                <p className="text-sm font-bold text-white/78">情绪温度</p>
                 <p className={cn("mt-1 text-5xl font-black tracking-tight", tone.tone)}>{payload.score}</p>
               </div>
               <p className="max-w-28 text-right text-base font-black leading-6 text-white">{tone.title}</p>
@@ -120,7 +120,7 @@ export function MarketThermometer({
                 style={{ width: `${payload.score}%` }}
               />
             </div>
-            <div className="mt-3 flex justify-between text-[0.72rem] font-black uppercase tracking-[0.16em] text-white/70">
+            <div className="mt-3 flex justify-between text-[0.72rem] font-black uppercase tracking-[0.16em] text-white/82">
               <span>冷静</span>
               <span>均衡</span>
               <span>过热</span>
@@ -135,7 +135,7 @@ export function MarketThermometer({
               </span>
               <span className="text-base font-black text-white">{payload.eventTitle}</span>
             </div>
-            <p className="mt-4 text-base font-semibold leading-8 text-white/72">{payload.summary}</p>
+            <p className="mt-4 text-base font-semibold leading-8 text-white/86">{payload.summary}</p>
             <p className="mt-4 rounded-2xl bg-orange-100 px-4 py-3 text-base font-bold leading-7 text-slate-950">
               {payload.contrarianHint}
             </p>
@@ -145,7 +145,7 @@ export function MarketThermometer({
         <div data-temp-reveal className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {payload.factors.map((factor) => (
             <div key={factor.label} className="min-h-[92px] rounded-[1.18rem] border border-white/10 bg-white/[0.06] px-4 py-4">
-              <p className="text-sm font-bold text-white/55">{factor.label}</p>
+              <p className="text-sm font-bold text-white/78">{factor.label}</p>
               <span className={cn("mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-black", factorTone[factor.tone])}>
                 {factor.value}
               </span>
@@ -157,13 +157,13 @@ export function MarketThermometer({
           data-temp-reveal
           className="mt-5 flex flex-col gap-3 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-sm font-bold leading-6 text-white/68">
+          <p className="text-sm font-bold leading-6 text-white/84">
             把温度拆成证据、风险和下一步观察，不直接做买卖判断。
           </p>
           <Link
             data-motion-button
             href="/student/market"
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-black text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-black !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
           >
             进入市场雷达继续拆解
             <ArrowRight className="h-4 w-4" />

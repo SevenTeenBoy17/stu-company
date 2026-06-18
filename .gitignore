@@ -45,6 +45,7 @@ yarn-error.log*
 .codex-supervisor/
 /test-results/
 /agency-agents-review/
+/tmp-ui-check/
 
 # typescript
 *.tsbuildinfo

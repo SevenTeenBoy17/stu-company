@@ -2782,3 +2782,74 @@ Manual diff review -> APPROVE
 ```
 
 Reviewer result: APPROVE. Phase 4.1 closes with Chinese recovery boundaries, no raw API error-code display fallback in touched UI paths, real DB business-chain smoke coverage, stopped-DB recovery drill coverage, and full lint/type/test/build/Playwright gates passing.
+
+## Phase 4 closure - leftover UI/docs/supervisor artifacts
+
+Scope:
+- `.gitignore`
+- `docs/superpowers/plans/2026-06-17-CODEX执行手册-全链路打通.md`
+- `docs/superpowers/plans/2026-06-17-full-stack-wiring-local-db.md`
+- `skills/dev-supervisor/scripts/supervisor-validate.ps1`
+- `skills/dev-supervisor/templates/ledger.schema.json`
+- `src/components/student/market-thermometer.tsx`
+
+Implementation summary:
+- Archived the execution manual and local DB PRD under `docs/superpowers/plans/`.
+- Added dev-supervisor validation helper and ledger schema under `skills/dev-supervisor/`.
+- Ignored `tmp-ui-check/` because it contains local screenshots and temporary dev logs, not source.
+- Improved the dark `市场温度计` panel contrast: secondary text now uses higher-opacity white, factor badges use stronger foreground contrast, and the CTA keeps white text on hover.
+- Cleared the stale EOL-only `src/app/(platform)/layout.tsx` working-tree marker without committing content changes.
+
+Secret / placeholder gates:
+```text
+NO_SECRET_PATTERN_IN_NEW_DOCS_OR_SKILLS
+NO_TODO_FIXME_PLACEHOLDER_IN_LEFTOVERS
+git diff --check -> PASS (line-ending warnings only)
+```
+
+Quality gate:
+```text
+npm run lint -> PASS
+npx tsc --noEmit -> PASS
+npm run test -> PASS
+Test Files  76 passed (76)
+Tests       481 passed (481)
+npm run build -> PASS
+Compiled successfully; generated static pages (61/61)
+```
+
+Browser smoke:
+```json
+{
+  "url": "http://127.0.0.1:3000/student",
+  "hasStudent": true,
+  "hasMarketThermometer": true,
+  "hasNoEnglishError": true
+}
+```
+
+Manual phase status:
+```text
+Execution manual Phase 0 -> Phase 4.1 has recorded PASS evidence.
+No additional prompt exists after Phase 4.1 in docs/superpowers/plans/2026-06-17-CODEX执行手册-全链路打通.md.
+```
+
+Review gate:
+```text
+python -m code_review_graph update -> PASS
+Incremental: 29 files updated, 9 nodes, 195 edges
+FTS indexed: 2247 nodes
+Flows: 166
+Communities: 21
+
+python -m code_review_graph detect-changes --brief -> PASS
+Analyzed 20 changed file(s)
+0 changed function(s)/class(es)
+0 affected flow(s)
+0 test gap(s)
+Overall risk score: 0.00
+```
+
+Reviewer result: APPROVE. The remaining UI/docs/supervisor artifacts are classified and handled: source-worthy docs/tools are tracked, local QA screenshots are ignored, and the only UI code change is a contrast/readability improvement on the dark market thermometer panel.
+
+ALL_PHASES_DONE
