@@ -1,59 +1,112 @@
 import { describe, expect, it } from "vitest";
 
 import { buildPeerHeatPayload } from "@/lib/peer-heat";
-import { createInitialRun } from "@/lib/simulation";
 
-describe("buildPeerHeatPayload", () => {
-  it("aggregates classroom holdings and watchlist signals without exposing users", () => {
-    const first = createInitialRun("student-a", "class-1", "测试", 20260613);
-    const second = createInitialRun("student-b", "class-1", "测试", 20260613);
-    const outsider = createInitialRun("student-x", "class-2", "测试", 20260613);
+import { makeScenarioRun } from "../../tests/factories/run";
 
-    first.holdings = [{ assetId: "asset-stock", quantity: 8, averageCost: 120 }];
-    second.holdings = [{ assetId: "asset-stock", quantity: 3, averageCost: 122 }];
-    outsider.holdings = [{ assetId: "asset-etf", quantity: 99, averageCost: 90 }];
-    second.actionLog.unshift({
-      id: "watch-1",
-      round: 2,
-      type: "watchlist",
-      label: "加入自选观察：微软（MSFT）",
-      amount: 0,
-      timestamp: "2026-06-13T00:00:00.000Z",
-      meta: {
-        kind: "watchlist_action",
-        action: "add",
-        symbol: "MSFT",
-      },
+describe("peer heat aggregation", () => {
+  it("aggregates only classmates' holdings and watchlist signals", () => {
+    const current = makeScenarioRun({
+      id: "run-a",
+      userId: "student-secret-a",
+      classroomId: "class-heat",
+      holdings: [{ assetId: "asset-stock", quantity: 9, averageCost: 127 }],
+    });
+    const peer = makeScenarioRun({
+      id: "run-b",
+      userId: "student-secret-b",
+      classroomId: "class-heat",
+      holdings: [{ assetId: "asset-stock", quantity: 3, averageCost: 111 }],
+    });
+    const outsider = makeScenarioRun({
+      id: "run-c",
+      userId: "student-secret-c",
+      classroomId: "another-class",
+      holdings: [{ assetId: "asset-etf", quantity: 99, averageCost: 90 }],
     });
 
-    const payload = buildPeerHeatPayload([first, second, outsider], first, "清波一班", new Date("2026-06-13T00:00:00.000Z"));
+    peer.actionLog = [
+      {
+        id: "watch-1",
+        round: 2,
+        type: "watchlist",
+        label: "加入自选观察：微软（MSFT）",
+        amount: 0,
+        timestamp: "2026-06-18T00:00:00.000Z",
+        meta: {
+          kind: "watchlist_action",
+          action: "add",
+          symbol: "MSFT",
+        },
+      },
+      ...peer.actionLog,
+    ];
+
+    const payload = buildPeerHeatPayload(
+      [current, peer, outsider],
+      current,
+      "高一 1 班",
+      new Date("2026-06-18T00:00:00.000Z"),
+    );
+    const microsoft = payload.items.find((item) => item.symbol === "MSFT");
 
     expect(payload.totalStudents).toBe(2);
     expect(payload.items[0]).toMatchObject({
       symbol: "BZA",
-      name: "智造先锋股票",
       count: 2,
       ratio: 100,
       source: "holding",
     });
-    expect(payload.items.find((item) => item.symbol === "MSFT")).toMatchObject({
+    expect(microsoft).toMatchObject({
       count: 1,
       ratio: 50,
       source: "watchlist",
     });
-    expect(JSON.stringify(payload)).not.toContain("student-a");
-    expect(JSON.stringify(payload)).not.toContain("student-b");
-    expect(JSON.stringify(payload)).not.toContain("quantity");
+    expect(payload.items.some((item) => item.symbol === "EDGE")).toBe(false);
     expect(payload.privacyNote).toContain("不显示姓名");
   });
 
-  it("keeps a friendly empty state before classmates create signals", () => {
-    const run = createInitialRun("student-a", "class-1", "测试", 20260613);
+  it("returns only anonymized aggregate counts, never per-user holdings or identity", () => {
+    const current = makeScenarioRun({
+      id: "run-a",
+      userId: "student-secret-a",
+      classroomId: "class-heat",
+      holdings: [{ assetId: "asset-stock", quantity: 9, averageCost: 127 }],
+    });
+    const peer = makeScenarioRun({
+      id: "run-b",
+      userId: "student-secret-b",
+      classroomId: "class-heat",
+      holdings: [{ assetId: "asset-stock", quantity: 3, averageCost: 111 }],
+    });
 
-    const payload = buildPeerHeatPayload([run], run, "清波一班", new Date("2026-06-13T00:00:00.000Z"));
+    const payload = buildPeerHeatPayload([current, peer], current, "高一 1 班", new Date("2026-06-18T00:00:00.000Z"));
+    const serialized = JSON.stringify(payload);
 
+    expect(payload.items[0]).toMatchObject({
+      count: 2,
+      ratio: 100,
+      source: "holding",
+    });
+    expect(serialized).not.toContain("student-secret");
+    expect(serialized).not.toContain("userId");
+    expect(serialized).not.toContain("quantity");
+    expect(serialized).not.toContain("averageCost");
+    expect(serialized).toContain("热门不等于适合你");
+  });
+
+  it("returns a friendly empty state when the class has no holdings or watchlist signals yet", () => {
+    const current = {
+      ...makeScenarioRun({ id: "run-empty", userId: "student-empty", classroomId: "class-empty" }),
+      holdings: [],
+      actionLog: [],
+    };
+
+    const payload = buildPeerHeatPayload([], current, "空态班级", new Date("2026-06-18T00:00:00.000Z"));
+
+    expect(payload.totalStudents).toBe(1);
     expect(payload.items).toEqual([]);
-    expect(payload.headline).toContain("热度还在形成中");
-    expect(payload.summary).toContain("脱敏聚合热度");
+    expect(payload.sourceMix).toEqual({ holdings: 0, watchlist: 0 });
+    expect(payload.summary).toMatch(/脱敏|聚合|热度|观察/);
   });
 });

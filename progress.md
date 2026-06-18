@@ -2610,3 +2610,74 @@ python -m code_review_graph detect-changes --brief -> Overall risk score: 0.00, 
 ```
 
 Reviewer result: APPROVE. Predictions are decorative-only records; duplicate prediction is rejected; settlement is idempotent over unresolved records; net worth comparison against a no-prediction simulation is equal; no leaderboard/power path references the new feature.
+
+## Phase 3.3 — Class-aggregated anonymized peer heat
+
+Scope:
+- `src/lib/peer-heat.ts`
+- `src/lib/peer-heat.test.ts`
+- Existing route checked: `src/app/api/market/peer-heat/route.ts`
+
+Implementation summary:
+- Kept the existing DB-backed `/api/market/peer-heat` route using `requireUser("student")` and `getPeerHeatForStudent`.
+- Strengthened the holding-source coach note so every hot-holding card explicitly says: “热门不等于适合你，先看自己的现金垫和风险承受力。”
+- Expanded peer heat tests to cover:
+  - classroom-only aggregation, excluding another classroom;
+  - holdings plus watchlist signals;
+  - serialized payload privacy: no `userId`, no student identity, no `quantity`, no `averageCost`;
+  - friendly empty state when no class signal exists.
+
+Real DB privacy smoke:
+```json
+{
+  "classroomName": "树德实验 · AP经济沙盘试点班",
+  "totalStudents": 4,
+  "itemCount": 4,
+  "sample": [
+    {
+      "symbol": "EDGE",
+      "name": "成长力量 ETF",
+      "count": 2,
+      "source": "holding",
+      "concept": "分散配置",
+      "coachNote": "这是班级模拟持有的聚合热度，只显示人数，不显示任何同学的具体仓位。热门不等于适合你，先看自己的现金垫和风险承受力。",
+      "ratio": 50
+    },
+    {
+      "symbol": "SAFE",
+      "name": "政策稳健债券",
+      "count": 2,
+      "source": "holding",
+      "concept": "稳健防守",
+      "coachNote": "这是班级模拟持有的聚合热度，只显示人数，不显示任何同学的具体仓位。热门不等于适合你，先看自己的现金垫和风险承受力。",
+      "ratio": 50
+    }
+  ],
+  "leaks": []
+}
+```
+
+Focused verification:
+```text
+> brown-zone-web@0.1.0 test
+> vitest run peer-heat
+
+Test Files  1 passed (1)
+Tests       3 passed (3)
+```
+
+Full gate:
+```text
+npm run lint -> PASS
+npx tsc --noEmit -> PASS
+npm run test -> PASS, 76 files / 481 tests
+npm run build -> PASS, route list includes /api/market/peer-heat
+```
+
+Review gate:
+```text
+python -m code_review_graph update -> PASS, 2238 nodes indexed
+python -m code_review_graph detect-changes --brief -> Overall risk score: 0.00, 0 test gaps
+```
+
+Reviewer result: APPROVE. Response payload is aggregate-only and anonymized: class totals, item counts, ratios, source labels, concepts, and coach notes only. No per-user identity, per-user holding quantity, holding cost, or amount is returned. Phase 3 is complete and ready for Phase 4 review/approval before continuing.
