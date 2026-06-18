@@ -23,6 +23,93 @@ export type LearningModuleQuizGrade = {
   correct: number;
 };
 
+export const questCardDeck = [
+  {
+    id: "calm-observer",
+    name: "冷静观察者",
+    rarity: "common",
+    artKey: "calm-observer",
+    teachingLine: "市场很热时，先写下证据，再决定要不要行动。",
+  },
+  {
+    id: "cash-buffer",
+    name: "现金缓冲垫",
+    rarity: "common",
+    artKey: "cash-buffer",
+    teachingLine: "留出现金不是胆小，而是保留下一回合的选择权。",
+  },
+  {
+    id: "review-anchor",
+    name: "复盘锚点",
+    rarity: "common",
+    artKey: "review-anchor",
+    teachingLine: "每次交易后写一句理由，错误才会变成可学习的材料。",
+  },
+  {
+    id: "diversification-scout",
+    name: "分散侦察员",
+    rarity: "common",
+    artKey: "diversification-scout",
+    teachingLine: "组合不是把所有东西都买一点，而是让风险来源更分散。",
+  },
+  {
+    id: "evidence-builder",
+    name: "证据搭建者",
+    rarity: "common",
+    artKey: "evidence-builder",
+    teachingLine: "先区分事实、观点和猜测，再把判断写成可验证清单。",
+  },
+  {
+    id: "risk-shield",
+    name: "风险护盾",
+    rarity: "rare",
+    artKey: "risk-shield",
+    teachingLine: "好决策不只看收益，也要问：如果判断错了会怎样？",
+  },
+  {
+    id: "sector-cartographer",
+    name: "板块制图师",
+    rarity: "rare",
+    artKey: "sector-cartographer",
+    teachingLine: "板块轮动不是魔法，它往往来自政策、需求和资金偏好的变化。",
+  },
+  {
+    id: "drawdown-detective",
+    name: "回撤侦探",
+    rarity: "rare",
+    artKey: "drawdown-detective",
+    teachingLine: "回撤时先找原因：是市场变了，还是仓位和纪律出了问题？",
+  },
+  {
+    id: "balanced-allocator",
+    name: "均衡配置师",
+    rarity: "rare",
+    artKey: "balanced-allocator",
+    teachingLine: "长期配置靠节奏，不靠一次猜中所有方向。",
+  },
+  {
+    id: "behavior-mirror",
+    name: "行为镜像",
+    rarity: "rare",
+    artKey: "behavior-mirror",
+    teachingLine: "看见自己的冲动、拖延和从众，才有机会改进下一次选择。",
+  },
+  {
+    id: "market-composer",
+    name: "市场作曲家",
+    rarity: "epic",
+    artKey: "market-composer",
+    teachingLine: "真正成熟的策略像乐谱：现金、风险和机会都有自己的位置。",
+  },
+  {
+    id: "black-swan-navigator",
+    name: "黑天鹅导航员",
+    rarity: "epic",
+    artKey: "black-swan-navigator",
+    teachingLine: "极端事件无法精准预测，但可以提前设计不被一次击穿的结构。",
+  },
+] as const;
+
 export const siteNavGroups: NavGroup[] = [
   {
     title: "市场情景",

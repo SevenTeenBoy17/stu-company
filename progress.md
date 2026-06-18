@@ -3197,3 +3197,60 @@ No call/import of recomputePowerForUser was introduced.
 ```
 
 Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + repo tests + live Postgres verification. B2a is storage-only and remains zero-coupled to leaderboard/power/finance changes.
+
+## B2b - deterministic quest card deck and weighted draw
+
+Timestamp: 2026-06-18 10:40:00 -07:00
+
+Scope:
+- `src/lib/cards.ts`
+- `src/lib/cards.test.ts`
+- `src/lib/content.ts`
+- `progress.md`
+
+TDD red gate:
+```text
+npm run test -- cards -> FAIL (expected before implementation)
+Error: Failed to resolve import "@/lib/cards" from "src/lib/cards.test.ts". Does the file exist?
+```
+
+Implementation summary:
+- Added `questCardDeck` to `src/lib/content.ts` with 12 decorative cards:
+  common / rare / epic rarity, id, name, artKey, and teachingLine.
+- Added `src/lib/cards.ts`:
+  - `QuestCardRarity`, `QuestCard`
+  - `QUEST_CARD_RARITY_WEIGHTS`
+  - deterministic mulberry32 PRNG
+  - `seedFromString(input)`
+  - `drawCard(deck, ownedCardIds, seed)`
+- `drawCard` selects rarity by configured weights and biases away from already-owned cards within the selected rarity when an unowned card exists.
+- No DB/API/component/power-score imports were added.
+
+Acceptance gates:
+```text
+npm run test -- cards -> PASS
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+Test coverage:
+```text
+- same deck + owned set + seed returns the same card
+- owned card is skipped when another card in selected rarity is available
+- 2000 deterministic seeds roughly follow common > rare > epic configured weights
+```
+
+Scope / red-line gate:
+```text
+No Math.random usage.
+No Date usage.
+No DB/API/component/leaderboard/power-score import.
+```
+
+Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + tests + static grep. B2b is pure deterministic logic and deck content only.
