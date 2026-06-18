@@ -30,6 +30,7 @@ import {
   getLeaderboardSnapshot,
   createPaymentOrder,
   fulfillPaymentOrder,
+  drawCardForUser,
   getPaymentOrderByOutTradeNo,
   getParentOverview,
   getQuickDemoCredentials,
@@ -40,6 +41,7 @@ import {
   getTeacherOverview,
   hasModuleQuizPassed,
   listAiSessionsForUser,
+  listCardCollectionForUser,
   listSubscriptionTargetsForUser,
   markModuleComplete,
   markModuleQuizPassed,
@@ -574,6 +576,34 @@ describe("db repo fallback adapter", () => {
       personaProvider: "ai",
       analyzedAt: "2026-06-18T10:00:00.000Z",
       inputDigest: "digest-preserve-test",
+    });
+  });
+
+  it("draws the same decorative card idempotently without changing sandbox power or finance state", async () => {
+    const beforeRun = await getRunForUser("student-1");
+    expect(beforeRun).toBeTruthy();
+
+    const first = await drawCardForUser("student-1", {
+      cardId: "calm-observer",
+      source: "quest_claim",
+      meta: { questId: "observe-quest" },
+    });
+    const second = await drawCardForUser("student-1", {
+      cardId: "calm-observer",
+      source: "quest_claim",
+      meta: { questId: "observe-quest" },
+    });
+
+    expect(second).toEqual(first);
+    await expect(listCardCollectionForUser("student-1")).resolves.toEqual([first]);
+
+    const afterRun = await getRunForUser("student-1");
+    expect(afterRun).toMatchObject({
+      netWorth: beforeRun?.netWorth,
+      cash: beforeRun?.cash,
+      savings: beforeRun?.savings,
+      debt: beforeRun?.debt,
+      actionLog: beforeRun?.actionLog,
     });
   });
 

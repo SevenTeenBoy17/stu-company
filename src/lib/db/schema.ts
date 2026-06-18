@@ -215,6 +215,20 @@ export const roundPredictions = pgTable("round_predictions", {
   index("round_predictions_user_id_idx").on(table.userId),
 ]);
 
+// Decorative card collection unlocked by quests/streaks/achievements. Cards are
+// collection-only rewards and must not affect net worth, power, or leaderboards.
+export const cardCollection = pgTable("card_collection", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: varchar("card_id", { length: 64 }).notNull(),
+  source: varchar("source", { length: 24 }).notNull(),
+  drawnAt: timestamp("drawn_at", { withTimezone: true }).defaultNow().notNull(),
+  meta: jsonb("meta"),
+}, (table) => [
+  uniqueIndex("card_collection_user_card_unique").on(table.userId, table.cardId),
+  index("card_collection_user_id_idx").on(table.userId),
+]);
+
 // H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,
 // property_positions, venture_positions, event_cards, leaderboards) were
 // defined but never written to. Their data lives in scenario_runs JSONB

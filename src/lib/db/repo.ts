@@ -32,6 +32,7 @@ import {
   aiSessions,
   appSettings,
   assignments,
+  cardCollection,
   classrooms,
   familyMembers,
   growthReports,
@@ -160,8 +161,20 @@ type DbSchool = typeof schools.$inferSelect;
 type DbRankProfile = typeof rankProfiles.$inferSelect;
 type DbRiskProfile = typeof riskProfiles.$inferSelect;
 type DbRoundPrediction = typeof roundPredictions.$inferSelect;
+type DbCardCollection = typeof cardCollection.$inferSelect;
 type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
+
+export type CardCollectionSource = "quest_claim" | "streak" | "achievement";
+
+export type CardCollectionItem = {
+  id: string;
+  userId: string;
+  cardId: string;
+  source: CardCollectionSource;
+  drawnAt: string;
+  meta?: Record<string, unknown> | null;
+};
 
 export type RiskProfileRecord = {
   userId: string;
@@ -184,6 +197,7 @@ const ALLOW_MEMORY_FALLBACK =
 
 const fallbackRiskProfiles = new Map<string, RiskProfileRecord>();
 const fallbackRoundPredictions = new Map<string, RoundPrediction>();
+const fallbackCardCollection = new Map<string, CardCollectionItem>();
 
 // P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
 // greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
@@ -305,6 +319,7 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
 const WRITE_FNS = new Set<string>([
   "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
   "createRoundPredictionForUser", "settleRoundPredictionsForRun",
+  "drawCardForUser",
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
   "markModuleQuizPassed",
   "upsertRiskProfile",
@@ -675,6 +690,31 @@ function toRoundPrediction(row: DbRoundPrediction): RoundPrediction {
   };
 }
 
+function toCardCollectionItem(row: DbCardCollection): CardCollectionItem {
+  const source = ["quest_claim", "streak", "achievement"].includes(row.source)
+    ? (row.source as CardCollectionSource)
+    : "quest_claim";
+
+  return {
+    id: row.id,
+    userId: row.userId,
+    cardId: row.cardId,
+    source,
+    drawnAt: row.drawnAt.toISOString(),
+    meta: (row.meta ?? null) as CardCollectionItem["meta"],
+  };
+}
+
+function cardCollectionKey(userId: string, cardId: string) {
+  return `${userId}::${cardId}`;
+}
+
+function listFallbackCardCollectionForUser(userId: string) {
+  return [...fallbackCardCollection.values()]
+    .filter((item) => item.userId === userId)
+    .sort((left, right) => right.drawnAt.localeCompare(left.drawnAt));
+}
+
 function predictionTargetPrice(run: ScenarioRun, roundNumber: number) {
   const quotes = getRoundQuotesForRun(run, roundNumber);
   return quotes.find((quote) => quote.id === "asset-index")
@@ -971,6 +1011,7 @@ async function listAiSessionRows(executor: DbExecutor, userId: string, limit?: n
 export async function resetStoreForTests() {
   fallbackRiskProfiles.clear();
   fallbackRoundPredictions.clear();
+  fallbackCardCollection.clear();
   return store.resetStoreForTests();
 }
 
@@ -1498,6 +1539,74 @@ export async function createRoundPredictionForUser(
         createdAt: new Date().toISOString(),
       };
       fallbackRoundPredictions.set(record.id, record);
+      return record;
+    },
+  );
+}
+
+export async function listCardCollectionForUser(userId: string): Promise<CardCollectionItem[]> {
+  return withDb(
+    "listCardCollectionForUser",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(cardCollection)
+        .where(eq(cardCollection.userId, userId))
+        .orderBy(desc(cardCollection.drawnAt));
+      return rows.map(toCardCollectionItem);
+    },
+    () => listFallbackCardCollectionForUser(userId),
+  );
+}
+
+export async function drawCardForUser(
+  userId: string,
+  input: { cardId: string; source: CardCollectionSource; meta?: Record<string, unknown> | null },
+): Promise<CardCollectionItem> {
+  return withDb(
+    "drawCardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(cardCollection)
+          .where(and(eq(cardCollection.userId, userId), eq(cardCollection.cardId, input.cardId)))
+          .limit(1);
+        if (existing) return toCardCollectionItem(existing);
+
+        await tx
+          .insert(cardCollection)
+          .values({
+            id: createId("card"),
+            userId,
+            cardId: input.cardId,
+            source: input.source,
+            meta: input.meta ?? null,
+          })
+          .onConflictDoNothing();
+
+        const [row] = await tx
+          .select()
+          .from(cardCollection)
+          .where(and(eq(cardCollection.userId, userId), eq(cardCollection.cardId, input.cardId)))
+          .limit(1);
+        if (!row) throw new Error("卡牌收藏写入失败，请稍后再试。");
+        return toCardCollectionItem(row);
+      }),
+    () => {
+      const key = cardCollectionKey(userId, input.cardId);
+      const existing = fallbackCardCollection.get(key);
+      if (existing) return existing;
+
+      const record: CardCollectionItem = {
+        id: createId("card"),
+        userId,
+        cardId: input.cardId,
+        source: input.source,
+        drawnAt: new Date().toISOString(),
+        meta: input.meta ?? null,
+      };
+      fallbackCardCollection.set(key, record);
       return record;
     },
   );

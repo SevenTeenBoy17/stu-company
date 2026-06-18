@@ -3115,3 +3115,85 @@ The new interaction only uses app-local UI state and GSAP.
 ```
 
 Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + tests + Playwright smoke. The B1 implementation keeps claim behavior on the existing `/api/student/quests` route and does not introduce new backend calls.
+
+## B2a - card_collection table and repo functions
+
+Timestamp: 2026-06-18 10:31:30 -07:00
+
+Scope:
+- `src/lib/db/schema.ts`
+- `src/lib/db/repo.ts`
+- `src/lib/db/repo.test.ts`
+- `drizzle/0020_card_collection.sql`
+- `drizzle/meta/_journal.json`
+- `progress.md`
+
+TDD / implementation summary:
+- Added schema table `cardCollection` matching the decorative `round_predictions` precedent: FK to `users.id` with cascade delete, unique `(user_id, card_id)`, and `user_id` index.
+- Hand-authored `drizzle/0020_card_collection.sql` and appended journal entry idx 20 / tag `0020_card_collection`.
+- Added repo types `CardCollectionSource` and `CardCollectionItem`.
+- Added `drawCardForUser(userId, { cardId, source, meta })` to `WRITE_FNS`; writes are not allowed to silently fall back on DB errors.
+- Added `listCardCollectionForUser(userId)`.
+- Added in-memory fallback map with the same `(userId, cardId)` idempotency behavior.
+- Added repo test: drawing the same decorative card twice returns one record and does not change run finance fields or action log.
+
+Acceptance gates:
+```text
+npm run test -- repo -> PASS
+Test Files  3 passed (3)
+Tests       30 passed (30)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+
+docker compose -f docker-compose.local.yml ps -> brownzone-pg healthy
+
+npm run db:migrate -> PASS
+Migrations up to date
+```
+
+DB structure verification:
+```text
+docker compose -f docker-compose.local.yml exec -T db psql -U postgres -d brownzone -c "\d card_collection"
+
+Table "public.card_collection"
+id varchar(64) PK
+user_id varchar(64) NOT NULL FK -> users(id) ON DELETE CASCADE
+card_id varchar(64) NOT NULL
+source varchar(24) NOT NULL
+drawn_at timestamp with time zone DEFAULT now() NOT NULL
+meta jsonb
+Indexes:
+card_collection_pkey
+card_collection_user_card_unique UNIQUE (user_id, card_id)
+card_collection_user_id_idx (user_id)
+```
+
+Real DB repo smoke:
+```text
+drawCardForUser("student-1", { cardId: "smoke-calm-observer", source: "quest_claim" }) twice
+listCardCollectionForUser("student-1") filtered to that card
+
+{
+  "sameId": true,
+  "matches": 1,
+  "card": {
+    "id": "card-a09d8697d324",
+    "userId": "student-1",
+    "cardId": "smoke-calm-observer",
+    "source": "quest_claim",
+    "meta": { "smoke": true }
+  }
+}
+```
+
+Scope / red-line gate:
+```text
+No components, API routes, leaderboard implementation, power-score implementation, or scenario financial mutation logic were touched.
+No call/import of recomputePowerForUser was introduced.
+```
+
+Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + repo tests + live Postgres verification. B2a is storage-only and remains zero-coupled to leaderboard/power/finance changes.
