@@ -2853,3 +2853,61 @@ Overall risk score: 0.00
 Reviewer result: APPROVE. The remaining UI/docs/supervisor artifacts are classified and handled: source-worthy docs/tools are tracked, local QA screenshots are ignored, and the only UI code change is a contrast/readability improvement on the dark market thermometer panel.
 
 ALL_PHASES_DONE
+
+## A2c - requestBehaviorPersona via AI gateway
+
+Timestamp: 2026-06-18 08:44:57 -07:00
+
+Scope:
+- `src/lib/ai.ts`
+- `src/lib/ai.behavior-persona.msw.test.ts`
+
+TDD red gate:
+```text
+npm run test -- ai.behavior-persona -> FAIL (expected before implementation)
+Test Files  1 failed (1)
+Tests       3 failed (3)
+TypeError: requestBehaviorPersona is not a function
+```
+
+Implementation summary:
+- Added `requestBehaviorPersona(input)` in `src/lib/ai.ts`.
+- Reused real A2b contracts only: `PersonaSignalInput`, `ruleFallbackPersona(input)`, `normalizeBehaviorPersona(rawText, fallback)`, and `BehaviorPersona`.
+- Mirrored `requestTutorRadarPayload`: build prompt -> `requestRemoteText({ system, messages, fallbackText })` -> normalize with rule fallback.
+- Added MSW tests for valid remote persona JSON, unconfigured local fallback, and malformed remote text repair.
+
+Acceptance gates:
+```text
+npm run test -- ai.behavior-persona -> PASS
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npm run test -- ai -> PASS
+Test Files  8 passed (8)
+Tests       39 passed (39)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+
+git diff -U0 -- src/lib/ai.ts | Select-String -Pattern "fetch\(" -> PASS (no output)
+Select-String -Path src/lib/ai.behavior-persona.msw.test.ts -Pattern "fetch\(" -> PASS (no output)
+
+git diff --check -> PASS (line-ending warning only)
+```
+
+Scope gate:
+```text
+git status --short shows only the A2c implementation files plus the phase log touched by this phase:
+ M progress.md
+ M src/lib/ai.ts
+?? src/lib/ai.behavior-persona.msw.test.ts
+
+Pre-existing unrelated untracked items remain untouched:
+?? .claude/
+?? docs/superpowers/plans/2026-06-18-CODEX执行手册-risk-lab-quest-cards.md
+```
+
+Reviewer result: APPROVE. `python -m code_review_graph update` is unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + focused verification. AI provider access remains centralized in `src/lib/ai.ts`; no components, API routes, DB/schema/repo, `behavior-persona.ts`, or `risk-profile.ts` were modified for A2c. Focused rerun after review: `npm run test -- ai.behavior-persona` PASS, `npm run test -- ai` PASS, `npx tsc --noEmit` PASS, `npm run lint` PASS.
