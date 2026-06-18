@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -18,11 +18,21 @@ import {
 } from "lucide-react";
 
 import type { RiskProfileAnswer, RiskProfilePayload } from "@/lib/risk-profile";
+import type { BehaviorPersona } from "@/lib/types";
 import { clamp, cn, formatCurrency } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
 
 type SubmitState = "idle" | "loading" | "success" | "error";
+type BehaviorState = "idle" | "loading" | "success" | "error";
+
+type BehaviorPersonaResponse = {
+  persona?: BehaviorPersona;
+  provider?: string;
+  analyzedAt?: string | null;
+  cached?: boolean;
+  message?: string;
+};
 
 const bandClass: Record<RiskProfilePayload["band"], string> = {
   defensive: "from-slate-950 via-slate-900 to-slate-950",
@@ -65,6 +75,11 @@ function formatTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function behaviorProviderLabel(provider?: string, cached?: boolean) {
+  if (cached) return "已缓存画像";
+  return provider === "fallback" ? "本地教学兜底" : "AI 生成";
 }
 
 function upsertAnswer(answers: RiskProfileAnswer[], next: RiskProfileAnswer) {
@@ -153,6 +168,15 @@ export function StudentRiskProfileDashboard({
   );
   const [submitState, setSubmitState] = useState<SubmitState>(initialAnswersPersisted ? "success" : "idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [behaviorState, setBehaviorState] = useState<BehaviorState>("idle");
+  const [behaviorError, setBehaviorError] = useState("");
+  const [behaviorPersona, setBehaviorPersona] = useState<BehaviorPersona | null>(null);
+  const [behaviorMeta, setBehaviorMeta] = useState<{
+    provider?: string;
+    analyzedAt?: string | null;
+    cached?: boolean;
+  } | null>(null);
+  const [isBehaviorPending, startBehaviorTransition] = useTransition();
 
   useGSAP(
     () => {
@@ -210,6 +234,35 @@ export function StudentRiskProfileDashboard({
       setSubmitState("error");
       setErrorMessage(error instanceof Error ? error.message : "风险画像生成失败，请稍后再试。");
     }
+  }
+
+  function submitBehaviorPersona() {
+    if (behaviorState === "loading" || isBehaviorPending) return;
+
+    startBehaviorTransition(async () => {
+      setBehaviorState("loading");
+      setBehaviorError("");
+      try {
+        const response = await fetch("/api/student/risk-profile/behavior", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = (await response.json().catch(() => ({}))) as BehaviorPersonaResponse;
+        if (!response.ok || !data.persona) {
+          throw new Error(data.message || "行为复评暂时不可用，请稍后再试。");
+        }
+        setBehaviorPersona(data.persona);
+        setBehaviorMeta({
+          provider: data.provider,
+          analyzedAt: data.analyzedAt ?? null,
+          cached: Boolean(data.cached),
+        });
+        setBehaviorState("success");
+      } catch (error) {
+        setBehaviorState("error");
+        setBehaviorError(error instanceof Error ? error.message : "行为复评暂时不可用，请稍后再试。");
+      }
+    });
   }
 
   return (
@@ -409,6 +462,106 @@ export function StudentRiskProfileDashboard({
         </div>
 
         <aside data-risk-reveal data-motion-reveal className="space-y-6">
+          <section className="panel rounded-[2rem] p-5 md:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <Brain className="h-5 w-5 text-brand" />
+                  <h2 className="text-h1 font-semibold text-slate-950">用真实行为复评</h2>
+                </div>
+                <p className="mt-2 text-body leading-7 text-slate-600">
+                  结合你的回合记录、仓位纪律、学习进度和风险信号，生成一张更贴近真实操作的行为画像。
+                </p>
+              </div>
+              {behaviorState === "success" && (
+                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-black text-brand">
+                  {behaviorProviderLabel(behaviorMeta?.provider, behaviorMeta?.cached)}
+                </span>
+              )}
+            </div>
+
+            <button
+              data-motion-button
+              type="button"
+              data-testid="behavior-persona-submit"
+              onClick={submitBehaviorPersona}
+              disabled={behaviorState === "loading" || isBehaviorPending}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-black text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {behaviorState === "loading" || isBehaviorPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCcw className="h-4 w-4" />
+              )}
+              {behaviorState === "loading" || isBehaviorPending ? "正在复评行为画像..." : "用我的真实行为复评"}
+            </button>
+
+            {behaviorState === "idle" && (
+              <div className="mt-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-bold leading-6 text-slate-600">
+                  建议完成几次交易、储蓄或学习任务后再复评，结果会比单次问卷更接近你的真实决策节奏。
+                </p>
+              </div>
+            )}
+
+            {behaviorState === "error" && (
+              <p role="alert" className="mt-4 flex gap-2 rounded-[1.35rem] border border-error/20 bg-error-soft p-4 text-sm font-bold leading-6 text-error">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                {behaviorError || "行为复评暂时不可用，请稍后再试。"}
+              </p>
+            )}
+
+            {behaviorPersona && behaviorState === "success" && (
+              <div
+                data-testid="behavior-persona-card"
+                className="mt-5 space-y-4 rounded-[1.55rem] border border-slate-200 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Behavior Persona</p>
+                    <h3 className="mt-2 text-h2 font-black text-slate-950">{behaviorPersona.label}</h3>
+                    <p className="mt-1 text-sm font-bold text-slate-500">{behaviorPersona.archetype}</p>
+                  </div>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                    {behaviorPersona.confidence === "high"
+                      ? "高置信"
+                      : behaviorPersona.confidence === "medium"
+                        ? "中置信"
+                        : "低置信"}
+                  </span>
+                </div>
+                <p className="text-body font-semibold leading-7 text-slate-700">{behaviorPersona.summary}</p>
+                <div className="grid gap-3">
+                  <div className="rounded-[1.15rem] bg-slate-50 p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">行为证据</p>
+                    <ul className="mt-2 space-y-2">
+                      {behaviorPersona.evidence.map((item) => (
+                        <li key={item} className="flex gap-2 text-sm font-semibold leading-6 text-slate-700">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-[1.15rem] bg-brand-soft p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">下一步训练</p>
+                    <ol className="mt-2 space-y-2">
+                      {behaviorPersona.nextSteps.map((step, index) => (
+                        <li key={step} className="flex gap-2 text-sm font-black leading-6 text-slate-800">
+                          <span>{index + 1}.</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+                {behaviorMeta?.analyzedAt && (
+                  <p className="text-xs font-bold text-slate-500">复评时间：{formatTime(behaviorMeta.analyzedAt)}</p>
+                )}
+              </div>
+            )}
+          </section>
+
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />

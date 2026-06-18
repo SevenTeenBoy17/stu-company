@@ -2985,3 +2985,64 @@ Pre-existing unrelated untracked items remain untouched:
 ```
 
 Reviewer result: APPROVE. The new route reuses only named A2b/A2c/repo contracts, keeps AI access in `src/lib/ai.ts`, does not touch repo internals/components/schema, and covers success, digest short-circuit, auth block, repo-time DB failure, and auth-time DB failure.
+
+## A2e - behavior re-evaluation UI button
+
+Timestamp: 2026-06-18 09:39:16 -07:00
+
+Scope:
+- `src/components/student/student-risk-profile-dashboard.tsx`
+- `src/components/student/student-risk-profile-dashboard.test.tsx`
+- `progress.md`
+
+TDD red gate:
+```text
+npm run test -- src/components/student/student-risk-profile-dashboard.test.tsx -> FAIL (expected before implementation)
+TestingLibraryElementError: Unable to find an element by: [data-testid="behavior-persona-submit"]
+```
+
+Implementation summary:
+- Added a right-column "用真实行为复评" panel to the risk profile dashboard.
+- The button calls the app route `POST /api/student/risk-profile/behavior`, disables during the request, and renders Chinese loading/error/retry states.
+- Success state renders `BehaviorPersona` details: provider badge, label, archetype, confidence, summary, evidence, next steps, and analyzed time.
+- Provider wording is user-facing: `AI 生成`, `本地教学兜底`, or `已缓存画像`.
+- No new animation path was added; the existing dashboard reduced-motion GSAP guard remains unchanged.
+
+Acceptance gates:
+```text
+npm run test -- src/components/student/student-risk-profile-dashboard.test.tsx -> PASS
+Test Files  1 passed (1)
+Tests       3 passed (3)
+
+npm run test -- student-risk-profile risk-profile behavior-persona -> PASS
+Test Files  5 passed (5)
+Tests       27 passed (27)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+```
+
+Browser smoke:
+```text
+Playwright via node_repl:
+POST /api/auth/login as student@brownzone.ai -> 200
+Open /student/risk-profile -> page loaded
+behavior-persona-submit count -> 1
+Click "用我的真实行为复评" -> POST /api/student/risk-profile/behavior 200
+behavior-persona-card count -> 1
+Rendered preview includes: 好奇型探索者, 中置信, 行为证据, 下一步训练
+Button re-enabled after completion -> true
+```
+
+Scope gate:
+```text
+git status --short shows only A2e component/test files plus this phase log as touched work.
+Pre-existing unrelated untracked items remain untouched:
+?? .claude/
+?? docs/superpowers/plans/2026-06-18-CODEX执行手册-risk-lab-quest-cards.md
+```
+
+Reviewer result: APPROVE. `code_review_graph` remains unavailable in this shell (`No module named code_review_graph`), so review degraded to manual diff + focused verification. A2e did not touch API, lib, DB/schema, repo, leaderboard, scenario financial fields, or provider AI calls. The only fetch added is a client-side call to the app route `/api/student/risk-profile/behavior`.
