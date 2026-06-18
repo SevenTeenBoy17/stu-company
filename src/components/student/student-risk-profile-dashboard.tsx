@@ -68,7 +68,10 @@ function formatTime(value: string) {
 }
 
 function upsertAnswer(answers: RiskProfileAnswer[], next: RiskProfileAnswer) {
-  return answers.map((answer) => (answer.questionId === next.questionId ? next : answer));
+  const exists = answers.some((answer) => answer.questionId === next.questionId);
+  return exists
+    ? answers.map((answer) => (answer.questionId === next.questionId ? next : answer))
+    : [...answers, next];
 }
 
 function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
