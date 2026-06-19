@@ -195,3 +195,94 @@ describe("StudentRiskProfileDashboard — behavior re-eval slow-AI hint (REL-01)
     expect(screen.queryByTestId("behavior-slow-hint")).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// F3-2 — intent-vs-behavior comparison block (UX-01)
+// When behavior band ≠ questionnaire band: "差距" teaching note must render.
+// When behavior band === questionnaire band: "一致" line must render instead.
+// ---------------------------------------------------------------------------
+
+function makeFetchWithPersona(band: string, label: string) {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      persona: {
+        band,
+        label,
+        archetype: "测试原型",
+        summary: "测试总结。",
+        evidence: ["测试证据。"],
+        nextSteps: ["测试步骤。"],
+        confidence: "medium",
+      },
+      provider: "fallback",
+      analyzedAt: "2026-06-18T08:00:00.000Z",
+      cached: false,
+    }),
+  });
+}
+
+describe("StudentRiskProfileDashboard — intent-vs-behavior comparison (F3-2)", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the 差距 teaching note when behavior band differs from questionnaire band", async () => {
+    const payload = makePayload();
+    // The default questionnaire payload for a fresh run produces a band; we need
+    // the behavior band to differ. Use "growth" (进取挑战者) while questionnaire
+    // will likely be "steady" or "defensive" for a fresh/default run.
+    vi.stubGlobal("fetch", makeFetchWithPersona("growth", "进取挑战者"));
+
+    render(<StudentRiskProfileDashboard initialPayload={payload} initialAnswersPersisted />);
+    await userEvent.click(screen.getByTestId("behavior-persona-submit"));
+    await screen.findByTestId("behavior-persona-card");
+
+    // The comparison block must be present
+    expect(screen.getByTestId("intent-vs-behavior")).toBeInTheDocument();
+
+    // If the bands differ, the diff note must be shown
+    if (payload.band !== "growth") {
+      const diffNote = screen.getByTestId("intent-behavior-diff");
+      expect(diffNote).toBeInTheDocument();
+      // Must mention both labels
+      expect(diffNote).toHaveTextContent(payload.label);
+      expect(diffNote).toHaveTextContent("进取挑战者");
+      expect(diffNote).toHaveTextContent("差距");
+      // Same-band note must NOT be shown
+      expect(screen.queryByTestId("intent-behavior-same")).toBeNull();
+    }
+  });
+
+  it("shows the 一致 line when behavior band matches questionnaire band", async () => {
+    const payload = makePayload();
+    // Mirror the questionnaire band so they match
+    const { band, label } = payload;
+    vi.stubGlobal("fetch", makeFetchWithPersona(band, label));
+
+    render(<StudentRiskProfileDashboard initialPayload={payload} initialAnswersPersisted />);
+    await userEvent.click(screen.getByTestId("behavior-persona-submit"));
+    await screen.findByTestId("behavior-persona-card");
+
+    expect(screen.getByTestId("intent-vs-behavior")).toBeInTheDocument();
+    expect(screen.getByTestId("intent-behavior-same")).toBeInTheDocument();
+    expect(screen.getByTestId("intent-behavior-same")).toHaveTextContent("一致");
+    expect(screen.queryByTestId("intent-behavior-diff")).toBeNull();
+  });
+
+  it("comparison block shows questionnaire label and behavior label side by side", async () => {
+    const payload = makePayload();
+    vi.stubGlobal("fetch", makeFetchWithPersona("growth", "进取挑战者"));
+
+    render(<StudentRiskProfileDashboard initialPayload={payload} initialAnswersPersisted />);
+    await userEvent.click(screen.getByTestId("behavior-persona-submit"));
+    await screen.findByTestId("behavior-persona-card");
+
+    const block = screen.getByTestId("intent-vs-behavior");
+    expect(block).toHaveTextContent("问卷倾向");
+    expect(block).toHaveTextContent(payload.label);
+    expect(block).toHaveTextContent("真实行为");
+    expect(block).toHaveTextContent("进取挑战者");
+  });
+});

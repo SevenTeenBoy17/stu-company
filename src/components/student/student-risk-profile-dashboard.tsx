@@ -554,6 +554,42 @@ export function StudentRiskProfileDashboard({
                   </span>
                 </div>
                 <p className="text-body font-semibold leading-7 text-slate-700">{behaviorPersona.summary}</p>
+
+                {/* Intent-vs-behavior comparison block (UX-01) */}
+                <div
+                  data-testid="intent-vs-behavior"
+                  className="rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">问卷 vs 行为</p>
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    <p className="text-sm font-semibold leading-6 text-slate-700">
+                      <span className="font-black text-slate-950">问卷倾向：</span>
+                      {payload.label}（你说的偏好）
+                    </p>
+                    <p className="text-sm font-semibold leading-6 text-slate-700">
+                      <span className="font-black text-slate-950">真实行为：</span>
+                      {behaviorPersona.label}（你实际的操作）
+                    </p>
+                  </div>
+                  {behaviorPersona.band !== payload.band ? (
+                    <p
+                      data-testid="intent-behavior-diff"
+                      className="mt-2.5 rounded-[0.85rem] bg-warning/10 px-3 py-2 text-sm font-bold leading-6 text-slate-800"
+                    >
+                      口头偏好和真实操作出现了差距 —— 这正是最值得复盘的地方：你说自己偏
+                      <span className="font-black">{payload.label}</span>，但真实操作更接近
+                      <span className="font-black">{behaviorPersona.label}</span>。
+                    </p>
+                  ) : (
+                    <p
+                      data-testid="intent-behavior-same"
+                      className="mt-2.5 rounded-[0.85rem] bg-down-soft px-3 py-2 text-sm font-bold leading-6 text-[var(--down-700)]"
+                    >
+                      你的真实操作和问卷倾向一致。
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid gap-3">
                   <div className="rounded-[1.15rem] bg-slate-50 p-3">
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">行为证据</p>

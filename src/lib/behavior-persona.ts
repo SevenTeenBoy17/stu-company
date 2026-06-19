@@ -172,13 +172,15 @@ export function buildPersonaSignalInput(
 }
 
 /**
- * Band → label/archetype map. Labels are behavior-flavored, distinct from the
- * questionnaire labels used by `bandFromScore` in risk-profile.ts.
+ * Band → label/archetype map. Labels are unified with the questionnaire labels
+ * from `bandFromScore` in risk-profile.ts so a given band reads identically
+ * across both lenses. `archetype` stays behavior-flavored (short tagline that
+ * describes the actual pattern of play).
  */
 const BAND_PRESET: Record<PersonaBand, { label: string; archetype: string }> = {
-  defensive: { label: "稳健守门员", archetype: "先守安全垫，再谈进攻" },
+  defensive: { label: "保守守门员", archetype: "先守安全垫，再谈进攻" },
   steady: { label: "稳健探索者", archetype: "一脚安全垫，一脚试新仓" },
-  balanced: { label: "均衡配置者", archetype: "用分散换长期通关率" },
+  balanced: { label: "均衡成长者", archetype: "用分散换长期通关率" },
   growth: { label: "进取挑战者", archetype: "敢于进攻，但要装好刹车" },
 };
 
