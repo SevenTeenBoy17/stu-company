@@ -280,16 +280,24 @@ function behaviorScore(input: PersonaSignalInput): number {
   }
 
   // --- Guardrail 2: defensive short-circuit --------------------------------
-  // A clearly risk-averse player (weak risk-control AND low trade intensity AND
-  // low growth exposure), or an outright cash-hoarding signal, must land in the
-  // defensive band — the base-50 anchor must not keep them in balanced.
-  const cashHoarding = input.adaptiveEvents.some((event) => event.id === "cash_hoarding");
-  const lowRiskControl = riskControl <= 70;
+  // A clearly risk-averse player (clearly-below-neutral risk-control AND low
+  // trade intensity AND ~zero growth exposure), or a HIGH-confidence cash
+  // hoarder who is ALSO genuinely under-diversified, must land in the defensive
+  // band — the base-50 anchor must not keep them in balanced. The discriminators
+  // are deliberately tight so a moderate/steady player or a well-diversified
+  // player holding a healthy cash buffer is NOT over-clamped to defensive: in
+  // this 12-round sandbox a 70–85% cash reserve is a normal buffer, not the
+  // hoarding disease, so it only counts when diversification is also low.
+  const hoarderTrap =
+    input.adaptiveEvents.some(
+      (event) => event.id === "cash_hoarding" && event.confidence === "high",
+    ) && diversification <= 60;
+  const lowRiskControl = riskControl <= 55;
   const lowTradeIntensity = tradeIntensity <= 0.6;
-  const lowGrowthExposure = growthOption <= 55;
+  const lowGrowthExposure = growthOption <= 46;
   const clearlyDefensive =
     !concentratedOrLeveraged &&
-    ((lowRiskControl && lowTradeIntensity && lowGrowthExposure) || cashHoarding);
+    ((lowRiskControl && lowTradeIntensity && lowGrowthExposure) || hoarderTrap);
   if (clearlyDefensive) {
     // 35 keeps the band defensive even after the ±3 questionnaire nudge
     // (35 + 3 = 38 ≤ 38, the defensive boundary).

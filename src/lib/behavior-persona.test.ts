@@ -475,6 +475,106 @@ describe("behavior persona — band truth table (F1-2)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Band resolution (no over-clamp) — adversarial generalization guard. The
+// defensive short-circuit must not collapse the band to defensive-or-growth:
+// moderate/steady and diversified-with-a-cash-buffer players must remain
+// REACHABLE in steady/balanced. These FAIL against the over-clamping
+// short-circuit (`|| cashHoarding` plus the near-vacuous
+// riskControl<=70 && tradeIntensity<=0.6 && growthOption<=55 conjunction) and
+// PASS once the discriminators are tightened.
+// ---------------------------------------------------------------------------
+
+/**
+ * A MODERATE/STEADY player: a few modest trades spread across 3 asset classes,
+ * leaving roughly half the starting cash in reserve. Not concentrated, not
+ * leveraged — the textbook "steady" profile that the over-clamp wrongly forces
+ * into defensive.
+ */
+function moderateSteadyRun(): ScenarioRun {
+  let run = freshRun();
+  // Deploy ~60k of the 120k starting cash across 3 classes → ~50% cash buffer.
+  const buys: Array<{ assetId: string; quantity: number }> = [
+    { assetId: "asset-stock", quantity: 180 }, // ~20k
+    { assetId: "asset-etf", quantity: 240 }, // ~20k
+    { assetId: "asset-bond", quantity: 200 }, // ~20k
+  ];
+  for (const buy of buys) {
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: buy.assetId,
+      side: "buy",
+      quantity: buy.quantity,
+      orderMode: "market",
+    });
+  }
+  for (let i = 0; i < 4; i += 1) {
+    run = advanceSimulationRun(run);
+  }
+  return run;
+}
+
+/**
+ * A WELL-DIVERSIFIED player WITH a cash buffer: spread across 4+ asset classes
+ * but with small positions, so ~70%+ of the large starting balance stays in
+ * cash. This is the EXACT over-clamp case — `cash_hoarding` fires (cash > 70%)
+ * even though the player is genuinely diversified, so the old `|| cashHoarding`
+ * clamp wrongly drags a diversified player to defensive.
+ */
+function diversifiedWithBufferRun(): ScenarioRun {
+  let run = freshRun();
+  // Small positions across 4 classes → only ~30k deployed, ~75% cash buffer.
+  const buys: Array<{ assetId: string; quantity: number }> = [
+    { assetId: "asset-stock", quantity: 70 }, // ~8k
+    { assetId: "asset-etf", quantity: 90 }, // ~7.6k
+    { assetId: "asset-bond", quantity: 80 }, // ~8.2k
+    { assetId: "asset-gold", quantity: 70 }, // ~6.9k
+  ];
+  for (const buy of buys) {
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: buy.assetId,
+      side: "buy",
+      quantity: buy.quantity,
+      orderMode: "market",
+    });
+  }
+  for (let i = 0; i < 5; i += 1) {
+    run = advanceSimulationRun(run);
+  }
+  return run;
+}
+
+describe("behavior persona — band resolution (no over-clamp)", () => {
+  it("a moderate/steady player is not over-clamped to defensive (stays steady/balanced)", () => {
+    const run = moderateSteadyRun();
+    const input = buildPersonaSignalInput(run, freshLearning({ completed: 1 }));
+    const persona = ruleFallbackPersona(input);
+
+    // The over-clamp wrongly forced this profile to defensive; after the fix it
+    // must land in the reachable middle bands.
+    expect(persona.band).not.toBe("defensive");
+    expect(persona.band).not.toBe("growth");
+    expect(["steady", "balanced"]).toContain(persona.band);
+  });
+
+  it("a well-diversified player WITH a cash buffer is not over-clamped to defensive", () => {
+    const run = diversifiedWithBufferRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+
+    // Sanity: this is genuinely the over-clamp case — a cash buffer above the
+    // 70% hoarding threshold (medium-confidence cash_hoarding may fire) on a
+    // diversified player.
+    const cashEvent = input.adaptiveEvents.find((event) => event.id === "cash_hoarding");
+    if (cashEvent) {
+      expect(cashEvent.confidence).not.toBe("high");
+    }
+
+    const persona = ruleFallbackPersona(input);
+    expect(persona.band).not.toBe("defensive");
+  });
+});
+
 describe("personaInputDigest", () => {
   it("is stable for the same input", () => {
     const run = midGameRun();
