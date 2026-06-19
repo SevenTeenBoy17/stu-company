@@ -147,6 +147,26 @@ describe("POST /api/student/quests/draw", () => {
     expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
   });
 
+  it("returns 429 with Chinese message after 20 draws from one user within the window", async () => {
+    // Use a unique user id so this test has its own isolated rate-limit bucket.
+    const RL_USER = { ...STUDENT, id: "student-rl-draw-test" };
+    vi.mocked(requireUser).mockResolvedValue(asRequireUser({ user: RL_USER }));
+
+    // Fire 20 requests — all within the 20/60s budget, so they should succeed
+    // (or return alreadyDrawn on the second draw; the limiter still counts each request).
+    for (let i = 0; i < 20; i++) {
+      const res = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
+      expect(res.status).not.toBe(429);
+    }
+
+    // The 21st request must trip the limiter.
+    const over = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
+    expect(over.status).toBe(429);
+    const body = await over.json();
+    expect(body.error).toBe("service_unavailable");
+    expect(body.message).toMatch(/请求过于频繁/);
+  });
+
   it("propagates auth blocks and maps DB failures to db_unavailable", async () => {
     vi.mocked(requireUser).mockResolvedValueOnce(
       asRequireUser({ error: apiError("unauthorized", "请先登录后再抽取任务卡。", 401) }),

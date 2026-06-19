@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { drawCard, seedFromString, type QuestCard } from "@/lib/cards";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
 import {
   drawCardForUser,
@@ -43,6 +44,11 @@ export async function POST(request: Request) {
   try {
     const auth = await requireUser("student");
     if (auth.error) return auth.error;
+
+    const rl = rateLimit(rateLimitKey("quest-draw", auth.user.id, request), 20, 60_000);
+    if (!rl.ok) {
+      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    }
 
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
