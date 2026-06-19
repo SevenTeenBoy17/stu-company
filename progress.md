@@ -3461,3 +3461,58 @@ No raw external AI/provider fetches were added.
 ```
 
 Review result: APPROVE. `code_review_graph` remains unavailable (`No module named code_review_graph`), so review degraded to asset coverage check + tests + typecheck/lint/build + Playwright smoke + manual diff review.
+
+## Final verification - risk lab persona and quest card chain
+
+Timestamp: 2026-06-18 18:19:00 -07:00
+
+Full gate:
+```text
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run test -> PASS
+Test Files  83 passed (83)
+Tests       519 passed (519)
+
+npm run build -> PASS
+Compiled successfully; generated 61 static pages; all app routes listed successfully.
+```
+
+Browser smoke after B3:
+```text
+login 200
+GET /student/quests -> 200
+{"loginStatus":200,"collectionVisible":true,"questImageCount":9,"brokenQuestImages":[],"overflow":false,"scrollWidth":1440,"clientWidth":1440}
+```
+
+DB unavailable drill:
+```text
+docker compose -f docker-compose.local.yml down -> PASS
+Login during DB-down mode: status 200 through local fallback, no English white-screen path observed.
+Playwright /student/quests during DB-down mode:
+{"loginStatus":200,"title":"任务中心 - Brown Zone","hasEnglishError":false,"overflow":false}
+
+npm run db:up -> PASS
+Postgres container is healthy.
+Migrations up to date.
+RLS policies applied.
+Seed complete with users=14, classrooms=2, invites=3, assignments=2, runs=10, growthReports=1.
+```
+
+Browser smoke after DB restore:
+```text
+{"loginStatus":200,"title":"任务中心 - Brown Zone","collectionVisible":true,"questImageCount":9,"brokenQuestImages":[],"overflow":false,"hasEnglishError":false}
+```
+
+Final review:
+```text
+code_review_graph remains unavailable in this shell: No module named code_review_graph.
+Manual review fallback completed through git diff/stat, focused greps, full test/type/lint/build gates, browser smoke, and DB-down/restore drill.
+No .env.local staged.
+No raw external AI/provider fetches added outside src/lib/ai.ts.
+No leaderboard, power-score, or scenario financial mutation path touched by B3.
+```
