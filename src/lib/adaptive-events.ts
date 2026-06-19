@@ -163,6 +163,9 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你还没有尝试过债券。债券虽然涨得慢，但在市场下跌时能当你的安全垫。",
     teachingPoint: "债券是组合里的「稳定器」，很多专业投资者都会配置一部分来降低整体波动。",
     tone: "info",
+    // "up" because never diversifying into bonds signals concentration risk
+    // (the player is all-equity/all-cash) — not because bonds themselves are
+    // a risk-seeking asset.
     riskDirection: "up",
   },
   herd_following: {

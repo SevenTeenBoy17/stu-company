@@ -186,6 +186,13 @@ const BAND_PRESET: Record<PersonaBand, { label: string; archetype: string }> = {
  * Tone is now a SEVERITY magnitude only — how strong a signal a triggered event
  * is — never a direction. The direction (sign) comes from `riskDirection`:
  * a warning is a louder signal than an info, regardless of which way it points.
+ *
+ * NOTE: `positive` is currently inert in {@link behaviorScore} because all
+ * positive-tone events (`streak_positive`) have `riskDirection: "neutral"`,
+ * so their `RISK_DIRECTION_SIGN` is 0 and the weight here never activates. If
+ * a future positive event is given `riskDirection: "up"` or `"down"`, the
+ * weight of 10 will start contributing — keep it intentionally lower than
+ * `warning` so a positive nudge is weaker than a warning.
  */
 const TONE_SEVERITY: Record<AdaptiveEvent["tone"], number> = {
   warning: 16,
@@ -295,6 +302,9 @@ function behaviorScore(input: PersonaSignalInput): number {
   const lowRiskControl = riskControl <= 55;
   const lowTradeIntensity = tradeIntensity <= 0.6;
   const lowGrowthExposure = growthOption <= 46;
+  // All three must co-occur: low risk-control alone can be a well-diversified
+  // low-leverage player; low trade intensity alone can be a patient long-term
+  // holder; only the trifecta reliably identifies a genuinely risk-averse player.
   const clearlyDefensive =
     !concentratedOrLeveraged &&
     ((lowRiskControl && lowTradeIntensity && lowGrowthExposure) || hoarderTrap);
@@ -321,6 +331,64 @@ function confidenceForRound(currentRound: number): BehaviorPersona["confidence"]
 }
 
 /**
+ * Build up to 3 player-specific derived evidence lines from the raw signal
+ * input. Each line is a short Chinese fact about THIS player's behavior in the
+ * current run — trade intensity, diversification, cash posture, discipline, or
+ * growth exposure — whichever are most salient. Lines are picked in priority
+ * order and de-duplicated; empty/irrelevant ones are skipped so the result is
+ * always specific and never filler.
+ *
+ * Pure and deterministic (no Date / Math.random). Produces a subset of the
+ * available candidates whose total length stays ≤ `limit`.
+ */
+function derivedEvidenceLines(input: PersonaSignalInput, limit: number): string[] {
+  const lines: string[] = [];
+  const trades = input.actionCounts.trade ?? 0;
+  const tradeIntensity = trades / Math.max(input.currentRound, 1);
+
+  // --- Trading frequency ---------------------------------------------------
+  // Only emit when trades are notable (≥ 6 total or ≥ 1.5/round) so a passive
+  // player who barely traded doesn't get a "0 笔" line.
+  if (trades >= 6 || tradeIntensity >= 1.5) {
+    const intensityStr = tradeIntensity.toFixed(1);
+    lines.push(`本局共交易 ${trades} 笔（约每回合 ${intensityStr} 笔）。`);
+  }
+
+  // --- Diversification posture --------------------------------------------
+  const diversScore = input.wealth.diversificationScore;
+  if (diversScore < 55) {
+    lines.push(`资产分散度评分 ${Math.round(diversScore)}（满分 100，越低越集中），建议拓宽持仓种类。`);
+  } else if (diversScore >= 80) {
+    lines.push(`资产分散度评分 ${Math.round(diversScore)}，配置较均衡，继续保持多元化思路。`);
+  }
+
+  // --- Cash / savings posture ---------------------------------------------
+  // Emit when signals clearly skew one way: high cash safety + low trades
+  // reads as cash-heavy; high risk score reads as over-extended.
+  const cashSafety = input.radar.find((m) => m.id === "cash-safety")?.score ?? -1;
+  const riskScore = input.wealth.riskScore;
+  if (cashSafety >= 75 && tradeIntensity <= 0.6) {
+    lines.push(`资金安全评分 ${Math.round(cashSafety)}，现金/储蓄占比偏高，机会成本值得关注。`);
+  } else if (riskScore >= 70) {
+    lines.push(`沙盘风险评分 ${Math.round(riskScore)}（偏高），当前仓位承担的风险超过建议阈值。`);
+  }
+
+  // --- Discipline ---------------------------------------------------------
+  const discScore = input.wealth.disciplineScore;
+  if (discScore < 55) {
+    lines.push(`操作纪律评分 ${Math.round(discScore)}，频繁的情绪化操作影响了整体纪律性。`);
+  }
+
+  // --- Growth exposure ----------------------------------------------------
+  const growthOption = input.radar.find((m) => m.id === "growth-option")?.score ?? -1;
+  if (growthOption >= 0 && growthOption <= 38) {
+    lines.push(`成长弹性评分 ${Math.round(growthOption)}，几乎没有持有任何成长型资产。`);
+  }
+
+  return lines.slice(0, limit);
+}
+
+/**
  * Deterministic, AI-free persona. Always returns a complete, valid
  * `BehaviorPersona`. Used as the guaranteed baseline and as the fallback that
  * {@link normalizeBehaviorPersona} repairs an AI response against.
@@ -340,6 +408,17 @@ export function ruleFallbackPersona(input: PersonaSignalInput): BehaviorPersona 
     .map((event) => event.teachingPoint.trim() || event.title.trim())
     .filter((text) => text.length > 0);
 
+  // When events alone don't fill 3 slots, append deterministic player-specific
+  // derived lines so that different players (e.g. a cash-hoarder vs a balanced
+  // mid-game player) always get evidence that reflects THEIR behavior, even if
+  // they happen to share the same single triggered event.
+  if (evidence.length < 3) {
+    const derived = derivedEvidenceLines(input, 3 - evidence.length);
+    evidence.push(...derived);
+  }
+
+  // Last resort: emit a round-keyed placeholder ONLY when even derived evidence
+  // is empty (e.g. a truly degenerate round-1 input with no meaningful signals).
   if (evidence.length === 0) {
     evidence.push(
       `目前 ${input.currentRound}/${input.totalRounds} 回合还没有触发明显的行为信号，可以多积累几回合再复盘。`,

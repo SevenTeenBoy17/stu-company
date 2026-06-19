@@ -575,6 +575,130 @@ describe("behavior persona — band resolution (no over-clamp)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// F1-3 — player-specific derived evidence
+// When only one event (or no events) fires, different players must get
+// meaningfully different evidence arrays. The tests assert:
+//   1. A cash-hoarder and a balanced mid-game player that share the same single
+//      triggered event produce NON-byte-identical evidence.
+//   2. A heavy overtrader's evidence mentions their trading activity (交易/笔).
+// These FAIL before the fix (evidence is pure event-teaching-point copy) and
+// PASS after derived evidence lines are appended.
+// ---------------------------------------------------------------------------
+
+/**
+ * A balanced mid-game player: two buys across different asset classes, a few
+ * rounds advanced. May trigger bond_avoidance or nothing depending on round,
+ * but NOT cash_hoarding (deployed enough capital). Used alongside
+ * cashHoarderRun() to show that even if both share one triggered event the
+ * derived evidence differentiates them.
+ */
+function balancedMidRun(): ScenarioRun {
+  let run = freshRun();
+  run = applySimulationAction(run, {
+    type: "trade",
+    assetId: "asset-stock",
+    side: "buy",
+    quantity: 300,
+    orderMode: "market",
+  });
+  run = applySimulationAction(run, {
+    type: "trade",
+    assetId: "asset-etf",
+    side: "buy",
+    quantity: 300,
+    orderMode: "market",
+  });
+  for (let i = 0; i < 6; i += 1) {
+    run = advanceSimulationRun(run);
+  }
+  return run;
+}
+
+/**
+ * A heavy overtrader: 10+ trades across rounds so trade count is prominent.
+ * We hand-build the input so we control exactly how many trades are counted
+ * and avoid triggering too many events (which would give 3 event lines already).
+ */
+function overtradingInput(): PersonaSignalInput {
+  return {
+    currentRound: 8,
+    totalRounds: 12,
+    // Only one triggered event — so the event bucket fills 1 slot and derived
+    // evidence must fill the remaining slots.
+    adaptiveEvents: [
+      {
+        id: "bond_avoidance",
+        title: "新闻速递：近期债券收益率创新高",
+        teachingPoint: "债券是组合里的「稳定器」，很多专业投资者都会配置一部分来降低整体波动。",
+        confidence: "high",
+        tone: "info",
+        riskDirection: "up",
+      },
+    ],
+    radar: [
+      { id: "cash-safety", label: "资金安全", score: 70 },
+      { id: "position-discipline", label: "仓位纪律", score: 45 },
+      { id: "risk-control", label: "风险控制", score: 55 },
+      { id: "diversification", label: "配置分散", score: 60 },
+      { id: "growth-option", label: "成长弹性", score: 72 },
+      { id: "review-execution", label: "复盘执行", score: 50 },
+    ],
+    wealth: {
+      riskScore: 65,
+      disciplineScore: 45,
+      diversificationScore: 60,
+      netWorth: 135_000,
+      stageLabel: "策略成长期",
+    },
+    // 18 trades over 8 rounds — clearly a heavy trader.
+    actionCounts: { trade: 18 },
+    netWorthTrend: [120_000, 123_000, 121_000, 126_000, 128_000, 130_000, 128_500, 135_000],
+  };
+}
+
+describe("ruleFallbackPersona — player-specific derived evidence (F1-3)", () => {
+  it("cash-hoarder and balanced mid-game player produce non-identical evidence arrays", () => {
+    // Both players may share a single triggered event (bond_avoidance after 6
+    // rounds with no bond). The derived evidence must differentiate them.
+    const hoarderInput = buildPersonaSignalInput(cashHoarderRun(), freshLearning());
+    const balancedInput = buildPersonaSignalInput(balancedMidRun(), freshLearning());
+
+    const hoarderPersona = ruleFallbackPersona(hoarderInput);
+    const balancedPersona = ruleFallbackPersona(balancedInput);
+
+    // The two evidence arrays must differ — if both players only had the same
+    // event, purely event-derived evidence would be byte-identical.
+    expect(hoarderPersona.evidence).not.toEqual(balancedPersona.evidence);
+  });
+
+  it("heavy overtrader's evidence mentions their trading activity (交易 or 笔)", () => {
+    const input = overtradingInput();
+    const persona = ruleFallbackPersona(input);
+
+    const mentionsTrades = persona.evidence.some(
+      (line) => line.includes("交易") || line.includes("笔"),
+    );
+    expect(mentionsTrades).toBe(true);
+  });
+
+  it("derived evidence is deterministic — same input yields same evidence", () => {
+    const input = overtradingInput();
+    const p1 = ruleFallbackPersona(input);
+    const p2 = ruleFallbackPersona(input);
+    expect(p1.evidence).toEqual(p2.evidence);
+  });
+
+  it("all-empty fallback message is last resort only — real players get derived evidence instead", () => {
+    // A real run at round 6+ should always produce player-specific evidence,
+    // never the generic "没有触发明显的行为信号" placeholder.
+    const input = buildPersonaSignalInput(cashHoarderRun(), freshLearning());
+    const persona = ruleFallbackPersona(input);
+    const hasGenericFallback = persona.evidence.some((line) => line.includes("没有触发明显的行为信号"));
+    expect(hasGenericFallback).toBe(false);
+  });
+});
+
 describe("personaInputDigest", () => {
   it("is stable for the same input", () => {
     const run = midGameRun();
