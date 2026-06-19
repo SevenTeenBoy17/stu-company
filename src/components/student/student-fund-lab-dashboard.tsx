@@ -307,7 +307,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                       <p className="font-black text-slate-950">{row.fund.name}</p>
                       <p className="text-sm font-bold text-slate-600">{row.fund.type}</p>
                     </div>
-                    <p className="text-lg font-black text-orange-600">{row.weight}%</p>
+                    <p className="text-lg font-black text-orange-700">{row.weight}%</p>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                     <div className="h-full rounded-full bg-orange-400" style={{ width: `${row.weight}%` }} />
@@ -338,7 +338,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
             payload.history.slice(0, 3).map((entry) => (
               <article key={entry.id} data-motion-card className="rounded-[1.4rem] border border-slate-200 bg-white p-4">
                 <p className="text-lg font-black text-slate-950">{entry.planLabel}</p>
-                <p className="mt-1 text-sm font-bold text-orange-600">
+                <p className="mt-1 text-sm font-bold text-orange-700">
                   第 {entry.round} 回合 · <MoneyText>{`¥${entry.amount.toLocaleString("zh-CN")}`}</MoneyText>
                 </p>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.note}</p>

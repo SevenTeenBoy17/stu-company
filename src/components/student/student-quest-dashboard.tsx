@@ -683,7 +683,7 @@ export function StudentQuestDashboard({
                     </span>
                   </div>
                   <div className="mt-4 flex-1">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">{item.label}</p>
+                    <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">{item.label}</p>
                     <h3 className="mt-2 text-h2 font-black text-slate-950">{item.title}</h3>
                     <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-600">
                       {item.summary}
@@ -879,7 +879,7 @@ export function StudentQuestDashboard({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{quest.category}</p>
+                          <p className="bz-brand-text-on-light text-xs font-bold uppercase tracking-[0.18em]">{quest.category}</p>
                           <h3 className="mt-2 text-h2 font-bold text-slate-950">{quest.title}</h3>
                         </div>
                         <QuestStatusBadge status={quest.status} />

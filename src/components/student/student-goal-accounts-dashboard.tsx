@@ -207,7 +207,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               type="button"
               onClick={submitGoalTransfer}
               disabled={pending}
-              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-700 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <WalletCards className="h-5 w-5" />}
               记录目标转入
@@ -249,7 +249,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
             payload.history.slice(0, 6).map((entry) => (
               <article key={entry.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
                 <p className="text-lg font-black text-slate-950">{entry.title}</p>
-                <p className="mt-1 text-sm font-bold text-orange-500">{formatCurrency(entry.amount)}</p>
+                <p className="mt-1 text-sm font-bold text-orange-700">{formatCurrency(entry.amount)}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{entry.note}</p>
               </article>
             ))

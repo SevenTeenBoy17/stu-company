@@ -166,7 +166,7 @@ export function PlatformLayout({
                       )}
                     >
                       <span className="block text-body font-black">{item.label}</span>
-                      <span className="mt-1 line-clamp-1 block text-xs font-semibold text-slate-500">
+                      <span className="mt-1 line-clamp-1 block text-xs font-semibold text-slate-600">
                         {item.summary}
                       </span>
                       <span className="mt-2 block text-xs font-black text-brand-ink">{navIndexLabel(index)}</span>

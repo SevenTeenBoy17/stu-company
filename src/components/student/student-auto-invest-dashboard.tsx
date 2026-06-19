@@ -525,7 +525,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div className="mt-5 space-y-3">
                 {payload.coach.nextSteps.map((step, index) => (
                   <div key={step} className="rounded-[1.2rem] bg-slate-50 p-4">
-                    <p className="text-xs font-black text-brand">STEP {index + 1}</p>
+                    <p className="bz-brand-text-on-light text-xs font-black">STEP {index + 1}</p>
                     <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{step}</p>
                   </div>
                 ))}

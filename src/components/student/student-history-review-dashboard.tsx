@@ -75,7 +75,7 @@ function ChartShell({
 }) {
   return (
     <div className="rounded-[1.8rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[#f08a38]">{eyebrow}</p>
+      <p className="text-xs uppercase tracking-[0.22em] text-[#944314]">{eyebrow}</p>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-semibold text-slate-950">{title}</h3>
@@ -314,17 +314,17 @@ function highlightToneClasses(tone: HistoryReviewPayload["highlights"][number]["
 
 function eventSignalClasses(signal: string) {
   if (signal === "利好") {
-    return "bg-[#fff1f0] text-[#d43c33]";
+    return "bg-[#fff1f0] text-[#bf2419]";
   }
   if (signal === "利空") {
-    return "bg-[#eefbf3] text-[#0f9d58]";
+    return "bg-[#eefbf3] text-[#0f7038]";
   }
   return "bg-slate-100 text-slate-600";
 }
 
 function learningSignalClasses(tone: HistoryReviewPayload["learningSignals"][number]["tone"]) {
   if (tone === "protect") {
-    return "border-[#0f9d58]/15 bg-[#eefbf3] text-[#0f9d58]";
+    return "border-[#0f9d58]/15 bg-[#eefbf3] text-[#0f7038]";
   }
 
   if (tone === "review") {
@@ -482,7 +482,7 @@ export function StudentHistoryReviewDashboard({
               </div>
 
               <div className="bg-white/92 px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
-                <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">历史操作速写</p>
+                <p className="text-sm uppercase tracking-[0.22em] text-[#944314]">历史操作速写</p>
                 <h3 className="mt-3 text-2xl font-semibold text-slate-950">先看节奏，再拆动作</h3>
                 <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {[
@@ -674,7 +674,7 @@ export function StudentHistoryReviewDashboard({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-[#f08a38]">AI Review</p>
+                <p className="text-sm uppercase tracking-[0.22em] text-[#944314]">AI Review</p>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-950 xl:text-xl">Mr.Brown 的历史复盘建议</h2>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-slate-950/[0.04] px-3 py-2 text-xs font-medium text-slate-600">
@@ -723,7 +723,7 @@ export function StudentHistoryReviewDashboard({
                       key={`next-step-${index}`}
                       className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
                     >
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#f08a38]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#944314]">
                         Step 0{index + 1}
                       </p>
                       <p className="mt-2 text-sm leading-7 text-slate-700">{stripMarkdown(item)}</p>

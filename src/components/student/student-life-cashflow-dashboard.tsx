@@ -358,7 +358,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                           <p className="text-sm font-bold text-slate-600">{row.ratio}%</p>
                         </div>
                       </div>
-                      <p className="text-h2 font-black tabular-nums text-brand">{formatCurrency(row.amount)}</p>
+                      <p className="bz-brand-text-on-light text-h2 font-black tabular-nums">{formatCurrency(row.amount)}</p>
                     </div>
                     <div className="mt-4 h-3 rounded-full bg-slate-100">
                       <div className="h-full rounded-full bg-slate-950" style={{ width: `${clamp(row.ratio, 4, 100)}%` }} />
@@ -441,7 +441,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-3">
                       <p className="text-slate-600">自付金额</p>
-                      <p className="mt-1 text-brand">{formatCurrency(event.outOfPocket)}</p>
+                      <p className="bz-brand-text-on-light mt-1">{formatCurrency(event.outOfPocket)}</p>
                     </div>
                   </div>
                   <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{event.teachingPoint}</p>
@@ -461,7 +461,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {payload.weeklyPlan.map((week) => (
               <article key={week.week} className="rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Week 0{week.week}</p>
+                <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">Week 0{week.week}</p>
                 <h3 className="mt-3 text-h2 font-black text-slate-950">{week.title}</h3>
                 <p className="mt-3 text-body font-semibold text-slate-600">本周弹性预算 {formatCurrency(week.budget)}</p>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{week.checkpoint}</p>

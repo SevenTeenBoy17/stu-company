@@ -210,7 +210,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{scenario.difficulty}</p>
+                    <p className="bz-brand-text-on-light text-xs font-bold uppercase tracking-[0.18em]">{scenario.difficulty}</p>
                     <h3 className="mt-2 text-h2 font-black text-slate-950">{scenario.title}</h3>
                   </div>
                   <WalletCards className="h-5 w-5 text-brand" />

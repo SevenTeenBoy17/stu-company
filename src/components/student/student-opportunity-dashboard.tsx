@@ -138,7 +138,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                       <p className="text-xl font-black text-slate-950">{card.title}</p>
                       <p className="mt-1 text-sm font-bold text-slate-600">{card.category}</p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-600">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-700">
                       热度 {card.heat}
                     </span>
                   </div>
@@ -276,7 +276,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             payload.notes.slice(0, 6).map((entry) => (
               <article key={entry.id} data-motion-card className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-lg font-black text-slate-950">{entry.title}</p>
-                <p className="mt-1 text-sm font-bold text-orange-600">
+                <p className="mt-1 text-sm font-bold text-orange-700">
                   观察力 {entry.score} · 信心 {entry.confidence} · {entry.reasonLabel}
                 </p>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.note}</p>

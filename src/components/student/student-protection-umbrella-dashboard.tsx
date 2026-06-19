@@ -210,7 +210,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                 <article key={dimension.id} data-motion-card className="rounded-[1.35rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="whitespace-nowrap text-lg font-black text-slate-950">{dimension.label}</p>
-                    <span className="text-xl font-black text-orange-500">{dimension.value}</span>
+                    <span className="text-xl font-black text-orange-700">{dimension.value}</span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{dimension.summary}</p>
                 </article>
@@ -241,7 +241,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-black text-slate-950">{plan.title}</p>
-                    <p className="text-sm font-black text-orange-500">{formatCurrency(plan.premium)}/月</p>
+                    <p className="text-sm font-black text-orange-700">{formatCurrency(plan.premium)}/月</p>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">{plan.concept}</p>
                 </button>
@@ -297,7 +297,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
               data-testid="protection-submit"
               onClick={recordProtection}
               disabled={pending}
-              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-700 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <WalletCards className="h-5 w-5" />}
               记录保护复盘
@@ -349,7 +349,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                     <p className="text-lg font-black text-slate-950">{item.planTitle}</p>
                     <p className="mt-1 text-sm font-bold text-slate-600">第 {item.round} 回合 · {item.stressTitle}</p>
                   </div>
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-sm font-black text-orange-500">
+                  <span className="rounded-full bg-orange-50 px-3 py-1 text-sm font-black text-orange-700">
                     {item.score}
                   </span>
                 </div>

@@ -398,7 +398,7 @@ export function StudentRiskProfileDashboard({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">
+                    <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">
                       Scenario 0{questionIndex + 1}
                     </p>
                     <h3 className="mt-2 text-h2 font-semibold text-slate-950">{question.title}</h3>
@@ -704,7 +704,7 @@ export function StudentRiskProfileDashboard({
                 <div key={metric.id} className="rounded-[1.25rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-black text-slate-950">{metric.label}</p>
-                    <span className="text-h2 font-black tabular-nums text-brand">{metric.value}</span>
+                    <span className="bz-brand-text-on-light text-h2 font-black tabular-nums">{metric.value}</span>
                   </div>
                   <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{metric.hint}</p>
                 </div>

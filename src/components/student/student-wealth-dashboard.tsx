@@ -488,7 +488,7 @@ export function StudentWealthDashboard({
                       )}
                     >
                       <span className="block text-base font-black">{option.label}</span>
-                      <span className={cn("mt-1 block text-xs leading-5", form.focus === option.id ? "text-white/72" : "text-slate-600")}>
+                      <span className={cn("mt-1 block text-xs leading-5", form.focus === option.id ? "text-slate-900" : "text-slate-600")}>
                         {option.hint}
                       </span>
                     </button>
@@ -524,7 +524,7 @@ export function StudentWealthDashboard({
             <div className="mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
               <label className="rounded-[1.4rem] border border-slate-200 bg-white p-4">
                 <span className="text-sm font-black text-slate-950">信心刻度</span>
-                <span className="mt-2 block text-3xl font-black text-brand">{form.confidence}</span>
+                <span className="bz-brand-text-on-light mt-2 block text-3xl font-black">{form.confidence}</span>
                 <input
                   type="range"
                   min={1}
@@ -554,7 +554,7 @@ export function StudentWealthDashboard({
                   <p
                     className={cn(
                       "text-xs font-semibold",
-                      form.note.trim().length < 8 ? "text-rose-500" : "text-slate-600",
+                      form.note.trim().length < 8 ? "text-rose-700" : "text-slate-600",
                     )}
                   >
                     {form.note.trim().length < 8
@@ -590,7 +590,7 @@ export function StudentWealthDashboard({
 
           <aside className="min-w-0 border-t border-slate-200 bg-slate-50 p-5 md:p-6 xl:border-l xl:border-t-0">
             <div className="rounded-[1.6rem] bg-white p-5 shadow-sm">
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand">Mr.Brown Review</p>
+              <p className="bz-brand-text-on-light text-sm font-bold uppercase tracking-[0.18em]">Mr.Brown Review</p>
               <h3 className="mt-3 text-h2 font-black text-slate-950">{review.coach.title}</h3>
               <p className="mt-3 text-body leading-7 text-slate-600">{review.coach.summary}</p>
               <div className="mt-5 grid gap-3">
