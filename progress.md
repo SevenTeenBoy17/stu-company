@@ -3388,3 +3388,76 @@ No direct AI/provider calls were added.
 ```
 
 Review result: APPROVE. `code_review_graph` remains unavailable (`No module named code_review_graph`), so review degraded to tests + tsc/lint + SSR/Playwright smoke + static grep. Note: the server page was touched only to pass persisted `card_collection` into the client component; this is the minimal path to satisfy "我的卡库刷新仍在" without adding a new API GET.
+
+## B3 - quest card art import and rendering
+
+Timestamp: 2026-06-18 12:06:00 -07:00
+
+Scope:
+- `public/brand/quest-cards/**`
+- `src/components/student/student-quest-dashboard.tsx`
+- `progress.md`
+
+Implementation summary:
+- Used GPT image generation output as the card-art direction sheet, then cropped the 3x4 sheet into 12 individual decorative card front PNG assets.
+- Added three rarity card-back SVG assets: `back-common.svg`, `back-rare.svg`, `back-epic.svg`.
+- Rendered card fronts and backs through `next/image` in the task dashboard.
+- Kept card names, rarity labels, art keys, and teaching copy as DOM text overlays, not baked into raster images.
+- Added image-error fallback art so the UI does not show broken quest cards if an asset is missing.
+
+Asset coverage:
+```text
+quest card assets ok
+front-calm-observer.png
+front-cash-buffer.png
+front-review-anchor.png
+front-diversification-scout.png
+front-evidence-builder.png
+front-risk-shield.png
+front-sector-cartographer.png
+front-drawdown-detective.png
+front-balanced-allocator.png
+front-behavior-mirror.png
+front-market-composer.png
+front-black-swan-navigator.png
+back-common.svg
+back-rare.svg
+back-epic.svg
+```
+
+Acceptance gates:
+```text
+npm run test -- src/components/student/student-quest-dashboard.test.tsx -> PASS
+Test Files  1 passed (1)
+Tests       4 passed (4)
+
+npm run test -- quest cards -> PASS
+Test Files  4 passed (4)
+Tests       18 passed (18)
+
+npx tsc --noEmit -> PASS (no output)
+
+npm run lint -> PASS
+> brown-zone-web@0.1.0 lint
+> eslint
+
+npm run build -> PASS
+Compiled successfully; generated 61 static pages; all app routes listed successfully.
+```
+
+Browser smoke:
+```text
+login 200
+GET /student/quests -> 200
+{"url":"http://127.0.0.1:3000/student/quests","collectionVisible":true,"questArtImages":9,"overflow":false,"scrollWidth":1440,"clientWidth":1440}
+Quest-card images loaded; no broken image was reported for /brand/quest-cards assets.
+```
+
+Scope / red-line gate:
+```text
+No api/lib/db files changed in B3.
+No leaderboard, power-score, or scenario financial mutation paths were touched.
+No raw external AI/provider fetches were added.
+```
+
+Review result: APPROVE. `code_review_graph` remains unavailable (`No module named code_review_graph`), so review degraded to asset coverage check + tests + typecheck/lint/build + Playwright smoke + manual diff review.

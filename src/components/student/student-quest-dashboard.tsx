@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -121,8 +122,107 @@ const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string
   epic: { label: "EPIC", className: "border-warning/35 bg-warning/10 text-warning" },
 };
 
+const questCardAssetBase = "/brand/quest-cards";
+
 function questIdFromCard(item: QuestCardCollectionView | CardCollectionItem) {
   return typeof item.meta?.questId === "string" ? item.meta.questId : null;
+}
+
+function QuestCardFallbackArt({ card }: { card: QuestCard }) {
+  const meta = rarityMeta[card.rarity];
+
+  return (
+    <div className="absolute inset-0 bg-slate-950">
+      <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
+      <div className="absolute left-6 top-6 h-20 w-20 rounded-full border border-brand/35" />
+      <div className="absolute right-8 top-10 h-16 w-16 rounded-[1.2rem] border border-white/14 bg-white/8" />
+      <div className="absolute bottom-8 left-8 right-8 h-16 rounded-[1.4rem] border border-white/12 bg-white/8" />
+      <div className="absolute bottom-16 left-12 h-2 w-28 rounded-full bg-brand" />
+      <div className="absolute bottom-16 left-40 h-2 w-20 rounded-full bg-down" />
+      <div className="relative z-10 flex h-full flex-col justify-between p-4">
+        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black", meta.className)}>
+          {meta.label}
+        </span>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <h3 className="mt-2 text-h2 font-black text-white">{card.name}</h3>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestCardArt({
+  card,
+  compact = false,
+  className,
+}: {
+  card: QuestCard;
+  compact?: boolean;
+  className?: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const meta = rarityMeta[card.rarity];
+
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[1.4rem] bg-slate-950 text-white",
+        compact ? "min-h-36" : "min-h-44",
+        className,
+      )}
+    >
+      {imageFailed ? (
+        <QuestCardFallbackArt card={card} />
+      ) : (
+        <Image
+          src={`${questCardAssetBase}/front-${card.id}.png`}
+          alt={`${card.name} 卡面插画`}
+          fill
+          sizes={compact ? "(min-width: 1280px) 260px, 70vw" : "(min-width: 1280px) 320px, (min-width: 768px) 45vw, 92vw"}
+          className="object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/18 to-transparent" />
+      <div className={cn("relative z-10 flex flex-col justify-between p-4", compact ? "min-h-36" : "min-h-44")}>
+        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black shadow-sm", meta.className)}>
+          {meta.label}
+        </span>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <h3 className={cn("mt-2 font-black text-white", compact ? "text-lg" : "text-h2")}>{card.name}</h3>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const meta = rarityMeta[rarity];
+
+  return (
+    <div className="relative mt-4 min-h-32 overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.06]">
+      {imageFailed ? (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(242,162,69,0.28),transparent_42%),linear-gradient(135deg,#111827,#020617)]" />
+      ) : (
+        <Image
+          src={`${questCardAssetBase}/back-${rarity}.svg`}
+          alt={`${meta.label} 卡背插画`}
+          fill
+          sizes="(min-width: 1280px) 320px, 92vw"
+          className="object-cover opacity-95"
+          onError={() => setImageFailed(true)}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/64 via-transparent to-slate-950/70" />
+      <div className="relative z-10 flex min-h-32 flex-col justify-end p-4">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Decorative Card</p>
+        <p className="mt-1 text-sm font-black text-white">完成任务后揭晓</p>
+      </div>
+    </div>
+  );
 }
 
 function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
@@ -151,7 +251,6 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
       {items.length > 0 ? (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {items.map((item) => {
-            const meta = rarityMeta[item.card.rarity];
             return (
               <article
                 data-motion-card
@@ -159,19 +258,7 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
                 key={`${item.id}-${item.card.id}`}
                 className="group overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white shadow-lg shadow-slate-950/5"
               >
-                <div className="relative min-h-36 bg-slate-950 p-4 text-white">
-                  <div className="grid-strokes pointer-events-none absolute inset-0 opacity-16" />
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-brand/35 blur-2xl" />
-                  <div className="relative z-10 flex h-full min-h-28 flex-col justify-between">
-                    <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black", meta.className)}>
-                      {meta.label}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{item.card.artKey}</p>
-                      <h3 className="mt-2 text-h2 font-black text-white">{item.card.name}</h3>
-                    </div>
-                  </div>
-                </div>
+                <QuestCardArt card={item.card} className="rounded-b-none" />
                 <div className="p-4">
                   <p className="line-clamp-3 text-sm font-semibold leading-6 text-slate-600">{item.card.teachingLine}</p>
                   <div className="mt-4 rounded-[1.1rem] bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">
@@ -859,6 +946,7 @@ export function StudentQuestDashboard({
                           data-testid={`quest-drawn-card-${quest.id}`}
                           className="mt-4 rounded-[1.3rem] border border-brand/30 bg-brand/12 p-4"
                         >
+                          <QuestCardArt card={collectedCard.card} compact className="mb-4" />
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">
@@ -872,7 +960,9 @@ export function StudentQuestDashboard({
                             {collectedCard.card.teachingLine}
                           </p>
                         </div>
-                      ) : null}
+                      ) : (
+                        <QuestCardBackArt rarity="common" />
+                      )}
                       <button
                         data-motion-button
                         type="button"
