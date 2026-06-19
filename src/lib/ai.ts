@@ -256,13 +256,19 @@ function buildTutorRadarPrompt(input: TutorRadarRequest) {
   ].join("\n\n");
 }
 
-function buildBehaviorPersonaSystemPrompt() {
+export function buildBehaviorPersonaSystemPrompt() {
   return [
     buildTutorSystemPrompt(),
     "你正在做投资人格的行为复评，只能基于学生在教育沙盘里的行为信号。",
     "请只返回一个 JSON 对象，不要 Markdown、不要解释文字、不要真实投资建议。",
     "JSON 键必须且只能围绕：band、label、archetype、summary、evidence、nextSteps、confidence。",
     "band 只能是 defensive、steady、balanced、growth；confidence 只能是 low、medium、high。",
+    "【band 判定规则】",
+    "- band 必须反映真实行为方向，不要一味给温和标签。",
+    "- 过度交易 / 使用杠杆（借贷）/ 单一标的高集中 → band 不低于 balanced（不能判 defensive 或 steady）。",
+    "- 高分散（持有多类资产）且有足够成长仓 → 不要判 defensive。",
+    "- 风险控制弱 + 交易很少 + 几乎无成长仓（或明显囤现金）→ 应判 defensive。",
+    "- 仅有现金安全垫但已分散持仓 → 不等于囤现金，不要因此判 defensive。",
   ].join("\n");
 }
 

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { http } from "msw";
 
-import { requestBehaviorPersona } from "@/lib/ai";
+import { buildBehaviorPersonaSystemPrompt, requestBehaviorPersona } from "@/lib/ai";
 import { ruleFallbackPersona, type PersonaSignalInput } from "@/lib/behavior-persona";
 import type { BehaviorPersona } from "@/lib/types";
 
@@ -73,6 +73,44 @@ function clearAiEnv() {
   delete process.env.BROWN_AGENT_BASE_URL;
   delete process.env.BROWN_AGENT_FALLBACK_BASE_URL;
 }
+
+describe("buildBehaviorPersonaSystemPrompt band-judgment rules", () => {
+  it("contains band-judgment rules for overtrade/leverage/concentration → not below balanced", () => {
+    const prompt = buildBehaviorPersonaSystemPrompt();
+    expect(prompt).toContain("过度交易");
+    expect(prompt).toContain("杠杆");
+    expect(prompt).toContain("集中");
+    expect(prompt).toContain("不低于 balanced");
+    // The phrase "不低于" must not precede "defensive" as the target threshold
+    expect(prompt).not.toContain("不低于 defensive");
+  });
+
+  it("contains rule that high diversification should not be judged defensive", () => {
+    const prompt = buildBehaviorPersonaSystemPrompt();
+    expect(prompt).toContain("高分散");
+    expect(prompt).toMatch(/高分散.*不要判 defensive/);
+  });
+
+  it("contains rule that low activity + cash hoarding → defensive", () => {
+    const prompt = buildBehaviorPersonaSystemPrompt();
+    expect(prompt).toContain("囤现金");
+    expect(prompt).toMatch(/囤现金.*应判 defensive|应判 defensive/);
+  });
+
+  it("contains the full band enum", () => {
+    const prompt = buildBehaviorPersonaSystemPrompt();
+    expect(prompt).toContain("defensive");
+    expect(prompt).toContain("steady");
+    expect(prompt).toContain("balanced");
+    expect(prompt).toContain("growth");
+  });
+
+  it("contains rule that cash buffer with diversified holdings is not cash hoarding", () => {
+    const prompt = buildBehaviorPersonaSystemPrompt();
+    expect(prompt).toContain("现金安全垫");
+    expect(prompt).toContain("不等于囤现金");
+  });
+});
 
 describe("requestBehaviorPersona AI gateway boundary (MSW)", () => {
   beforeEach(() => {
