@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -177,6 +177,18 @@ export function StudentRiskProfileDashboard({
     cached?: boolean;
   } | null>(null);
   const [isBehaviorPending, startBehaviorTransition] = useTransition();
+  const [behaviorSlow, setBehaviorSlow] = useState(false);
+
+  const isLoading = behaviorState === "loading" || isBehaviorPending;
+
+  useEffect(() => {
+    if (!isLoading) {
+      setBehaviorSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setBehaviorSlow(true), 8000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   useGSAP(
     () => {
@@ -488,13 +500,24 @@ export function StudentRiskProfileDashboard({
               disabled={behaviorState === "loading" || isBehaviorPending}
               className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-black text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {behaviorState === "loading" || isBehaviorPending ? (
+              {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCcw className="h-4 w-4" />
               )}
-              {behaviorState === "loading" || isBehaviorPending ? "正在复评行为画像..." : "用我的真实行为复评"}
+              {isLoading ? "正在复评行为画像..." : "用我的真实行为复评"}
             </button>
+
+            {isLoading && behaviorSlow && (
+              <p
+                role="status"
+                aria-live="polite"
+                data-testid="behavior-slow-hint"
+                className="mt-3 text-center text-sm font-semibold text-slate-500"
+              >
+                AI 正在分析你的真实操作，稍等几秒…
+              </p>
+            )}
 
             {behaviorState === "idle" && (
               <div className="mt-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
