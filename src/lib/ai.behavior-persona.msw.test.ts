@@ -31,6 +31,7 @@ const personaInput: PersonaSignalInput = {
       teachingPoint: "连续追涨会放大回撤，先验证理由再行动。",
       confidence: "high",
       tone: "warning",
+      riskDirection: "up",
     },
   ],
   radar: [

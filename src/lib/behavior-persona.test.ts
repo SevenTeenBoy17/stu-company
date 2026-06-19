@@ -261,6 +261,220 @@ describe("normalizeBehaviorPersona", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Band truth table (F1-2) — these encode the PRINCIPLE that the top-level band
+// must read behavior in the RIGHT direction: defensive signals (cash hoarding)
+// pull DOWN, aggressive signals (overtrading / concentration / leverage) push
+// UP, and the questionnaire is only a tie-break that can never flip a clear
+// behavior band. Assertions are directional (behavior → band), not pinned to
+// arbitrary scores, so the formula is judged on its logic, not on magic numbers.
+// ---------------------------------------------------------------------------
+
+/**
+ * (a) Pure cash-hoarder: mostly cash/savings, ~0 trades, advanced several rounds
+ * so `cash_hoarding` triggers (cashRatio > 0.85 at round >= 5). The defensive
+ * signal must win — a zero-risk hoarder is NOT a "均衡配置者".
+ */
+function cashHoarderRun(): ScenarioRun {
+  let run = freshRun();
+  // Park almost everything in savings so cash + savings stays ~100% of net worth.
+  run = applySimulationAction(run, { type: "bank", action: "deposit", amount: 90_000 });
+  // No trades at all; just let the rounds tick past the cash_hoarding threshold.
+  for (let i = 0; i < 6; i += 1) {
+    run = advanceSimulationRun(run);
+  }
+  return run;
+}
+
+/**
+ * (b) YOLO all-in gambler: a loan for leverage, then one asset bought with a big
+ * position and a high trade frequency. Concentrated + leveraged + frequent.
+ */
+function yoloRun(): ScenarioRun {
+  let run = freshRun();
+  run = applySimulationAction(run, { type: "bank", action: "loan", amount: 100_000 });
+  // Many buys of a single asset this round → overtrading + never_diversified.
+  for (let i = 0; i < 8; i += 1) {
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: "asset-stock",
+      side: "buy",
+      quantity: 4,
+      orderMode: "market",
+    });
+  }
+  return run;
+}
+
+/**
+ * (c) Maximally diversified: spread across 4+ asset classes with real growth
+ * exposure, so the diversification score is high. Should never read defensive.
+ */
+function diversifiedRun(): ScenarioRun {
+  let run = freshRun();
+  // Heavy enough buys (asset unit prices are ~64–112) to deploy most of the
+  // 120k cash across 6 asset classes, so the cash ratio falls well below the
+  // hoarding threshold and the holdings genuinely dominate the allocation.
+  const buys: Array<{ assetId: string; quantity: number }> = [
+    { assetId: "asset-stock", quantity: 200 },
+    { assetId: "asset-etf", quantity: 200 },
+    { assetId: "asset-bond", quantity: 200 },
+    { assetId: "asset-commodity", quantity: 200 },
+    { assetId: "asset-fx", quantity: 200 },
+    { assetId: "asset-gold", quantity: 100 },
+  ];
+  for (const buy of buys) {
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: buy.assetId,
+      side: "buy",
+      quantity: buy.quantity,
+      orderMode: "market",
+    });
+  }
+  for (let i = 0; i < 4; i += 1) {
+    run = advanceSimulationRun(run);
+  }
+  return run;
+}
+
+/**
+ * (d) Revenge high-frequency trader: trades heavily every round, including right
+ * after a loss. High trade intensity + overtrading.
+ */
+function revengeRun(): ScenarioRun {
+  let run = freshRun();
+  // Round 1: buy a big concentrated stock position.
+  for (let i = 0; i < 4; i += 1) {
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: "asset-stock",
+      side: "buy",
+      quantity: 3,
+      orderMode: "market",
+    });
+  }
+  // Churn for several rounds: sell + rebuy every round → high frequency.
+  for (let r = 0; r < 5; r += 1) {
+    run = advanceSimulationRun(run);
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: "asset-stock",
+      side: "sell",
+      quantity: 2,
+      orderMode: "market",
+    });
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: "asset-stock",
+      side: "buy",
+      quantity: 2,
+      orderMode: "market",
+    });
+    run = applySimulationAction(run, {
+      type: "trade",
+      assetId: "asset-etf",
+      side: "buy",
+      quantity: 1,
+      orderMode: "market",
+    });
+  }
+  return run;
+}
+
+describe("behavior persona — band truth table (F1-2)", () => {
+  it("(a) a pure cash-hoarder reads as defensive, not balanced", () => {
+    const run = cashHoarderRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+    // Sanity: the engineered run actually fires the defensive cash_hoarding card.
+    expect(input.adaptiveEvents.some((event) => event.id === "cash_hoarding")).toBe(true);
+
+    const persona = ruleFallbackPersona(input);
+    expect(persona.band).toBe("defensive");
+  });
+
+  it("(b) a YOLO all-in gambler reads as growth", () => {
+    const run = yoloRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+    const persona = ruleFallbackPersona(input);
+    expect(persona.band).toBe("growth");
+  });
+
+  it("(c) a maximally diversified player never reads as defensive", () => {
+    const run = diversifiedRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+    expect(input.wealth.diversificationScore).toBeGreaterThanOrEqual(72);
+
+    const persona = ruleFallbackPersona(input);
+    expect(persona.band).not.toBe("defensive");
+    expect(["steady", "balanced"]).toContain(persona.band);
+  });
+
+  it("(d) a revenge high-frequency trader reads as growth", () => {
+    const run = revengeRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+    const persona = ruleFallbackPersona(input);
+    expect(persona.band).toBe("growth");
+  });
+
+  it("(e) a do-nothing player at round 1 is low-confidence and never growth", () => {
+    const run = freshRun();
+    const input = buildPersonaSignalInput(run, freshLearning());
+    const persona = ruleFallbackPersona(input);
+    expect(persona.confidence).toBe("low");
+    expect(persona.band).not.toBe("growth");
+  });
+
+  it("(f) a degenerate hand-built input yields a valid band with no NaN", () => {
+    const input: PersonaSignalInput = {
+      currentRound: 0,
+      totalRounds: 12,
+      adaptiveEvents: [],
+      radar: [],
+      wealth: {
+        riskScore: Number.NaN,
+        disciplineScore: Number.NaN,
+        diversificationScore: Number.NaN,
+        netWorth: 0,
+        stageLabel: "",
+      },
+      actionCounts: {},
+      netWorthTrend: [],
+    };
+    const persona = ruleFallbackPersona(input);
+    expect(["defensive", "steady", "balanced", "growth"]).toContain(persona.band);
+  });
+
+  it("(g) a conservative questionnaire cannot flip a clear growth behavior band", () => {
+    const run = yoloRun();
+    const baseInput = buildPersonaSignalInput(run, freshLearning());
+    const withoutQuestionnaire = ruleFallbackPersona(baseInput);
+    expect(withoutQuestionnaire.band).toBe("growth");
+
+    // A maximally conservative questionnaire score must NOT drag the clear
+    // behavior-derived "growth" band down — behavior is more accurate.
+    const withConservativeQuestionnaire = ruleFallbackPersona({
+      ...baseInput,
+      questionnaireScore: 20,
+    });
+    expect(withConservativeQuestionnaire.band).toBe("growth");
+  });
+
+  it("(g') a bullish questionnaire cannot flip a clear defensive band either", () => {
+    const run = cashHoarderRun();
+    const baseInput = buildPersonaSignalInput(run, freshLearning());
+    expect(ruleFallbackPersona(baseInput).band).toBe("defensive");
+
+    // A maximally aggressive questionnaire score must NOT drag the clear
+    // behavior-derived "defensive" band up — the tie-break is capped at ±3.
+    const withBullishQuestionnaire = ruleFallbackPersona({
+      ...baseInput,
+      questionnaireScore: 95,
+    });
+    expect(withBullishQuestionnaire.band).toBe("defensive");
+  });
+});
+
 describe("personaInputDigest", () => {
   it("is stable for the same input", () => {
     const run = midGameRun();

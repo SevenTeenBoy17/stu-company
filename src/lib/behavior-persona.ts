@@ -32,6 +32,14 @@ export interface PersonaAdaptiveSignal {
   teachingPoint: string;
   confidence: ConfidenceLevel;
   tone: AdaptiveEvent["tone"];
+  /**
+   * The risk DIRECTION this signal pushes the band toward: "up" = aggressive /
+   * risk-seeking, "down" = defensive / risk-averse, "neutral" = a behavioural
+   * bias with no clear risk direction. The SIGN of an event's contribution to
+   * {@link behaviorScore} comes from this field (not `tone`), so a defensive
+   * signal like `cash_hoarding` correctly pulls the score DOWN.
+   */
+  riskDirection: AdaptiveEvent["riskDirection"];
 }
 
 /** The 6-dim tutor-radar metric reduced to its load-bearing fields. */
@@ -146,6 +154,7 @@ export function buildPersonaSignalInput(
       teachingPoint: event.teachingPoint,
       confidence: event.confidence,
       tone: event.tone,
+      riskDirection: event.riskDirection,
     })),
     radar,
     wealth: {
@@ -173,10 +182,27 @@ const BAND_PRESET: Record<PersonaBand, { label: string; archetype: string }> = {
   growth: { label: "进取挑战者", archetype: "敢于进攻，但要装好刹车" },
 };
 
-const TONE_WEIGHT: Record<AdaptiveEvent["tone"], number> = {
+/**
+ * Tone is now a SEVERITY magnitude only — how strong a signal a triggered event
+ * is — never a direction. The direction (sign) comes from `riskDirection`:
+ * a warning is a louder signal than an info, regardless of which way it points.
+ */
+const TONE_SEVERITY: Record<AdaptiveEvent["tone"], number> = {
   warning: 16,
-  info: 9,
-  positive: -10,
+  info: 11,
+  positive: 10,
+};
+
+/**
+ * Sign each event contributes to the risk axis. "up" = aggressive (push score
+ * up), "down" = defensive (push score down), "neutral" = no risk-direction
+ * contribution. This is the heart of the fix: `cash_hoarding` is "down", so it
+ * SUBTRACTS instead of (as before) adding via its info tone.
+ */
+const RISK_DIRECTION_SIGN: Record<AdaptiveEvent["riskDirection"], number> = {
+  up: 1,
+  down: -1,
+  neutral: 0,
 };
 
 const CONFIDENCE_WEIGHT: Record<ConfidenceLevel, number> = {
@@ -185,33 +211,96 @@ const CONFIDENCE_WEIGHT: Record<ConfidenceLevel, number> = {
   high: 1,
 };
 
+function radarScore(input: PersonaSignalInput, id: string, fallback: number): number {
+  const value = input.radar.find((metric) => metric.id === id)?.score;
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 /**
  * Deterministic behavior score (0–100). Higher = more risk-seeking / aggressive
- * behavior; warning-tone events push it up, a positive streak pulls it down,
- * and the radar's risk-control / diversification dimensions anchor it. The
- * questionnaire score (when present) nudges but never dominates.
+ * behavior. The SIGN of every contribution is direction-aware:
+ *
+ *  - The radar's risk-control / diversification dimensions anchor a base around
+ *    50 (weak control / low diversification reads as more aggressive).
+ *  - Each triggered adaptive event moves the score by its `riskDirection` SIGN
+ *    × tone SEVERITY × confidence — so aggressive signals (overtrading,
+ *    concentration, herd-following) push UP, defensive signals (cash hoarding)
+ *    push DOWN, and direction-less biases (loss anchoring, positive streak)
+ *    contribute ~0 to the risk axis.
+ *  - Two guardrails keep the band honest:
+ *      * a DEFENSIVE short-circuit caps the score into the defensive band when a
+ *        player is clearly risk-averse (low risk-control + low trade intensity +
+ *        low growth exposure, or an outright cash-hoarding signal), so the base
+ *        anchor can't strand a pure hoarder in "balanced".
+ *      * a CONCENTRATION / LEVERAGE floor lifts the score to at least the
+ *        balanced band for a concentrated or leveraged player — they are never
+ *        "defensive".
+ *  - The questionnaire is a TIE-BREAK only: it may nudge the final score by at
+ *    most ±3 and can never flip a clear behavior band.
  */
 function behaviorScore(input: PersonaSignalInput): number {
-  const radarById = new Map(input.radar.map((metric) => [metric.id, metric.score]));
-  const riskControl = radarById.get("risk-control") ?? 60;
-  const diversification = radarById.get("diversification") ?? 60;
-  const discipline = radarById.get("position-discipline") ?? input.wealth.disciplineScore;
+  const riskControl = radarScore(input, "risk-control", 60);
+  const diversification = radarScore(input, "diversification", 60);
+  const growthOption = radarScore(input, "growth-option", 50);
+  const discipline = radarScore(input, "position-discipline", input.wealth.disciplineScore);
+  const safeDiscipline = Number.isFinite(discipline) ? discipline : 60;
 
   // Base around the inverse of risk-control + diversification: weak control /
   // low diversification reads as more aggressive behavior.
-  let score = 50 + (100 - riskControl) * 0.28 + (100 - diversification) * 0.18 - (discipline - 60) * 0.12;
+  let score = 50 + (100 - riskControl) * 0.28 + (100 - diversification) * 0.18 - (safeDiscipline - 60) * 0.12;
 
+  // Direction-aware event scoring: SIGN from riskDirection, MAGNITUDE from tone
+  // severity × confidence. Neutral-direction events add 0 to the risk axis.
   for (const event of input.adaptiveEvents) {
-    score += TONE_WEIGHT[event.tone] * CONFIDENCE_WEIGHT[event.confidence];
+    const sign = RISK_DIRECTION_SIGN[event.riskDirection] ?? 0;
+    if (sign === 0) continue;
+    const severity = TONE_SEVERITY[event.tone] ?? 11;
+    const weight = CONFIDENCE_WEIGHT[event.confidence] ?? 0.7;
+    score += sign * severity * weight;
   }
 
-  // Overtrading / cash-hoarding directly shift the aggression read.
+  // Trade intensity directly shifts the aggression read (over-trading = up,
+  // near-zero trading = down).
   const trades = input.actionCounts.trade ?? 0;
   const tradeIntensity = trades / Math.max(input.currentRound, 1);
-  score += clamp((tradeIntensity - 1.2) * 8, -6, 14);
+  score += clamp((tradeIntensity - 1.2) * 8, -8, 14);
 
-  if (typeof input.questionnaireScore === "number") {
-    score = score * 0.8 + input.questionnaireScore * 0.2;
+  // --- Guardrail 1: concentration / leverage floor -------------------------
+  // A concentrated (low diversification or a high-confidence herd-following
+  // signal) or leveraged (low risk-control reflecting heavy debt) player is
+  // never defensive: floor them at the balanced band.
+  const herdConcentration = input.adaptiveEvents.some(
+    (event) => event.id === "herd_following" && event.confidence === "high",
+  );
+  const concentratedOrLeveraged = herdConcentration || diversification <= 40 || riskControl <= 30;
+  if (concentratedOrLeveraged) {
+    // 66 keeps the band ≥ balanced even after the ±3 questionnaire nudge
+    // (66 − 3 = 63 > 62, the steady boundary).
+    score = Math.max(score, 66);
+  }
+
+  // --- Guardrail 2: defensive short-circuit --------------------------------
+  // A clearly risk-averse player (weak risk-control AND low trade intensity AND
+  // low growth exposure), or an outright cash-hoarding signal, must land in the
+  // defensive band — the base-50 anchor must not keep them in balanced.
+  const cashHoarding = input.adaptiveEvents.some((event) => event.id === "cash_hoarding");
+  const lowRiskControl = riskControl <= 70;
+  const lowTradeIntensity = tradeIntensity <= 0.6;
+  const lowGrowthExposure = growthOption <= 55;
+  const clearlyDefensive =
+    !concentratedOrLeveraged &&
+    ((lowRiskControl && lowTradeIntensity && lowGrowthExposure) || cashHoarding);
+  if (clearlyDefensive) {
+    // 35 keeps the band defensive even after the ±3 questionnaire nudge
+    // (35 + 3 = 38 ≤ 38, the defensive boundary).
+    score = Math.min(score, 35);
+  }
+
+  // --- Questionnaire: tie-break only (decision §6.1) -----------------------
+  // The questionnaire may move the final score by AT MOST ±3 and must never flip
+  // a clear behavior band — behavior is more accurate than the questionnaire.
+  if (typeof input.questionnaireScore === "number" && Number.isFinite(input.questionnaireScore)) {
+    score += clamp(input.questionnaireScore - score, -3, 3);
   }
 
   return Math.round(clamp(Number.isFinite(score) ? score : 50, 0, 100));
