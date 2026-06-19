@@ -873,6 +873,7 @@ export function StudentQuestDashboard({
                     <div
                       data-testid={`quest-card-front-${quest.id}`}
                       aria-hidden={isFlipped}
+                      inert={isFlipped}
                       className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-950/5"
                       style={{ backfaceVisibility: "hidden" }}
                     >
@@ -921,6 +922,7 @@ export function StudentQuestDashboard({
                     <div
                       data-testid={`quest-card-back-${quest.id}`}
                       aria-hidden={!isFlipped}
+                      inert={!isFlipped}
                       className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
                       style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                     >
