@@ -11,6 +11,7 @@ import {
   type RiskProfileRecord,
 } from "@/lib/db/repo";
 import { buildPersonaSignalInput, personaInputDigest } from "@/lib/behavior-persona";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,11 @@ export async function POST(request: Request) {
   try {
     const auth = await requireUser("student");
     if (auth.error) return auth.error;
+
+    const rl = rateLimit(rateLimitKey("behavior-persona", auth.user.id, request), 6, 60_000);
+    if (!rl.ok) {
+      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    }
 
     const [state, learning, existingProfile] = await Promise.all([
       getSimulationStateForUser(auth.user.id),

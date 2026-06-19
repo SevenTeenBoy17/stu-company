@@ -169,4 +169,30 @@ describe("POST /api/student/risk-profile/behavior", () => {
     expect((await res.json()).error).toBe("db_unavailable");
     expect(vi.mocked(requestBehaviorPersona)).not.toHaveBeenCalled();
   });
+
+  it("returns 429 with Chinese message after exceeding the per-user call limit", async () => {
+    // Use a distinct user id so the rate-limit bucket is isolated from other
+    // tests that also call POST with STUDENT.id = "student-1".
+    const RL_USER = { ...STUDENT, id: "student-rl-test" };
+    vi.mocked(requireUser).mockResolvedValue(asRequireUser({ user: RL_USER }));
+
+    // Each call must miss the digest cache so it actually reaches the rate-limit
+    // guard and (when allowed) the AI path. Return null so inputDigest never
+    // matches a stored value.
+    vi.mocked(getRiskProfile).mockResolvedValue(null);
+
+    // Fire 6 calls — all should succeed (limit = 6 per 60 s).
+    for (let i = 0; i < 6; i++) {
+      const res = await POST(makeRequest());
+      expect(res.status).toBe(200);
+    }
+
+    // The 7th call must be rate-limited.
+    const limited = await POST(makeRequest());
+    expect(limited.status).toBe(429);
+    const body = await limited.json();
+    expect(body.error).toBe("service_unavailable");
+    // Message must be Chinese and mention retry time.
+    expect(body.message).toMatch(/请.*秒后再试/);
+  });
 });
