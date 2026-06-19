@@ -19,6 +19,8 @@ export interface AdaptiveEvent {
   teachingPoint: string;
   tone: "warning" | "info" | "positive";
   confidence: ConfidenceLevel;
+  /** Whether this signal indicates risk-seeking ("up"), risk-averse ("down"), or a behavioural bias without a clear risk direction ("neutral"). */
+  riskDirection: "up" | "down" | "neutral";
 }
 
 interface DetectionResult {
@@ -137,6 +139,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你这个回合的交易次数超过了多数同学。频繁买卖会增加决策噪音，试着先想清楚再出手。",
     teachingPoint: "过度交易往往源于情绪而非策略，真正的高手交易次数比你想象的少。",
     tone: "warning",
+    riskDirection: "up",
   },
   never_diversified: {
     id: "never_diversified",
@@ -144,6 +147,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "目前你只持有一种资产。想象把所有鸡蛋放在一个篮子里 — 如果篮子掉了呢？",
     teachingPoint: "分散投资是降低风险最基本的方法，试试把资金分配到不同类型的资产上。",
     tone: "info",
+    riskDirection: "up",
   },
   revenge_trading: {
     id: "revenge_trading",
@@ -151,6 +155,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "上回合亏损后你立刻加大了操作力度。这种冲动叫「报复性交易」，通常会让情况更糟。",
     teachingPoint: "亏损后的正确做法是先暂停、复盘原因，再决定下一步，而不是急着「赚回来」。",
     tone: "warning",
+    riskDirection: "up",
   },
   bond_avoidance: {
     id: "bond_avoidance",
@@ -158,6 +163,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你还没有尝试过债券。债券虽然涨得慢，但在市场下跌时能当你的安全垫。",
     teachingPoint: "债券是组合里的「稳定器」，很多专业投资者都会配置一部分来降低整体波动。",
     tone: "info",
+    riskDirection: "up",
   },
   herd_following: {
     id: "herd_following",
@@ -165,6 +171,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你的持仓和排行榜前几名非常相似。跟着大家走感觉安全，但这也意味着如果大家错了，你也会一起错。",
     teachingPoint: "这叫「羊群效应」。独立思考比跟风更重要 — 想想你买这个的理由是什么。",
     tone: "info",
+    riskDirection: "up",
   },
   loss_anchoring: {
     id: "loss_anchoring",
@@ -172,6 +179,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "有一些亏损的持仓你一直没有卖出。如果你是因为「不想承认亏了」而继续持有，这叫锚定效应。",
     teachingPoint: "判断是否卖出应该看「现在这笔钱放哪里更好」，而不是「我买的时候花了多少」。",
     tone: "warning",
+    riskDirection: "neutral",
   },
   cash_hoarding: {
     id: "cash_hoarding",
@@ -179,6 +187,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你目前超过 70% 的资产是现金和储蓄。虽然安全，但长期来看通货膨胀会让现金的购买力慢慢变少。",
     teachingPoint: "这叫「机会成本」— 什么都不做也是一种选择，而且可能不是最优的选择。",
     tone: "info",
+    riskDirection: "down",
   },
   streak_positive: {
     id: "streak_positive",
@@ -186,6 +195,7 @@ const EVENT_CATALOG: Record<BehaviorSignalId, Omit<AdaptiveEvent, "confidence">>
     message: "你的净值已经连续三回合上涨，节奏感很好！但别忘了设置你的「舒适回撤线」— 涨多了也要注意保护收益。",
     teachingPoint: "止盈和止损一样重要，真正的纪律是赚到了也能冷静思考下一步。",
     tone: "positive",
+    riskDirection: "neutral",
   },
 };
 
