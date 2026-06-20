@@ -10,7 +10,7 @@ export default defineConfig({
     // Default `npm run test` runs only unit; integration goes via
     // `npm run test:integration` which expects DATABASE_URL pointed at a
     // test schema, not production.
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
     exclude: ["tests/e2e/**", "node_modules/**", ".next/**", "tests/integration/**"],
     // Coverage is opt-in via `npm run test:coverage`; `npm run test` is unaffected.
     // No global thresholds yet — informational until a baseline is agreed.

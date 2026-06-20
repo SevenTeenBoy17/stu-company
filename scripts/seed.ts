@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import bcrypt from "bcryptjs";
 import { count, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -23,6 +24,12 @@ import {
 } from "@/lib/db/schema";
 import { createSeedStore } from "@/lib/store";
 import type { UserRecord } from "@/lib/types";
+import {
+  type EnvAdmin,
+  selectSeedInvites,
+  selectSeedUsers,
+  shouldSeedDemoData,
+} from "./seed-data";
 
 function loadEnvFile(fileName: string, override = false) {
   const filePath = resolve(process.cwd(), fileName);
@@ -75,6 +82,39 @@ function createDeterministicSeedStore() {
 
 const seed = createDeterministicSeedStore();
 
+// --- Production-safety gate (internal-audit P0-1 + P0-2) ---------------------
+// The seed store ships demo accounts with PUBLIC passwords (documented in
+// AGENTS.md) and public, valid invite codes (MRB-STUDENT/PARENT/TEACHER-2026).
+// Planting either into a publicly-exposed instance is a backdoor + a
+// self-register-as-teacher path. In production we skip ALL of them and create
+// at most ONE admin from strong env credentials. Dev/test seed is unchanged.
+const isProd = process.env.NODE_ENV === "production";
+const seedDemo = process.env.SEED_DEMO === "true";
+const seedMode = { isProd, seedDemo } as const;
+const plantDemoData = shouldSeedDemoData(seedMode);
+
+function resolveEnvAdmin(): EnvAdmin | null {
+  const email = process.env.SEED_ADMIN_EMAIL?.trim();
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!email || !password) return null;
+
+  return {
+    id: "admin-seeded",
+    email,
+    passwordHash: bcrypt.hashSync(password, 10),
+    name: "运营管理员",
+    title: "生产管理员",
+  };
+}
+
+const adminFromEnv = plantDemoData ? null : resolveEnvAdmin();
+const seedUserRows = selectSeedUsers(seed.users, {
+  ...seedMode,
+  adminFromEnv,
+});
+const seedInviteRows = selectSeedInvites(seed.invites, seedMode);
+const seedUserIds = new Set(seedUserRows.map((user) => user.id));
+
 function profileNameFor(userId: string) {
   const user = seed.users.find((candidate) => candidate.id === userId);
   if (!user) {
@@ -85,6 +125,10 @@ function profileNameFor(userId: string) {
 
 async function seedUsers() {
   console.log("Seeding users + profiles...");
+  if (seedUserRows.length === 0) {
+    console.log("  (no credentialed accounts selected — skipping user seed)");
+    return;
+  }
   const guestTrialEnd = new Date();
   guestTrialEnd.setDate(guestTrialEnd.getDate() + 3);
 
@@ -93,7 +137,7 @@ async function seedUsers() {
   await db
     .insert(users)
     .values(
-      seed.users.map((user) => ({
+      seedUserRows.map((user) => ({
         id: user.id,
         email: user.email,
         passwordHash: user.passwordHash,
@@ -115,10 +159,15 @@ async function seedUsers() {
       },
     });
 
+  const profileRows = seed.profiles.filter((profile) =>
+    seedUserIds.has(profile.userId),
+  );
+  if (profileRows.length === 0) return;
+
   await db
     .insert(profiles)
     .values(
-      seed.profiles.map((profile) => ({
+      profileRows.map((profile) => ({
         userId: profile.userId,
         ...profileNameFor(profile.userId),
         headline: profile.headline,
@@ -159,7 +208,7 @@ async function seedParentLinks() {
 async function syncUserRelationships() {
   console.log("Syncing user classroom/link relationships...");
 
-  for (const user of seed.users) {
+  for (const user of seedUserRows) {
     const values: Partial<Pick<UserRecord, "classroomId" | "studentLinkId">> = {};
 
     if (user.classroomId) values.classroomId = user.classroomId;
@@ -173,11 +222,15 @@ async function syncUserRelationships() {
 
 async function seedInvites() {
   console.log("Seeding invite codes...");
+  if (seedInviteRows.length === 0) {
+    console.log("  (no public invite codes selected — skipping invite seed)");
+    return;
+  }
 
   await db
     .insert(inviteCodes)
     .values(
-      seed.invites.map((invite) => ({
+      seedInviteRows.map((invite) => ({
         id: invite.id,
         code: invite.code,
         role: invite.role,
@@ -253,6 +306,12 @@ async function verifySeedCounts() {
 
   console.log("Seed verification counts:", results);
 
+  // The demo baseline only applies when the full demo data set is planted. A
+  // hardened production seed legitimately has zero (or one env-admin) accounts.
+  if (!plantDemoData) {
+    return;
+  }
+
   const expectedMinimum = {
     users: 8,
     classrooms: 1,
@@ -271,19 +330,53 @@ async function verifySeedCounts() {
   }
 }
 
+function logSeedMode() {
+  if (plantDemoData) {
+    if (isProd) {
+      console.log(
+        "PRODUCTION seed with SEED_DEMO=true: planting the FULL demo data set " +
+          "(public-password accounts + public invite codes). Do NOT use on a " +
+          "publicly-exposed instance.",
+      );
+    }
+    return;
+  }
+
+  const skippedAccounts = seed.users.length;
+  const skippedInvites = seed.invites.length;
+  const adminSummary = adminFromEnv
+    ? `created from SEED_ADMIN_EMAIL (${adminFromEnv.email})`
+    : "NONE — set SEED_ADMIN_EMAIL + SEED_ADMIN_PASSWORD or create one manually";
+  console.log(
+    `PRODUCTION seed: skipped ${skippedAccounts} demo accounts + ` +
+      `${skippedInvites} public invite codes; admin: ${adminSummary}.`,
+  );
+  if (!adminFromEnv) {
+    console.warn(
+      "WARNING: no admin account was seeded. Provision one out-of-band " +
+        "(SEED_ADMIN_EMAIL + SEED_ADMIN_PASSWORD, or a manual insert).",
+    );
+  }
+}
+
 async function main() {
   console.log("Brown Zone seed starting...");
   console.log(`DATABASE_URL: ${DATABASE_URL!.replace(/:[^@]+@/, ":***@")}`);
+  logSeedMode();
 
   try {
     await seedUsers();
-    await seedClassrooms();
-    await seedParentLinks();
+    if (plantDemoData) {
+      await seedClassrooms();
+      await seedParentLinks();
+    }
     await syncUserRelationships();
     await seedInvites();
-    await seedAssignments();
-    await seedScenarioRuns();
-    await seedGrowthReports();
+    if (plantDemoData) {
+      await seedAssignments();
+      await seedScenarioRuns();
+      await seedGrowthReports();
+    }
     await verifySeedCounts();
 
     console.log("Seed complete.");
