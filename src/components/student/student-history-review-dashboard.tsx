@@ -75,11 +75,11 @@ function ChartShell({
 }) {
   return (
     <div className="rounded-[1.8rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[#944314]">{eyebrow}</p>
+      <p className="bz-eyebrow">{eyebrow}</p>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-xl font-semibold text-slate-950">{title}</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">{description}</p>
+          <h3 className="text-h2 text-fg-strong">{title}</h3>
+          <p className="mt-2 max-w-2xl text-body-sm leading-7 text-fg-muted">{description}</p>
         </div>
       </div>
       <div className="mt-5">{children}</div>
@@ -98,9 +98,9 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
-      <p className="text-sm font-medium text-slate-600">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{hint}</p>
+      <p className="text-body-sm text-fg-muted">{label}</p>
+      <p className="mt-3 text-h2 tabular-nums text-fg-strong">{value}</p>
+      <p className="mt-3 text-body-sm leading-6 text-fg-muted">{hint}</p>
     </div>
   );
 }
@@ -118,8 +118,8 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-[#0f1729] p-4 text-white">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">净值趋势</p>
-          <p className="mt-1 text-xs text-white/70">
+          <p className="text-body-sm font-semibold">净值趋势</p>
+          <p className="mt-1 text-caption text-white/70">
             先看账户走势，再看单笔输赢，复盘会更稳定。
           </p>
         </div>
@@ -160,7 +160,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
           })}
         </svg>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-white/56 md:grid-cols-6">
+      <div className="mt-3 grid grid-cols-3 gap-2 text-caption text-white/56 md:grid-cols-6">
         {timeline.map((item) => (
           <div key={`axis-${item.round}`} className="rounded-full bg-white/6 px-3 py-2 text-center">
             R{item.round}
@@ -195,9 +195,9 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">风险分 / 纪律分</p>
-          <p className="mt-1 text-xs text-slate-600">
-            两条线一起看，更容易区分“赚得快”和“留得住”之间的差别。
+          <p className="text-body-sm font-semibold text-fg-strong">风险分 / 纪律分</p>
+          <p className="mt-1 text-caption text-fg-muted">
+            两条线一起看，更容易区分&ldquo;赚得快&rdquo;和&ldquo;留得住&rdquo;之间的差别。
           </p>
         </div>
         <ShieldAlert className="h-4 w-4 text-[#f08a38]" />
@@ -228,11 +228,11 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
         </svg>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#f08a38]/10 px-3 py-2 text-xs font-semibold text-[#b96621]">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[#f08a38]/10 px-3 py-2 text-caption font-semibold text-[#944314]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#f08a38]" />
           风险分
         </span>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#6f7ef7]/10 px-3 py-2 text-xs font-semibold text-[#4657d4]">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[#6f7ef7]/10 px-3 py-2 text-caption font-semibold text-[#4657d4]">
           <span className="h-2.5 w-2.5 rounded-full bg-[#6f7ef7]" />
           纪律分
         </span>
@@ -248,8 +248,8 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
     <div data-motion-viz className="rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">现金 / 储蓄 / 债务结构</p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="text-body-sm font-semibold text-fg-strong">现金 / 储蓄 / 债务结构</p>
+          <p className="mt-1 text-caption text-fg-muted">
             先看资金结构有没有呼吸感，再决定下一轮要不要扩张。
           </p>
         </div>
@@ -258,7 +258,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
       <div className="mt-5 space-y-4">
         {timeline.map((item) => (
           <div key={`capital-${item.round}`}>
-            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="mb-2 flex items-center justify-between gap-3 text-caption text-fg-muted">
               <span>R{item.round}</span>
               <span>{item.theme}</span>
             </div>
@@ -269,7 +269,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
                 { label: "债务", value: item.debt, color: "bg-[#f08a38]" },
               ].map((row) => (
                 <div key={`${item.round}-${row.label}`} className="flex items-center gap-3">
-                  <div className="w-12 shrink-0 text-xs font-medium text-slate-600">{row.label}</div>
+                  <div className="w-12 shrink-0 text-caption text-fg-muted">{row.label}</div>
                   <div className="h-2.5 flex-1 rounded-full bg-white">
                     <div
                       data-motion-viz-bar
@@ -278,7 +278,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
                       style={{ width: `${Math.max(4, (row.value / maxValue) * 100)}%` }}
                     />
                   </div>
-                  <div className="min-w-[6rem] shrink-0 text-right text-xs font-medium text-slate-600">
+                  <div className="min-w-[6rem] shrink-0 text-right text-caption text-fg-muted">
                     <MoneyText>{formatCurrency(row.value)}</MoneyText>
                   </div>
                 </div>
@@ -332,7 +332,8 @@ function learningSignalClasses(tone: HistoryReviewPayload["learningSignals"][num
   }
 
   if (tone === "build") {
-    return "border-[#f08a38]/18 bg-[#fff4e9] text-[#b96621]";
+    // contrast fix: was text-[#b96621] (~3.88:1 on #fff4e9) → now text-[#944314] (~6.5:1)
+    return "border-[#f08a38]/18 bg-[#fff4e9] text-[#944314]";
   }
 
   return "border-slate-200 bg-white text-slate-700";
@@ -385,21 +386,23 @@ export function StudentHistoryReviewDashboard({
 
   return (
     <div className="space-y-6 pb-20 sm:pb-24">
+      {/* Hero KPI row — light surface, use text-h2 for secondary metrics */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="累计回合"
           value={`${payload.metrics.roundsCompleted} / 12`}
           hint={`当前处在${payload.metrics.stageLabel}，适合先看曲线，再回头看动作。`}
         />
-        <MetricCard
-          label="当前净值"
-          value={<MoneyText>{formatCurrency(payload.metrics.currentNetWorth)}</MoneyText>}
-          hint={
-            <>
-              历史峰值 <MoneyText>{formatCurrency(payload.metrics.peakNetWorth)}</MoneyText>
-            </>
-          }
-        />
+        {/* Hero number: 当前净值 is the key metric for this screen */}
+        <div className="rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+          <p className="text-body-sm text-fg-muted">当前净值</p>
+          <p className="mt-3 text-hero-num tabular-nums text-fg-strong">
+            <MoneyText>{formatCurrency(payload.metrics.currentNetWorth)}</MoneyText>
+          </p>
+          <p className="mt-3 text-body-sm leading-6 text-fg-muted">
+            历史峰值 <MoneyText>{formatCurrency(payload.metrics.peakNetWorth)}</MoneyText>
+          </p>
+        </div>
         <MetricCard
           label="最大回撤"
           value={`${payload.metrics.maxDrawdown.toFixed(1)}%`}
@@ -419,6 +422,7 @@ export function StudentHistoryReviewDashboard({
             className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/88 shadow-[0_28px_70px_rgba(15,23,42,0.08)]"
           >
             <div>
+              {/* Dark hero panel */}
               <div className="relative overflow-hidden bg-[#0e1629] px-5 py-5 text-white sm:px-6 sm:py-6 lg:px-7 lg:py-7">
                 <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
                 <div className="pointer-events-none absolute -left-10 top-10 h-32 w-32 rounded-full bg-[#f08a38]/18 blur-3xl sm:-left-20 sm:top-12 sm:h-48 sm:w-48" />
@@ -427,15 +431,15 @@ export function StudentHistoryReviewDashboard({
                 <div className="relative z-10">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm uppercase tracking-[0.22em] text-[#ffb36d]">History Review</p>
-                      <h2 className="mt-3 text-3xl font-semibold md:text-[2rem]">
+                      <p className="bz-eyebrow-inverse">History Review</p>
+                      <h2 className="mt-3 text-h1 md:text-display-sm">
                         历史操作下的趋势复盘面板
                       </h2>
-                      <p className="mt-3 max-w-2xl text-sm leading-7 text-white/72">
-                        把每一回合的净值、风险、纪律和资金结构放在同一条线上看，更容易识别“做对了什么”。
+                      <p className="mt-3 max-w-2xl text-body leading-7 text-white/72">
+                        把每一回合的净值、风险、纪律和资金结构放在同一条线上看，更容易识别&ldquo;做对了什么&rdquo;。
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-medium text-white/78">
+                    <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-caption font-semibold text-white/78">
                       <Clock3 className="h-3.5 w-3.5" />
                       {formatDateLabel(new Date(payload.generatedAt))}
                     </div>
@@ -453,25 +457,25 @@ export function StudentHistoryReviewDashboard({
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/70">
+                            <p className="text-caption font-semibold uppercase tracking-[0.16em] text-white/70">
                               R{highlight.round}
                             </p>
                             <span
                               className={cn(
-                                "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-caption font-semibold",
                                 tone.badge,
                               )}
                             >
                               {highlight.metricLabel}
                             </span>
                           </div>
-                          <p className="mt-2.5 text-base font-semibold leading-snug text-white">
+                          <p className="mt-2.5 text-body-sm font-semibold leading-snug text-white">
                             {highlight.title}
                           </p>
-                          <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-white/64">
+                          <p className="mt-2 line-clamp-3 text-caption leading-6 text-white/64">
                             {highlight.detail}
                           </p>
-                          <p className="mt-auto pt-3 text-lg font-semibold text-white">
+                          <p className="mt-auto pt-3 text-h3 font-semibold text-white">
                             <HighlightMetricValue value={highlight.metricValue} />
                           </p>
                         </div>
@@ -481,9 +485,10 @@ export function StudentHistoryReviewDashboard({
                 </div>
               </div>
 
+              {/* Light content area */}
               <div className="bg-white/92 px-5 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
-                <p className="text-sm uppercase tracking-[0.22em] text-[#944314]">历史操作速写</p>
-                <h3 className="mt-3 text-2xl font-semibold text-slate-950">先看节奏，再拆动作</h3>
+                <p className="bz-eyebrow">历史操作速写</p>
+                <h3 className="mt-3 text-h2 text-fg-strong">先看节奏，再拆动作</h3>
                 <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
                   {[
                     { label: "买入次数", value: `${payload.metrics.buyCount}`, hint: "主动加仓" },
@@ -494,29 +499,29 @@ export function StudentHistoryReviewDashboard({
                     { label: "复盘沉淀", value: `${payload.metrics.reviewActions}`, hint: "计划 / 奖励 / 自选" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-[1.4rem] bg-slate-950/[0.03] px-4 py-4">
-                      <p className="text-sm text-slate-600">{item.label}</p>
-                      <p className="mt-2 text-2xl font-semibold text-slate-950">{item.value}</p>
-                      <p className="mt-2 text-xs text-slate-600">{item.hint}</p>
+                      <p className="text-body-sm text-fg-muted">{item.label}</p>
+                      <p className="mt-2 text-h2 tabular-nums text-fg-strong">{item.value}</p>
+                      <p className="mt-2 text-caption text-fg-muted">{item.hint}</p>
                     </div>
                   ))}
                 </div>
                 <div className="mt-5 rounded-[1.5rem] bg-[#fff4e9] p-4">
                   <div className="flex items-start gap-3">
                     <Radar className="mt-0.5 h-4 w-4 shrink-0 text-[#f08a38]" />
-                    <p className="text-sm leading-7 text-slate-700">
-                      当前历史页默认按“回合趋势优先”组织。建议先观察净值、风险与纪律的转折，再进入每个回合的动作细节。
+                    <p className="text-body-sm leading-7 text-fg-default">
+                      当前历史页默认按&ldquo;回合趋势优先&rdquo;组织。建议先观察净值、风险与纪律的转折，再进入每个回合的动作细节。
                     </p>
                   </div>
                 </div>
                 <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-950">学习信号已进入复盘</p>
-                      <p className="mt-1 text-xs leading-6 text-slate-600">
+                      <p className="text-body-sm font-semibold text-fg-strong">学习信号已进入复盘</p>
+                      <p className="mt-1 text-caption leading-6 text-fg-muted">
                         机会观察、基金实验、目标账户和保护伞不会直接改变收益，但会影响你的长期决策质量。
                       </p>
                     </div>
-                    <span className="rounded-full bg-slate-950/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600">
+                    <span className="rounded-full bg-slate-950/[0.04] px-3 py-1.5 text-caption font-semibold text-fg-muted">
                       {payload.learningSignals.length > 0 ? `${payload.learningSignals.length} 类信号` : "待点亮"}
                     </span>
                   </div>
@@ -531,18 +536,20 @@ export function StudentHistoryReviewDashboard({
                           )}
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold">{signal.label}</p>
-                            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">
+                            {/* contrast fix: label inherits safe color from learningSignalClasses (≥4.5:1) */}
+                            <p className="text-body-sm font-semibold">{signal.label}</p>
+                            <span className="rounded-full bg-white/70 px-2.5 py-1 text-caption font-semibold">
                               ×{signal.count}
                             </span>
                           </div>
-                          <p className="mt-2 text-xs leading-6 opacity-80">{signal.detail}</p>
+                          {/* contrast fix: was opacity-80 (compounding ~2.88:1) → explicit text-fg-muted */}
+                          <p className="mt-2 text-caption leading-6 text-fg-muted">{signal.detail}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-600">
-                      还没有明显学习信号。可以先去“机会训练”写一张观察单，或在“我的财富”提交一次持有复盘。
+                    <div className="mt-4 rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-body-sm leading-7 text-fg-muted">
+                      还没有明显学习信号。可以先去&ldquo;机会训练&rdquo;写一张观察单，或在&ldquo;我的财富&rdquo;提交一次持有复盘。
                     </div>
                   )}
                 </div>
@@ -579,29 +586,29 @@ export function StudentHistoryReviewDashboard({
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-[#f08a38]/10 px-2.5 py-1 text-xs font-semibold text-[#b96621]">
+                        <span className="rounded-full bg-brand-subtle px-2.5 py-1 text-caption font-semibold text-brand-ink">
                           R{group.round}
                         </span>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-caption text-fg-muted">
                           {group.theme}
                         </span>
                         <span
                           className={cn(
-                            "rounded-full px-2.5 py-1 text-xs font-semibold",
+                            "rounded-full px-2.5 py-1 text-caption font-semibold",
                             eventSignalClasses(group.eventSignal),
                           )}
                         >
                           {group.eventSignal}
                         </span>
                       </div>
-                      <h4 className="mt-3 text-lg font-semibold text-slate-950">{group.headline}</h4>
-                      <p className="mt-2 text-sm leading-7 text-slate-600">{group.summary}</p>
+                      <h4 className="mt-3 text-h3 text-fg-strong">{group.headline}</h4>
+                      <p className="mt-2 text-body-sm leading-7 text-fg-muted">{group.summary}</p>
                     </div>
-                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-600 transition-transform group-open:rotate-90" />
+                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-fg-muted transition-transform group-open:rotate-90" />
                   </summary>
 
                   <div className="mt-5 space-y-3">
-                    <div className="rounded-[1.3rem] bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                    <div className="rounded-[1.3rem] bg-white px-4 py-3 text-body-sm text-fg-muted shadow-sm">
                       事件：{group.eventTitle}
                     </div>
                     {group.items.length > 0 ? (
@@ -613,25 +620,25 @@ export function StudentHistoryReviewDashboard({
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-slate-950/[0.04] px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                <span className="rounded-full bg-slate-950/[0.04] px-2.5 py-1 text-caption font-semibold text-fg-muted">
                                   {item.type}
                                 </span>
-                                <span className="text-xs text-slate-600">
+                                <span className="text-caption text-fg-muted">
                                   {formatDateLabel(new Date(item.timestamp))}
                                 </span>
                               </div>
-                              <p className="mt-2 line-clamp-2 break-all text-base font-semibold text-slate-950">{item.label}</p>
-                              <p className="mt-2 text-sm leading-7 text-slate-600">{item.impact}</p>
+                              <p className="mt-2 line-clamp-2 break-all text-body font-semibold text-fg-strong">{item.label}</p>
+                              <p className="mt-2 text-body-sm leading-7 text-fg-muted">{item.impact}</p>
                             </div>
                             <div className="text-right">
                               <p
                                 className={cn(
-                                  "text-sm font-semibold",
+                                  "text-body-sm font-semibold",
                                   item.amount > 0
                                     ? getMarketMoveClasses(item.amount).text
                                     : item.amount < 0
                                       ? getMarketMoveClasses(item.amount).text
-                                      : "text-slate-600",
+                                      : "text-fg-muted",
                                 )}
                               >
                                 {item.amount === 0 ? "节奏推进" : <MoneyText>{formatCurrency(item.amount)}</MoneyText>}
@@ -640,12 +647,12 @@ export function StudentHistoryReviewDashboard({
                                 type="button"
                                 onClick={() =>
                                   dispatchAssistantOpen({
-                                    prompt: `请结合我的历史复盘页，继续解释这一步“${item.label}”为什么重要，以及我下一回合应该怎么验证。`,
+                                    prompt: `请结合我的历史复盘页，继续解释这一步"${item.label}"为什么重要，以及我下一回合应该怎么验证。`,
                                     actionLogId: item.id,
                                     autoSend: true,
                                   })
                                 }
-                                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
+                                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-3 text-caption font-semibold text-fg-default transition-colors hover:border-brand hover:text-brand-ink"
                               >
                                 <Bot className="h-3.5 w-3.5" />
                                 让 AI 继续解释
@@ -655,7 +662,7 @@ export function StudentHistoryReviewDashboard({
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-sm leading-7 text-slate-600">
+                      <div className="rounded-[1.35rem] border border-dashed border-slate-200 bg-white px-4 py-5 text-body-sm leading-7 text-fg-muted">
                         这一回合没有新增动作，适合重点看净值、风险分和纪律分为什么仍在变化。
                       </div>
                     )}
@@ -666,6 +673,7 @@ export function StudentHistoryReviewDashboard({
           </ChartShell>
         </div>
 
+        {/* AI Review sidebar */}
         <div className="space-y-6">
           <section
             className="rounded-[2rem] border border-slate-200/80 bg-white/92 p-5 shadow-[0_28px_70px_rgba(15,23,42,0.08)] sm:p-6 xl:sticky xl:top-6"
@@ -674,17 +682,17 @@ export function StudentHistoryReviewDashboard({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-[#944314]">AI Review</p>
-                <h2 className="mt-3 text-2xl font-semibold text-slate-950 xl:text-xl">Mr.Brown 的历史复盘建议</h2>
+                <p className="bz-eyebrow">AI Review</p>
+                <h2 className="mt-3 text-h2 text-fg-strong">Mr.Brown 的历史复盘建议</h2>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-950/[0.04] px-3 py-2 text-xs font-medium text-slate-600">
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-950/[0.04] px-3 py-2 text-caption font-semibold text-fg-muted">
                 <Bot className="h-3.5 w-3.5 text-[#f08a38]" />
                 {payload.aiReview.provider === "remote" ? "远端模型已参与" : "本地教学兜底"}
               </div>
             </div>
 
             {error ? (
-              <div className="mt-5 rounded-[1.4rem] border border-amber-300/30 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-800">
+              <div className="mt-5 rounded-[1.4rem] border border-amber-300/30 bg-amber-50 px-4 py-3 text-body-sm leading-7 text-amber-800">
                 {error}
               </div>
             ) : null}
@@ -693,20 +701,20 @@ export function StudentHistoryReviewDashboard({
               <div className="rounded-[1.6rem] bg-[#fff4e9] p-5">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#f08a38]" />
-                  <p className="text-lg font-semibold text-slate-950">AI 总结</p>
+                  <p className="text-h3 text-fg-strong">AI 总结</p>
                 </div>
-                <p className="mt-3 text-sm leading-8 text-slate-700">{stripMarkdown(payload.aiReview.summary)}</p>
+                <p className="mt-3 text-body-sm leading-8 text-fg-default">{stripMarkdown(payload.aiReview.summary)}</p>
               </div>
 
               <div className="rounded-[1.6rem] bg-slate-950/[0.03] p-5">
                 <div className="flex items-center gap-2">
                   <Flame className="h-4 w-4 text-[#f08a38]" />
-                  <p className="text-lg font-semibold text-slate-950">诊断分析</p>
+                  <p className="text-h3 text-fg-strong">诊断分析</p>
                 </div>
                 <div className="mt-4 space-y-3">
                   {payload.aiReview.analysis.map((item, index) => (
                     <div key={`analysis-${index}`} className="rounded-[1.2rem] bg-white px-4 py-3 shadow-sm">
-                      <p className="text-sm leading-7 text-slate-700">{stripMarkdown(item)}</p>
+                      <p className="text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
                     </div>
                   ))}
                 </div>
@@ -715,7 +723,7 @@ export function StudentHistoryReviewDashboard({
               <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2">
                   <ChevronRight className="h-4 w-4 text-[#f08a38]" />
-                  <p className="text-lg font-semibold text-slate-950">下一步参考建议</p>
+                  <p className="text-h3 text-fg-strong">下一步参考建议</p>
                 </div>
                 <div className="mt-4 space-y-3">
                   {payload.aiReview.nextSteps.map((item, index) => (
@@ -723,16 +731,17 @@ export function StudentHistoryReviewDashboard({
                       key={`next-step-${index}`}
                       className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
                     >
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#944314]">
+                      <p className="bz-eyebrow">
                         Step 0{index + 1}
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-slate-700">{stripMarkdown(item)}</p>
+                      <p className="mt-2 text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
+            {/* Primary CTA — ghost style (secondary action, not the page's one primary CTA) */}
             <button
               type="button"
               onClick={() =>
@@ -741,13 +750,13 @@ export function StudentHistoryReviewDashboard({
                   autoSend: true,
                 })
               }
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-[#f08a38] hover:text-[#b96621]"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-3 text-body-sm font-semibold text-fg-default transition-colors hover:border-brand hover:text-brand-ink"
             >
               <Bot className="h-4 w-4" />
               再次让 AI 解释
             </button>
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+            <div className="mt-4 flex items-center gap-2 text-caption text-fg-muted">
               {loading ? <span>正在刷新最新历史复盘...</span> : <span>页面会在进入时拉取最新 AI 复盘。</span>}
             </div>
           </section>

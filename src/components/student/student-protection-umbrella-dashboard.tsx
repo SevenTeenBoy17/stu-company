@@ -132,32 +132,35 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
 
   return (
     <div ref={rootRef} className="space-y-6 pb-24">
+      {/* Hero panel — dark */}
       <section
         data-protection-reveal
         data-motion-reveal
-        className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] md:p-8"
+        className="relative overflow-hidden rounded-[2rem] bg-bg-inverse p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] md:p-8"
       >
         <div className="absolute -left-24 bottom-0 h-80 w-80 rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300">Protection Umbrella</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-5xl">
+            <p className="bz-eyebrow-inverse">Protection Umbrella</p>
+            <h1 className="mt-4 max-w-4xl text-h1 md:text-display-lg">
               风险保护伞：先学会防守，再追求成长
             </h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">
-              保险、应急金、债务和资产分散不是“没意思”的部分，它们决定坏情况出现时你还能不能继续学习和行动。
+            <p className="mt-4 max-w-3xl text-body leading-8 text-white/68">
+              保险、应急金、债务和资产分散不是&ldquo;没意思&rdquo;的部分，它们决定坏情况出现时你还能不能继续学习和行动。
             </p>
           </div>
+          {/* Hero KPI chip — dark panel */}
           <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-white/70">保护分</p>
-              <span className="rounded-full bg-white/[0.08] px-3 py-1 text-xs font-black text-orange-100">
+              <p className="text-caption font-semibold text-white/70">保护分</p>
+              <span className="rounded-full bg-white/[0.08] px-3 py-1 text-caption font-semibold text-orange-100">
                 {previewPending ? "预览刷新中" : "选择方案即刻预览"}
               </span>
             </div>
-            <p className="mt-2 text-5xl font-black text-orange-100">{payload.overview.protectionScore}</p>
-            <p className="mt-3 text-lg font-black">{payload.overview.stageLabel}</p>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            {/* ONE hero number per screen */}
+            <p className="mt-2 text-hero-num tabular-nums text-white">{payload.overview.protectionScore}</p>
+            <p className="mt-3 text-h3">{payload.overview.stageLabel}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <Metric label="应急金" value={<MoneyText tone="dark">{formatCurrency(payload.overview.emergencyFund)}</MoneyText>} />
               <Metric label="缓冲月数" value={`${payload.overview.runwayMonths}个月`} />
               <Metric label="债务" value={<MoneyText tone="dark">{formatCurrency(payload.overview.debt)}</MoneyText>} />
@@ -171,16 +174,16 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
         <section data-protection-reveal data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Umbrella className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">保护伞雷达</h2>
+              <Umbrella className="h-5 w-5 text-brand" />
+              <h2 className="text-h2 text-fg-strong">保护伞雷达</h2>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-semibold text-fg-muted">
               不是投顾建议，是生活风险训练
             </span>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <div data-motion-viz className="rounded-[1.6rem] bg-slate-950 p-5 text-white">
+            <div data-motion-viz className="rounded-[1.6rem] bg-bg-inverse p-5 text-white">
               <svg viewBox="0 0 220 220" className="mx-auto h-64 w-full max-w-72">
                 {[25, 50, 75, 100].map((level) => (
                   <polygon
@@ -209,10 +212,10 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
               {payload.dimensions.map((dimension) => (
                 <article key={dimension.id} data-motion-card className="rounded-[1.35rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="whitespace-nowrap text-lg font-black text-slate-950">{dimension.label}</p>
-                    <span className="text-xl font-black text-orange-700">{dimension.value}</span>
+                    <p className="text-h3 text-fg-strong">{dimension.label}</p>
+                    <span className="text-h2 tabular-nums text-brand-ink">{dimension.value}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{dimension.summary}</p>
+                  <p className="mt-2 text-body-sm leading-6 text-fg-muted">{dimension.summary}</p>
                 </article>
               ))}
             </div>
@@ -222,8 +225,8 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
         <aside data-protection-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">选择保护方案</h2>
+              <ShieldCheck className="h-5 w-5 text-brand" />
+              <h2 className="text-h2 text-fg-strong">选择保护方案</h2>
             </div>
             <div className="mt-5 grid gap-3">
               {payload.plans.map((plan) => (
@@ -240,22 +243,22 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-black text-slate-950">{plan.title}</p>
-                    <p className="text-sm font-black text-orange-700">{formatCurrency(plan.premium)}/月</p>
+                    <p className="text-h3 text-fg-strong">{plan.title}</p>
+                    <p className="text-body-sm tabular-nums font-semibold text-brand-ink">{formatCurrency(plan.premium)}/月</p>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{plan.concept}</p>
+                  <p className="mt-2 text-body-sm leading-6 text-fg-muted">{plan.concept}</p>
                 </button>
               ))}
             </div>
 
-            <label className="mt-5 block text-sm font-black text-slate-700" htmlFor="stress-select">
+            <label className="mt-5 block text-body-sm font-semibold text-fg-strong" htmlFor="stress-select">
               压力测试事件
             </label>
             <select
               id="stress-select"
               value={stressId}
               onChange={(event) => setStressId(event.target.value)}
-              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-orange-300"
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body-sm font-semibold text-fg-default outline-none focus:border-orange-300"
             >
               {payload.scenarios.map((scenario) => (
                 <option key={scenario.id} value={scenario.id}>
@@ -267,12 +270,12 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
               <div className="mt-3 rounded-[1.25rem] bg-slate-50 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-black text-slate-950">当前预览：{selectedScenario.title}</p>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                    <p className="text-body-sm font-semibold text-fg-strong">当前预览：{selectedScenario.title}</p>
+                    <p className="mt-1 text-caption leading-5 text-fg-muted">
                       先看坏情况里现金会被拿走多少，再决定要不要为保护付出保费。
                     </p>
                   </div>
-                  <span className={cn("shrink-0 rounded-full border px-3 py-1 text-xs font-black", scenarioTone[selectedScenario.status])}>
+                  <span className={cn("shrink-0 rounded-full border px-3 py-1 text-caption font-semibold", scenarioTone[selectedScenario.status])}>
                     {scenarioLabel[selectedScenario.status]}
                   </span>
                 </div>
@@ -288,16 +291,17 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder="例如：我想比较有保险和无保险时，运动受伤会怎样影响现金流。"
-              className="mt-4 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-700 outline-none focus:border-orange-300"
+              className="mt-4 min-h-24 w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-body-sm leading-7 text-fg-default outline-none focus:border-orange-300"
             />
 
+            {/* Primary CTA — bg-brand + dark text */}
             <button
               data-motion-button
               type="button"
               data-testid="protection-submit"
               onClick={recordProtection}
               disabled={pending}
-              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-700 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body font-semibold text-slate-950 shadow-[0_16px_36px_rgba(249,115,22,0.22)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <WalletCards className="h-5 w-5" />}
               记录保护复盘
@@ -305,7 +309,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
             {message ? (
               <p
                 className={cn(
-                  "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
+                  "mt-4 rounded-2xl px-4 py-3 text-body-sm font-semibold",
                   message.tone === "success" ? "bg-down-soft text-[var(--down-700)]" : "bg-error-soft text-error",
                 )}
               >
@@ -314,13 +318,14 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
             ) : null}
           </section>
 
-          <section className="rounded-[2rem] bg-slate-950 p-5 text-white">
-            <p className="text-xs font-black uppercase tracking-[0.26em] text-orange-300">Mr.Brown</p>
-            <h2 className="mt-2 text-xl font-black">{payload.coach.title}</h2>
-            <p className="mt-3 text-sm leading-7 text-white/68">{payload.coach.summary}</p>
+          {/* Mr.Brown coaching — dark panel */}
+          <section className="rounded-[2rem] bg-bg-inverse p-5 text-white">
+            <p className="bz-eyebrow-inverse">Mr.Brown</p>
+            <h2 className="mt-2 text-h2">{payload.coach.title}</h2>
+            <p className="mt-3 text-body leading-7 text-white/68">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
               {payload.coach.nextSteps.map((step) => (
-                <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-sm leading-6 text-white/78">
+                <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
                   <span>{step}</span>
                 </div>
@@ -333,10 +338,10 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
       <section data-protection-reveal data-motion-reveal data-testid="protection-history" className="panel rounded-[2rem] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-orange-500" />
-            <h2 className="text-2xl font-black text-slate-950">最近保护复盘</h2>
+            <CheckCircle2 className="h-5 w-5 text-brand" />
+            <h2 className="text-h2 text-fg-strong">最近保护复盘</h2>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-semibold text-fg-muted">
             记录的是学习证据，不改变净值
           </span>
         </div>
@@ -346,21 +351,21 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
               <article key={item.id} data-motion-card className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-lg font-black text-slate-950">{item.planTitle}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-600">第 {item.round} 回合 · {item.stressTitle}</p>
+                    <p className="text-h3 text-fg-strong">{item.planTitle}</p>
+                    <p className="mt-1 text-body-sm text-fg-muted">第 {item.round} 回合 · {item.stressTitle}</p>
                   </div>
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-sm font-black text-orange-700">
+                  <span className="rounded-full bg-brand-subtle px-3 py-1 text-caption font-semibold text-brand-ink">
                     {item.score}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{item.note}</p>
+                <p className="mt-4 text-body-sm leading-7 text-fg-muted">{item.note}</p>
               </article>
             ))}
           </div>
         ) : (
           <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5">
-            <p className="text-base font-black text-slate-950">还没有保护复盘记录</p>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
+            <p className="text-h3 text-fg-strong">还没有保护复盘记录</p>
+            <p className="mt-2 text-body-sm leading-7 text-fg-muted">
               先选择一个保护方案，再挑一个突发事件做压力测试。记录后，它会进入历史复盘和任务中心。
             </p>
           </div>
@@ -369,18 +374,18 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
 
       <section data-protection-reveal data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
         <div className="flex items-center gap-2">
-          <Siren className="h-5 w-5 text-orange-500" />
-          <h2 className="text-2xl font-black text-slate-950">突发事件压力测试</h2>
+          <Siren className="h-5 w-5 text-brand" />
+          <h2 className="text-h2 text-fg-strong">突发事件压力测试</h2>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           {payload.scenarios.map((scenario) => (
             <article key={scenario.id} data-motion-card className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-black text-slate-950">{scenario.title}</p>
-                  <p className="mt-1 text-sm font-bold text-slate-600">事件成本 {formatCurrency(scenario.cost)}</p>
+                  <p className="text-h3 text-fg-strong">{scenario.title}</p>
+                  <p className="mt-1 text-body-sm text-fg-muted">事件成本 {formatCurrency(scenario.cost)}</p>
                 </div>
-                <span className={cn("rounded-full border px-3 py-1 text-xs font-black", scenarioTone[scenario.status])}>
+                <span className={cn("rounded-full border px-3 py-1 text-caption font-semibold", scenarioTone[scenario.status])}>
                   {scenarioLabel[scenario.status]}
                 </span>
               </div>
@@ -388,7 +393,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                 <Metric label="自付" value={<MoneyText>{formatCurrency(scenario.outOfPocket)}</MoneyText>} light />
                 <Metric label="覆盖" value={<MoneyText>{formatCurrency(scenario.coveredAmount)}</MoneyText>} light />
               </div>
-              <p className="mt-4 text-sm leading-7 text-slate-600">{scenario.teachingPoint}</p>
+              <p className="mt-4 text-body-sm leading-7 text-fg-muted">{scenario.teachingPoint}</p>
             </article>
           ))}
         </div>
@@ -400,10 +405,10 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
 function Metric({ label, value, light = false }: { label: string; value: ReactNode; light?: boolean }) {
   return (
     <div className={cn("rounded-2xl p-3", light ? "bg-slate-50" : "bg-white/[0.07]")}>
-      <p className={cn("text-xs font-black uppercase tracking-[0.16em]", light ? "text-slate-600" : "text-white/70")}>
+      <p className={cn("text-caption font-semibold uppercase tracking-[0.16em]", light ? "text-fg-muted" : "text-white/70")}>
         {label}
       </p>
-      <p className={cn("mt-1 text-lg font-black", light ? "text-slate-950" : "text-orange-100")}>{value}</p>
+      <p className={cn("mt-1 text-h3 tabular-nums", light ? "text-fg-strong" : "text-orange-100")}>{value}</p>
     </div>
   );
 }
