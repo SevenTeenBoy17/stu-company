@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -93,11 +93,11 @@ function GatewayCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <span className="rounded-full bg-brand-subtle px-2.5 py-1 text-xs font-black text-brand-ink">
+          <span className="bz-brand-chip rounded-full px-2.5 py-1 text-caption font-semibold">
             {label}
           </span>
-          <h3 className="mt-3 text-lg font-black text-slate-950">{title}</h3>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{summary}</p>
+          <h3 className="mt-3 text-h3 text-fg-strong">{title}</h3>
+          <p className="mt-2 text-body-sm leading-6 text-fg-muted">{summary}</p>
         </div>
         <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-orange-500" />
       </div>
@@ -208,7 +208,7 @@ export function StudentWealthDashboard({
             <div className="relative z-10">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-brand-warm">My Wealth Map</p>
+                  <p className="bz-eyebrow-inverse">My Wealth Map</p>
                   <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">我的财富持有总入口</h2>
                   <p className="mt-3 max-w-2xl text-body-lg leading-8 text-white/68">
                     把现金、储蓄、股票、ETF、债券、房产、创业和负债放到一张地图里，先看全局，再决定下一步模拟动作。
@@ -218,7 +218,7 @@ export function StudentWealthDashboard({
                   data-motion-button
                   type="button"
                   onClick={() => setHideMoney((current) => !current)}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-sm font-bold text-white transition hover:bg-white/14"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-body-sm font-semibold text-white transition hover:bg-white/14"
                 >
                   {hideMoney ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   {hideMoney ? "显示金额" : "隐藏金额"}
@@ -227,39 +227,39 @@ export function StudentWealthDashboard({
 
               <div className="mt-8 grid gap-4 md:grid-cols-4">
                 <div data-motion-card className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5 md:col-span-2">
-                  <p className="text-sm font-semibold text-white/56">当前净值</p>
-                  <p className="mt-3 text-display-lg font-black tabular-nums">
+                  <p className="bz-eyebrow-inverse">当前净值</p>
+                  <p className="mt-3 text-hero-num tabular-nums text-white">
                     <MoneyText tone="dark">{netWorthText}</MoneyText>
                   </p>
-                  <p className="mt-3 text-sm text-white/58">
+                  <p className="mt-3 text-body-sm text-white/58">
                     本回合变化{" "}
                     <MoneyText tone="dark">{formatCurrency(summary.roundReturn)}</MoneyText>
-                    <span className="ml-2">{formatPercent(summary.roundReturnRate)}</span>
+                    <span className="ml-2 tabular-nums">{formatPercent(summary.roundReturnRate)}</span>
                   </p>
                 </div>
                 <div data-motion-card className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5">
-                  <p className="text-sm font-semibold text-white/56">分散度评分</p>
-                  <p className="mt-3 text-display-lg font-black tabular-nums text-white">
+                  <p className="text-caption font-semibold text-white/56">分散度评分</p>
+                  <p className="mt-3 text-h2 tabular-nums text-white">
                     {summary.diversificationScore}
                   </p>
-                  <p className="mt-3 text-sm text-white/58">{summary.stageLabel}</p>
+                  <p className="mt-3 text-body-sm text-white/58">{summary.stageLabel}</p>
                 </div>
                 <div data-motion-card className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5">
-                  <p className="text-sm font-semibold text-white/56">风险 / 纪律</p>
-                  <p className="mt-3 text-display-lg font-black tabular-nums text-white">
+                  <p className="text-caption font-semibold text-white/56">风险 / 纪律</p>
+                  <p className="mt-3 text-h2 tabular-nums text-white">
                     {summary.riskScore}
-                    <span className="mx-2 text-h2 text-white/70">/</span>
+                    <span className="mx-2 text-h3 text-white/70">/</span>
                     {summary.disciplineScore}
                   </p>
-                  <p className="mt-3 text-sm text-white/58">风险不是敌人，失控才是。</p>
+                  <p className="mt-3 text-body-sm text-white/58">风险不是敌人，失控才是。</p>
                 </div>
               </div>
 
               <div data-motion-viz className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.06] p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-bold text-white">净值趋势</p>
-                    <p className="mt-1 text-sm text-white/70">用回合趋势看节奏，而不是被单次涨跌牵着走。</p>
+                    <p className="text-body-sm font-semibold text-white">净值趋势</p>
+                    <p className="mt-1 text-body-sm text-white/70">用回合趋势看节奏，而不是被单次涨跌牵着走。</p>
                   </div>
                   <Route className="h-5 w-5 text-brand-warm" />
                 </div>
@@ -288,8 +288,8 @@ export function StudentWealthDashboard({
           <div className="relative border-t border-white/10 bg-white/[0.04] px-6 py-7 md:px-8 xl:border-l xl:border-t-0">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand-warm">Allocation Ring</p>
-                <h2 className="mt-3 text-h1 font-semibold text-white">资产配置环</h2>
+                <p className="bz-eyebrow-inverse">Allocation Ring</p>
+                <h2 className="mt-3 text-h1 text-white">资产配置环</h2>
               </div>
               <Radar className="h-6 w-6 text-white/60" />
             </div>
@@ -300,11 +300,11 @@ export function StudentWealthDashboard({
                 style={{ background: `conic-gradient(${buildDonut(summary)})` }}
               >
                 <div className="absolute inset-[24px] flex flex-col items-center justify-center rounded-full bg-bg-inverse">
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">总资产</span>
-                  <span className="mt-2 text-2xl font-black">
+                  <span className="text-caption font-semibold uppercase tracking-[0.18em] text-white/70">总资产</span>
+                  <span className="mt-2 text-h2 tabular-nums">
                     <MoneyText tone="dark">{hideMoney ? "¥••••••" : formatCurrency(summary.grossAssets)}</MoneyText>
                   </span>
-                  <span className="mt-1 text-xs text-white/70">未扣除负债</span>
+                  <span className="mt-1 text-caption text-white/70">未扣除负债</span>
                 </div>
               </div>
             </div>
@@ -315,11 +315,11 @@ export function StudentWealthDashboard({
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 rounded-full" style={{ background: slice.color }} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-white">{slice.label}</p>
-                        <p className="mt-1 truncate text-xs text-white/70">{slice.hint}</p>
+                        <p className="truncate text-body-sm font-semibold text-white">{slice.label}</p>
+                        <p className="mt-1 truncate text-caption text-white/70">{slice.hint}</p>
                       </div>
                     </div>
-                    <p className="shrink-0 text-sm font-black text-white">{slice.weight.toFixed(1)}%</p>
+                    <p className="shrink-0 text-body-sm tabular-nums font-semibold text-white">{slice.weight.toFixed(1)}%</p>
                   </div>
                 </div>
               ))}
@@ -331,10 +331,10 @@ export function StudentWealthDashboard({
       <section data-wealth-reveal data-motion-reveal data-testid="wealth-total-gateway" className="panel rounded-[2rem] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand">Holding Gateway</p>
-            <h2 className="mt-3 text-h1 font-semibold text-slate-950">持有总入口</h2>
-            <p className="mt-2 max-w-3xl text-body leading-7 text-slate-600">
-              参考理财 App 的“持有页”心智，但转译为课堂模拟：每个入口都服务于计划、复盘和风险理解，不引导真实买卖。
+            <p className="bz-eyebrow">Holding Gateway</p>
+            <h2 className="mt-3 text-h1 text-fg-strong">持有总入口</h2>
+            <p className="mt-2 max-w-3xl text-body leading-7 text-fg-muted">
+              参考理财 App 的&ldquo;持有页&rdquo;心智，但转译为课堂模拟：每个入口都服务于计划、复盘和风险理解，不引导真实买卖。
             </p>
           </div>
           <Sparkles className="h-6 w-6 text-brand" />
@@ -351,9 +351,9 @@ export function StudentWealthDashboard({
         <section data-wealth-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand">Life Finance Map</p>
-              <h2 className="mt-3 text-h1 font-semibold text-slate-950">多元理财地图</h2>
-              <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+              <p className="bz-eyebrow">Life Finance Map</p>
+              <h2 className="mt-3 text-h1 text-fg-strong">多元理财地图</h2>
+              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
                 真实理财不只看一只资产涨跌，而是在安全垫、成长资产、生活目标和负债之间保持可持续的节奏。
               </p>
             </div>
@@ -364,15 +364,15 @@ export function StudentWealthDashboard({
             {summary.zones.map((zone) => (
               <article key={zone.id} data-motion-card className="rounded-[1.6rem] bg-slate-950/[0.035] p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-h3 font-bold text-slate-950">{zone.title}</h3>
-                  <span className="rounded-full bg-white px-3 py-1 text-sm font-black text-brand-ink">
-                    {zone.weight.toFixed(1)}%
+                  <h3 className="text-h3 text-fg-strong">{zone.title}</h3>
+                  <span className="rounded-full bg-white px-3 py-1 text-caption font-semibold text-brand-ink">
+                    <span className="tabular-nums">{zone.weight.toFixed(1)}</span>%
                   </span>
                 </div>
-                <p className="mt-4 text-2xl font-black">
+                <p className="mt-4 text-h2 tabular-nums">
                   <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(zone.value)}</MoneyText>
                 </p>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{zone.summary}</p>
+                <p className="mt-3 text-body-sm leading-6 text-fg-muted">{zone.summary}</p>
               </article>
             ))}
           </div>
@@ -380,14 +380,14 @@ export function StudentWealthDashboard({
           <div className="mt-6 rounded-[1.8rem] border border-border bg-white p-5">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />
-              <h3 className="text-h3 font-bold text-slate-950">当前配置 vs 建议区间</h3>
+              <h3 className="text-h3 text-fg-strong">当前配置 vs 建议区间</h3>
             </div>
             <div data-motion-viz className="mt-5 space-y-4">
               {summary.targetAllocation.map((item) => (
                 <div key={item.label}>
-                  <div className="flex items-center justify-between gap-4 text-sm">
-                    <span className="font-bold text-slate-800">{item.label}</span>
-                    <span className="font-semibold text-slate-600">
+                  <div className="flex items-center justify-between gap-4 text-body-sm">
+                    <span className="font-semibold text-fg-strong">{item.label}</span>
+                    <span className="tabular-nums text-fg-muted">
                       当前 {item.current.toFixed(1)}% / 目标 {item.target.toFixed(1)}%
                     </span>
                   </div>
@@ -397,7 +397,7 @@ export function StudentWealthDashboard({
                       style={{ width: `${Math.min(100, item.current)}%` }}
                     />
                   </div>
-                  <p className={cn("mt-1 text-xs font-bold", item.gap >= 0 ? "text-up" : "text-warning")}>
+                  <p className={cn("mt-1 text-caption font-semibold tabular-nums", item.gap >= 0 ? "text-up" : "text-warning")}>
                     {item.gap >= 0 ? "高于建议" : "低于建议"} {Math.abs(item.gap).toFixed(1)}%
                   </p>
                 </div>
@@ -410,17 +410,17 @@ export function StudentWealthDashboard({
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-brand" />
-              <h2 className="text-h2 font-semibold text-slate-950">Mr.Brown 建议</h2>
+              <h2 className="text-h2 text-fg-strong">Mr.Brown 建议</h2>
             </div>
-            <h3 className="mt-5 text-h3 font-bold text-slate-950">{summary.coaching.title}</h3>
-            <p className="mt-3 text-body leading-7 text-slate-600">{summary.coaching.summary}</p>
+            <h3 className="mt-5 text-h3 text-fg-strong">{summary.coaching.title}</h3>
+            <p className="mt-3 text-body leading-7 text-fg-muted">{summary.coaching.summary}</p>
             <div className="mt-5 space-y-3">
               {summary.coaching.nextSteps.map((step, index) => (
                 <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-brand-subtle p-4">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
                     {index + 1}
                   </span>
-                  <p className="text-sm font-semibold leading-6 text-slate-700">{step}</p>
+                  <p className="text-body-sm font-semibold leading-6 text-fg-default">{step}</p>
                 </div>
               ))}
             </div>
@@ -429,13 +429,13 @@ export function StudentWealthDashboard({
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Trophy className="h-5 w-5 text-brand" />
-              <h2 className="text-h2 font-semibold text-slate-950">本周理财任务</h2>
+              <h2 className="text-h2 text-fg-strong">本周理财任务</h2>
             </div>
             <div className="mt-5 space-y-4">
               {summary.missions.map((mission) => (
                 <article key={mission.id} data-motion-card className="rounded-[1.4rem] bg-slate-950/[0.035] p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-base font-black text-slate-950">{mission.title}</h3>
+                    <h3 className="text-h3 text-fg-strong">{mission.title}</h3>
                     <MissionBadge status={mission.status} />
                   </div>
                   <div className="mt-4 h-2.5 rounded-full bg-white">
@@ -446,7 +446,7 @@ export function StudentWealthDashboard({
                       style={{ width: `${mission.progress * 100}%` }}
                     />
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-600">{mission.reward}</p>
+                  <p className="mt-3 text-body-sm text-fg-muted">{mission.reward}</p>
                 </article>
               ))}
             </div>
@@ -459,21 +459,21 @@ export function StudentWealthDashboard({
           <form onSubmit={submitReview} className="min-w-0 p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand">Holding Plan</p>
-                <h2 className="mt-3 text-h1 font-semibold text-slate-950">本回合持有计划复盘</h2>
-                <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+                <p className="bz-eyebrow">Holding Plan</p>
+                <h2 className="mt-3 text-h1 text-fg-strong">本回合持有计划复盘</h2>
+                <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
                   先写计划，再执行动作。记录不会改变净值，但会进入历史复盘，帮助你看清自己为什么持有。
                 </p>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-brand-subtle px-4 py-2 text-sm font-black text-brand-ink">
+              <span className="inline-flex items-center gap-2 rounded-full bg-brand-subtle px-4 py-2 text-body-sm font-semibold text-brand-ink">
                 <ClipboardCheck className="h-4 w-4" />
-                计划分 {review.planScore}
+                计划分 <span className="tabular-nums">{review.planScore}</span>
               </span>
             </div>
 
             <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="rounded-[1.6rem] bg-slate-950/[0.035] p-4">
-                <p className="text-sm font-black text-slate-950">1. 本回合最该关注什么？</p>
+                <p className="text-body-sm font-semibold text-fg-strong">1. 本回合最该关注什么？</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {review.focusOptions.map((option) => (
                     <button
@@ -487,8 +487,8 @@ export function StudentWealthDashboard({
                           : "border-slate-200 bg-white text-slate-700 hover:border-brand/40 hover:bg-brand-subtle",
                       )}
                     >
-                      <span className="block text-base font-black">{option.label}</span>
-                      <span className={cn("mt-1 block text-xs leading-5", form.focus === option.id ? "text-slate-900" : "text-slate-600")}>
+                      <span className="block text-body-sm font-semibold">{option.label}</span>
+                      <span className={cn("mt-1 block text-caption leading-5", form.focus === option.id ? "text-slate-900" : "text-fg-muted")}>
                         {option.hint}
                       </span>
                     </button>
@@ -497,7 +497,7 @@ export function StudentWealthDashboard({
               </div>
 
               <div className="rounded-[1.6rem] bg-slate-950/[0.035] p-4">
-                <p className="text-sm font-black text-slate-950">2. 下一步更像哪种动作？</p>
+                <p className="text-body-sm font-semibold text-fg-strong">2. 下一步更像哪种动作？</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {review.actionOptions.map((option) => (
                     <button
@@ -511,8 +511,8 @@ export function StudentWealthDashboard({
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-white",
                       )}
                     >
-                      <span className="block text-base font-black">{option.label}</span>
-                      <span className={cn("mt-1 block text-xs leading-5", form.action === option.id ? "text-white/65" : "text-slate-600")}>
+                      <span className="block text-body-sm font-semibold">{option.label}</span>
+                      <span className={cn("mt-1 block text-caption leading-5", form.action === option.id ? "text-white/65" : "text-fg-muted")}>
                         {option.hint}
                       </span>
                     </button>
@@ -523,8 +523,8 @@ export function StudentWealthDashboard({
 
             <div className="mt-5 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
               <label className="rounded-[1.4rem] border border-slate-200 bg-white p-4">
-                <span className="text-sm font-black text-slate-950">信心刻度</span>
-                <span className="bz-brand-text-on-light mt-2 block text-3xl font-black">{form.confidence}</span>
+                <span className="text-body-sm font-semibold text-fg-strong">信心刻度</span>
+                <span className="bz-brand-text-on-light mt-2 block text-h2 tabular-nums">{form.confidence}</span>
                 <input
                   type="range"
                   min={1}
@@ -535,13 +535,13 @@ export function StudentWealthDashboard({
                   }
                   className="mt-4 w-full accent-orange-500"
                 />
-                <span className="mt-2 block text-xs font-semibold leading-5 text-slate-600">
+                <span className="mt-2 block text-caption leading-5 text-fg-muted">
                   高信心也要写下风险假设，避免把热度当确定性。
                 </span>
               </label>
 
               <label className="rounded-[1.4rem] border border-slate-200 bg-white p-4">
-                <span className="text-sm font-black text-slate-950">复盘理由</span>
+                <span className="text-body-sm font-semibold text-fg-strong">复盘理由</span>
                 <textarea
                   value={form.note}
                   onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
@@ -553,8 +553,8 @@ export function StudentWealthDashboard({
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p
                     className={cn(
-                      "text-xs font-semibold",
-                      form.note.trim().length < 8 ? "text-rose-700" : "text-slate-600",
+                      "text-caption",
+                      form.note.trim().length < 8 ? "text-rose-700" : "text-fg-muted",
                     )}
                   >
                     {form.note.trim().length < 8
@@ -565,7 +565,7 @@ export function StudentWealthDashboard({
                     type="submit"
                     data-testid="wealth-review-submit"
                     disabled={status.type === "loading" || form.note.trim().length < 8}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     {status.type === "loading" ? "正在记录" : "记录持有计划"}
@@ -590,16 +590,16 @@ export function StudentWealthDashboard({
 
           <aside className="min-w-0 border-t border-slate-200 bg-slate-50 p-5 md:p-6 xl:border-l xl:border-t-0">
             <div className="rounded-[1.6rem] bg-white p-5 shadow-sm">
-              <p className="bz-brand-text-on-light text-sm font-bold uppercase tracking-[0.18em]">Mr.Brown Review</p>
-              <h3 className="mt-3 text-h2 font-black text-slate-950">{review.coach.title}</h3>
-              <p className="mt-3 text-body leading-7 text-slate-600">{review.coach.summary}</p>
+              <p className="bz-eyebrow bz-brand-text-on-light">Mr.Brown Review</p>
+              <h3 className="mt-3 text-h2 text-fg-strong">{review.coach.title}</h3>
+              <p className="mt-3 text-body leading-7 text-fg-muted">{review.coach.summary}</p>
               <div className="mt-5 grid gap-3">
                 {review.coach.nextSteps.map((step, index) => (
                   <div key={step} className="flex gap-3 rounded-2xl bg-slate-50 p-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-white">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-caption font-semibold text-white">
                       {index + 1}
                     </span>
-                    <p className="text-sm font-semibold leading-6 text-slate-600">{step}</p>
+                    <p className="text-body-sm leading-6 text-fg-muted">{step}</p>
                   </div>
                 ))}
               </div>
@@ -607,9 +607,9 @@ export function StudentWealthDashboard({
 
             <div className="mt-4 rounded-[1.6rem] bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-h3 font-black text-slate-950">最近复盘记录</h3>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                  {review.reviewCount} 次
+                <h3 className="text-h3 text-fg-strong">最近复盘记录</h3>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-semibold text-fg-muted">
+                  <span className="tabular-nums">{review.reviewCount}</span> 次
                 </span>
               </div>
               <div className="mt-4 space-y-3">
@@ -617,18 +617,18 @@ export function StudentWealthDashboard({
                   review.history.slice(0, 3).map((item) => (
                     <article key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-base font-black text-slate-950">{item.focusLabel}</p>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-brand-ink">
-                          {item.actionLabel} · {item.score}
+                        <p className="text-body-sm font-semibold text-fg-strong">{item.focusLabel}</p>
+                        <span className="rounded-full bg-white px-3 py-1 text-caption font-semibold text-brand-ink">
+                          {item.actionLabel} · <span className="tabular-nums">{item.score}</span>
                         </span>
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-600">
+                      <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-fg-muted">
                         {item.note}
                       </p>
                     </article>
                   ))
                 ) : (
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
+                  <div className="rounded-2xl bg-slate-50 p-4 text-body-sm leading-6 text-fg-muted">
                     还没有持有计划记录。先写一条理由，下一次历史复盘就能看到它。
                   </div>
                 )}
@@ -643,8 +643,8 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <WalletCards className="h-7 w-7 text-brand" />
             <div>
-              <p className="text-sm font-bold text-slate-600">可用现金</p>
-              <p className="mt-1 text-xl font-black">
+              <p className="text-caption font-semibold text-fg-muted">可用现金</p>
+              <p className="mt-1 text-h3 tabular-nums">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(summary.cash)}</MoneyText>
               </p>
             </div>
@@ -652,8 +652,8 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <PiggyBank className="h-7 w-7 text-info" />
             <div>
-              <p className="text-sm font-bold text-slate-600">稳健储蓄</p>
-              <p className="mt-1 text-xl font-black">
+              <p className="text-caption font-semibold text-fg-muted">稳健储蓄</p>
+              <p className="mt-1 text-h3 tabular-nums">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(summary.savings)}</MoneyText>
               </p>
             </div>
@@ -661,8 +661,8 @@ export function StudentWealthDashboard({
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <Landmark className="h-7 w-7 text-warning" />
             <div>
-              <p className="text-sm font-bold text-slate-600">当前负债</p>
-              <p className="mt-1 text-xl font-black">
+              <p className="text-caption font-semibold text-fg-muted">当前负债</p>
+              <p className="mt-1 text-h3 tabular-nums">
                 <MoneyText>{hideMoney ? "¥••••••" : formatCurrency(-summary.debt)}</MoneyText>
               </p>
             </div>
@@ -672,8 +672,8 @@ export function StudentWealthDashboard({
             className="group flex items-center justify-between gap-4 rounded-[1.5rem] bg-bg-inverse p-5 text-white transition hover:-translate-y-0.5 hover:shadow-glow"
           >
             <div>
-              <p className="text-sm font-bold text-white/70">下一步</p>
-              <p className="mt-1 text-xl font-black">回到策略台执行</p>
+              <p className="text-caption font-semibold text-white/70">下一步</p>
+              <p className="mt-1 text-h3">回到策略台执行</p>
             </div>
             <ArrowRight className="h-6 w-6 text-brand-warm transition group-hover:translate-x-1" />
           </Link>

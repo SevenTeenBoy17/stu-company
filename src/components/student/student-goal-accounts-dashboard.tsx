@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useGSAP } from "@gsap/react";
@@ -95,14 +95,14 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <div className="absolute -right-20 top-0 h-80 w-80 rounded-full bg-orange-400/20 blur-3xl" />
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300">Goal Accounts</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight md:text-5xl">
+            <p className="bz-eyebrow-inverse">Goal Accounts</p>
+            <h1 className="mt-4 max-w-4xl text-display-lg font-semibold tracking-tight md:text-display-xl">
               目标账户：把未来想要的东西拆成今天的小动作
             </h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">{payload.overview.learningPrompt}</p>
+            <p className="mt-4 max-w-3xl text-body leading-8 text-white/68">{payload.overview.learningPrompt}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <HeroMetric label="目标分" value={payload.overview.goalScore} />
+            <HeroMetric label="目标分" value={payload.overview.goalScore} hero />
             <HeroMetric
               label="已 earmark"
               value={<MoneyText tone="dark">{formatCurrency(payload.overview.earmarkedTotal)}</MoneyText>}
@@ -120,10 +120,10 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <section data-goal-reveal data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">我的生活目标</h2>
+              <Target className="h-5 w-5 text-brand" />
+              <h2 className="text-h1 text-fg-strong">我的生活目标</h2>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-body-sm text-fg-muted">
               投资服务于目标，不反过来绑架生活
             </span>
           </div>
@@ -142,18 +142,18 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xl font-black text-slate-950">{goal.title}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-600">{goal.concept}</p>
+                    <p className="text-h3 text-fg-strong">{goal.title}</p>
+                    <p className="mt-1 text-body-sm text-fg-muted">{goal.concept}</p>
                   </div>
-                  <span className={cn("rounded-full px-3 py-1 text-xs font-black", statusClass[goal.status])}>
+                  <span className={cn("rounded-full px-3 py-1 text-caption font-semibold", statusClass[goal.status])}>
                     {statusLabel[goal.status]}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{goal.whyItMatters}</p>
+                <p className="mt-4 text-body-sm leading-7 text-fg-muted">{goal.whyItMatters}</p>
                 <div className="mt-5">
                   <div className="flex items-end justify-between gap-3">
-                    <span className="text-3xl font-black text-slate-950">{goal.progress}%</span>
-                    <span className="text-sm font-bold text-slate-600">
+                    <span className="text-h2 tabular-nums text-fg-strong">{goal.progress}%</span>
+                    <span className="text-body-sm text-fg-muted">
                       <MoneyText>{formatCurrency(goal.saved)}</MoneyText> / <MoneyText>{formatCurrency(goal.target)}</MoneyText>
                     </span>
                   </div>
@@ -172,14 +172,14 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <aside data-goal-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center gap-2">
-              <PiggyBank className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">转入目标账户</h2>
+              <PiggyBank className="h-5 w-5 text-brand" />
+              <h2 className="text-h1 text-fg-strong">转入目标账户</h2>
             </div>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              这一步会把现金转入储蓄目标桶，净值不变，但“可随手花的钱”会减少。
+            <p className="mt-3 text-body-sm leading-7 text-fg-muted">
+              这一步会把现金转入储蓄目标桶，净值不变，但&ldquo;可随手花的钱&rdquo;会减少。
             </p>
 
-            <label className="mt-5 block text-sm font-black text-slate-700" htmlFor="goal-amount">
+            <label className="mt-5 block text-body-sm font-semibold text-fg-strong" htmlFor="goal-amount">
               本回合转入金额
             </label>
             <input
@@ -188,10 +188,10 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               min={100}
               value={amount}
               onChange={(event) => setAmount(Number(event.target.value))}
-              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-lg font-black text-slate-950 outline-none focus:border-orange-300"
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-h3 tabular-nums font-semibold text-fg-strong outline-none focus:border-brand"
             />
 
-            <label className="mt-4 block text-sm font-black text-slate-700" htmlFor="goal-note">
+            <label className="mt-4 block text-body-sm font-semibold text-fg-strong" htmlFor="goal-note">
               一句话理由
             </label>
             <textarea
@@ -207,7 +207,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               type="button"
               onClick={submitGoalTransfer}
               disabled={pending}
-              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-700 px-5 text-base font-black text-white shadow-lg shadow-orange-200 transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <WalletCards className="h-5 w-5" />}
               记录目标转入
@@ -226,14 +226,14 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
 
           <section className="rounded-[2rem] bg-slate-950 p-5 text-white shadow-xl shadow-slate-200">
             <div className="flex items-center gap-2">
-              <Flag className="h-5 w-5 text-orange-300" />
-              <h2 className="text-xl font-black">{payload.coach.title}</h2>
+              <Flag className="h-5 w-5 text-brand-warm" />
+              <h2 className="text-h2 text-white">{payload.coach.title}</h2>
             </div>
-            <p className="mt-3 text-sm leading-7 text-white/68">{payload.coach.summary}</p>
+            <p className="mt-3 text-body-sm leading-7 text-white/68">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
               {payload.coach.nextSteps.map((step) => (
-                <div key={step} className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-sm leading-6 text-white/78">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
+                <div key={step} className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-warm" />
                   <span>{step}</span>
                 </div>
               ))}
@@ -243,18 +243,18 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
       </div>
 
       <section data-goal-reveal data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
-        <h2 className="text-2xl font-black text-slate-950">目标账户记录</h2>
+        <h2 className="text-h1 text-fg-strong">目标账户记录</h2>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {payload.history.length > 0 ? (
             payload.history.slice(0, 6).map((entry) => (
               <article key={entry.id} className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                <p className="text-lg font-black text-slate-950">{entry.title}</p>
-                <p className="mt-1 text-sm font-bold text-orange-700">{formatCurrency(entry.amount)}</p>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{entry.note}</p>
+                <p className="text-h3 text-fg-strong">{entry.title}</p>
+                <p className="mt-1 text-body-sm tabular-nums text-brand-ink">{formatCurrency(entry.amount)}</p>
+                <p className="mt-3 text-body-sm leading-6 text-fg-muted">{entry.note}</p>
               </article>
             ))
           ) : (
-            <p className="rounded-[1.35rem] bg-slate-50 p-5 text-sm font-bold text-slate-600">
+            <p className="rounded-[1.35rem] bg-slate-50 p-5 text-body-sm text-fg-muted">
               还没有目标账户记录。先选一个真实生活目标，写下为什么要为它留钱。
             </p>
           )}
@@ -264,11 +264,18 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
   );
 }
 
-function HeroMetric({ label, value }: { label: string; value: ReactNode }) {
+function HeroMetric({ label, value, hero = false }: { label: string; value: ReactNode; hero?: boolean }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">{label}</p>
-      <p className="mt-2 text-2xl font-black text-orange-100">{value}</p>
+    <div
+      className={hero ? "bz-hero-stat rounded-[1.4rem] border-white/20" : "rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4"}
+      style={hero ? { background: "rgba(255,255,255,0.10)" } : undefined}
+    >
+      <p className="bz-eyebrow-inverse">{label}</p>
+      {hero ? (
+        <span className="text-hero-num tabular-nums text-white">{value}</span>
+      ) : (
+        <p className="mt-2 text-h2 tabular-nums text-orange-100">{value}</p>
+      )}
     </div>
   );
 }
