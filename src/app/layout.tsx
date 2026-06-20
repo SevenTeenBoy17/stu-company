@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { DeferredAiAssistant } from "@/components/shared/deferred-ai-assistant";
 import { getCurrentUser } from "@/lib/session-user";
 
+import { inter, jetbrainsMono, notoSansSC } from "./fonts";
 import "./globals.css";
+
+const fontVariables = `${inter.variable} ${notoSansSC.variable} ${jetbrainsMono.variable}`;
 
 export const metadata: Metadata = {
   title: "Brown Zone | Mr.Brown AI 经济沙盘",
@@ -19,7 +22,11 @@ export default async function RootLayout({
   const currentUser = await getCurrentUser().catch(() => null);
 
   return (
-    <html lang="zh-CN" className="h-full antialiased" data-scroll-behavior="smooth">
+    <html
+      lang="zh-CN"
+      className={`h-full antialiased ${fontVariables}`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-full bg-bg-app text-fg-default">
         {children}
         <DeferredAiAssistant
