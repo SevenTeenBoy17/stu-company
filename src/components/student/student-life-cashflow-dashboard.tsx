@@ -151,12 +151,13 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="life-cashflow-dashboard">
+      {/* Dark hero panel — hero number on dark bg uses text-hero-num text-brand-warm directly */}
       <section data-life-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -left-20 top-0 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Life Ledger</p>
+            <p className="bz-eyebrow-inverse">Life Ledger</p>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
                 <h1 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h1>
@@ -165,12 +166,13 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   真实理财不只是市场涨跌，更是现金流能不能扛住生活。
                 </p>
               </div>
+              {/* Hero stat chip on dark — frosted glass, no .bz-hero-stat which targets light surfaces */}
               <div className="rounded-[1.7rem] border border-white/12 bg-white/[0.08] p-5">
-                <p className="text-sm font-bold text-white/58">现金流评分</p>
-                <p className="mt-2 text-display-xl font-black tabular-nums text-brand-warm">
+                <p className="bz-eyebrow-inverse">现金流评分</p>
+                <p className="mt-2 text-hero-num tabular-nums text-brand-warm">
                   {payload.overview.cashflowScore}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-white/60">{payload.overview.stageLabel}</p>
+                <p className="mt-1 text-caption text-white/60">{payload.overview.stageLabel}</p>
               </div>
             </div>
 
@@ -206,10 +208,10 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 <div key={item.label} className="min-w-0 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-5">
                     <div className="flex items-center gap-2 text-white/58">
                       <Icon className="h-4 w-4 text-brand-warm" />
-                    <p className="text-sm font-bold">{item.label}</p>
+                    <p className="text-body-sm font-semibold">{item.label}</p>
                   </div>
-                    <p className="mt-3 whitespace-nowrap text-h1 font-black tabular-nums text-white">{item.value}</p>
-                    <p className="mt-2 text-xs font-semibold leading-5 text-white/70">{item.hint}</p>
+                    <p className="mt-3 whitespace-nowrap text-h2 tabular-nums text-white">{item.value}</p>
+                    <p className="mt-2 text-caption leading-5 text-white/70">{item.hint}</p>
                   </div>
                 );
               })}
@@ -220,8 +222,8 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-bold text-white/56">应急金进度</p>
-                  <p className="mt-2 text-h1 font-black text-white">
+                  <p className="bz-eyebrow-inverse">应急金进度</p>
+                  <p className="mt-2 text-h2 tabular-nums text-white">
                     {formatCurrency(payload.overview.emergencyFund)}
                   </p>
                 </div>
@@ -230,7 +232,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
               <div className="mt-5 h-4 rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-gradient-to-r from-brand to-info" style={{ width: `${emergencyProgress}%` }} />
               </div>
-              <div className="mt-3 flex justify-between gap-3 text-xs font-bold text-white/58">
+              <div className="mt-3 flex justify-between gap-3 text-caption text-white/58">
                 <span>目标 {formatCurrency(payload.overview.emergencyTarget)}</span>
                 <span>
                   {payload.overview.emergencyGap > 0
@@ -241,15 +243,15 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             </div>
 
             <div className="mt-5 rounded-[1.7rem] border border-brand/20 bg-brand/10 p-5">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand-warm">Mr.Brown</p>
-              <h2 className="mt-3 text-h1 font-semibold text-white">{payload.coach.title}</h2>
+              <p className="bz-eyebrow-inverse">Mr.Brown</p>
+              <h2 className="mt-3 text-h2 text-white">{payload.coach.title}</h2>
               <p className="mt-3 text-body leading-7 text-white/66">{payload.coach.summary}</p>
               <button
                 type="button"
                 data-testid="life-cashflow-apply"
                 onClick={() => void applyChallenge()}
                 disabled={busy}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {applyState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 执行本月预算挑战
@@ -258,24 +260,24 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
 
             {lastApplied && (
               <div className="mt-5 rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-5" data-testid="life-cashflow-result">
-                <p className="text-sm font-bold text-white/56">本月执行结果</p>
-                <p className="mt-3 text-body font-semibold leading-7 text-white/76">{lastApplied.summary}</p>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-bold">
+                <p className="bz-eyebrow-inverse">本月执行结果</p>
+                <p className="mt-3 text-body leading-7 text-white/76">{lastApplied.summary}</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/70">转入储蓄</p>
-                    <p className="mt-1 text-brand-warm">{formatCurrency(lastApplied.savingTransferred)}</p>
+                    <p className="text-caption text-white/70">转入储蓄</p>
+                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-brand-warm">{formatCurrency(lastApplied.savingTransferred)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/70">偿还债务</p>
-                    <p className="mt-1 text-brand-warm">{formatCurrency(lastApplied.debtPaid)}</p>
+                    <p className="text-caption text-white/70">偿还债务</p>
+                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-brand-warm">{formatCurrency(lastApplied.debtPaid)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/70">应急金</p>
-                    <p className="mt-1 text-white">{formatCurrency(lastApplied.emergencyFundAfter)}</p>
+                    <p className="text-caption text-white/70">应急金</p>
+                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-white">{formatCurrency(lastApplied.emergencyFundAfter)}</p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.08] p-3">
-                    <p className="text-white/70">新评分</p>
-                    <p className="mt-1 text-white">{lastApplied.cashflowScoreAfter}</p>
+                    <p className="text-caption text-white/70">新评分</p>
+                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-white">{lastApplied.cashflowScoreAfter}</p>
                   </div>
                 </div>
               </div>
@@ -291,9 +293,9 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
               <div>
                 <div className="flex items-center gap-3">
                   <WalletCards className="h-5 w-5 text-brand" />
-                  <h2 className="text-h1 font-semibold text-slate-950">选择预算策略</h2>
+                  <h2 className="text-h1 text-fg-strong">选择预算策略</h2>
                 </div>
-                <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+                <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
                   预算不是少花钱比赛，而是给重要目标留位置。切换方案后会重新测算现金流。
                 </p>
               </div>
@@ -302,7 +304,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 data-testid="life-cashflow-submit"
                 onClick={() => recalculate()}
                 disabled={busy}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                 重新测算
@@ -327,11 +329,11 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-h2 font-black text-slate-950">{plan.title}</h3>
+                      <h3 className="text-h3 text-fg-strong">{plan.title}</h3>
                       {active ? <CheckCircle2 className="h-5 w-5 text-brand" /> : <span className="h-5 w-5 rounded-full border border-slate-300" />}
                     </div>
-                    <p className="mt-3 text-body font-semibold leading-7 text-slate-600">{plan.tagline}</p>
-                    <p className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{plan.concept}</p>
+                    <p className="mt-3 text-body leading-7 text-fg-muted">{plan.tagline}</p>
+                    <p className="mt-4 rounded-full bg-white px-3 py-1 text-caption text-fg-muted">{plan.concept}</p>
                   </button>
                 );
               })}
@@ -341,7 +343,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <ReceiptText className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">本月预算分配</h2>
+              <h2 className="text-h1 text-fg-strong">本月预算分配</h2>
             </div>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {payload.budgetRows.map((row) => {
@@ -354,16 +356,16 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                           <Icon className="h-5 w-5" />
                         </span>
                         <div>
-                          <h3 className="text-h2 font-black text-slate-950">{row.label}</h3>
-                          <p className="text-sm font-bold text-slate-600">{row.ratio}%</p>
+                          <h3 className="text-h3 text-fg-strong">{row.label}</h3>
+                          <p className="text-caption text-fg-muted">{row.ratio}%</p>
                         </div>
                       </div>
-                      <p className="bz-brand-text-on-light text-h2 font-black tabular-nums">{formatCurrency(row.amount)}</p>
+                      <p className="bz-brand-text-on-light text-h2 tabular-nums">{formatCurrency(row.amount)}</p>
                     </div>
                     <div className="mt-4 h-3 rounded-full bg-slate-100">
                       <div className="h-full rounded-full bg-slate-950" style={{ width: `${clamp(row.ratio, 4, 100)}%` }} />
                     </div>
-                    <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{row.hint}</p>
+                    <p className="mt-3 text-body-sm leading-6 text-fg-muted">{row.hint}</p>
                   </article>
                 );
               })}
@@ -375,9 +377,9 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Umbrella className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">保险方案</h2>
+              <h2 className="text-h1 text-fg-strong">保险方案</h2>
             </div>
-            <p className="mt-2 text-body leading-7 text-slate-600">{payload.insurance.summary}</p>
+            <p className="mt-2 text-body leading-7 text-fg-muted">{payload.insurance.summary}</p>
             <div className="mt-5 space-y-3">
               {payload.insurance.options.map((option) => {
                 const active = option.id === insuranceId;
@@ -397,21 +399,22 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-body font-black text-slate-950">{option.title}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                        <p className="text-body font-semibold text-fg-strong">{option.title}</p>
+                        <p className="mt-1 text-body-sm text-fg-muted">
                           保费 {formatCurrency(option.premium)} · 覆盖 {Math.round(option.coverageRate * 100)}%
                         </p>
                       </div>
                       {active && <CheckCircle2 className="h-5 w-5 text-brand" />}
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{option.concept}</p>
+                    <p className="mt-3 text-caption leading-5 text-fg-muted">{option.concept}</p>
                   </button>
                 );
               })}
             </div>
+            {/* Dark chip for coverage score — frosted on dark bg */}
             <div className="mt-5 rounded-[1.35rem] bg-slate-950 p-4 text-white">
-              <p className="text-sm font-bold text-white/58">保障评分</p>
-              <p className="mt-2 text-display-md font-black tabular-nums text-brand-warm">
+              <p className="bz-eyebrow-inverse">保障评分</p>
+              <p className="mt-2 text-hero-num tabular-nums text-brand-warm">
                 {payload.insurance.coverageScore}
               </p>
             </div>
@@ -420,31 +423,31 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">突发事件压力测试</h2>
+              <h2 className="text-h1 text-fg-strong">突发事件压力测试</h2>
             </div>
             <div className="mt-5 space-y-3">
               {payload.stressEvents.map((event) => (
                 <article key={event.id} data-stress-card data-motion-card className="rounded-[1.35rem] border border-slate-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-body font-black text-slate-950">{event.title}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-600">原始成本 {formatCurrency(event.cost)}</p>
+                      <p className="text-body font-semibold text-fg-strong">{event.title}</p>
+                      <p className="mt-1 text-body-sm text-fg-muted">原始成本 {formatCurrency(event.cost)}</p>
                     </div>
-                    <span className={cn("rounded-full px-3 py-1 text-xs font-black", stressTone[event.status])}>
+                    <span className={cn("rounded-full px-3 py-1 text-caption font-semibold", stressTone[event.status])}>
                       {event.status === "safe" ? "可承受" : event.status === "watch" ? "需观察" : "现金紧张"}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold">
+                  <div className="mt-3 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-slate-600">保险覆盖</p>
-                      <p className="mt-1 text-slate-950">{formatCurrency(event.coveredAmount)}</p>
+                      <p className="text-caption text-fg-muted">保险覆盖</p>
+                      <p className="mt-1 text-body-sm font-semibold tabular-nums text-fg-strong">{formatCurrency(event.coveredAmount)}</p>
                     </div>
                     <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-slate-600">自付金额</p>
-                      <p className="bz-brand-text-on-light mt-1">{formatCurrency(event.outOfPocket)}</p>
+                      <p className="text-caption text-fg-muted">自付金额</p>
+                      <p className="bz-brand-text-on-light mt-1 text-body-sm font-semibold tabular-nums">{formatCurrency(event.outOfPocket)}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{event.teachingPoint}</p>
+                  <p className="mt-3 text-caption leading-5 text-fg-muted">{event.teachingPoint}</p>
                 </article>
               ))}
             </div>
@@ -456,15 +459,15 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
         <div className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <CalendarDays className="h-5 w-5 text-brand" />
-            <h2 className="text-h1 font-semibold text-slate-950">4 周生活账本训练</h2>
+            <h2 className="text-h1 text-fg-strong">4 周生活账本训练</h2>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {payload.weeklyPlan.map((week) => (
               <article key={week.week} className="rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">Week 0{week.week}</p>
-                <h3 className="mt-3 text-h2 font-black text-slate-950">{week.title}</h3>
-                <p className="mt-3 text-body font-semibold text-slate-600">本周弹性预算 {formatCurrency(week.budget)}</p>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{week.checkpoint}</p>
+                <p className="bz-eyebrow bz-brand-text-on-light">Week 0{week.week}</p>
+                <h3 className="mt-3 text-h3 text-fg-strong">{week.title}</h3>
+                <p className="mt-3 text-body text-fg-default">本周弹性预算 {formatCurrency(week.budget)}</p>
+                <p className="mt-3 text-body-sm leading-6 text-fg-muted">{week.checkpoint}</p>
               </article>
             ))}
           </div>
@@ -473,27 +476,27 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
         <div className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-brand" />
-            <h2 className="text-h1 font-semibold text-slate-950">下一步行动</h2>
+            <h2 className="text-h1 text-fg-strong">下一步行动</h2>
           </div>
           <div className="mt-5 space-y-3">
             {payload.coach.nextSteps.map((step, index) => (
               <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
                   {index + 1}
                 </span>
-                <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>
+                <p className="text-body leading-7 text-fg-default">{step}</p>
               </div>
             ))}
           </div>
-          <p className="mt-5 text-xs font-bold text-slate-600">最近测算：{formatTime(payload.generatedAt)}</p>
+          <p className="mt-5 text-caption text-fg-muted">最近测算：{formatTime(payload.generatedAt)}</p>
           {(state === "success" || applyState === "success") && (
-            <p role="status" className="mt-4 flex items-center gap-2 text-sm font-bold text-info">
+            <p role="status" className="mt-4 flex items-center gap-2 text-body-sm font-semibold text-info">
               <CheckCircle2 className="h-4 w-4" />
               {message}
             </p>
           )}
           {(state === "error" || applyState === "error") && (
-            <p role="alert" className="mt-4 flex items-center gap-2 text-sm font-bold text-error">
+            <p role="alert" className="mt-4 flex items-center gap-2 text-body-sm font-semibold text-error">
               <AlertCircle className="h-4 w-4" />
               {message}
             </p>

@@ -79,6 +79,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
 
   return (
     <div ref={rootRef} className="space-y-6 pb-24" data-testid="opportunity-dashboard">
+      {/* Dark hero panel — bg-slate-950, no .bz-hero-stat (light chip) */}
       <section
         data-opportunity-item
         data-motion-reveal
@@ -87,23 +88,28 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-orange-400/20 blur-3xl" />
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300">Opportunity Lab</p>
-            <h2 className="mt-4 max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
+            <p className="bz-eyebrow-inverse">Opportunity Lab</p>
+            <h1 className="mt-4 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               机会训练场：先写观察单，再谈模拟配置
-            </h2>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-white/70">
+            </h1>
+            <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/70">
               把热门板块、资金流和政策主题转成青少年能理解的训练任务。目标不是猜涨跌，而是练习证据链、风险意识和复盘表达。
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            {/* Hero number: 观察力 score — on dark bg, use text-hero-num text-white directly */}
             {[
-              ["观察单", payload.overview.notesCount],
-              ["观察力", payload.overview.observationScore],
-              ["阶段", payload.overview.stageLabel],
-            ].map(([label, value]) => (
+              ["观察单", payload.overview.notesCount, false],
+              ["观察力", payload.overview.observationScore, true],
+              ["阶段", payload.overview.stageLabel, false],
+            ].map(([label, value, isHero]) => (
               <div key={String(label)} data-motion-card className="rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-4">
-                <p className="text-sm font-bold text-white/70">{label}</p>
-                <p className="mt-2 text-2xl font-black text-orange-200">{value}</p>
+                <p className="bz-eyebrow-inverse">{label}</p>
+                {isHero ? (
+                  <p className="mt-2 text-hero-num tabular-nums text-white">{value}</p>
+                ) : (
+                  <p className="mt-2 text-h2 tabular-nums text-white/90">{value}</p>
+                )}
               </div>
             ))}
           </div>
@@ -113,8 +119,8 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)]">
         <section data-opportunity-item data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <Radar className="h-5 w-5 text-orange-500" />
-            <h2 className="text-2xl font-black text-slate-950">主题机会卡</h2>
+            <Radar className="h-5 w-5 text-brand" />
+            <h2 className="text-h1 text-fg-strong">主题机会卡</h2>
           </div>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             {payload.cards.map((card) => {
@@ -135,17 +141,17 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xl font-black text-slate-950">{card.title}</p>
-                      <p className="mt-1 text-sm font-bold text-slate-600">{card.category}</p>
+                      <p className="text-h3 text-fg-strong">{card.title}</p>
+                      <p className="mt-1 text-body-sm text-fg-muted">{card.category}</p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-700">
+                    <span className="rounded-full bg-white px-3 py-1 text-caption font-semibold text-brand-ink">
                       热度 {card.heat}
                     </span>
                   </div>
-                  <p className="mt-4 text-sm leading-7 text-slate-600">{card.summary}</p>
+                  <p className="mt-4 text-body-sm leading-7 text-fg-muted">{card.summary}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {card.evidence.map((item) => (
-                      <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                      <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-caption text-fg-muted">
                         {item}
                       </span>
                     ))}
@@ -159,24 +165,24 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
         <aside data-opportunity-item data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center gap-2">
-              <ClipboardPenLine className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">开一张观察单</h2>
+              <ClipboardPenLine className="h-5 w-5 text-brand" />
+              <h2 className="text-h1 text-fg-strong">开一张观察单</h2>
             </div>
             <div className="mt-5 rounded-[1.4rem] bg-slate-50 p-4">
-              <p className="text-lg font-black text-slate-950">{selected.title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{selected.concept}</p>
-              <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-sm font-bold text-slate-600">
+              <p className="text-h3 text-fg-strong">{selected.title}</p>
+              <p className="mt-2 text-body-sm leading-6 text-fg-muted">{selected.concept}</p>
+              <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-body-sm text-fg-default">
                 思考题：{selected.watchQuestion}
               </p>
             </div>
 
             <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-black text-slate-600">观察理由</span>
+              <span className="mb-2 block text-body-sm font-semibold text-fg-strong">观察理由</span>
               <select
                 data-testid="opportunity-reason"
                 value={reason}
                 onChange={(event) => setReason(event.target.value as OpportunityReason)}
-                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold outline-none focus:border-orange-400"
+                className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base font-semibold text-fg-default outline-none focus:border-brand"
               >
                 {payload.reasonOptions.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -187,7 +193,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             </label>
 
             <label className="mt-4 block">
-              <span className="mb-2 block text-sm font-black text-slate-600">信心分 {confidence}</span>
+              <span className="mb-2 block text-body-sm font-semibold text-fg-strong">信心分 <span className="tabular-nums">{confidence}</span></span>
               <input
                 data-testid="opportunity-confidence"
                 type="range"
@@ -200,32 +206,33 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
             </label>
 
             <label className="mt-4 block">
-              <span className="mb-2 block text-sm font-black text-slate-600">我的观察说明</span>
+              <span className="mb-2 block text-body-sm font-semibold text-fg-strong">我的观察说明</span>
               <textarea
                 data-testid="opportunity-note"
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 rows={5}
                 placeholder="例如：AI 算力需求还在增长，但估值和集中度较高，我下一回合要观察是否出现回撤。"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold leading-7 outline-none focus:border-orange-400"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold leading-7 text-fg-default outline-none focus:border-brand"
               />
               <span
                 className={cn(
-                  "mt-1 block text-xs font-bold",
-                  noteReady ? "text-emerald-600" : "text-slate-600",
+                  "mt-1 block text-caption",
+                  noteReady ? "text-emerald-600" : "text-fg-muted",
                 )}
               >
                 {noteReady ? "可以记录啦 ✓" : `还需 ${8 - trimmedNote.length} 个字（至少写 8 个字）`}
               </span>
             </label>
 
+            {/* Primary CTA — bg-brand + dark text */}
             <button
               data-motion-button
               type="button"
               data-testid="opportunity-submit"
               disabled={pending || !noteReady}
               onClick={submitNote}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-400 px-5 text-base font-black text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-60"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 disabled:opacity-60"
             >
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               记录观察单
@@ -234,7 +241,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
               <p
                 role={message.tone === "success" ? "status" : "alert"}
                 className={cn(
-                  "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
+                  "mt-4 rounded-2xl px-4 py-3 text-body-sm font-semibold",
                   message.tone === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700",
                 )}
               >
@@ -245,14 +252,14 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
 
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-orange-500" />
-              <h2 className="text-2xl font-black text-slate-950">{payload.coach.title}</h2>
+              <Bot className="h-5 w-5 text-brand" />
+              <h2 className="text-h2 text-fg-strong">{payload.coach.title}</h2>
             </div>
-            <p className="mt-4 text-base leading-8 text-slate-600">{payload.coach.summary}</p>
+            <p className="mt-4 text-body leading-8 text-fg-muted">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
               {payload.coach.nextSteps.map((step) => (
-                <p key={step} data-motion-card className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold leading-6 text-slate-600">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                <p key={step} data-motion-card className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                   {step}
                 </p>
               ))}
@@ -264,10 +271,10 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
       <section data-opportunity-item data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-500">Observation History</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950">我的机会观察记录</h2>
+            <p className="bz-eyebrow">Observation History</p>
+            <h2 className="mt-2 text-h1 text-fg-strong">我的机会观察记录</h2>
           </div>
-          <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600">
+          <span className="rounded-full bg-slate-100 px-4 py-2 text-body-sm text-fg-muted">
             最佳主题：{payload.overview.bestTheme}
           </span>
         </div>
@@ -275,18 +282,18 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
           {payload.notes.length > 0 ? (
             payload.notes.slice(0, 6).map((entry) => (
               <article key={entry.id} data-motion-card className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-lg font-black text-slate-950">{entry.title}</p>
-                <p className="mt-1 text-sm font-bold text-orange-700">
-                  观察力 {entry.score} · 信心 {entry.confidence} · {entry.reasonLabel}
+                <p className="text-h3 text-fg-strong">{entry.title}</p>
+                <p className="mt-1 text-body-sm text-brand-ink">
+                  观察力 <span className="tabular-nums">{entry.score}</span> · 信心 <span className="tabular-nums">{entry.confidence}</span> · {entry.reasonLabel}
                 </p>
-                <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{entry.note}</p>
-                <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+                <p className="mt-3 line-clamp-3 text-body-sm leading-6 text-fg-muted">{entry.note}</p>
+                <p className="mt-3 rounded-2xl bg-white px-3 py-2 text-caption leading-5 text-fg-muted">
                   {entry.feedback}
                 </p>
               </article>
             ))
           ) : (
-            <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-600 lg:col-span-3">
+            <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted lg:col-span-3">
               还没有观察单。先选一个主题，写下证据和风险，历史复盘就会多一条可讨论的线索。
             </div>
           )}
