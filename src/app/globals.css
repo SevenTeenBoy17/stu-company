@@ -292,7 +292,7 @@ select {
 }
 
 .bz-eyebrow {
-  color: var(--color-brand);
+  color: var(--color-brand-ink);
   font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.18em;
