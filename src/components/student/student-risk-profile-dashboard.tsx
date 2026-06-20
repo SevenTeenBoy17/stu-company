@@ -34,11 +34,14 @@ type BehaviorPersonaResponse = {
   message?: string;
 };
 
+// Each risk band gets a DISTINCT cool→warm color temperature so the gradient
+// itself encodes the risk level: defensive (cool/sober) → growth (warm/energetic).
+// All four stay dark-toned (deep mid stop) so light text on the chip remains AA-legible.
 const bandClass: Record<RiskProfilePayload["band"], string> = {
-  defensive: "from-slate-950 via-slate-900 to-slate-950",
-  steady: "from-slate-950 via-slate-900 to-slate-950",
-  balanced: "from-slate-950 via-slate-900 to-slate-950",
-  growth: "from-slate-950 via-slate-900 to-slate-950",
+  defensive: "from-slate-950 via-blue-950 to-slate-950",
+  steady: "from-slate-950 via-teal-950 to-slate-950",
+  balanced: "from-slate-950 via-amber-950 to-slate-950",
+  growth: "from-slate-950 via-orange-950 to-slate-950",
 };
 
 const allocationTone: Record<RiskProfilePayload["allocation"][number]["tone"], string> = {
@@ -100,9 +103,9 @@ function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Radar className="h-4 w-4 text-brand-warm" />
-          <p className="text-sm font-bold text-white">6 维风险雷达</p>
+          <p className="text-h3 text-white">6 维风险雷达</p>
         </div>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/66">教学画像</span>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-caption font-semibold text-white/70">教学画像</span>
       </div>
       <svg viewBox="0 0 192 192" className="mt-4 h-56 w-full max-w-[280px] mx-auto overflow-visible">
         {rings.map((ring) => (
@@ -296,7 +299,7 @@ export function StudentRiskProfileDashboard({
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
-                <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Risk Lab</p>
+                <p className="bz-eyebrow-inverse">Risk Lab</p>
                 <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">
                   投资人格实验室
                 </h2>
@@ -306,9 +309,11 @@ export function StudentRiskProfileDashboard({
                 </p>
               </div>
               <div data-risk-score data-motion-card className="rounded-[1.75rem] border border-white/12 bg-white/[0.08] p-5 text-right">
-                <p className="text-sm font-bold text-white/58">风险人格分</p>
-                <p className="mt-2 text-display-xl font-black tabular-nums text-brand-warm">{payload.score}</p>
-                <p className="mt-1 text-sm font-semibold text-white/60">{formatTime(payload.generatedAt)}</p>
+                <span className="bz-hero-stat items-end">
+                  <span className="bz-eyebrow bz-brand-text-on-light">风险人格分</span>
+                  <span className="text-hero-num tabular-nums bz-brand-text-on-light">{payload.score}</span>
+                </span>
+                <p className="mt-2 text-body-sm font-semibold text-white/60">{formatTime(payload.generatedAt)}</p>
               </div>
             </div>
 
@@ -319,14 +324,14 @@ export function StudentRiskProfileDashboard({
                     <Brain className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-sm font-bold text-white/56">你的投资人格</p>
+                    <p className="bz-eyebrow-inverse normal-case tracking-normal">你的投资人格</p>
                     <h2 className="text-h1 font-semibold text-white md:text-display-md">{payload.label}</h2>
                   </div>
                 </div>
                 <p className="mt-5 text-body-lg font-semibold leading-8 text-white">{payload.archetype}</p>
                 <p className="mt-3 text-body leading-8 text-white/66">{payload.summary}</p>
                 <div className="mt-5 rounded-[1.35rem] border border-brand/20 bg-brand/10 p-4">
-                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-brand-warm">本次核心概念</p>
+                  <p className="bz-eyebrow-inverse">本次核心概念</p>
                   <p className="mt-2 text-body font-semibold leading-7 text-white/78">{payload.learningConcept}</p>
                 </div>
               </div>
@@ -343,9 +348,9 @@ export function StudentRiskProfileDashboard({
                     <div key={item.label} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                       <div className="flex items-center gap-2 text-white/56">
                         <Icon className="h-4 w-4 text-brand-warm" />
-                        <p className="text-xs font-bold">{item.label}</p>
+                        <p className="text-caption font-semibold">{item.label}</p>
                       </div>
-                      <p className="mt-2 break-words text-h2 font-black tabular-nums text-white">{item.value}</p>
+                      <p className="mt-2 break-words text-h2 tabular-nums text-white">{item.value}</p>
                     </div>
                   );
                 })}
@@ -364,9 +369,9 @@ export function StudentRiskProfileDashboard({
           data-motion-reveal
           className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center"
         >
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Risk Lab</p>
-          <h2 className="mt-3 text-2xl font-black text-slate-950">先完成下方 6 个情境测评</h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">
+          <p className="bz-eyebrow">Risk Lab</p>
+          <h2 className="mt-3 text-h1 text-fg-strong">先完成下方 6 个情境测评</h2>
+          <p className="mx-auto mt-3 max-w-xl text-body-sm leading-7 text-fg-muted">
             还没有生成投资人格。答完下面 6 题后点击「生成我的投资人格」，这里会显示你的人格分、雷达图与配置地图——答案没有对错，请凭真实直觉选择。
           </p>
         </section>
@@ -378,13 +383,13 @@ export function StudentRiskProfileDashboard({
             <div>
               <div className="flex items-center gap-3">
                 <Compass className="h-5 w-5 text-brand" />
-                <h2 className="text-h1 font-semibold text-slate-950">6 个情境选择</h2>
+                <h2 className="text-h1 text-fg-strong">6 个情境选择</h2>
               </div>
-              <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
                 每题只测一个概念，降低认知负荷。答案没有对错，关键是看见自己的决策倾向。
               </p>
             </div>
-            <span data-testid="risk-counter" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
+            <span data-testid="risk-counter" className="rounded-full bg-slate-950 px-4 py-2 text-body-sm font-semibold text-white">
               {completed}/{payload.questions.length} 已选择
             </span>
           </div>
@@ -398,11 +403,11 @@ export function StudentRiskProfileDashboard({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">
+                    <p className="bz-eyebrow bz-brand-text-on-light">
                       Scenario 0{questionIndex + 1}
                     </p>
-                    <h3 className="mt-2 text-h2 font-semibold text-slate-950">{question.title}</h3>
-                    <p className="mt-2 text-body leading-7 text-slate-600">{question.scenario}</p>
+                    <h3 className="mt-2 text-h2 text-fg-strong">{question.title}</h3>
+                    <p className="mt-2 text-body leading-7 text-fg-muted">{question.scenario}</p>
                   </div>
                 </div>
 
@@ -427,15 +432,15 @@ export function StudentRiskProfileDashboard({
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <p className="text-body font-black leading-6">{option.label}</p>
+                          <p className="text-body font-semibold leading-6">{option.label}</p>
                           {selected ? (
                             <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
                           ) : (
                             <span className="h-5 w-5 shrink-0 rounded-full border border-slate-300" />
                           )}
                         </div>
-                        <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{option.detail}</p>
-                        <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                        <p className="mt-3 text-body-sm leading-6 text-slate-600">{option.detail}</p>
+                        <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-caption font-semibold text-slate-600">
                           {option.concept}
                         </span>
                       </button>
@@ -453,19 +458,19 @@ export function StudentRiskProfileDashboard({
               data-testid="risk-profile-submit"
               onClick={submitProfile}
               disabled={submitState === "loading" || completed === 0}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               生成我的投资人格
             </button>
             {submitState === "success" && (
-              <p role="status" className="inline-flex items-center gap-2 text-sm font-bold text-down">
+              <p role="status" className="inline-flex items-center gap-2 text-body-sm font-semibold text-down">
                 <CheckCircle2 className="h-4 w-4" />
                 已根据最新答案更新画像
               </p>
             )}
             {submitState === "error" && (
-              <p role="alert" className="inline-flex items-center gap-2 text-sm font-bold text-error">
+              <p role="alert" className="inline-flex items-center gap-2 text-body-sm font-semibold text-error">
                 <AlertCircle className="h-4 w-4" />
                 {errorMessage}
               </p>
@@ -479,14 +484,14 @@ export function StudentRiskProfileDashboard({
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
                   <Brain className="h-5 w-5 text-brand" />
-                  <h2 className="text-h1 font-semibold text-slate-950">用真实行为复评</h2>
+                  <h2 className="text-h1 text-fg-strong">用真实行为复评</h2>
                 </div>
-                <p className="mt-2 text-body leading-7 text-slate-600">
+                <p className="mt-2 text-body leading-7 text-fg-muted">
                   结合你的回合记录、仓位纪律、学习进度和风险信号，生成一张更贴近真实操作的行为画像。
                 </p>
               </div>
               {behaviorState === "success" && (
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-black text-brand">
+                <span className="bz-brand-chip rounded-full px-3 py-1 text-caption font-semibold">
                   {behaviorProviderLabel(behaviorMeta?.provider, behaviorMeta?.cached)}
                 </span>
               )}
@@ -498,7 +503,7 @@ export function StudentRiskProfileDashboard({
               data-testid="behavior-persona-submit"
               onClick={submitBehaviorPersona}
               disabled={behaviorState === "loading" || isBehaviorPending}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-black text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-body-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -513,7 +518,7 @@ export function StudentRiskProfileDashboard({
                 role="status"
                 aria-live="polite"
                 data-testid="behavior-slow-hint"
-                className="mt-3 text-center text-sm font-semibold text-slate-500"
+                className="mt-3 text-center text-body-sm font-semibold text-slate-500"
               >
                 AI 正在分析你的真实操作，稍等几秒…
               </p>
@@ -521,14 +526,14 @@ export function StudentRiskProfileDashboard({
 
             {behaviorState === "idle" && (
               <div className="mt-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-bold leading-6 text-slate-600">
+                <p className="text-body-sm font-semibold leading-6 text-slate-600">
                   建议完成几次交易、储蓄或学习任务后再复评，结果会比单次问卷更接近你的真实决策节奏。
                 </p>
               </div>
             )}
 
             {behaviorState === "error" && (
-              <p role="alert" className="mt-4 flex gap-2 rounded-[1.35rem] border border-error/20 bg-error-soft p-4 text-sm font-bold leading-6 text-error">
+              <p role="alert" className="mt-4 flex gap-2 rounded-[1.35rem] border border-error/20 bg-error-soft p-4 text-body-sm font-semibold leading-6 text-error">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 {behaviorError || "行为复评暂时不可用，请稍后再试。"}
               </p>
@@ -541,11 +546,11 @@ export function StudentRiskProfileDashboard({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Behavior Persona</p>
-                    <h3 className="mt-2 text-h2 font-black text-slate-950">{behaviorPersona.label}</h3>
-                    <p className="mt-1 text-sm font-bold text-slate-500">{behaviorPersona.archetype}</p>
+                    <p className="bz-eyebrow bz-brand-text-on-light">Behavior Persona</p>
+                    <h3 className="mt-2 text-h2 text-fg-strong">{behaviorPersona.label}</h3>
+                    <p className="mt-1 text-body-sm font-semibold text-slate-500">{behaviorPersona.archetype}</p>
                   </div>
-                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-caption font-semibold text-white">
                     {behaviorPersona.confidence === "high"
                       ? "高置信"
                       : behaviorPersona.confidence === "medium"
@@ -553,37 +558,37 @@ export function StudentRiskProfileDashboard({
                         : "低置信"}
                   </span>
                 </div>
-                <p className="text-body font-semibold leading-7 text-slate-700">{behaviorPersona.summary}</p>
+                <p className="text-body font-semibold leading-7 text-fg-strong">{behaviorPersona.summary}</p>
 
                 {/* Intent-vs-behavior comparison block (UX-01) */}
                 <div
                   data-testid="intent-vs-behavior"
                   className="rounded-[1.15rem] border border-slate-200 bg-slate-50 p-3"
                 >
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">问卷 vs 行为</p>
+                  <p className="bz-eyebrow text-fg-muted">问卷 vs 行为</p>
                   <div className="mt-2 flex flex-col gap-1.5">
-                    <p className="text-sm font-semibold leading-6 text-slate-700">
-                      <span className="font-black text-slate-950">问卷倾向：</span>
+                    <p className="text-body-sm font-semibold leading-6 text-slate-700">
+                      <span className="font-bold text-fg-strong">问卷倾向：</span>
                       {payload.label}（你说的偏好）
                     </p>
-                    <p className="text-sm font-semibold leading-6 text-slate-700">
-                      <span className="font-black text-slate-950">真实行为：</span>
+                    <p className="text-body-sm font-semibold leading-6 text-slate-700">
+                      <span className="font-bold text-fg-strong">真实行为：</span>
                       {behaviorPersona.label}（你实际的操作）
                     </p>
                   </div>
                   {behaviorPersona.band !== payload.band ? (
                     <p
                       data-testid="intent-behavior-diff"
-                      className="mt-2.5 rounded-[0.85rem] bg-warning/10 px-3 py-2 text-sm font-bold leading-6 text-slate-800"
+                      className="mt-2.5 rounded-[0.85rem] bg-warning/10 px-3 py-2 text-body-sm font-semibold leading-6 text-slate-800"
                     >
                       口头偏好和真实操作出现了差距 —— 这正是最值得复盘的地方：你说自己偏
-                      <span className="font-black">{payload.label}</span>，但真实操作更接近
-                      <span className="font-black">{behaviorPersona.label}</span>。
+                      <span className="font-bold">{payload.label}</span>，但真实操作更接近
+                      <span className="font-bold">{behaviorPersona.label}</span>。
                     </p>
                   ) : (
                     <p
                       data-testid="intent-behavior-same"
-                      className="mt-2.5 rounded-[0.85rem] bg-down-soft px-3 py-2 text-sm font-bold leading-6 text-[var(--down-700)]"
+                      className="mt-2.5 rounded-[0.85rem] bg-down-soft px-3 py-2 text-body-sm font-semibold leading-6 text-[var(--down-700)]"
                     >
                       你的真实操作和问卷倾向一致。
                     </p>
@@ -592,10 +597,10 @@ export function StudentRiskProfileDashboard({
 
                 <div className="grid gap-3">
                   <div className="rounded-[1.15rem] bg-slate-50 p-3">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">行为证据</p>
+                    <p className="bz-eyebrow text-fg-muted">行为证据</p>
                     <ul className="mt-2 space-y-2">
                       {behaviorPersona.evidence.map((item) => (
-                        <li key={item} className="flex gap-2 text-sm font-semibold leading-6 text-slate-700">
+                        <li key={item} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-700">
                           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                           <span>{item}</span>
                         </li>
@@ -603,10 +608,10 @@ export function StudentRiskProfileDashboard({
                     </ul>
                   </div>
                   <div className="rounded-[1.15rem] bg-brand-soft p-3">
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">下一步训练</p>
+                    <p className="bz-eyebrow bz-brand-text-on-light">下一步训练</p>
                     <ol className="mt-2 space-y-2">
                       {behaviorPersona.nextSteps.map((step, index) => (
-                        <li key={step} className="flex gap-2 text-sm font-black leading-6 text-slate-800">
+                        <li key={step} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-800">
                           <span>{index + 1}.</span>
                           <span>{step}</span>
                         </li>
@@ -615,7 +620,7 @@ export function StudentRiskProfileDashboard({
                   </div>
                 </div>
                 {behaviorMeta?.analyzedAt && (
-                  <p className="text-xs font-bold text-slate-500">复评时间：{formatTime(behaviorMeta.analyzedAt)}</p>
+                  <p className="text-caption font-semibold text-slate-500">复评时间：{formatTime(behaviorMeta.analyzedAt)}</p>
                 )}
               </div>
             )}
@@ -624,9 +629,9 @@ export function StudentRiskProfileDashboard({
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">当前配置 vs 人格区间</h2>
+              <h2 className="text-h1 text-fg-strong">当前配置 vs 人格区间</h2>
             </div>
-            <p className="mt-2 text-body leading-7 text-slate-600">
+            <p className="mt-2 text-body leading-7 text-fg-muted">
               建议区间来自你的测评倾向和当前沙盘风险，不代表真实投资建议。
             </p>
 
@@ -638,17 +643,17 @@ export function StudentRiskProfileDashboard({
                   <div key={item.id} data-motion-card className="rounded-[1.45rem] bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-body font-black text-slate-950">{item.label}</p>
-                        <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">{item.hint}</p>
+                        <p className="text-body font-semibold text-fg-strong">{item.label}</p>
+                        <p className="mt-1 text-body-sm font-semibold leading-6 text-slate-600">{item.hint}</p>
                       </div>
-                      <span className={cn("rounded-full px-3 py-1 text-xs font-black", allocationTone[item.tone])}>
+                      <span className={cn("rounded-full px-3 py-1 text-caption font-semibold", allocationTone[item.tone])}>
                         {item.gap > 0 ? "高于" : item.gap < 0 ? "低于" : "贴近"}
                         {Math.abs(item.gap)}%
                       </span>
                     </div>
                     <div className="mt-4 space-y-2">
                       <div>
-                        <div className="mb-1 flex justify-between text-xs font-bold text-slate-600">
+                        <div className="mb-1 flex justify-between text-caption font-semibold text-slate-600">
                           <span>当前 {item.current}%</span>
                           <span>目标 {item.target}%</span>
                         </div>
@@ -669,13 +674,13 @@ export function StudentRiskProfileDashboard({
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">{payload.coach.title}</h2>
+              <h2 className="text-h1 text-fg-strong">{payload.coach.title}</h2>
             </div>
-            <p className="mt-3 text-body leading-7 text-slate-600">{payload.coach.summary}</p>
+            <p className="mt-3 text-body leading-7 text-fg-muted">{payload.coach.summary}</p>
             <div className="mt-5 space-y-3">
               {payload.coach.nextSteps.map((step, index) => (
                 <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
                     {index + 1}
                   </span>
                   <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>
@@ -683,10 +688,10 @@ export function StudentRiskProfileDashboard({
               ))}
             </div>
             <div className="mt-5 rounded-[1.35rem] bg-slate-950 p-4 text-white">
-              <p className="text-sm font-bold text-white/58">下一站推荐</p>
+              <p className="bz-eyebrow-inverse normal-case tracking-normal text-white/58">下一站推荐</p>
               <a
                 href="/student/wealth"
-                className="mt-2 inline-flex items-center gap-2 text-body font-black text-brand-warm transition hover:text-white"
+                className="mt-2 inline-flex items-center gap-2 text-body font-semibold text-brand-warm transition hover:text-white"
               >
                 去财富地图检查资产分层
                 <ArrowRight className="h-4 w-4" />
@@ -697,16 +702,16 @@ export function StudentRiskProfileDashboard({
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">雷达维度解释</h2>
+              <h2 className="text-h1 text-fg-strong">雷达维度解释</h2>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {payload.radar.map((metric) => (
                 <div key={metric.id} className="rounded-[1.25rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-black text-slate-950">{metric.label}</p>
-                    <span className="bz-brand-text-on-light text-h2 font-black tabular-nums">{metric.value}</span>
+                    <p className="text-body-sm font-semibold text-fg-strong">{metric.label}</p>
+                    <span className="bz-brand-text-on-light text-h2 tabular-nums">{metric.value}</span>
                   </div>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">{metric.hint}</p>
+                  <p className="mt-2 text-caption font-semibold leading-5 text-slate-600">{metric.hint}</p>
                 </div>
               ))}
             </div>
