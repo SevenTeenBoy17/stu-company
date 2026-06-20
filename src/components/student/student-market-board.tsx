@@ -383,18 +383,18 @@ export function StudentMarketBoard({
       <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Radar</p>
-            <h2 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">市场信息</h2>
-            <p className="mt-3 text-base leading-8 text-slate-600">
+            <p className="bz-eyebrow">Market Radar</p>
+            <h2 className="mt-3 text-h1 text-fg-strong">市场信息</h2>
+            <p className="mt-3 text-body-lg text-fg-default">
               这里是只读观察台，先看主线，再看结构，最后再去问 AI。
             </p>
             <label className="mt-5 flex min-h-12 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4">
-              <Search className="h-4 w-4 text-slate-600" />
+              <Search className="h-4 w-4 text-fg-muted" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="搜索股票或代码"
-                className="min-h-10 w-full bg-transparent text-base font-semibold text-slate-950 outline-none placeholder:text-slate-600"
+                className="min-h-10 w-full bg-transparent text-body text-fg-default outline-none placeholder:text-fg-muted"
               />
             </label>
           </div>
@@ -425,7 +425,7 @@ export function StudentMarketBoard({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-black text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]"
                         style={{
                           background: `linear-gradient(135deg, ${item.accentColor} 0%, rgba(255,255,255,0.16) 115%)`,
                         }}
@@ -433,15 +433,15 @@ export function StudentMarketBoard({
                         {item.monogram}
                       </div>
                       <div className="min-w-0">
-                        <p className="break-all text-base font-black leading-6 text-slate-950">{item.name}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
+                        <p className="break-all text-body font-semibold leading-6 text-fg-strong">{item.name}</p>
+                        <p className="mt-1 text-caption uppercase tracking-[0.18em] text-fg-muted">
                           {item.symbol}
                         </p>
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-base font-black text-slate-950">{formatPrice(item.currentPrice)}</p>
-                      <p className={cn("mt-1 text-xs font-black", getMarketMoveClasses(item.changePercent).text)}>
+                      <p className="text-body font-semibold tabular-nums text-fg-strong">{formatPrice(item.currentPrice)}</p>
+                      <p className={cn("mt-1 text-caption font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
                         {item.changePercent >= 0 ? "+" : ""}
                         {item.changePercent.toFixed(2)}%
                       </p>
@@ -452,7 +452,7 @@ export function StudentMarketBoard({
             })}
             </div>
           ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-600">
+            <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted">
               没有匹配“{search}”的股票，换个关键词或代码试试。
             </div>
           )}
@@ -463,13 +463,13 @@ export function StudentMarketBoard({
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">My Watchlist</p>
-              <h3 className="mt-3 text-2xl font-black text-slate-950 md:text-3xl">我的自选观察</h3>
-              <p className="mt-2 max-w-2xl text-base font-semibold leading-8 text-slate-600">
+              <p className="bz-eyebrow">My Watchlist</p>
+              <h3 className="mt-3 text-h2 text-fg-strong">我的自选观察</h3>
+              <p className="mt-2 max-w-2xl text-body text-fg-muted">
                 先把“为什么值得看”写下来，再观察下一次行情是否验证你的判断。
               </p>
             </div>
-            <div className="rounded-full bg-slate-50 px-4 py-2 text-sm font-black text-slate-600">
+            <div className="rounded-full bg-slate-50 px-4 py-2 text-body-sm font-semibold tabular-nums text-fg-muted">
               已记录 {studentWatchlist?.historyCount ?? 0} 次
             </div>
           </div>
@@ -489,14 +489,14 @@ export function StudentMarketBoard({
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <div
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white"
                             style={{ background: `linear-gradient(135deg, ${item.accentColor}, rgba(15,23,42,0.32))` }}
                           >
                             {item.monogram}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-lg font-black text-slate-950">{item.name}</p>
-                            <p className="mt-0.5 truncate text-xs font-bold uppercase tracking-[0.14em] text-slate-600">
+                            <p className="truncate text-h3 text-fg-strong">{item.name}</p>
+                            <p className="mt-0.5 truncate text-caption uppercase tracking-[0.14em] text-fg-muted">
                               {item.symbol} · {item.concept}
                             </p>
                           </div>
@@ -505,29 +505,29 @@ export function StudentMarketBoard({
                           type="button"
                           disabled={watchlistPending}
                           onClick={() => void updateWatchlist("remove", item.symbol)}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-fg-muted transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
                           aria-label={`移除 ${item.name}`}
                         >
                           <X className="h-4 w-4" />
                         </button>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-600">
+                        <span className="rounded-full bg-slate-50 px-3 py-1 text-caption font-semibold text-fg-muted">
                           {item.riskLabel}
                         </span>
-                        <span className={cn("rounded-full px-3 py-1 text-xs font-black", getMarketMoveClasses(item.changePercent).badge)}>
+                        <span className={cn("rounded-full px-3 py-1 text-caption font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).badge)}>
                           {item.changePercent >= 0 ? "+" : ""}
                           {item.changePercent.toFixed(2)}%
                         </span>
                       </div>
-                      <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">{item.reason}</p>
+                      <p className="mt-3 text-body-sm text-fg-muted">{item.reason}</p>
                     </article>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5">
-                  <p className="text-lg font-black text-slate-950">还没有自选标的</p>
-                  <p className="mt-2 text-base font-semibold leading-8 text-slate-600">
+                  <p className="text-h3 text-fg-strong">还没有自选标的</p>
+                  <p className="mt-2 text-body text-fg-muted">
                     从右侧当前选中股票开始，写一句观察理由；这会进入历史复盘，不影响模拟资产。
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -541,7 +541,7 @@ export function StudentMarketBoard({
                           startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
                           setWatchReason(`${item.name}：${item.concept}值得观察，我想比较它的热度和风险是否同步。`);
                         }}
-                        className="rounded-full border border-white bg-white px-4 py-2 text-sm font-black text-slate-600 shadow-sm transition-colors hover:border-orange-300 hover:text-orange-700"
+                        className="rounded-full border border-white bg-white px-4 py-2 text-body-sm font-semibold text-fg-muted shadow-sm transition-colors hover:border-orange-300 hover:text-orange-700"
                       >
                         {item.name}
                       </button>
@@ -553,10 +553,10 @@ export function StudentMarketBoard({
 
             <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white">
               <div className="flex items-center gap-2">
-                <BookmarkCheck className="h-4 w-4 text-orange-300" />
-                <p className="text-base font-black">记录当前选中</p>
+                <BookmarkCheck className="h-4 w-4 text-brand-warm" />
+                <p className="text-h3 text-white">记录当前选中</p>
               </div>
-              <p className="mt-3 text-sm font-semibold leading-7 text-white/62">
+              <p className="mt-3 text-body-sm leading-7 text-white/70">
                 当前：{payload.selected.name}（{payload.selected.symbol}）
               </p>
               <textarea
@@ -564,14 +564,14 @@ export function StudentMarketBoard({
                 onChange={(event) => setWatchReason(event.target.value)}
                 maxLength={120}
                 placeholder="写一句观察理由，例如：AI 服务器需求强，但短期涨幅较快，需要比较板块是否共振。"
-                className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-sm font-semibold leading-7 text-white outline-none placeholder:text-white/70 focus:border-orange-300/70"
+                className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-body-sm leading-7 text-white outline-none placeholder:text-white/70 focus:border-orange-300/70"
               />
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
                   type="button"
                   disabled={watchlistPending}
                   onClick={() => void updateWatchlist(selectedInStudentWatchlist ? "remove" : "add")}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-orange-400 px-4 text-sm font-black text-slate-950 shadow-[0_16px_34px_rgba(240,138,56,0.28)] transition-colors hover:bg-orange-300 disabled:opacity-55"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand px-4 text-body-sm font-semibold text-fg-default shadow-[0_16px_34px_rgba(240,138,56,0.28)] transition-colors hover:bg-brand-hover disabled:opacity-55"
                 >
                   {watchlistPending ? (
                     <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -590,13 +590,13 @@ export function StudentMarketBoard({
                       autoSend: true,
                     })
                   }
-                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/12 px-4 text-sm font-black text-white/78 transition-colors hover:bg-white/10"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 px-4 text-body-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   问 AI
                 </button>
               </div>
               {watchlistMessage ? (
-                <p className="mt-3 rounded-[1rem] bg-white/8 px-3 py-2 text-xs font-bold leading-6 text-white/70">
+                <p className="mt-3 rounded-[1rem] bg-white/8 px-3 py-2 text-caption leading-6 text-white/70">
                   {watchlistMessage}
                 </p>
               ) : null}
@@ -608,15 +608,20 @@ export function StudentMarketBoard({
           <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Market Heat</p>
-                <h3 className="mt-3 text-2xl font-black text-slate-950">市场温度</h3>
+                <p className="bz-eyebrow">Market Heat</p>
+                <h3 className="mt-3 text-h2 text-fg-strong">市场温度</h3>
               </div>
-              <ThermometerSun className="h-8 w-8 text-orange-500" />
+              <ThermometerSun className="h-8 w-8 text-brand" />
             </div>
             <div className="mt-5 rounded-[1.5rem] bg-slate-950 p-5 text-white">
               <div className="flex items-end justify-between gap-4">
-                <p className="text-3xl font-black">{studentWatchlist?.temperature.label ?? "读取中"}</p>
-                <p className="text-4xl font-black text-orange-300">{studentWatchlist?.temperature.score ?? "--"}</p>
+                <p className="text-h2 text-white">{studentWatchlist?.temperature.label ?? "读取中"}</p>
+                <span className="bz-hero-stat">
+                  <span className="bz-eyebrow bz-brand-text-on-light">今日温度</span>
+                  <span className="text-hero-num tabular-nums bz-brand-text-on-light">
+                    {studentWatchlist?.temperature.score ?? "--"}
+                  </span>
+                </span>
               </div>
               <div className="mt-4 h-3 rounded-full bg-white/10">
                 <div
@@ -624,21 +629,21 @@ export function StudentMarketBoard({
                   style={{ width: `${studentWatchlist?.temperature.score ?? 0}%` }}
                 />
               </div>
-              <p className="mt-4 text-sm font-semibold leading-7 text-white/68">
+              <p className="mt-4 text-body-sm leading-7 text-white/70">
                 {studentWatchlist?.temperature.summary ?? "正在根据观察池涨跌分布生成课堂温度提示。"}
               </p>
             </div>
           </div>
 
           <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Daily Brief</p>
-            <h3 className="mt-3 text-2xl font-black text-slate-950">每日必看</h3>
+            <p className="bz-eyebrow">Daily Brief</p>
+            <h3 className="mt-3 text-h2 text-fg-strong">每日必看</h3>
             <div className="mt-5 rounded-[1.5rem] bg-orange-50 p-5">
-              <p className="text-lg font-black text-slate-950">{studentWatchlist?.dailyBrief.title ?? "正在生成今日观察题"}</p>
-              <p className="mt-3 text-base font-semibold leading-8 text-slate-600">
+              <p className="text-h3 text-fg-strong">{studentWatchlist?.dailyBrief.title ?? "正在生成今日观察题"}</p>
+              <p className="mt-3 text-body text-fg-muted">
                 {studentWatchlist?.dailyBrief.summary ?? "系统会从观察池里挑出一个最适合课堂讨论的样本。"}
               </p>
-              <p className="mt-4 rounded-[1.25rem] bg-white px-4 py-3 text-sm font-black leading-7 text-orange-700">
+              <p className="mt-4 rounded-[1.25rem] bg-white px-4 py-3 text-body-sm font-semibold leading-7 text-orange-700">
                 {studentWatchlist?.dailyBrief.question ?? "先选择一只股票加入自选，再写下你的观察理由。"}
               </p>
             </div>
@@ -658,14 +663,14 @@ export function StudentMarketBoard({
               <div className="relative z-10">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">AI / Tech Watchlist</p>
+                    <p className="bz-eyebrow-inverse">AI / Tech Watchlist</p>
                     <div className="mt-3 flex flex-wrap items-end gap-3">
-                      <h2 className="text-[2.35rem] font-black leading-tight sm:text-[3rem]">{payload.selected.name}</h2>
-                      <span className="rounded-full border border-white/12 bg-white/10 px-3 py-1 text-xs font-bold text-white/72">
+                      <h2 className="text-display-lg leading-tight text-white">{payload.selected.name}</h2>
+                      <span className="rounded-full border border-white/12 bg-white/10 px-3 py-1 text-caption font-semibold text-white/80">
                         {payload.selected.symbol}
                       </span>
                     </div>
-                    <p className="mt-3 max-w-2xl text-base leading-8 text-white/76">{payload.selected.summary}</p>
+                    <p className="mt-3 max-w-2xl text-body-lg leading-8 text-white/80">{payload.selected.summary}</p>
                   </div>
                   <button
                     type="button"
@@ -678,7 +683,7 @@ export function StudentMarketBoard({
                       })
                     }
                     data-motion-button
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-base font-bold text-white transition-colors hover:bg-white/15 will-change-transform"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-body font-semibold text-white transition-colors hover:bg-white/15 will-change-transform"
                   >
                     <Bot className="h-4 w-4" />
                     让 AI 解读
@@ -686,19 +691,19 @@ export function StudentMarketBoard({
                 </div>
 
                 <div className="mt-7 flex flex-wrap items-end gap-4">
-                  <p className="text-[3rem] font-black tracking-tight sm:text-[4rem]">
+                  <p className="text-display-lg font-bold tracking-tight tabular-nums text-white sm:text-display-xl">
                     {formatPrice(payload.selected.currentPrice)}
                   </p>
-                  <p className={cn("rounded-full px-3 py-1.5 text-base font-black", getMarketMoveClasses(payload.selected.changePercent).darkBadge)}>
+                  <p className={cn("rounded-full px-3 py-1.5 text-body font-semibold tabular-nums", getMarketMoveClasses(payload.selected.changePercent).darkBadge)}>
                     {payload.selected.changePercent >= 0 ? "+" : ""}
                     {payload.selected.changePercent.toFixed(2)}%
                   </p>
-                  <p className="text-sm font-semibold text-white/70">{payload.selected.companyName}</p>
+                  <p className="text-body-sm text-white/70">{payload.selected.companyName}</p>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   {payload.selected.tags.map((tag) => (
-                    <span key={tag} className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold text-white/72">
+                    <span key={tag} className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-caption font-semibold text-white/80">
                       {tag}
                     </span>
                   ))}
@@ -707,10 +712,10 @@ export function StudentMarketBoard({
                 <div className="mt-7 rounded-[2rem] border border-white/10 bg-white/[0.05] p-4 sm:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-base font-black text-white">日 K 线与趋势速写</p>
-                      <p className="mt-1 text-sm font-semibold text-white/70">实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。</p>
+                      <p className="text-h3 text-white">日 K 线与趋势速写</p>
+                      <p className="mt-1 text-body-sm text-white/70">实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。</p>
                     </div>
-                    <Activity className="h-5 w-5 text-orange-300" />
+                    <Activity className="h-5 w-5 text-brand-warm" />
                   </div>
                   <svg aria-hidden="true" viewBox={`0 0 ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT}`} className="mt-4 h-52 w-full">
                     <defs>
@@ -756,7 +761,7 @@ export function StudentMarketBoard({
                     ))}
                     <path className="market-trend-line" d={linePath} fill="none" stroke="#fff4e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <div className="mt-4 grid gap-2 text-xs font-bold text-white/72 sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 text-caption font-semibold text-white/80 sm:grid-cols-3">
                     {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
                       <span key={task} data-motion-card className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
                         {task}
@@ -767,25 +772,25 @@ export function StudentMarketBoard({
               </div>
             </div>
 
-            <div className="grid content-start gap-4 bg-white p-5 text-slate-950 sm:p-6 lg:p-7">
+            <div className="grid content-start gap-4 bg-white p-5 text-fg-strong sm:p-6 lg:p-7">
               <div className="rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="text-sm font-bold text-slate-600">教学综合评分</p>
+                <p className="text-body-sm font-semibold text-fg-muted">教学综合评分</p>
                 <div className="mt-4 flex items-end justify-between gap-4">
-                  <p className="text-[3.5rem] font-black tracking-tight text-slate-950">{payload.selected.score.toFixed(2)}</p>
-                  <div className="rounded-full bg-orange-50 px-3 py-1.5 text-sm font-black text-orange-700">
+                  <p className="text-display-lg font-bold tracking-tight tabular-nums text-fg-strong">{payload.selected.score.toFixed(2)}</p>
+                  <div className="rounded-full bg-orange-50 px-3 py-1.5 text-body-sm font-semibold text-orange-700">
                     {payload.selected.sectorGroup}
                   </div>
                 </div>
-                <p className="mt-4 text-base leading-8 text-slate-600">{payload.selected.teachingNote}</p>
+                <p className="mt-4 text-body text-fg-muted">{payload.selected.teachingNote}</p>
               </div>
 
               <div className="rounded-[1.5rem] bg-orange-50 p-5">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-orange-500" />
-                  <p className="text-base font-black text-slate-950">数据新鲜度</p>
+                  <Sparkles className="h-4 w-4 text-brand" />
+                  <p className="text-h3 text-fg-strong">数据新鲜度</p>
                 </div>
-                <p className="mt-4 text-base leading-8 text-slate-600">{payload.note}</p>
-                <div className="mt-4 rounded-full bg-white px-3 py-2 text-xs font-bold text-slate-600">
+                <p className="mt-4 text-body text-fg-muted">{payload.note}</p>
+                <div className="mt-4 rounded-full bg-white px-3 py-2 text-caption font-semibold text-fg-muted">
                   更新时间：{formatDateLabel(new Date(payload.asOf))}
                 </div>
               </div>
@@ -794,13 +799,13 @@ export function StudentMarketBoard({
         </div>
 
         <aside data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Snapshot</p>
-          <h3 className="mt-3 text-2xl font-black text-slate-950">关键字段</h3>
+          <p className="bz-eyebrow">Snapshot</p>
+          <h3 className="mt-3 text-h2 text-fg-strong">关键字段</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {payload.selected.facts.map((fact) => (
               <div key={fact.label} className="rounded-[1.5rem] bg-slate-50 px-4 py-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{fact.label}</p>
-                <p className="mt-2 text-lg font-black text-slate-950">{fact.value}</p>
+                <p className="text-caption uppercase tracking-[0.18em] text-fg-muted">{fact.label}</p>
+                <p className="mt-2 text-h3 tabular-nums text-fg-strong">{fact.value}</p>
               </div>
             ))}
           </div>
@@ -811,10 +816,10 @@ export function StudentMarketBoard({
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Radar className="h-5 w-5 text-orange-500" />
-              <h3 className="text-2xl font-black text-slate-950">6维教学观察雷达</h3>
+              <Radar className="h-5 w-5 text-brand" />
+              <h3 className="text-h2 text-fg-strong">6维教学观察雷达</h3>
             </div>
-            <p className="text-sm font-bold text-slate-600">文字说明移到右侧，避免图内拥挤。</p>
+            <p className="text-body-sm text-fg-muted">文字说明移到右侧，避免图内拥挤。</p>
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)]">
             <div data-motion-viz className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
@@ -853,10 +858,10 @@ export function StudentMarketBoard({
               {payload.selected.metrics.map((metric) => (
                 <div key={metric.id} className="rounded-[1.5rem] bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-base font-black text-slate-950">{metric.label}</p>
-                    <p className="text-lg font-black text-orange-700">{metric.score}</p>
+                    <p className="text-body font-semibold text-fg-strong">{metric.label}</p>
+                    <p className="text-h3 tabular-nums text-orange-700">{metric.score}</p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">{metric.note}</p>
+                  <p className="mt-2 text-body-sm text-fg-muted">{metric.note}</p>
                 </div>
               ))}
             </div>
@@ -865,16 +870,16 @@ export function StudentMarketBoard({
 
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <PieChart className="h-5 w-5 text-orange-500" />
-            <h3 className="text-2xl font-black text-slate-950">观察池结构拆解</h3>
+            <PieChart className="h-5 w-5 text-brand" />
+            <h3 className="text-h2 text-fg-strong">观察池结构拆解</h3>
           </div>
           <div className="mt-6 flex flex-col items-center gap-7">
             <div className="relative flex h-52 w-52 shrink-0 items-center justify-center rounded-full">
               <div className="absolute inset-0 rounded-full shadow-inner" style={{ background: buildDonutGradient(sectorSlices) }} />
               <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white text-center shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
-                <span className="text-xs font-bold text-slate-600">AI/科技</span>
-                <span className="mt-1 text-2xl font-black text-slate-950">{payload.watchlist.length}</span>
-                <span className="text-xs font-bold text-slate-600">观察标的</span>
+                <span className="text-caption font-semibold text-fg-muted">AI/科技</span>
+                <span className="mt-1 text-h2 tabular-nums text-fg-strong">{payload.watchlist.length}</span>
+                <span className="text-caption font-semibold text-fg-muted">观察标的</span>
               </div>
             </div>
             <ul className="w-full space-y-2.5">
@@ -885,14 +890,14 @@ export function StudentMarketBoard({
                 >
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-black text-slate-950">{item.label}</p>
-                    <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">
+                    <p className="truncate text-body font-semibold text-fg-strong">{item.label}</p>
+                    <p className="mt-0.5 truncate text-caption font-normal text-fg-muted">
                       领跑观察：{item.leadSymbol}
                     </p>
                   </div>
                   <p
                     className={cn(
-                      "shrink-0 text-sm font-black tabular-nums",
+                      "shrink-0 text-body-sm font-semibold tabular-nums",
                       getMarketMoveClasses(item.changePercent).text,
                     )}
                   >
@@ -909,15 +914,15 @@ export function StudentMarketBoard({
       <section className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <div data-testid="peer-heat-card" data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <UsersRound className="h-5 w-5 text-orange-500" />
-            <h3 className="text-2xl font-black text-slate-950">同学热度</h3>
+            <UsersRound className="h-5 w-5 text-brand" />
+            <h3 className="text-h2 text-fg-strong">同学热度</h3>
           </div>
           <div className="mt-4 rounded-[1.5rem] bg-slate-950 p-4 text-white">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300">
+            <p className="bz-eyebrow-inverse tabular-nums">
               {peerHeat.classroomName} · {peerHeat.totalStudents} 人
             </p>
-            <p className="mt-3 text-xl font-black leading-7">{peerHeat.headline}</p>
-            <p className="mt-3 text-sm font-semibold leading-6 text-white/64">{peerHeat.summary}</p>
+            <p className="mt-3 text-h3 leading-7 text-white">{peerHeat.headline}</p>
+            <p className="mt-3 text-body-sm leading-6 text-white/70">{peerHeat.summary}</p>
           </div>
           <div className="mt-4 space-y-3">
             {peerHeat.items.length > 0 ? (
@@ -925,16 +930,16 @@ export function StudentMarketBoard({
                 <div key={`${item.source}-${item.symbol}`} className="rounded-[1.35rem] bg-slate-50 px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-base font-black text-slate-950">
+                      <p className="text-body font-semibold text-fg-strong">
                         #{index + 1} {item.name}
                       </p>
-                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-600">
+                      <p className="mt-1 text-caption uppercase tracking-[0.16em] text-fg-muted">
                         {item.symbol} · {item.source === "holding" ? "模拟持有" : "自选观察"}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-lg font-black text-orange-700">{item.count}人</p>
-                      <p className="text-xs font-black text-slate-600">{item.ratio}%</p>
+                      <p className="text-h3 tabular-nums text-orange-700">{item.count}人</p>
+                      <p className="text-caption font-semibold tabular-nums text-fg-muted">{item.ratio}%</p>
                     </div>
                   </div>
                   <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
@@ -943,20 +948,20 @@ export function StudentMarketBoard({
                       style={{ width: `${Math.max(8, item.ratio)}%` }}
                     />
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-600">
+                  <p className="mt-2 line-clamp-2 text-caption font-normal leading-5 text-fg-muted">
                     {item.concept} · {item.coachNote}
                   </p>
                 </div>
               ))
             ) : (
-              <div className="rounded-[1.35rem] bg-slate-50 px-4 py-5 text-sm font-semibold leading-6 text-slate-600">
+              <div className="rounded-[1.35rem] bg-slate-50 px-4 py-5 text-body-sm leading-6 text-fg-muted">
                 还没有足够的班级持有或自选观察记录。完成一笔模拟持有或加入自选后，这里会出现脱敏聚合热度。
               </div>
             )}
           </div>
           <div className="mt-4 flex items-start gap-2 rounded-[1.25rem] bg-orange-50 px-4 py-3">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-            <p className="text-xs font-bold leading-5 text-slate-600">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+            <p className="text-caption font-normal leading-5 text-fg-muted">
               {peerHeat.privacyNote}
               {peerHeatError ? ` 刷新提示：${peerHeatError}` : ""}
             </p>
@@ -965,20 +970,20 @@ export function StudentMarketBoard({
 
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-orange-500" />
-            <h3 className="text-2xl font-black text-slate-950">观察池排行</h3>
+            <Trophy className="h-5 w-5 text-brand" />
+            <h3 className="text-h2 text-fg-strong">观察池排行</h3>
           </div>
           <div className="mt-5 space-y-3">
             {payload.marketSummary.map((item, index) => (
               <div key={item.symbol} className="rounded-[1.5rem] bg-slate-50 px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-black text-slate-950">#{index + 1} {item.name}</p>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{item.symbol}</p>
+                    <p className="text-body font-semibold text-fg-strong">#{index + 1} {item.name}</p>
+                    <p className="mt-1 text-caption uppercase tracking-[0.18em] text-fg-muted">{item.symbol}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-base font-black text-slate-950">{item.score.toFixed(2)}</p>
-                    <p className={cn("mt-1 text-xs font-black", getMarketMoveClasses(item.changePercent).text)}>
+                    <p className="text-body font-semibold tabular-nums text-fg-strong">{item.score.toFixed(2)}</p>
+                    <p className={cn("mt-1 text-caption font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
                       {item.changePercent >= 0 ? "+" : ""}
                       {item.changePercent.toFixed(2)}%
                     </p>
@@ -991,8 +996,8 @@ export function StudentMarketBoard({
 
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <Layers3 className="h-5 w-5 text-orange-500" />
-            <h3 className="text-2xl font-black text-slate-950">板块热度条</h3>
+            <Layers3 className="h-5 w-5 text-brand" />
+            <h3 className="text-h2 text-fg-strong">板块热度条</h3>
           </div>
           <div className="mt-5 space-y-5">
             {payload.sectorPerformance.map((item) => {
@@ -1000,8 +1005,8 @@ export function StudentMarketBoard({
               return (
                 <div key={item.id}>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-base font-bold text-slate-950">{item.label}</p>
-                    <p className={cn("text-sm font-black", getMarketMoveClasses(item.changePercent).text)}>
+                    <p className="text-body font-semibold text-fg-strong">{item.label}</p>
+                    <p className={cn("text-body-sm font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
                       {item.changePercent >= 0 ? "+" : ""}
                       {item.changePercent.toFixed(2)}%
                     </p>
@@ -1009,7 +1014,7 @@ export function StudentMarketBoard({
                   <div className="mt-2 h-3 rounded-full bg-slate-100">
                     <div className={cn("h-full rounded-full", getMarketMoveClasses(item.changePercent).bar)} style={{ width }} />
                   </div>
-                  <p className="mt-2 text-xs font-bold text-slate-600">领跑观察：{item.leadSymbol}</p>
+                  <p className="mt-2 text-caption font-normal text-fg-muted">领跑观察：{item.leadSymbol}</p>
                 </div>
               );
             })}
@@ -1018,12 +1023,12 @@ export function StudentMarketBoard({
 
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <Waves className="h-5 w-5 text-orange-500" />
-            <h3 className="text-2xl font-black text-slate-950">课堂提示</h3>
+            <Waves className="h-5 w-5 text-brand" />
+            <h3 className="text-h2 text-fg-strong">课堂提示</h3>
           </div>
           <div className="mt-5 space-y-3">
             {payload.observationNotes.map((note, index) => (
-              <div key={`note-${index}`} className="rounded-[1.5rem] bg-orange-50 px-4 py-4 text-base font-semibold leading-8 text-slate-600">
+              <div key={`note-${index}`} className="rounded-[1.5rem] bg-orange-50 px-4 py-4 text-body text-fg-default">
                 {note}
               </div>
             ))}
@@ -1041,9 +1046,9 @@ export function StudentMarketBoard({
         >
           {payload.contentCards[0] ? (
             <div className="p-6 md:p-7">
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">{payload.contentCards[0].sourceLabel}</p>
-              <h3 className="mt-4 max-w-2xl text-3xl font-black">{payload.contentCards[0].title}</h3>
-              <p className="mt-4 max-w-2xl text-base font-semibold leading-8 text-white/72">{payload.contentCards[0].summary}</p>
+              <p className="bz-eyebrow-inverse">{payload.contentCards[0].sourceLabel}</p>
+              <h3 className="mt-4 max-w-2xl text-h1 text-white">{payload.contentCards[0].title}</h3>
+              <p className="mt-4 max-w-2xl text-body-lg leading-8 text-white/80">{payload.contentCards[0].summary}</p>
             </div>
           ) : null}
         </div>
@@ -1053,19 +1058,19 @@ export function StudentMarketBoard({
             <div key={card.id} data-motion-card className="market-motion-panel panel rounded-[2rem] p-5">
               <div className="flex items-center gap-2">
                 <Newspaper className="h-4 w-4" style={{ color: card.accentColor }} />
-                <p className="text-xs font-bold uppercase tracking-[0.22em]" style={{ color: card.accentColor }}>
+                <p className="text-caption font-semibold uppercase tracking-[0.22em]" style={{ color: card.accentColor }}>
                   {card.sourceLabel}
                 </p>
               </div>
-              <h3 className="mt-3 text-2xl font-black text-slate-950">{card.title}</h3>
-              <p className="mt-3 text-base font-semibold leading-8 text-slate-600">{card.summary}</p>
+              <h3 className="mt-3 text-h2 text-fg-strong">{card.title}</h3>
+              <p className="mt-3 text-body text-fg-muted">{card.summary}</p>
             </div>
           ))}
         </div>
       </section>
 
       {isPending || error ? (
-        <div className={cn("rounded-[1.5rem] px-4 py-3 text-sm font-bold", error ? "bg-orange-50 text-orange-700" : "bg-slate-50 text-slate-600")}>
+        <div className={cn("rounded-[1.5rem] px-4 py-3 text-body-sm font-semibold", error ? "bg-orange-50 text-orange-700" : "bg-slate-50 text-fg-muted")}>
           {error ? (
             error
           ) : (
