@@ -169,12 +169,12 @@ function QuestCardFallbackArt({ card }: { card: QuestCard }) {
       <div className="absolute bottom-16 left-12 h-2 w-28 rounded-full bg-brand" />
       <div className="absolute bottom-16 left-40 h-2 w-20 rounded-full bg-down" />
       <div className="relative z-10 flex h-full flex-col justify-between p-4">
-        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black", meta.className)}>
+        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-semibold", meta.className)}>
           {meta.label}
         </span>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
-          <h3 className="mt-2 text-h2 font-black text-white">{card.name}</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <h3 className="mt-2 text-h2 font-bold text-white">{card.name}</h3>
         </div>
       </div>
     </div>
@@ -215,12 +215,12 @@ function QuestCardArt({
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/18 to-transparent" />
       <div className={cn("relative z-10 flex flex-col justify-between p-4", compact ? "min-h-36" : "min-h-44")}>
-        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-black shadow-sm", meta.className)}>
+        <span className={cn("w-fit rounded-full border px-3 py-1 text-xs font-semibold shadow-sm", meta.className)}>
           {meta.label}
         </span>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
-          <h3 className={cn("mt-2 font-black text-white", compact ? "text-lg" : "text-h2")}>{card.name}</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <h3 className={cn("mt-2 font-bold text-white", compact ? "text-lg" : "text-h2")}>{card.name}</h3>
         </div>
       </div>
     </div>
@@ -247,8 +247,8 @@ function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] 
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-950/64 via-transparent to-slate-950/70" />
       <div className="relative z-10 flex min-h-32 flex-col justify-end p-4">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Decorative Card</p>
-        <p className="mt-1 text-sm font-black text-white">完成任务后揭晓</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">Decorative Card</p>
+        <p className="mt-1 text-sm font-bold text-white">完成任务后揭晓</p>
       </div>
     </div>
   );
@@ -504,14 +504,14 @@ function QuestBlindBoxArt({
         <div className="flex items-start justify-between gap-2">
           <span
             className={cn(
-              "rounded-full bg-white/72 font-black text-[var(--quest-ink)] shadow-sm backdrop-blur",
+              "rounded-full bg-white/72 font-semibold text-[var(--quest-ink)] shadow-sm backdrop-blur",
               compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs",
             )}
           >
             {theme.badge}
           </span>
           {!compact ? (
-            <span className="rounded-full bg-slate-950/74 px-3 py-1 text-xs font-black text-white">#{index + 1}</span>
+            <span className="rounded-full bg-slate-950/74 px-3 py-1 text-xs font-semibold text-white">#{index + 1}</span>
           ) : null}
         </div>
 
@@ -536,9 +536,9 @@ function QuestBlindBoxArt({
 
         {!compact ? (
           <div className="rounded-[1.1rem] border border-white/45 bg-white/58 p-3 text-[var(--quest-ink)] backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.14em] opacity-70">Unique Mission Skin</p>
-            <p className="mt-1 text-lg font-black">{theme.world}</p>
-            <p className="mt-1 line-clamp-1 text-xs font-bold opacity-70">每个任务都有独立 3D 角色图案，拆开后再显示目标。</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] opacity-70">Unique Mission Skin</p>
+            <p className="mt-1 text-lg font-bold">{theme.world}</p>
+            <p className="mt-1 line-clamp-1 text-xs font-semibold opacity-70">每个任务都有独立 3D 角色图案，拆开后再显示目标。</p>
           </div>
         ) : null}
       </div>
@@ -579,7 +579,7 @@ function QuestCommanderPanel({
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/58 to-slate-950/10" />
           <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-6 md:p-7">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.24em] text-brand-warm">Commander Briefing</p>
+              <p className="bz-eyebrow-inverse">Commander Briefing</p>
               <h2 className="mt-3 max-w-lg text-display-md font-semibold md:text-display-lg">先和指挥官对话，再拆开任务盲盒</h2>
               <p className="mt-4 max-w-xl text-body leading-8 text-white/74">
                 任务不会一股脑摊开。先选择一条训练航线，拆开盲盒后再查看任务目标、复盘提示和神秘装饰奖励。
@@ -599,10 +599,10 @@ function QuestCommanderPanel({
         <div className="bg-[linear-gradient(135deg,#fffaf2,white_42%,#eef6ff)] p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-brand">Mission Route</p>
-              <h3 className="mt-2 text-h1 font-semibold text-slate-950">选择今日任务航线</h3>
+              <p className="bz-eyebrow bz-brand-text-on-light">Mission Route</p>
+              <h3 className="mt-2 text-h1 font-semibold text-fg-strong">选择今日任务航线</h3>
             </div>
-            <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+            <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
               {selected ? questCategoryLabel(selected.category) : "待选择"}
             </span>
           </div>
@@ -621,15 +621,15 @@ function QuestCommanderPanel({
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className={cn("rounded-full px-3 py-1 text-xs font-black", tone.className)}>
+                    <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", tone.className)}>
                       航线 {index + 1}
                     </span>
                     <QuestStatusBadge status={quest.status} />
                   </div>
-                  <p className="mt-4 text-base font-black text-slate-950">
+                  <p className="mt-4 text-base font-bold text-fg-strong">
                     {quest.claimable ? "可领取盲盒" : quest.claimed ? "已收藏轨迹" : "训练中盲盒"}
                   </p>
-                  <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-600">
+                  <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-fg-muted">
                     {quest.claimable ? "拆开即可查看任务卡和奖励。" : quest.target}
                   </p>
                 </button>
@@ -660,7 +660,7 @@ function QuestDetailDialog({ quest, onClose }: { quest: QuestItem | null; onClos
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-warm">Mission Detail</p>
+              <p className="bz-eyebrow-inverse">Mission Detail</p>
               <h3 className="mt-2 text-display-sm font-semibold">{quest.title}</h3>
             </div>
             <button
@@ -675,15 +675,15 @@ function QuestDetailDialog({ quest, onClose }: { quest: QuestItem | null; onClos
         </div>
         <div className="grid gap-4 p-5 md:grid-cols-2 md:p-6">
           <div className="rounded-[1.35rem] bg-slate-50 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">任务目标</p>
-            <p className="mt-3 text-body font-bold leading-7 text-slate-800">{quest.target}</p>
+            <p className="bz-eyebrow text-fg-muted">任务目标</p>
+            <p className="mt-3 text-body font-semibold leading-7 text-fg-default">{quest.target}</p>
           </div>
           <div className="rounded-[1.35rem] bg-brand-subtle p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-ink">神秘奖励</p>
-            <p className="mt-3 text-body font-bold leading-7 text-slate-900">{quest.reward}</p>
+            <p className="bz-eyebrow text-brand-ink">神秘奖励</p>
+            <p className="mt-3 text-body font-semibold leading-7 text-fg-strong">{quest.reward}</p>
           </div>
           <div className="rounded-[1.35rem] bg-slate-950 p-4 text-white md:col-span-2">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">Mr.Brown 提醒</p>
+            <p className="bz-eyebrow-inverse">Mr.Brown 提醒</p>
             <p className="mt-3 text-body font-semibold leading-7 text-white/80">{quest.coachNote}</p>
           </div>
         </div>
@@ -704,13 +704,13 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
         <div>
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-brand" />
-            <h2 className="text-h1 font-semibold text-slate-950">我的卡库</h2>
+            <h2 className="text-h1 font-semibold text-fg-strong">我的卡库</h2>
           </div>
-          <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+          <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
             卡片只记录学习与复盘轨迹，不改变净值、战力或排行榜。刷新页面后，已经抽到的卡也会继续保留。
           </p>
         </div>
-        <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+        <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold tabular-nums text-white">
           {items.length} 张已收藏
         </span>
       </div>
@@ -727,8 +727,8 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
               >
                 <QuestCardArt card={item.card} className="rounded-b-none" />
                 <div className="p-4">
-                  <p className="line-clamp-3 text-sm font-semibold leading-6 text-slate-600">{item.card.teachingLine}</p>
-                  <div className="mt-4 rounded-[1.1rem] bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">
+                  <p className="line-clamp-3 text-sm font-semibold leading-6 text-fg-muted">{item.card.teachingLine}</p>
+                  <div className="mt-4 rounded-[1.1rem] bg-slate-50 p-3 text-xs leading-5 text-fg-muted">
                     来源任务：{typeof item.meta?.questTitle === "string" ? item.meta.questTitle : "任务奖励"}
                   </div>
                 </div>
@@ -738,8 +738,8 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
         </div>
       ) : (
         <div className="mt-6 rounded-[1.6rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-          <p className="text-base font-black text-slate-950">还没有收藏卡片</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+          <p className="text-base font-bold text-fg-strong">还没有收藏卡片</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-fg-muted">
             完成任务后点击“领取并抽卡”，第一张装饰卡就会加入这里。
           </p>
         </div>
@@ -1045,7 +1045,7 @@ export function StudentQuestDashboard({
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Quest Hub</p>
+            <p className="bz-eyebrow-inverse">Quest Hub</p>
             <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               把理财好习惯变成可完成的任务
             </h1>
@@ -1056,7 +1056,7 @@ export function StudentQuestDashboard({
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">任务完成度</p>
-                <p className="mt-3 text-display-lg font-black tabular-nums text-white">
+                <p className="mt-3 text-hero-num tabular-nums text-white">
                   {questPayload.overview.completed}/{questPayload.overview.total}
                 </p>
                 <div className="mt-4 h-2.5 rounded-full bg-white/10">
@@ -1068,18 +1068,18 @@ export function StudentQuestDashboard({
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">净值连升</p>
-                <p className="mt-3 text-display-lg font-black tabular-nums text-white">
+                <p className="mt-3 text-h2 tabular-nums text-white">
                   {questPayload.overview.streakCurrent}
-                  <span className="mx-2 text-h2 text-white/70">/</span>
+                  <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.streakBest}
                 </p>
                 <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续回合</p>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">学习进度</p>
-                <p className="mt-3 text-display-lg font-black tabular-nums text-white">
+                <p className="mt-3 text-h2 tabular-nums text-white">
                   {questPayload.overview.learningCompleted}
-                  <span className="mx-2 text-h2 text-white/70">/</span>
+                  <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.learningTotal}
                 </p>
                 <p className="mt-3 text-sm text-white/58">课程模块完成数</p>
@@ -1090,7 +1090,7 @@ export function StudentQuestDashboard({
           <aside className="relative z-10 border-t border-white/10 bg-white/[0.04] px-6 py-7 md:px-8 lg:border-l lg:border-t-0">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand-warm">Mr.Brown</p>
+                <p className="bz-eyebrow-inverse">Mr.Brown</p>
                 <h2 className="mt-3 text-h1 font-semibold text-white">{questPayload.coach.title}</h2>
               </div>
               <Sparkles className="h-6 w-6 text-brand-warm" />
@@ -1100,7 +1100,7 @@ export function StudentQuestDashboard({
               {questPayload.coach.nextActions.map((action, index) => (
                 <div key={action} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                   <div className="flex gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-black text-slate-950">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-slate-950">
                       {index + 1}
                     </span>
                     <p className="text-sm font-semibold leading-6 text-white/74">{action}</p>
@@ -1122,7 +1122,7 @@ export function StudentQuestDashboard({
                 data-testid="quest-claim-result"
                 className="mt-5 rounded-[1.35rem] border border-brand/25 bg-brand/12 p-4"
               >
-                <p className="text-sm font-black text-brand-warm">奖励已领取</p>
+                <p className="text-sm font-bold text-brand-warm">奖励已领取</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
                   {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变战力或净值。
                 </p>
@@ -1134,7 +1134,7 @@ export function StudentQuestDashboard({
                 data-testid="quest-draw-result"
                 className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.08] p-4"
               >
-                <p className="text-sm font-black text-brand-warm">抽卡揭晓</p>
+                <p className="text-sm font-bold text-brand-warm">抽卡揭晓</p>
                 <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
                   你抽到了 {drawResult.card.name}（{rarityMeta[drawResult.card.rarity].label}）。这张卡已加入“我的卡库”，只做装饰与复盘记录。
                 </p>
@@ -1165,7 +1165,7 @@ export function StudentQuestDashboard({
             <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
             <div className="pointer-events-none absolute -right-20 top-0 h-52 w-52 rounded-full bg-brand/25 blur-3xl" />
             <div className="relative z-10">
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Activity Shelf</p>
+              <p className="bz-eyebrow-inverse">Activity Shelf</p>
               <h2 className="mt-3 text-display-md font-semibold md:text-display-lg">
                 {questPayload.benefits.title}
               </h2>
@@ -1193,25 +1193,25 @@ export function StudentQuestDashboard({
                   className="group flex min-h-[236px] flex-col rounded-[1.55rem] border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:bg-brand-subtle hover:shadow-soft"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black", meta.className)}>
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", meta.className)}>
                       <Icon className="h-3.5 w-3.5" />
                       {meta.label}
                     </span>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-600">
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-fg-muted">
                       {benefitStatusLabel[item.status]}
                     </span>
                   </div>
                   <div className="mt-4 flex-1">
-                    <p className="bz-brand-text-on-light text-xs font-black uppercase tracking-[0.18em]">{item.label}</p>
-                    <h3 className="mt-2 text-h2 font-black text-slate-950">{item.title}</h3>
-                    <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-slate-600">
+                    <p className="bz-eyebrow bz-brand-text-on-light">{item.label}</p>
+                    <h3 className="mt-2 text-h2 text-fg-strong">{item.title}</h3>
+                    <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-fg-muted">
                       {item.summary}
                     </p>
                   </div>
                   <div className="mt-4">
-                    <div className="flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
+                    <div className="flex items-center justify-between gap-3 text-xs font-semibold text-fg-muted">
                       <span>{item.reward}</span>
-                      <span>{Math.round(item.progress * 100)}%</span>
+                      <span className="tabular-nums">{Math.round(item.progress * 100)}%</span>
                     </div>
                     <div data-motion-viz className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
                       <div
@@ -1221,8 +1221,8 @@ export function StudentQuestDashboard({
                         style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
                       />
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{item.guardrail}</p>
-                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-brand-ink">
+                    <p className="mt-3 text-xs font-semibold leading-5 text-fg-muted">{item.guardrail}</p>
+                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink">
                       {item.actionLabel}
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                     </span>
@@ -1245,7 +1245,7 @@ export function StudentQuestDashboard({
             <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
             <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-brand/25 blur-3xl" />
             <div className="relative z-10">
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">Season Mission</p>
+              <p className="bz-eyebrow-inverse">Season Mission</p>
               <h2 className="mt-3 max-w-xl text-display-md font-semibold md:text-display-lg">
                 {season.title}
               </h2>
@@ -1253,8 +1253,8 @@ export function StudentQuestDashboard({
 
               <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-bold text-white/62">赛季完成度</span>
-                  <span className="text-sm font-black text-brand-warm">
+                  <span className="text-sm font-semibold text-white/62">赛季完成度</span>
+                  <span className="text-sm font-semibold tabular-nums text-brand-warm">
                     {season.completedObjectives}/{season.totalObjectives} · {season.progress}%
                   </span>
                 </div>
@@ -1275,7 +1275,7 @@ export function StudentQuestDashboard({
                 onClick={() => void claimSeasonReward()}
                 disabled={!season.claimable || season.claimed || claimingSeason}
                 className={cn(
-                  "mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition md:w-auto",
+                  "mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition md:w-auto",
                   season.claimable
                     ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                     : season.claimed
@@ -1324,12 +1324,12 @@ export function StudentQuestDashboard({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base font-black text-slate-950">{objective.label}</h3>
-                      <span className="shrink-0 text-xs font-black text-slate-600">
+                      <h3 className="text-base font-bold text-fg-strong">{objective.label}</h3>
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-fg-muted">
                         {Math.min(objective.target, Math.round(objective.progress * objective.target))}/{objective.target}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{objective.detail}</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-fg-muted">{objective.detail}</p>
                   </div>
                 </div>
               </Link>
@@ -1345,9 +1345,9 @@ export function StudentQuestDashboard({
           <div>
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">任务盲盒栏</h2>
+              <h2 className="text-h1 font-semibold text-fg-strong">任务盲盒栏</h2>
             </div>
-            <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+            <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
               正面只保留航线、状态和进度，拆开后再查看任务目标、导师提示和神秘奖励。需要更多解释时点“详情”。
             </p>
           </div>
@@ -1409,8 +1409,8 @@ export function StudentQuestDashboard({
                       <div className="pointer-events-none absolute bottom-14 left-10 h-14 w-14 rounded-full bg-down/18 blur-xl" />
                       <div className="relative z-10 flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="bz-brand-text-on-light text-xs font-bold uppercase tracking-[0.18em]">Mission Box</p>
-                          <h3 className="mt-2 text-h2 font-black text-slate-950">第 {visualIndex + 1} 号任务盲盒</h3>
+                          <p className="bz-eyebrow bz-brand-text-on-light">Mission Box</p>
+                          <h3 className="mt-2 text-h2 text-fg-strong">第 {visualIndex + 1} 号任务盲盒</h3>
                         </div>
                         <QuestStatusBadge status={quest.status} />
                       </div>
@@ -1418,10 +1418,10 @@ export function StudentQuestDashboard({
                         <QuestBlindBoxArt quest={quest} index={visualIndex} />
                       </div>
                       <div className="relative z-10 mt-5 flex items-center justify-between gap-3">
-                        <span className={cn("rounded-full px-3 py-1 text-xs font-black", tone.className)}>
+                        <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", tone.className)}>
                           {questCategoryLabel(quest.category)}
                         </span>
-                        <span className="text-xs font-black text-slate-500">{Math.round(quest.progress * 100)}%</span>
+                        <span className="text-xs font-semibold tabular-nums text-fg-muted">{Math.round(quest.progress * 100)}%</span>
                       </div>
                       <div data-motion-viz className="relative z-10 mt-3 h-3 rounded-full bg-slate-100">
                         <div
@@ -1444,7 +1444,7 @@ export function StudentQuestDashboard({
                         data-testid={`quest-flip-${quest.id}`}
                         aria-pressed={isFlipped}
                         onClick={() => toggleQuestFlip(quest.id)}
-                        className="relative z-10 mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                        className="relative z-10 mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
                       >
                         <PackageOpen className="h-4 w-4" />
                         拆开任务盲盒
@@ -1460,30 +1460,30 @@ export function StudentQuestDashboard({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Mission Card</p>
-                          <h3 className="mt-2 text-h2 font-black text-white">{quest.title}</h3>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">Mission Card</p>
+                          <h3 className="mt-2 text-h2 font-bold text-white">{quest.title}</h3>
                         </div>
                         <button
                           type="button"
                           onClick={() => toggleQuestFlip(quest.id)}
-                          className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-white transition hover:bg-white/18"
+                          className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/18"
                         >
                           返回任务
                         </button>
                       </div>
                       <div className="mt-5 grid gap-3">
                         <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.08] p-4">
-                          <p className="text-xs font-black uppercase tracking-[0.16em] text-white/48">任务目标</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/48">任务目标</p>
                           <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/82">{quest.target}</p>
                         </div>
                         <div className="rounded-[1.3rem] border border-brand/25 bg-brand/12 p-4">
-                          <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">神秘奖励</p>
-                          <p className="mt-2 text-sm font-black leading-6 text-white">{quest.reward}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">神秘奖励</p>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-white">{quest.reward}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setDetailQuestId(quest.id)}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-black text-white transition hover:bg-white/18"
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/18"
                         >
                           <Eye className="h-4 w-4" />
                           查看任务详情
@@ -1497,10 +1497,10 @@ export function StudentQuestDashboard({
                           <QuestCardArt card={collectedCard.card} compact className="mb-4" />
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">
                                 {rarityMeta[collectedCard.card.rarity].label}
                               </p>
-                              <h4 className="mt-1 text-lg font-black text-white">{collectedCard.card.name}</h4>
+                              <h4 className="mt-1 text-lg font-bold text-white">{collectedCard.card.name}</h4>
                             </div>
                             <BadgeCheck className="h-5 w-5 shrink-0 text-brand-warm" />
                           </div>
@@ -1526,7 +1526,7 @@ export function StudentQuestDashboard({
                         }}
                         disabled={!canDraw || Boolean(collectedCard) || claimingQuestId !== null || drawingQuestId !== null}
                         className={cn(
-                          "mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition",
+                          "mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition",
                           canDraw && !collectedCard
                             ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                             : collectedCard
@@ -1553,16 +1553,16 @@ export function StudentQuestDashboard({
             <aside data-testid="quest-queue-panel" className="rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-soft">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Quest Queue</p>
-                  <h3 className="mt-2 text-h2 font-black text-white">任务队列</h3>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">Quest Queue</p>
+                  <h3 className="mt-2 text-h2 font-bold text-white">任务队列</h3>
                 </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/70">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white/70">
                   {visibleQuests.length} 个盲盒
                 </span>
               </div>
               <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/[0.07] p-4">
-                <p className="text-sm font-black text-white">流程</p>
-                <div className="mt-3 grid gap-2 text-xs font-bold text-white/68">
+                <p className="text-sm font-semibold text-white">流程</p>
+                <div className="mt-3 grid gap-2 text-xs font-semibold text-white/68">
                   <span>1. 对话领取航线</span>
                   <span>2. 拆开当前盲盒</span>
                   <span>3. 翻到背面看任务</span>
@@ -1591,17 +1591,17 @@ export function StudentQuestDashboard({
                           <QuestBlindBoxArt quest={quest} index={visualIndex} compact />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">
+                              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">
                                 Mission {visualIndex + 1}
                               </span>
-                              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-black", tone.className)}>
+                              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", tone.className)}>
                                 {questCategoryLabel(quest.category)}
                               </span>
                             </div>
-                            <p className="mt-2 line-clamp-1 text-base font-black text-white">{quest.title}</p>
-                            <div className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-white/58">
+                            <p className="mt-2 line-clamp-1 text-base font-bold text-white">{quest.title}</p>
+                            <div className="mt-2 flex items-center justify-between gap-3 text-xs font-semibold text-white/58">
                               <QuestStatusBadge status={quest.status} />
-                              <span>{Math.round(quest.progress * 100)}%</span>
+                              <span className="tabular-nums">{Math.round(quest.progress * 100)}%</span>
                             </div>
                           </div>
                         </div>
@@ -1609,13 +1609,13 @@ export function StudentQuestDashboard({
                     );
                     })
                   ) : (
-                    <p className="rounded-[1.2rem] border border-white/10 bg-white/[0.07] p-4 text-sm font-bold leading-6 text-white/62">
+                    <p className="rounded-[1.2rem] border border-white/10 bg-white/[0.07] p-4 text-sm font-semibold leading-6 text-white/62">
                       当前筛选下只有这个任务。切换上方分类可以查看其他盲盒。
                     </p>
                   )}
                 </div>
                 <div className="mt-2 flex justify-center">
-                  <span data-testid="quest-queue-scroll-hint" className="rounded-full border border-white/12 bg-white/12 px-3 py-1 text-[11px] font-black text-white/72 shadow-sm backdrop-blur-md">
+                  <span data-testid="quest-queue-scroll-hint" className="rounded-full border border-white/12 bg-white/12 px-3 py-1 text-[11px] font-semibold text-white/72 shadow-sm backdrop-blur-md">
                     向下滑动查看更多
                   </span>
                 </div>
@@ -1623,7 +1623,7 @@ export function StudentQuestDashboard({
             </aside>
           </div>
         ) : (
-          <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-600">
+          <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-fg-muted">
             该分类暂时没有任务，去完成更多沙盘动作来解锁吧。
           </p>
         )}
@@ -1637,8 +1637,8 @@ export function StudentQuestDashboard({
             <div className="flex items-center gap-3">
               <CalendarDays className="h-5 w-5 text-brand" />
               <div>
-                <h2 className="text-h1 font-semibold text-slate-950">收益日历</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-600">
+                <h2 className="text-h1 font-semibold text-fg-strong">收益日历</h2>
+                <p className="mt-1 text-sm font-semibold text-fg-muted">
                   更新时间：{formatGeneratedAt(questPayload.generatedAt)}（北京时间）
                 </p>
               </div>
@@ -1661,13 +1661,13 @@ export function StudentQuestDashboard({
                 )}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-slate-950">第 {day.round} 回合</p>
-                  <span className="text-xs font-bold text-slate-600">{day.label}</span>
+                  <p className="text-sm font-semibold text-fg-strong">第 {day.round} 回合</p>
+                  <span className="text-xs font-semibold text-fg-muted">{day.label}</span>
                 </div>
-                <p className="mt-3 text-xl font-black">
+                <p className="mt-3 text-xl font-bold tabular-nums">
                   <MoneyText>{formatCurrency(day.netWorth)}</MoneyText>
                 </p>
-                <p className="mt-2 text-sm font-bold">
+                <p className="mt-2 text-sm font-semibold tabular-nums">
                   <MoneyText>{formatCurrency(day.delta)}</MoneyText>
                 </p>
               </article>
@@ -1678,9 +1678,9 @@ export function StudentQuestDashboard({
         <aside data-testid="achievement-wall" data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <Trophy className="h-5 w-5 text-brand" />
-            <h2 className="text-h1 font-semibold text-slate-950">成就墙</h2>
+            <h2 className="text-h1 font-semibold text-fg-strong">成就墙</h2>
           </div>
-          <p className="mt-2 text-body leading-7 text-slate-600">
+          <p className="mt-2 text-body leading-7 text-fg-muted">
             成就只代表学习轨迹，不代表真实投资能力，也不会直接改变榜单战力。
           </p>
           <div className="mt-5 space-y-3">
@@ -1698,18 +1698,18 @@ export function StudentQuestDashboard({
                   <AchievementBadgeArt achievement={achievement} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black text-slate-950">{achievement.title}</h3>
+                      <h3 className="text-lg font-bold text-fg-strong">{achievement.title}</h3>
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-black",
+                          "rounded-full px-2.5 py-1 text-[11px] font-semibold",
                           achievement.unlocked ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600",
                         )}
                       >
                         {achievement.unlocked ? "已点亮" : "待解锁"}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">{achievement.detail}</p>
-                    <p className="mt-2 rounded-full bg-white/76 px-3 py-1.5 text-xs font-black text-brand-ink shadow-inner shadow-slate-950/5">
+                    <p className="mt-1 text-sm font-semibold leading-6 text-fg-muted">{achievement.detail}</p>
+                    <p className="mt-2 rounded-full bg-white/76 px-3 py-1.5 text-xs font-semibold text-brand-ink shadow-inner shadow-slate-950/5">
                       {achievement.decorativeReward}
                     </p>
                   </div>
