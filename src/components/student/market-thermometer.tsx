@@ -94,11 +94,11 @@ export function MarketThermometer({
       <div className="relative z-10">
         <div data-temp-reveal className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">Market Thermometer</p>
-            <h3 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">市场温度计</h3>
+            <p className="bz-eyebrow-inverse">Market Thermometer</p>
+            <h3 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">市场温度计</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-white/84">{payload.roundLabel}</p>
           </div>
-          <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black", tone.chip)}>
+          <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold", tone.chip)}>
             <ThermometerSun className="h-4 w-4" />
             {payload.label}
           </span>
@@ -108,10 +108,10 @@ export function MarketThermometer({
           <div className="min-h-[252px] rounded-[1.55rem] border border-white/10 bg-white/[0.06] p-5">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-bold text-white/78">情绪温度</p>
-                <p className={cn("mt-1 text-5xl font-black tracking-tight", tone.tone)}>{payload.score}</p>
+                <p className="text-sm font-semibold text-white/78">情绪温度</p>
+                <p className={cn("bz-hero-stat text-hero-num tabular-nums mt-1 tracking-tight", tone.tone)}>{payload.score}</p>
               </div>
-              <p className="max-w-28 text-right text-base font-black leading-6 text-white">{tone.title}</p>
+              <p className="max-w-28 text-right text-base font-bold leading-6 text-white">{tone.title}</p>
             </div>
             <div className="mt-6 h-4 overflow-hidden rounded-full bg-white/10">
               <div
@@ -120,7 +120,7 @@ export function MarketThermometer({
                 style={{ width: `${payload.score}%` }}
               />
             </div>
-            <div className="mt-3 flex justify-between text-[0.72rem] font-black uppercase tracking-[0.16em] text-white/82">
+            <div className="mt-3 flex justify-between text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/82">
               <span>冷静</span>
               <span>均衡</span>
               <span>过热</span>
@@ -129,11 +129,11 @@ export function MarketThermometer({
 
           <div className="min-h-[252px] rounded-[1.55rem] border border-white/10 bg-white/[0.05] p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-950">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-fg-strong">
                 <Activity className="h-3.5 w-3.5 text-orange-500" />
                 {payload.eventSignal}
               </span>
-              <span className="text-base font-black text-white">{payload.eventTitle}</span>
+              <span className="text-base font-bold text-white">{payload.eventTitle}</span>
             </div>
             <p className="mt-4 text-base font-semibold leading-8 text-white/86">{payload.summary}</p>
             <p className="mt-4 rounded-2xl bg-orange-100 px-4 py-3 text-base font-bold leading-7 text-slate-950">
@@ -146,7 +146,7 @@ export function MarketThermometer({
           {payload.factors.map((factor) => (
             <div key={factor.label} className="min-h-[92px] rounded-[1.18rem] border border-white/10 bg-white/[0.06] px-4 py-4">
               <p className="text-sm font-bold text-white/78">{factor.label}</p>
-              <span className={cn("mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-black", factorTone[factor.tone])}>
+              <span className={cn("mt-3 inline-flex rounded-full px-3 py-1.5 text-sm font-semibold", factorTone[factor.tone])}>
                 {factor.value}
               </span>
             </div>
@@ -163,7 +163,7 @@ export function MarketThermometer({
           <Link
             data-motion-button
             href="/student/market"
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-black !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-bold !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
           >
             进入市场雷达继续拆解
             <ArrowRight className="h-4 w-4" />

@@ -98,7 +98,7 @@ export function PowerRankTeaser() {
       ) : (
         <div className="mt-3 flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-4xl font-black tabular-nums leading-none text-fg-default">
+            <p className="bz-hero-stat text-hero-num font-mono tabular-nums leading-none">
               {card.power.toLocaleString("zh-CN")}
             </p>
             <p className="mt-1.5 inline-flex items-center gap-1.5">

@@ -119,7 +119,7 @@ export function PowerCard({
             财商战力
             <span className="ml-1.5 normal-case tracking-normal text-white/60">· {card.seasonName} 本周榜</span>
           </p>
-          <p className="mt-1 font-mono text-5xl font-black tabular-nums leading-none">
+          <p className="bz-hero-stat text-hero-num mt-1 font-mono tabular-nums leading-none">
             {card.power.toLocaleString("zh-CN")}
           </p>
           {card.alias ? (

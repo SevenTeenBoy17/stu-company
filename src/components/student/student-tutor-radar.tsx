@@ -62,14 +62,14 @@ export function StudentTutorRadar({
   }
 
   return (
-    <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white shadow-lg shadow-slate-950/5">
+    <div className="mt-5 overflow-hidden rounded-[1.7rem] border border-border bg-white shadow-lg shadow-slate-950/5">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
         <div>
           <div className="flex items-center gap-2">
             <Radar className="h-4 w-4 text-brand" />
-            <p className="text-sm font-semibold text-slate-950">AI 决策雷达</p>
+            <p className="text-sm font-semibold text-fg-strong">AI 决策雷达</p>
           </div>
-          <p className="mt-2 text-xs leading-6 text-slate-600">
+          <p className="mt-2 text-xs leading-6 text-fg-muted">
             {payload.provider === "remote" ? "远端模型已生成维度" : "本地规则生成维度"} ·{" "}
             {formatDateLabel(new Date(payload.asOf))}
           </p>
@@ -78,7 +78,7 @@ export function StudentTutorRadar({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 transition-colors hover:border-brand hover:text-brand-ink disabled:opacity-60"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-3.5 text-xs font-semibold text-fg-default transition-colors hover:border-brand hover:text-brand-ink disabled:opacity-60"
         >
           {loading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           一键更新雷达图
@@ -126,7 +126,7 @@ export function StudentTutorRadar({
                 <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-slate-950">
                   高级版 · 投资人格
                 </span>
-                <span className="min-w-0 text-base font-black text-brand-ink">{persona.label}</span>
+                <span className="min-w-0 text-base font-bold text-brand-ink">{persona.label}</span>
               </div>
               <p className="mt-2 text-xs leading-6 text-brand-ink/80">{persona.summary}</p>
               {personaShareText ? (
@@ -167,7 +167,7 @@ export function StudentTutorRadar({
             {payload.metrics.map((metric) => (
               <div key={metric.id} className="rounded-[1.2rem] bg-slate-950/[0.03] px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-950">{metric.label}</p>
+                  <p className="text-sm font-semibold text-fg-strong">{metric.label}</p>
                   <p className="text-lg font-bold text-brand-ink">{metric.score}</p>
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-white">
@@ -176,7 +176,7 @@ export function StudentTutorRadar({
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>
-                <p className="mt-2 text-xs leading-5 text-slate-600">{metric.note}</p>
+                <p className="mt-2 text-xs leading-5 text-fg-muted">{metric.note}</p>
               </div>
             ))}
           </div>

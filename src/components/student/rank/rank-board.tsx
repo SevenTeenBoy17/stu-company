@@ -107,7 +107,7 @@ export function RankBoard({
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-subtle text-brand">
           <Trophy className="h-4 w-4" />
         </span>
-        <h3 className="text-base font-black text-fg-default">战力排行榜</h3>
+        <h3 className="text-base font-bold text-fg-strong">战力排行榜</h3>
         {board ? (
           <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold text-fg-default">
             共 {board.total} 人
@@ -159,7 +159,7 @@ export function RankBoard({
 
       {board && board.viewerRank ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-brand-subtle to-amber-100/50 px-4 py-3 ring-1 ring-amber-200/70">
-          <p className="text-sm font-black text-brand-ink">
+          <p className="text-sm font-bold text-brand-ink">
             你在「{SCOPE_LABELS[scope]}·{PERIOD_LABELS[period]}」暂列第 {board.viewerRank} 名
           </p>
           {gapToClimb !== null && gapToClimb > 0 ? (
@@ -221,7 +221,7 @@ export function RankBoard({
               >
                 <span
                   className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black tabular-nums",
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums",
                     rankBadgeClass(entry.rank),
                   )}
                 >
@@ -229,7 +229,7 @@ export function RankBoard({
                 </span>
                 <span
                   className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black ring-1",
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ring-1",
                     entry.isViewer
                       ? "bg-brand text-slate-950 ring-brand"
                       : anonymous
@@ -260,7 +260,7 @@ export function RankBoard({
                   ) : null}
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block font-mono text-lg font-black tabular-nums text-[color:var(--up-600)]">
+                  <span className="block font-mono text-lg font-bold tabular-nums text-[color:var(--up-600)]">
                     {entry.power.toLocaleString("zh-CN")}
                   </span>
                   <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-subtle">
