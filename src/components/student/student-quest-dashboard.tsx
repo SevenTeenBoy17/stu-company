@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { type CSSProperties, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
@@ -12,15 +12,20 @@ import {
   CheckCircle2,
   CircleDot,
   Clock3,
+  Eye,
   Gift,
   Gamepad2,
   Loader2,
   Lock,
+  MessageCircle,
+  Orbit,
+  PackageOpen,
   ShieldCheck,
   Sparkles,
   Target,
   Trophy,
   UsersRound,
+  X,
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
@@ -123,6 +128,30 @@ const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string
 };
 
 const questCardAssetBase = "/brand/quest-cards";
+const questWorldAssetBase = "/brand/quest-world";
+const achievementBadgeAssetBase = "/brand/achievement-badges";
+
+const achievementBadgeAssets: Record<string, string> = {
+  "first-map": "first-map",
+  "diversify-detective": "diversify-detective",
+  "learning-spark": "learning-spark",
+  "opportunity-scout": "opportunity-scout",
+  "portfolio-researcher": "portfolio-researcher",
+  "life-planner": "life-planner",
+  "streak-maker": "streak-maker",
+};
+
+const questCategoryTone: Record<string, { label: string; className: string }> = {
+  finance: { label: "资产", className: "bg-brand-subtle text-brand-ink" },
+  risk: { label: "风险", className: "bg-warning/10 text-warning" },
+  learning: { label: "学习", className: "bg-info/10 text-info" },
+  review: { label: "复盘", className: "bg-slate-100 text-slate-700" },
+  discipline: { label: "纪律", className: "bg-down-soft text-[var(--down-700)]" },
+};
+
+function questCategoryLabel(category: string) {
+  return questCategoryTone[category]?.label ?? category.toUpperCase();
+}
 
 function questIdFromCard(item: QuestCardCollectionView | CardCollectionItem) {
   return typeof item.meta?.questId === "string" ? item.meta.questId : null;
@@ -225,6 +254,444 @@ function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] 
   );
 }
 
+type QuestItem = StudentQuestPayload["quests"][number];
+
+type QuestBoxTheme = {
+  id: string;
+  creature: string;
+  world: string;
+  badge: string;
+  asset: string;
+  from: string;
+  via: string;
+  to: string;
+  accent: string;
+  accent2: string;
+  ink: string;
+  glow: string;
+};
+
+const questBoxThemes: QuestBoxTheme[] = [
+  {
+    id: "fox-sunrise",
+    creature: "狐队长",
+    world: "晨光市场星",
+    badge: "行情侦察",
+    asset: "fox-market-scout",
+    from: "#fff1d8",
+    via: "#f97316",
+    to: "#7c2d12",
+    accent: "#ffb86b",
+    accent2: "#fef3c7",
+    ink: "#1f1308",
+    glow: "rgba(249,115,22,0.42)",
+  },
+  {
+    id: "turtle-shield",
+    creature: "龟护卫",
+    world: "安全垫岛",
+    badge: "风险缓冲",
+    asset: "turtle-safety-guard",
+    from: "#e0fff3",
+    via: "#10b981",
+    to: "#064e3b",
+    accent: "#8ee6c0",
+    accent2: "#ecfdf5",
+    ink: "#06261d",
+    glow: "rgba(16,185,129,0.34)",
+  },
+  {
+    id: "rabbit-bank",
+    creature: "兔管家",
+    world: "储蓄月球",
+    badge: "现金纪律",
+    asset: "rabbit-savings-banker",
+    from: "#fff7ed",
+    via: "#fb7185",
+    to: "#881337",
+    accent: "#fda4af",
+    accent2: "#ffe4e6",
+    ink: "#2a0f15",
+    glow: "rgba(251,113,133,0.36)",
+  },
+  {
+    id: "owl-lab",
+    creature: "猫头鹰",
+    world: "复盘书塔",
+    badge: "证据链",
+    asset: "owl-evidence-analyst",
+    from: "#eef2ff",
+    via: "#6366f1",
+    to: "#312e81",
+    accent: "#a5b4fc",
+    accent2: "#e0e7ff",
+    ink: "#111338",
+    glow: "rgba(99,102,241,0.34)",
+  },
+  {
+    id: "robot-radar",
+    creature: "小机器人",
+    world: "雷达港",
+    badge: "信号识别",
+    asset: "robot-radar-helper",
+    from: "#ecfeff",
+    via: "#06b6d4",
+    to: "#164e63",
+    accent: "#67e8f9",
+    accent2: "#cffafe",
+    ink: "#052e36",
+    glow: "rgba(6,182,212,0.34)",
+  },
+  {
+    id: "whale-harbor",
+    creature: "鲸艇长",
+    world: "现金海湾",
+    badge: "流动性",
+    asset: "whale-cash-captain",
+    from: "#eff6ff",
+    via: "#3b82f6",
+    to: "#1e3a8a",
+    accent: "#93c5fd",
+    accent2: "#dbeafe",
+    ink: "#0b1e3d",
+    glow: "rgba(59,130,246,0.34)",
+  },
+  {
+    id: "cat-scout",
+    creature: "猫侦探",
+    world: "机会街区",
+    badge: "市场观察",
+    asset: "cat-opportunity-detective",
+    from: "#f7fee7",
+    via: "#84cc16",
+    to: "#365314",
+    accent: "#bef264",
+    accent2: "#ecfccb",
+    ink: "#18230d",
+    glow: "rgba(132,204,22,0.32)",
+  },
+  {
+    id: "deer-bond",
+    creature: "鹿信使",
+    world: "债券林地",
+    badge: "稳健配置",
+    asset: "deer-bond-messenger",
+    from: "#fffbeb",
+    via: "#f59e0b",
+    to: "#78350f",
+    accent: "#fcd34d",
+    accent2: "#fef3c7",
+    ink: "#241506",
+    glow: "rgba(245,158,11,0.36)",
+  },
+  {
+    id: "panda-etf",
+    creature: "熊猫研究员",
+    world: "ETF 实验室",
+    badge: "分散实验",
+    asset: "panda-etf-researcher",
+    from: "#f0fdfa",
+    via: "#14b8a6",
+    to: "#134e4a",
+    accent: "#5eead4",
+    accent2: "#ccfbf1",
+    ink: "#082f2c",
+    glow: "rgba(20,184,166,0.34)",
+  },
+  {
+    id: "squirrel-budget",
+    creature: "松鼠会计",
+    world: "生活账本谷",
+    badge: "预算节奏",
+    asset: "squirrel-budget-accountant",
+    from: "#fff7ed",
+    via: "#ea580c",
+    to: "#7c2d12",
+    accent: "#fdba74",
+    accent2: "#fed7aa",
+    ink: "#261203",
+    glow: "rgba(234,88,12,0.36)",
+  },
+  {
+    id: "lion-rank",
+    creature: "狮子裁判",
+    world: "战力赛场",
+    badge: "排名挑战",
+    asset: "lion-leaderboard-referee",
+    from: "#faf5ff",
+    via: "#a855f7",
+    to: "#581c87",
+    accent: "#d8b4fe",
+    accent2: "#f3e8ff",
+    ink: "#26063d",
+    glow: "rgba(168,85,247,0.34)",
+  },
+  {
+    id: "penguin-review",
+    creature: "企鹅档案员",
+    world: "历史冰川",
+    badge: "复盘归档",
+    asset: "penguin-history-archivist",
+    from: "#f0f9ff",
+    via: "#0ea5e9",
+    to: "#075985",
+    accent: "#7dd3fc",
+    accent2: "#e0f2fe",
+    ink: "#082f49",
+    glow: "rgba(14,165,233,0.34)",
+  },
+];
+
+function stableQuestThemeIndex(id: string) {
+  let hash = 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
+  }
+  return hash % questBoxThemes.length;
+}
+
+function questBoxThemeFor(quest: QuestItem, index = 0) {
+  const preferredIndex = Number.isFinite(index) ? index : stableQuestThemeIndex(quest.id);
+  return questBoxThemes[preferredIndex % questBoxThemes.length] ?? questBoxThemes[stableQuestThemeIndex(quest.id)];
+}
+
+function QuestBlindBoxArt({
+  quest,
+  index = 0,
+  compact = false,
+}: {
+  quest: QuestItem;
+  index?: number;
+  compact?: boolean;
+}) {
+  const theme = questBoxThemeFor(quest, index);
+  const characterSrc = `${questWorldAssetBase}/characters/${theme.asset}.webp`;
+  const style = {
+    "--quest-from": theme.from,
+    "--quest-via": theme.via,
+    "--quest-to": theme.to,
+    "--quest-accent": theme.accent,
+    "--quest-accent-2": theme.accent2,
+    "--quest-ink": theme.ink,
+    "--quest-glow": theme.glow,
+  } as CSSProperties;
+
+  return (
+    <div
+      data-testid={`quest-box-art-${quest.id}`}
+      data-theme={theme.id}
+      aria-label={`${theme.creature} ${theme.world} 任务盲盒卡面`}
+      className={cn(
+        "relative isolate overflow-hidden rounded-[1.45rem] border border-white/50 shadow-[0_22px_55px_rgba(15,23,42,0.18)]",
+        compact ? "h-24 w-28 shrink-0" : "min-h-[18rem] w-full",
+      )}
+      style={{
+        ...style,
+        background:
+          "radial-gradient(circle at 22% 18%, var(--quest-accent-2), transparent 30%), radial-gradient(circle at 76% 18%, var(--quest-glow), transparent 28%), linear-gradient(135deg, var(--quest-from), var(--quest-via) 48%, var(--quest-to))",
+      }}
+    >
+      <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,.28)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.22)_1px,transparent_1px)] [background-size:22px_22px]" />
+      <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-white/30 blur-xl" />
+      <div className="absolute -right-10 bottom-4 h-28 w-28 rounded-full bg-black/18 blur-2xl" />
+      <div className="absolute left-[12%] top-[22%] h-12 w-12 rounded-[1.2rem] border border-white/45 bg-white/20 shadow-inner" />
+      <div className="absolute right-[14%] top-[16%] h-9 w-9 rounded-full border border-white/35 bg-white/18" />
+      <div className="absolute bottom-[20%] left-[12%] right-[12%] h-7 rounded-full border border-white/35 bg-white/18 backdrop-blur" />
+      <div className="absolute bottom-[26%] left-[18%] h-1.5 w-[34%] rounded-full bg-[var(--quest-accent-2)]" />
+      <div className="absolute bottom-[26%] right-[18%] h-1.5 w-[24%] rounded-full bg-white/55" />
+
+      <div className={cn("relative z-10 flex h-full flex-col", compact ? "p-2" : "p-5")}>
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className={cn(
+              "rounded-full bg-white/72 font-black text-[var(--quest-ink)] shadow-sm backdrop-blur",
+              compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs",
+            )}
+          >
+            {theme.badge}
+          </span>
+          {!compact ? (
+            <span className="rounded-full bg-slate-950/74 px-3 py-1 text-xs font-black text-white">#{index + 1}</span>
+          ) : null}
+        </div>
+
+        <div className={cn("flex flex-1 items-center justify-center", compact ? "py-1" : "py-3")}>
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-[28%] bg-white/88 shadow-[0_26px_70px_rgba(15,23,42,0.28)] ring-1 ring-white/70",
+              compact ? "h-14 w-14" : "h-40 w-40 sm:h-44 sm:w-44",
+            )}
+          >
+            <Image
+              src={characterSrc}
+              alt={`${theme.creature} 3D 卡通形象`}
+              fill
+              sizes={compact ? "96px" : "(min-width: 1280px) 176px, 42vw"}
+              className="object-cover"
+            />
+            <span className="absolute -top-2 right-2 h-4 w-4 rounded-full bg-[var(--quest-accent)] shadow-md" />
+            <span className="absolute -bottom-2 left-3 h-3 w-8 rounded-full bg-[var(--quest-accent-2)]" />
+          </div>
+        </div>
+
+        {!compact ? (
+          <div className="rounded-[1.1rem] border border-white/45 bg-white/58 p-3 text-[var(--quest-ink)] backdrop-blur">
+            <p className="text-xs font-black uppercase tracking-[0.14em] opacity-70">Unique Mission Skin</p>
+            <p className="mt-1 text-lg font-black">{theme.world}</p>
+            <p className="mt-1 line-clamp-1 text-xs font-bold opacity-70">每个任务都有独立 3D 角色图案，拆开后再显示目标。</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function QuestCommanderPanel({
+  quests,
+  selectedQuestId,
+  onSelect,
+}: {
+  quests: QuestItem[];
+  selectedQuestId: string | null;
+  onSelect: (questId: string) => void;
+}) {
+  const recommended = quests.slice(0, 4);
+  const selected = quests.find((quest) => quest.id === selectedQuestId) ?? recommended[0];
+
+  return (
+    <section
+      data-quest-reveal
+      data-motion-reveal
+      data-testid="quest-commander-panel"
+      className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft"
+    >
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div className="relative min-h-[320px] overflow-hidden bg-slate-950 text-white">
+          <Image
+            src={`${questWorldAssetBase}/commander-mission.png`}
+            alt="任务指挥官、盲盒与动物行星插画"
+            fill
+            sizes="(min-width: 1280px) 520px, 92vw"
+            className="object-cover opacity-90"
+            priority
+            data-testid="quest-commander-image"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/58 to-slate-950/10" />
+          <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-6 md:p-7">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-brand-warm">Commander Briefing</p>
+              <h2 className="mt-3 max-w-lg text-display-md font-semibold md:text-display-lg">先和指挥官对话，再拆开任务盲盒</h2>
+              <p className="mt-4 max-w-xl text-body leading-8 text-white/74">
+                任务不会一股脑摊开。先选择一条训练航线，拆开盲盒后再查看任务目标、复盘提示和神秘装饰奖励。
+              </p>
+            </div>
+            <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.08] p-4 backdrop-blur">
+              <div className="flex items-start gap-3">
+                <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-brand-warm" />
+                <p className="text-sm font-semibold leading-6 text-white/80">
+                  指挥官：今天只挑一个重点练习。看清任务背面的“为什么”，比一次性打开所有说明更重要。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[linear-gradient(135deg,#fffaf2,white_42%,#eef6ff)] p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-brand">Mission Route</p>
+              <h3 className="mt-2 text-h1 font-semibold text-slate-950">选择今日任务航线</h3>
+            </div>
+            <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+              {selected ? questCategoryLabel(selected.category) : "待选择"}
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {recommended.map((quest, index) => {
+              const active = quest.id === selectedQuestId;
+              const tone = questCategoryTone[quest.category] ?? questCategoryTone.review;
+              return (
+                <button
+                  key={quest.id}
+                  type="button"
+                  onClick={() => onSelect(quest.id)}
+                  className={cn(
+                    "rounded-[1.35rem] border p-4 text-left transition hover:-translate-y-0.5",
+                    active ? "border-brand bg-white shadow-soft" : "border-slate-200 bg-white/70 hover:border-brand/35",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={cn("rounded-full px-3 py-1 text-xs font-black", tone.className)}>
+                      航线 {index + 1}
+                    </span>
+                    <QuestStatusBadge status={quest.status} />
+                  </div>
+                  <p className="mt-4 text-base font-black text-slate-950">
+                    {quest.claimable ? "可领取盲盒" : quest.claimed ? "已收藏轨迹" : "训练中盲盒"}
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-600">
+                    {quest.claimable ? "拆开即可查看任务卡和奖励。" : quest.target}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-5 rounded-[1.35rem] border border-brand/25 bg-brand-subtle p-4">
+            <div className="flex items-start gap-3">
+              <Orbit className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+              <p className="text-sm font-bold leading-6 text-brand-ink">
+                页面默认只展示关键信息。任务细节、奖励解释和导师建议会在拆盒或点击详情后展开，降低认知负荷。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function QuestDetailDialog({ quest, onClose }: { quest: QuestItem | null; onClose: () => void }) {
+  if (!quest) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-soft">
+        <div className="relative bg-slate-950 p-6 text-white">
+          <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-brand-warm">Mission Detail</p>
+              <h3 className="mt-2 text-display-sm font-semibold">{quest.title}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/20"
+              aria-label="关闭任务详情"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-2 md:p-6">
+          <div className="rounded-[1.35rem] bg-slate-50 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">任务目标</p>
+            <p className="mt-3 text-body font-bold leading-7 text-slate-800">{quest.target}</p>
+          </div>
+          <div className="rounded-[1.35rem] bg-brand-subtle p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-ink">神秘奖励</p>
+            <p className="mt-3 text-body font-bold leading-7 text-slate-900">{quest.reward}</p>
+          </div>
+          <div className="rounded-[1.35rem] bg-slate-950 p-4 text-white md:col-span-2">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">Mr.Brown 提醒</p>
+            <p className="mt-3 text-body font-semibold leading-7 text-white/80">{quest.coachNote}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
   return (
     <section
@@ -302,6 +769,43 @@ function QuestStatusBadge({ status }: { status: StudentQuestStatus }) {
   );
 }
 
+function AchievementBadgeArt({
+  achievement,
+}: {
+  achievement: StudentQuestPayload["achievements"][number];
+}) {
+  const asset = achievementBadgeAssets[achievement.id] ?? "robot-helper";
+
+  return (
+    <div
+      data-testid={`achievement-badge-${achievement.id}`}
+      data-achievement-unlocked={achievement.unlocked ? "true" : "false"}
+      className={cn(
+        "relative h-20 w-20 shrink-0 overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] transition duration-300",
+        achievement.unlocked
+          ? "border-amber-200 ring-4 ring-amber-100/70"
+          : "border-slate-200 opacity-78 grayscale",
+      )}
+    >
+      <Image
+        src={`${achievementBadgeAssetBase}/${asset}.webp`}
+        alt={`${achievement.title} 3D 成就徽章`}
+        fill
+        sizes="80px"
+        className="object-cover"
+      />
+      <span
+        className={cn(
+          "absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-white/70 shadow-sm backdrop-blur",
+          achievement.unlocked ? "bg-amber-400 text-slate-950" : "bg-slate-900/72 text-white",
+        )}
+      >
+        {achievement.unlocked ? <BadgeCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+      </span>
+    </div>
+  );
+}
+
 export function StudentQuestDashboard({
   payload,
   seasonPayload,
@@ -316,6 +820,8 @@ export function StudentQuestDashboard({
   const [season, setSeason] = useState(seasonPayload);
   const [cardCollection, setCardCollection] = useState<QuestCardCollectionView[]>(initialCollection);
   const [filter, setFilter] = useState<QuestFilter>("all");
+  const [selectedQuestId, setSelectedQuestId] = useState<string | null>(payload.quests[0]?.id ?? null);
+  const [detailQuestId, setDetailQuestId] = useState<string | null>(null);
   const [claimingQuestId, setClaimingQuestId] = useState<string | null>(null);
   const [drawingQuestId, setDrawingQuestId] = useState<string | null>(null);
   const [claimingSeason, setClaimingSeason] = useState(false);
@@ -417,6 +923,19 @@ export function StudentQuestDashboard({
     }
     return next;
   }, [cardCollection]);
+
+  const detailQuest = useMemo(
+    () => questPayload.quests.find((quest) => quest.id === detailQuestId) ?? null,
+    [detailQuestId, questPayload.quests],
+  );
+  const selectedVisibleQuest = useMemo(() => {
+    if (visibleQuests.length === 0) return null;
+    return visibleQuests.find((quest) => quest.id === selectedQuestId) ?? visibleQuests[0];
+  }, [selectedQuestId, visibleQuests]);
+  const queuedVisibleQuests = useMemo(
+    () => visibleQuests.filter((quest) => quest.id !== selectedVisibleQuest?.id),
+    [selectedVisibleQuest?.id, visibleQuests],
+  );
 
   function addCollectionItem(item: QuestCardCollectionView) {
     const questId = questIdFromCard(item);
@@ -819,15 +1338,17 @@ export function StudentQuestDashboard({
         </div>
       </section>
 
+      <QuestCommanderPanel quests={questPayload.quests} selectedQuestId={selectedQuestId} onSelect={setSelectedQuestId} />
+
       <section data-quest-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-brand" />
-              <h2 className="text-h1 font-semibold text-slate-950">本周任务栏</h2>
+              <h2 className="text-h1 font-semibold text-slate-950">任务盲盒栏</h2>
             </div>
             <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
-              任务来自真实行为，不是额外刷分入口。完成后只获得称号、徽章、边框等装饰奖励，榜单和净值仍由沙盘决策决定。
+              正面只保留航线、状态和进度，拆开后再查看任务目标、导师提示和神秘奖励。需要更多解释时点“详情”。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -851,41 +1372,58 @@ export function StudentQuestDashboard({
         </div>
 
         {visibleQuests.length > 0 ? (
-          <div className="mt-6 grid gap-4 xl:grid-cols-3">
-            {visibleQuests.map((quest) => {
+          <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0">
+            {(selectedVisibleQuest ? [selectedVisibleQuest] : []).map((quest) => {
               const isFlipped = flippedQuestIds.has(quest.id);
               const collectedCard = collectionByQuestId.get(quest.id);
               const isQuestBusy = claimingQuestId === quest.id || drawingQuestId === quest.id;
               const canDraw = quest.claimable || quest.claimed;
+              const selected = selectedQuestId === quest.id;
+              const tone = questCategoryTone[quest.category] ?? questCategoryTone.review;
+              const visualIndex = Math.max(0, visibleQuests.findIndex((item) => item.id === quest.id));
 
               return (
                 <article
                   data-motion-card
                   data-testid={`quest-card-${quest.id}`}
                   key={quest.id}
-                  className="min-h-[26rem] rounded-[1.7rem] [perspective:1200px]"
+                  className={cn(
+                    "min-h-[30rem] rounded-[1.7rem] [perspective:1200px]",
+                    selected && "ring-2 ring-brand ring-offset-4 ring-offset-white",
+                  )}
                 >
                   <div
                     data-quest-card-inner={quest.id}
-                    className="relative h-full min-h-[26rem] rounded-[1.7rem]"
+                    className="relative h-full min-h-[30rem] rounded-[1.7rem]"
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <div
                       data-testid={`quest-card-front-${quest.id}`}
                       aria-hidden={isFlipped}
                       inert={isFlipped}
-                      className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-950/5"
+                      className="absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(145deg,#fffaf2,white_45%,#eef6ff)] p-5 shadow-lg shadow-slate-950/5"
                       style={{ backfaceVisibility: "hidden" }}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand/16 blur-3xl" />
+                      <div className="pointer-events-none absolute bottom-14 left-10 h-14 w-14 rounded-full bg-down/18 blur-xl" />
+                      <div className="relative z-10 flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="bz-brand-text-on-light text-xs font-bold uppercase tracking-[0.18em]">{quest.category}</p>
-                          <h3 className="mt-2 text-h2 font-bold text-slate-950">{quest.title}</h3>
+                          <p className="bz-brand-text-on-light text-xs font-bold uppercase tracking-[0.18em]">Mission Box</p>
+                          <h3 className="mt-2 text-h2 font-black text-slate-950">第 {visualIndex + 1} 号任务盲盒</h3>
                         </div>
                         <QuestStatusBadge status={quest.status} />
                       </div>
-                      <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{quest.target}</p>
-                      <div data-motion-viz className="mt-5 h-3 rounded-full bg-slate-100">
+                      <div className="relative z-10 mt-5 flex flex-1 items-center justify-center">
+                        <QuestBlindBoxArt quest={quest} index={visualIndex} />
+                      </div>
+                      <div className="relative z-10 mt-5 flex items-center justify-between gap-3">
+                        <span className={cn("rounded-full px-3 py-1 text-xs font-black", tone.className)}>
+                          {questCategoryLabel(quest.category)}
+                        </span>
+                        <span className="text-xs font-black text-slate-500">{Math.round(quest.progress * 100)}%</span>
+                      </div>
+                      <div data-motion-viz className="relative z-10 mt-3 h-3 rounded-full bg-slate-100">
                         <div
                           data-motion-viz-bar
                           data-motion-origin="left center"
@@ -900,22 +1438,16 @@ export function StudentQuestDashboard({
                           style={{ width: `${Math.max(quest.status === "locked" ? 0 : 8, quest.progress * 100)}%` }}
                         />
                       </div>
-                      <div className="mt-5 rounded-[1.2rem] bg-slate-950/[0.035] p-4">
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">任务进度</p>
-                        <p className="mt-2 text-sm font-bold text-slate-950">
-                          {Math.round(quest.progress * 100)}% · {quest.claimable ? "可以领取奖励" : quest.claimed ? "奖励已领取" : "继续完成任务"}
-                        </p>
-                      </div>
                       <button
                         data-motion-button
                         type="button"
                         data-testid={`quest-flip-${quest.id}`}
                         aria-pressed={isFlipped}
                         onClick={() => toggleQuestFlip(quest.id)}
-                        className="mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                        className="relative z-10 mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
                       >
-                        <Gift className="h-4 w-4" />
-                        查看奖励背面
+                        <PackageOpen className="h-4 w-4" />
+                        拆开任务盲盒
                       </button>
                     </div>
 
@@ -928,8 +1460,8 @@ export function StudentQuestDashboard({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Reward Reveal</p>
-                          <h3 className="mt-2 text-h2 font-black text-white">{quest.reward}</h3>
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Mission Card</p>
+                          <h3 className="mt-2 text-h2 font-black text-white">{quest.title}</h3>
                         </div>
                         <button
                           type="button"
@@ -939,9 +1471,23 @@ export function StudentQuestDashboard({
                           返回任务
                         </button>
                       </div>
-                      <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/[0.08] p-4">
-                        <p className="text-xs font-black uppercase tracking-[0.16em] text-white/48">Mr.Brown 提醒</p>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-white/82">{quest.coachNote}</p>
+                      <div className="mt-5 grid gap-3">
+                        <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.08] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.16em] text-white/48">任务目标</p>
+                          <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/82">{quest.target}</p>
+                        </div>
+                        <div className="rounded-[1.3rem] border border-brand/25 bg-brand/12 p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">神秘奖励</p>
+                          <p className="mt-2 text-sm font-black leading-6 text-white">{quest.reward}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDetailQuestId(quest.id)}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-black text-white transition hover:bg-white/18"
+                        >
+                          <Eye className="h-4 w-4" />
+                          查看任务详情
+                        </button>
                       </div>
                       {collectedCard ? (
                         <div
@@ -963,7 +1509,9 @@ export function StudentQuestDashboard({
                           </p>
                         </div>
                       ) : (
-                        <QuestCardBackArt rarity="common" />
+                        <div className="hidden sm:block">
+                          <QuestCardBackArt rarity="common" />
+                        </div>
                       )}
                       <button
                         data-motion-button
@@ -1001,6 +1549,78 @@ export function StudentQuestDashboard({
                 </article>
               );
             })}
+            </div>
+            <aside data-testid="quest-queue-panel" className="rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-soft">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Quest Queue</p>
+                  <h3 className="mt-2 text-h2 font-black text-white">任务队列</h3>
+                </div>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/70">
+                  {visibleQuests.length} 个盲盒
+                </span>
+              </div>
+              <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/[0.07] p-4">
+                <p className="text-sm font-black text-white">流程</p>
+                <div className="mt-3 grid gap-2 text-xs font-bold text-white/68">
+                  <span>1. 对话领取航线</span>
+                  <span>2. 拆开当前盲盒</span>
+                  <span>3. 翻到背面看任务</span>
+                  <span>4. 完成后抽取神秘奖励</span>
+                </div>
+              </div>
+              <div className="relative mt-5 overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-2 shadow-inner shadow-black/10">
+                <div className="pointer-events-none absolute left-2 right-4 top-2 z-10 h-8 rounded-t-[1.1rem] bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent" />
+                <div
+                  data-testid="quest-queue-scroll"
+                  className="quest-glass-scroll max-h-[20rem] space-y-3 overflow-y-auto overscroll-contain pb-2 pr-2 pt-1"
+                  aria-label="任务队列，可向下滑动查看更多任务盲盒"
+                >
+                  {queuedVisibleQuests.length > 0 ? (
+                    queuedVisibleQuests.map((quest) => {
+                    const tone = questCategoryTone[quest.category] ?? questCategoryTone.review;
+                    const visualIndex = Math.max(0, visibleQuests.findIndex((item) => item.id === quest.id));
+                    return (
+                      <button
+                        key={quest.id}
+                        type="button"
+                        onClick={() => setSelectedQuestId(quest.id)}
+                        className="w-full rounded-[1.2rem] border border-white/10 bg-white/[0.07] p-4 text-left transition hover:-translate-y-0.5 hover:border-brand/50 hover:bg-white/[0.11]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <QuestBlindBoxArt quest={quest} index={visualIndex} compact />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-black uppercase tracking-[0.16em] text-brand-warm">
+                                Mission {visualIndex + 1}
+                              </span>
+                              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-black", tone.className)}>
+                                {questCategoryLabel(quest.category)}
+                              </span>
+                            </div>
+                            <p className="mt-2 line-clamp-1 text-base font-black text-white">{quest.title}</p>
+                            <div className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-white/58">
+                              <QuestStatusBadge status={quest.status} />
+                              <span>{Math.round(quest.progress * 100)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                    })
+                  ) : (
+                    <p className="rounded-[1.2rem] border border-white/10 bg-white/[0.07] p-4 text-sm font-bold leading-6 text-white/62">
+                      当前筛选下只有这个任务。切换上方分类可以查看其他盲盒。
+                    </p>
+                  )}
+                </div>
+                <div className="mt-2 flex justify-center">
+                  <span data-testid="quest-queue-scroll-hint" className="rounded-full border border-white/12 bg-white/12 px-3 py-1 text-[11px] font-black text-white/72 shadow-sm backdrop-blur-md">
+                    向下滑动查看更多
+                  </span>
+                </div>
+              </div>
+            </aside>
           </div>
         ) : (
           <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-bold text-slate-600">
@@ -1055,7 +1675,7 @@ export function StudentQuestDashboard({
           </div>
         </section>
 
-        <aside data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <aside data-testid="achievement-wall" data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <Trophy className="h-5 w-5 text-brand" />
             <h2 className="text-h1 font-semibold text-slate-950">成就墙</h2>
@@ -1068,25 +1688,30 @@ export function StudentQuestDashboard({
               <article
                 key={achievement.id}
                 className={cn(
-                  "rounded-[1.35rem] border p-4",
+                  "group rounded-[1.55rem] border p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-950/8",
                   achievement.unlocked
-                    ? "border-border-brand bg-brand-subtle"
-                    : "border-slate-200 bg-slate-950/[0.025]",
+                    ? "border-border-brand bg-gradient-to-br from-amber-50 via-white to-orange-50"
+                    : "border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100",
                 )}
               >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={cn(
-                      "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
-                      achievement.unlocked ? "bg-brand text-slate-950" : "bg-slate-200 text-slate-600",
-                    )}
-                  >
-                    {achievement.unlocked ? <BadgeCheck className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-black text-slate-950">{achievement.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{achievement.detail}</p>
-                    <p className="mt-2 text-xs font-bold text-brand-ink">{achievement.decorativeReward}</p>
+                <div className="flex items-center gap-4">
+                  <AchievementBadgeArt achievement={achievement} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-black text-slate-950">{achievement.title}</h3>
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-1 text-[11px] font-black",
+                          achievement.unlocked ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600",
+                        )}
+                      >
+                        {achievement.unlocked ? "已点亮" : "待解锁"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">{achievement.detail}</p>
+                    <p className="mt-2 rounded-full bg-white/76 px-3 py-1.5 text-xs font-black text-brand-ink shadow-inner shadow-slate-950/5">
+                      {achievement.decorativeReward}
+                    </p>
                   </div>
                 </div>
               </article>
@@ -1094,6 +1719,7 @@ export function StudentQuestDashboard({
           </div>
         </aside>
       </div>
+      <QuestDetailDialog quest={detailQuest} onClose={() => setDetailQuestId(null)} />
     </div>
   );
 }

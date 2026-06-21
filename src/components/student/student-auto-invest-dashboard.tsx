@@ -83,7 +83,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
   const [state, setState] = useState<LoadState>("idle");
   const [busyIntent, setBusyIntent] = useState<SubmitIntent | null>(null);
   const [message, setMessage] = useState("");
-  const trendPath = useMemo(() => schedulePath(payload.schedule), [payload.schedule]);
+  const trendPath = useMemo(() => schedulePath(payload.schedule, 520, 138), [payload.schedule]);
   const activePlan = payload.activePlan?.status === "active" ? payload.activePlan : null;
 
   useGSAP(
@@ -393,16 +393,25 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               </div>
             </div>
 
-            <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-              <div className="rounded-[1.6rem] bg-slate-950 p-5 text-white">
-                <svg className="h-44 w-full overflow-visible" viewBox="0 0 520 150" role="img" aria-label="定投标的价格趋势">
+            <div className="mt-6 grid items-start gap-5">
+              <div data-testid="auto-invest-path-card" className="self-start rounded-[1.6rem] bg-slate-950 p-5 text-white shadow-soft">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Path Preview</p>
+                    <p className="mt-1 text-sm font-semibold text-white/68">价格路径 + 执行节点</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/76">
+                    {payload.schedule.length} 个回合点
+                  </span>
+                </div>
+                <svg className="mt-4 h-32 w-full overflow-visible" viewBox="0 0 520 138" role="img" aria-label="定投标的价格趋势">
                   <defs>
                     <linearGradient id="autoInvestFill" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor="var(--amber-400)" stopOpacity="0.3" />
                       <stop offset="100%" stopColor="var(--amber-400)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <path d={`${trendPath} L 504 140 L 16 140 Z`} fill="url(#autoInvestFill)" />
+                  <path d={`${trendPath} L 504 132 L 16 132 Z`} fill="url(#autoInvestFill)" />
                   <path
                     d={trendPath}
                     fill="none"
@@ -418,7 +427,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                         key={row.round}
                         data-plan-dot
                         cx={x}
-                        cy={row.status === "executed" ? 128 : 138}
+                        cy={row.status === "executed" ? 122 : 130}
                         r={row.status === "executed" ? 7 : 4}
                         fill={row.status === "executed" ? "var(--amber-300)" : "var(--error-400)"}
                       />
@@ -426,20 +435,20 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   })}
                 </svg>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-bold text-white/70">总投入</p>
+                  <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
+                    <p className="text-xs font-bold text-white/58">总投入</p>
                     <p className="mt-1 text-h2 font-black">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.totalInvested)}</MoneyText>
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-white/70">模拟收益</p>
+                  <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
+                    <p className="text-xs font-bold text-white/58">模拟收益</p>
                     <p className="mt-1 text-h2 font-black">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.simulatedReturn)}</MoneyText>
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-white/70">收益率</p>
+                  <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
+                    <p className="text-xs font-bold text-white/58">收益率</p>
                     <p className={cn("mt-1 text-h2 font-black", getMarketMoveClasses(payload.summary.simulatedReturnRate).darkText)}>
                       {formatPercent(payload.summary.simulatedReturnRate)}
                     </p>
@@ -447,9 +456,16 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 </div>
               </div>
 
-              <div className="grid gap-3">
-                {payload.schedule.map((row) => (
-                  <article key={row.round} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">最近执行节点</p>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                    已折叠为最近 3 条
+                  </span>
+                </div>
+              <div data-testid="auto-invest-schedule-list" className="mt-3 grid gap-3 md:grid-cols-3">
+                {payload.schedule.slice(-3).map((row) => (
+                  <article key={row.round} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-body font-black text-slate-950">第 {row.round} 回合</p>
                       <span
@@ -461,7 +477,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                         {row.status === "executed" ? "已执行" : "已跳过"}
                       </span>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm font-bold text-slate-600">
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-slate-600">
                       <span>价格 {formatCurrency(row.price)}</span>
                       <span>份额 {row.quantity}</span>
                       <span>投入 {formatCurrency(row.invested)}</span>
@@ -470,6 +486,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                     <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{row.note}</p>
                   </article>
                 ))}
+              </div>
               </div>
             </div>
           </section>

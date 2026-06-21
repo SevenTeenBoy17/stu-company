@@ -129,13 +129,19 @@ describe("StudentQuestDashboard quest flip", () => {
     const flipButton = screen.getByTestId("quest-flip-observe-quest");
 
     expect(flipButton).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("第 1 号任务盲盒");
 
     await user.click(flipButton);
 
     expect(flipButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("先写观察单");
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("先看证据");
+    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("写下证据");
+
+    await user.click(screen.getByRole("button", { name: "查看任务详情" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("先看证据");
+    await user.click(screen.getByRole("button", { name: "关闭任务详情" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("claims a completed quest, draws a card, reveals it, and adds it to the collection", async () => {
