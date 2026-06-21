@@ -109,7 +109,10 @@ export function MarketThermometer({
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-white/78">情绪温度</p>
-                <p className={cn("bz-hero-stat text-hero-num tabular-nums mt-1 tracking-tight", tone.tone)}>{payload.score}</p>
+                {/* .bz-hero-stat carries a LIGHT amber-50 chip bg — on this dark panel it
+                    makes the light tone.tone text fail AA, so drop the chip and keep the
+                    hero-num scale (light tone on near-black is AA-compliant). */}
+                <p className={cn("text-hero-num tabular-nums mt-1 tracking-tight", tone.tone)}>{payload.score}</p>
               </div>
               <p className="max-w-28 text-right text-base font-bold leading-6 text-white">{tone.title}</p>
             </div>

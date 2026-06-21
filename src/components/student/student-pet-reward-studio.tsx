@@ -366,9 +366,11 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
               <div key={stat.label} data-pet-stat data-motion-card className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-body-sm font-semibold text-white">{stat.label}</p>
-                  {/* Hero number on the FIRST stat (streak/energy — most prominent); others → text-h2 */}
+                  {/* Hero number on the FIRST stat (streak/energy — most prominent); others → text-h2.
+                      .bz-hero-stat = LIGHT amber-50 chip; on this dark card it makes the amber-300
+                      text fail AA, so keep the hero-num scale without the light chip. */}
                   {index === 0 ? (
-                    <span className="bz-hero-stat text-hero-num tabular-nums text-brand-warm">{stat.value}</span>
+                    <span className="text-hero-num tabular-nums text-brand-warm">{stat.value}</span>
                   ) : (
                     <span className="text-h2 tabular-nums text-brand-warm">{stat.value}</span>
                   )}

@@ -149,6 +149,21 @@ const questCategoryTone: Record<string, { label: string; className: string }> = 
   discipline: { label: "纪律", className: "bg-down-soft text-[var(--down-700)]" },
 };
 
+// Dark-panel variant for the (slate-950) quest queue aside. The light-surface
+// `questCategoryTone` foregrounds (amber-800 / blue-700 / …) fail WCAG AA on a dark
+// panel; these brighter tints keep the category color-coding while passing AA on dark.
+const questCategoryToneInverse: Record<string, string> = {
+  finance: "bg-brand/20 text-brand-warm",
+  risk: "bg-warning/20 text-amber-200",
+  learning: "bg-info/20 text-sky-200",
+  review: "bg-white/15 text-white/82",
+  discipline: "bg-down/20 text-[var(--down-200)]",
+};
+
+function questCategoryInverseClass(category: string) {
+  return questCategoryToneInverse[category] ?? questCategoryToneInverse.review;
+}
+
 function questCategoryLabel(category: string) {
   return questCategoryTone[category]?.label ?? category.toUpperCase();
 }
@@ -1111,7 +1126,10 @@ export function StudentQuestDashboard({
             <Link
               data-motion-button
               href="/student"
-              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:shadow-glow"
+              /* `!text-fg-default`: the un-layered base rule `a { color: inherit }` (globals.css)
+                 otherwise beats layered text utilities and leaks the dark hero's white onto this
+                 amber CTA (white-on-amber ≈ 2.5:1, fails AA). The important dark ink wins → ~8:1. */
+              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold !text-fg-default transition hover:-translate-y-0.5 hover:shadow-glow"
             >
               回到策略台执行
               <ArrowRight className="h-4 w-4" />
@@ -1578,7 +1596,6 @@ export function StudentQuestDashboard({
                 >
                   {queuedVisibleQuests.length > 0 ? (
                     queuedVisibleQuests.map((quest) => {
-                    const tone = questCategoryTone[quest.category] ?? questCategoryTone.review;
                     const visualIndex = Math.max(0, visibleQuests.findIndex((item) => item.id === quest.id));
                     return (
                       <button
@@ -1594,7 +1611,12 @@ export function StudentQuestDashboard({
                               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">
                                 Mission {visualIndex + 1}
                               </span>
-                              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", tone.className)}>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                                  questCategoryInverseClass(quest.category),
+                                )}
+                              >
                                 {questCategoryLabel(quest.category)}
                               </span>
                             </div>

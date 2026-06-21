@@ -227,8 +227,10 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   {formatPercent(selectedOption?.dayChange ?? 0)}
                 </span>
               </div>
-              {/* ONE hero number: the 定投 plan current price / projected amount */}
-              <p className="bz-hero-stat mt-4 text-hero-num tabular-nums text-white">
+              {/* ONE hero number: the 定投 plan current price / projected amount.
+                  .bz-hero-stat targets LIGHT surfaces (amber-50 bg) — on this dark
+                  card it would make white text fail AA, so keep just the hero-num scale. */}
+              <p className="mt-4 text-hero-num tabular-nums text-white">
                 {formatCurrency(selectedOption?.currentPrice ?? 0)}
               </p>
               <p className="mt-3 text-body leading-7 text-white/58">{selectedOption?.description}</p>
