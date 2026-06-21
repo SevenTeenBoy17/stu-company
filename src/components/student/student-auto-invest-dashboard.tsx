@@ -160,6 +160,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="auto-invest-dashboard">
+      {/* ── Hero dark panel ── */}
       <section data-auto-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
@@ -167,23 +168,23 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
-                <p className="text-sm font-bold uppercase tracking-[0.24em] text-brand-warm">
-                  Auto Invest Robot
-                </p>
+                {/* Eyebrow on dark panel → bz-eyebrow-inverse */}
+                <p className="bz-eyebrow-inverse">Auto Invest Robot</p>
                 <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h1>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
-                  让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是“猜最低点”，而是现金安全、平均成本和长期纪律。
+                  让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是&ldquo;猜最低点&rdquo;，而是现金安全、平均成本和长期纪律。
                 </p>
               </div>
               <div className="rounded-[1.7rem] border border-white/12 bg-white/[0.08] p-5">
                 <div className="flex items-center gap-3">
                   <Bot className="h-6 w-6 text-brand-warm" />
-                  <p className="text-sm font-bold text-white/58">训练状态</p>
+                  <p className="text-caption font-semibold text-white/58">训练状态</p>
                 </div>
-                <p className="mt-2 text-h1 font-black text-white">
+                {/* Section title on dark bg — font-semibold, not font-black */}
+                <p className="mt-2 text-h1 font-semibold text-white">
                   {activePlan ? "真实计划执行中" : payload.summary.stageLabel}
                 </p>
-                <p className="mt-1 text-xs font-semibold text-white/70">
+                <p className="mt-1 text-caption text-white/70">
                   更新于 {formatGeneratedAt(payload.generatedAt)}
                 </p>
               </div>
@@ -201,9 +202,10 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   <div key={item.label} data-motion-card className="min-w-0 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-5">
                     <div className="flex items-center gap-2 text-white/58">
                       <Icon className="h-4 w-4 text-brand-warm" />
-                      <p className="text-sm font-bold">{item.label}</p>
+                      <p className="text-caption font-semibold">{item.label}</p>
                     </div>
-                    <p className="mt-3 text-[clamp(1.45rem,2.2vw,2.1rem)] font-black leading-none tabular-nums text-white">
+                    {/* Secondary KPI cards → text-h2 (not the one hero) */}
+                    <p className="mt-3 text-h2 tabular-nums text-white">
                       {item.value}
                     </p>
                   </div>
@@ -214,17 +216,19 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
 
           <aside className="relative z-10 border-t border-white/10 bg-white/[0.04] px-6 py-7 md:px-8 xl:border-l xl:border-t-0">
             <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.07] p-5">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-brand-warm">当前标的</p>
+              {/* Eyebrow on dark → bz-eyebrow-inverse */}
+              <p className="bz-eyebrow-inverse">当前标的</p>
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-h1 font-semibold text-white">{selectedOption?.name}</h2>
-                  <p className="mt-1 text-sm font-bold text-white/70">{selectedOption?.symbol}</p>
+                  <p className="mt-1 text-caption font-semibold text-white/70">{selectedOption?.symbol}</p>
                 </div>
-                <span className={cn("rounded-full px-3 py-1 text-sm font-black", moveClasses.darkBadge)}>
+                <span className={cn("rounded-full px-3 py-1 text-caption font-semibold", moveClasses.darkBadge)}>
                   {formatPercent(selectedOption?.dayChange ?? 0)}
                 </span>
               </div>
-              <p className="mt-4 text-display-md font-black tabular-nums text-white">
+              {/* ONE hero number: the 定投 plan current price / projected amount */}
+              <p className="bz-hero-stat mt-4 text-hero-num tabular-nums text-white">
                 {formatCurrency(selectedOption?.currentPrice ?? 0)}
               </p>
               <p className="mt-3 text-body leading-7 text-white/58">{selectedOption?.description}</p>
@@ -233,8 +237,8 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
             <div className="mt-5 grid grid-cols-2 gap-3">
               {payload.badges.map((badge) => (
                 <div key={badge.label} className={cn("rounded-[1.25rem] p-4", badgeTone[badge.tone])}>
-                  <p className="text-xs font-bold">{badge.label}</p>
-                  <p className="mt-2 text-h2 font-black">{badge.value}</p>
+                  <p className="text-caption font-semibold">{badge.label}</p>
+                  <p className="mt-2 text-h2 font-semibold">{badge.value}</p>
                 </div>
               ))}
             </div>
@@ -242,15 +246,17 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
         </div>
       </section>
 
+      {/* ── Active plan bar ── */}
       {latestPlan ? (
         <section data-auto-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-brand">Live Plan</p>
-              <h2 className="mt-2 text-h1 font-semibold text-slate-950">
+              {/* Eyebrow on light panel → bz-eyebrow */}
+              <p className="bz-eyebrow bz-brand-text-on-light">Live Plan</p>
+              <h2 className="mt-2 text-h1 font-semibold text-fg-strong">
                 当前定投计划：{planStatusCopy[latestPlan.status]}
               </h2>
-              <p className="mt-2 text-body leading-7 text-slate-600">
+              <p className="mt-2 text-body leading-7 text-fg-muted">
                 第 {latestPlan.startRound}-{latestPlan.endRound} 回合自动尝试买入，已执行{" "}
                 {latestPlan.executedRounds.length} 回合，跳过 {latestPlan.skippedRounds.length} 回合。
               </p>
@@ -260,7 +266,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               type="button"
               onClick={() => submit("cancel")}
               disabled={!activePlan || state === "loading"}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-body-sm font-semibold text-fg-default transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busyIntent === "cancel" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PauseCircle className="h-4 w-4" />}
               取消真实计划
@@ -269,23 +275,24 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
         </section>
       ) : null}
 
+      {/* ── Config + detail grid ── */}
       <section className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <aside data-auto-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex items-center gap-3">
             <Bot className="h-5 w-5 text-brand" />
-            <h2 className="text-h1 font-semibold text-slate-950">机器人参数</h2>
+            <h2 className="text-h1 font-semibold text-fg-strong">机器人参数</h2>
           </div>
-          <p className="mt-2 text-body leading-7 text-slate-600">
+          <p className="mt-2 text-body leading-7 text-fg-muted">
             参数越激进，现金越容易被占用。先看安全垫，再看收益率。
           </p>
 
           <div className="mt-6 space-y-5">
             <label className="block">
-              <span className="text-sm font-black text-slate-700">定投标的</span>
+              <span className="text-caption font-semibold text-fg-default">定投标的</span>
               <select
                 value={assetId}
                 onChange={(event) => setAssetId(event.target.value)}
-                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-bold text-slate-950 outline-none transition focus:border-brand"
+                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-semibold text-fg-strong outline-none transition focus:border-brand"
               >
                 {payload.options.map((option) => (
                   <option key={option.assetId} value={option.assetId}>
@@ -296,26 +303,26 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
             </label>
 
             <label className="block">
-              <span className="text-sm font-black text-slate-700">每回合金额</span>
+              <span className="text-caption font-semibold text-fg-default">每回合金额</span>
               <input
                 value={amountPerRound}
                 onChange={(event) => setAmountPerRound(Number(event.target.value))}
                 type="number"
                 min={500}
                 step={500}
-                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-bold text-slate-950 outline-none transition focus:border-brand"
+                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-semibold text-fg-strong outline-none transition focus:border-brand"
               />
             </label>
 
             <label className="block">
-              <span className="text-sm font-black text-slate-700">持续回合</span>
+              <span className="text-caption font-semibold text-fg-default">持续回合</span>
               <input
                 value={durationRounds}
                 onChange={(event) => setDurationRounds(Number(event.target.value))}
                 type="number"
                 min={1}
                 max={12}
-                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-bold text-slate-950 outline-none transition focus:border-brand"
+                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-semibold text-fg-strong outline-none transition focus:border-brand"
               />
             </label>
           </div>
@@ -334,10 +341,10 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-body font-black text-slate-950">{item.label}</p>
+                    <p className="text-body font-semibold text-fg-strong">{item.label}</p>
                     {active ? <CheckCircle2 className="h-5 w-5 text-brand" /> : null}
                   </div>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{item.summary}</p>
+                  <p className="mt-2 text-body-sm leading-6 text-fg-muted">{item.summary}</p>
                 </button>
               );
             })}
@@ -349,7 +356,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               data-testid="auto-invest-submit"
               onClick={() => submit("simulate")}
               disabled={state === "loading"}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-body-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busyIntent === "simulate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               重新推演计划
@@ -358,7 +365,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               type="button"
               onClick={() => submit("activate")}
               disabled={Boolean(activePlan) || state === "loading"}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busyIntent === "activate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
               启动真实定投
@@ -367,7 +374,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
           {message ? (
             <p
               className={cn(
-                "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
+                "mt-4 rounded-2xl px-4 py-3 text-body-sm font-semibold",
                 state === "error" ? "bg-error-soft text-error" : "bg-info/10 text-info",
               )}
             >
@@ -377,18 +384,18 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
         </aside>
 
         <div className="space-y-6">
-        <section data-auto-reveal data-motion-reveal className="panel overflow-hidden rounded-[2rem] p-5 md:p-6">
+          <section data-auto-reveal data-motion-reveal className="panel overflow-hidden rounded-[2rem] p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
                   <LineChart className="h-5 w-5 text-brand" />
-                  <h2 className="text-h1 font-semibold text-slate-950">执行轨迹</h2>
+                  <h2 className="text-h1 font-semibold text-fg-strong">执行轨迹</h2>
                 </div>
-                <p className="mt-2 max-w-2xl text-body leading-7 text-slate-600">
+                <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
                   机器人按回合拆单，重点不是每次都赚钱，而是看清价格、份额、平均成本、现金余量如何联动。
                 </p>
               </div>
-              <div className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+              <div className="rounded-full bg-slate-950 px-4 py-2 text-caption font-semibold text-white">
                 {payload.selected.startRound} - {payload.selected.endRound} 回合
               </div>
             </div>
@@ -397,10 +404,11 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div data-testid="auto-invest-path-card" className="self-start rounded-[1.6rem] bg-slate-950 p-5 text-white shadow-soft">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Path Preview</p>
-                    <p className="mt-1 text-sm font-semibold text-white/68">价格路径 + 执行节点</p>
+                    {/* Eyebrow on dark → bz-eyebrow-inverse */}
+                    <p className="bz-eyebrow-inverse">Path Preview</p>
+                    <p className="mt-1 text-body-sm text-white/68">价格路径 + 执行节点</p>
                   </div>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/76">
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-caption text-white/76">
                     {payload.schedule.length} 个回合点
                   </span>
                 </div>
@@ -436,20 +444,20 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 </svg>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
-                    <p className="text-xs font-bold text-white/58">总投入</p>
-                    <p className="mt-1 text-h2 font-black">
+                    <p className="text-caption text-white/58">总投入</p>
+                    <p className="mt-1 text-h2 tabular-nums">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.totalInvested)}</MoneyText>
                     </p>
                   </div>
                   <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
-                    <p className="text-xs font-bold text-white/58">模拟收益</p>
-                    <p className="mt-1 text-h2 font-black">
+                    <p className="text-caption text-white/58">模拟收益</p>
+                    <p className="mt-1 text-h2 tabular-nums">
                       <MoneyText tone="dark">{formatCurrency(payload.summary.simulatedReturn)}</MoneyText>
                     </p>
                   </div>
                   <div className="rounded-[1.1rem] bg-white/[0.07] p-3">
-                    <p className="text-xs font-bold text-white/58">收益率</p>
-                    <p className={cn("mt-1 text-h2 font-black", getMarketMoveClasses(payload.summary.simulatedReturnRate).darkText)}>
+                    <p className="text-caption text-white/58">收益率</p>
+                    <p className={cn("mt-1 text-h2 tabular-nums", getMarketMoveClasses(payload.summary.simulatedReturnRate).darkText)}>
                       {formatPercent(payload.summary.simulatedReturnRate)}
                     </p>
                   </div>
@@ -458,35 +466,35 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
 
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-500">最近执行节点</p>
-                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                  <p className="bz-eyebrow text-fg-muted">最近执行节点</p>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-caption text-white">
                     已折叠为最近 3 条
                   </span>
                 </div>
-              <div data-testid="auto-invest-schedule-list" className="mt-3 grid gap-3 md:grid-cols-3">
-                {payload.schedule.slice(-3).map((row) => (
-                  <article key={row.round} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-body font-black text-slate-950">第 {row.round} 回合</p>
-                      <span
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-black",
-                          row.status === "executed" ? "bg-info/10 text-info" : "bg-warning/10 text-warning",
-                        )}
-                      >
-                        {row.status === "executed" ? "已执行" : "已跳过"}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-slate-600">
-                      <span>价格 {formatCurrency(row.price)}</span>
-                      <span>份额 {row.quantity}</span>
-                      <span>投入 {formatCurrency(row.invested)}</span>
-                      <span>均价 {formatCurrency(row.averageCost)}</span>
-                    </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-slate-600">{row.note}</p>
-                  </article>
-                ))}
-              </div>
+                <div data-testid="auto-invest-schedule-list" className="mt-3 grid gap-3 md:grid-cols-3">
+                  {payload.schedule.slice(-3).map((row) => (
+                    <article key={row.round} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-body font-semibold text-fg-strong">第 {row.round} 回合</p>
+                        <span
+                          className={cn(
+                            "rounded-full px-3 py-1 text-caption font-semibold",
+                            row.status === "executed" ? "bg-info/10 text-info" : "bg-warning/10 text-warning",
+                          )}
+                        >
+                          {row.status === "executed" ? "已执行" : "已跳过"}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-body-sm text-fg-muted">
+                        <span>价格 {formatCurrency(row.price)}</span>
+                        <span>份额 {row.quantity}</span>
+                        <span>投入 {formatCurrency(row.invested)}</span>
+                        <span>均价 {formatCurrency(row.averageCost)}</span>
+                      </div>
+                      <p className="mt-3 text-caption leading-5 text-fg-muted">{row.note}</p>
+                    </article>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -495,24 +503,24 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
             <article data-auto-reveal data-motion-card className="panel rounded-[2rem] p-5 md:p-6">
               <div className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-brand" />
-                <h2 className="text-h1 font-semibold text-slate-950">定投 vs 一次性买入</h2>
+                <h2 className="text-h1 font-semibold text-fg-strong">定投 vs 一次性买入</h2>
               </div>
               <div className="mt-6 grid gap-4">
                 <div className="rounded-[1.5rem] bg-brand-soft p-5">
-                  <p className="text-sm font-bold text-brand-ink">定投机器人</p>
-                  <p className="mt-3 text-h1 font-black">
+                  <p className="text-caption font-semibold text-brand-ink">定投机器人</p>
+                  <p className="mt-3 text-h1 font-semibold">
                     <MoneyText>{formatCurrency(payload.summary.terminalValue)}</MoneyText>
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                  <p className="mt-2 text-body-sm text-fg-muted">
                     平均成本 {formatCurrency(payload.summary.averageCost)}
                   </p>
                 </div>
                 <div className="rounded-[1.5rem] bg-slate-100 p-5">
-                  <p className="text-sm font-bold text-slate-600">一次性买入</p>
-                  <p className="mt-3 text-h1 font-black">
+                  <p className="text-caption font-semibold text-fg-muted">一次性买入</p>
+                  <p className="mt-3 text-h1 font-semibold text-fg-strong">
                     <MoneyText>{formatCurrency(payload.comparison.lumpSumTerminalValue)}</MoneyText>
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                  <p className="mt-2 text-body-sm text-fg-muted">
                     起始成本 {formatCurrency(payload.comparison.lumpSumAverageCost)}
                   </p>
                 </div>
@@ -529,12 +537,12 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
             <article data-auto-reveal data-motion-card className="panel rounded-[2rem] p-5 md:p-6">
               <div className="flex items-center gap-3">
                 <Sparkles className="h-5 w-5 text-brand" />
-                <h2 className="text-h1 font-semibold text-slate-950">Mr.Brown 训练提示</h2>
+                <h2 className="text-h1 font-semibold text-fg-strong">Mr.Brown 训练提示</h2>
               </div>
-              <p className="mt-4 text-body font-semibold leading-7 text-slate-600">{payload.coach.summary}</p>
+              <p className="mt-4 text-body leading-7 text-fg-muted">{payload.coach.summary}</p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {payload.coach.concepts.map((concept) => (
-                  <span key={concept} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600">
+                  <span key={concept} className="rounded-full bg-slate-100 px-3 py-1.5 text-caption text-fg-muted">
                     {concept}
                   </span>
                 ))}
@@ -542,8 +550,8 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div className="mt-5 space-y-3">
                 {payload.coach.nextSteps.map((step, index) => (
                   <div key={step} className="rounded-[1.2rem] bg-slate-50 p-4">
-                    <p className="bz-brand-text-on-light text-xs font-black">STEP {index + 1}</p>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{step}</p>
+                    <p className="bz-eyebrow bz-brand-text-on-light">STEP {index + 1}</p>
+                    <p className="mt-2 text-body-sm leading-6 text-fg-muted">{step}</p>
                   </div>
                 ))}
               </div>

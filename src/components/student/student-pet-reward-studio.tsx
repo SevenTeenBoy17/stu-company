@@ -301,24 +301,27 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
         <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-24 h-64 w-64 rounded-full bg-emerald-300/10 blur-3xl" />
 
+        {/* ── Left: mascot column ── */}
         <div className="relative z-10 border-b border-white/10 p-5 sm:p-6 xl:border-b-0 xl:border-r">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-brand-warm">Pet Studio</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">{payload.pet.name}</h2>
-              <p className="mt-1 text-sm font-bold text-white/70">
+              {/* Eyebrow on dark panel → bz-eyebrow-inverse */}
+              <p className="bz-eyebrow-inverse">Pet Studio</p>
+              {/* Card/section title → font-semibold (was font-black) */}
+              <h2 className="mt-2 text-h1 font-semibold tracking-tight md:text-display-sm">{payload.pet.name}</h2>
+              <p className="mt-1 text-body-sm text-white/70">
                 {payload.pet.species} / {payload.pet.stageLabel}
               </p>
             </div>
-            <span className="rounded-full border border-white/12 bg-white/[0.07] px-3 py-1.5 text-sm font-black text-brand-warm">
+            <span className="rounded-full border border-white/12 bg-white/[0.07] px-3 py-1.5 text-body-sm font-semibold text-brand-warm">
               Lv.{payload.pet.level}
             </span>
           </div>
           <PetMascot payload={payload} selectedReward={selectedReward} />
           <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
-            <div className="flex items-center justify-between gap-3 text-sm font-black">
-              <span>成长经验</span>
-              <span className="text-brand-warm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-body-sm font-semibold text-white">成长经验</span>
+              <span className="text-body-sm font-semibold text-brand-warm">
                 {payload.pet.xpToNext > 0 ? `还差 ${payload.pet.xpToNext} XP` : "满级训练中"}
               </span>
             </div>
@@ -333,22 +336,25 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
           </div>
         </div>
 
+        {/* ── Centre: stats + actions ── */}
         <div className="relative z-10 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-sm font-black text-brand-warm">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-body-sm font-semibold text-brand-warm">
                 <PawPrint className="h-4 w-4" />
                 {payload.pet.moodLabel}
               </div>
-              <h3 className="mt-4 text-3xl font-black leading-tight md:text-4xl">{payload.pet.headline}</h3>
-              <p className="mt-4 max-w-3xl text-base font-semibold leading-8 text-white/64">{payload.pet.coachNote}</p>
+              {/* ONE hero: the streak/reward count rendered via text-hero-num below on the
+                  stat cards. The headline here is the mascot's title → display size, font-semibold */}
+              <h3 className="mt-4 text-display-sm font-semibold leading-tight md:text-display-md">{payload.pet.headline}</h3>
+              <p className="mt-4 max-w-3xl text-body leading-8 text-white/64">{payload.pet.coachNote}</p>
             </div>
             <button
               data-motion-button
               type="button"
               onClick={() => void refreshPet()}
               disabled={isRefreshing}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-4 text-sm font-black text-white transition hover:border-brand/40 hover:bg-brand/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCcw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
               同步萌宠
@@ -356,11 +362,16 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-3">
-            {stats.map((stat) => (
+            {stats.map((stat, index) => (
               <div key={stat.label} data-pet-stat data-motion-card className="rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-white">{stat.label}</p>
-                  <span className="text-lg font-black tabular-nums text-brand-warm">{stat.value}</span>
+                  <p className="text-body-sm font-semibold text-white">{stat.label}</p>
+                  {/* Hero number on the FIRST stat (streak/energy — most prominent); others → text-h2 */}
+                  {index === 0 ? (
+                    <span className="bz-hero-stat text-hero-num tabular-nums text-brand-warm">{stat.value}</span>
+                  ) : (
+                    <span className="text-h2 tabular-nums text-brand-warm">{stat.value}</span>
+                  )}
                 </div>
                 <div data-motion-viz className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
                   <div
@@ -370,7 +381,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     style={{ width: `${stat.value}%` }}
                   />
                 </div>
-                <p className="mt-3 text-xs font-bold text-white/70">{stat.detail}</p>
+                <p className="mt-3 text-caption text-white/70">{stat.detail}</p>
               </div>
             ))}
           </div>
@@ -379,8 +390,9 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Next Quest</p>
-                  <h4 className="mt-2 text-xl font-black">下一步让伙伴长大</h4>
+                  {/* Eyebrow on dark → bz-eyebrow-inverse */}
+                  <p className="bz-eyebrow-inverse">Next Quest</p>
+                  <h4 className="mt-2 text-h2 font-semibold">下一步让伙伴长大</h4>
                 </div>
                 <WandSparkles className="h-5 w-5 text-brand-warm" />
               </div>
@@ -394,8 +406,8 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-black text-white">{action.title}</p>
-                        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/70">{action.detail}</p>
+                        <p className="text-body-sm font-semibold text-white">{action.title}</p>
+                        <p className="mt-1 line-clamp-2 text-caption leading-5 text-white/70">{action.detail}</p>
                       </div>
                       <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-brand-warm transition group-hover:translate-x-1" />
                     </div>
@@ -405,14 +417,15 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             </div>
 
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-4">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-warm">Memory Trail</p>
-              <h4 className="mt-2 text-xl font-black">成长轨迹</h4>
+              {/* Eyebrow on dark → bz-eyebrow-inverse */}
+              <p className="bz-eyebrow-inverse">Memory Trail</p>
+              <h4 className="mt-2 text-h2 font-semibold">成长轨迹</h4>
               <div className="mt-4 space-y-3">
                 {payload.timeline.map((item) => (
                   <div key={item.id} className="flex gap-3">
                     <span
                       className={cn(
-                        "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-black",
+                        "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-caption font-semibold",
                         item.unlocked
                           ? "border-brand/40 bg-brand text-slate-950"
                           : "border-white/10 bg-white/[0.05] text-white/70",
@@ -421,8 +434,8 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                       {item.unlocked ? <BadgeCheck className="h-4 w-4" /> : item.round}
                     </span>
                     <div>
-                      <p className={cn("text-sm font-black", item.unlocked ? "text-white" : "text-white/70")}>{item.label}</p>
-                      <p className="mt-1 text-xs font-semibold leading-5 text-white/70">{item.detail}</p>
+                      <p className={cn("text-body-sm font-semibold", item.unlocked ? "text-white" : "text-white/70")}>{item.label}</p>
+                      <p className="mt-1 text-caption leading-5 text-white/70">{item.detail}</p>
                     </div>
                   </div>
                 ))}
@@ -431,18 +444,20 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
           </div>
 
           {status ? (
-            <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-bold text-white/70">
+            <p role="status" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-body-sm text-white/70">
               {status}
             </p>
           ) : null}
         </div>
 
+        {/* ── Right: reward codex ── */}
         <aside className="relative z-10 border-t border-white/10 bg-white/[0.04] p-5 sm:p-6 xl:border-l xl:border-t-0">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-warm">Reward Codex</p>
-              <h3 className="mt-2 text-2xl font-black">奖励图鉴</h3>
-              <p className="mt-2 text-sm font-semibold text-white/70">
+              {/* Eyebrow on dark → bz-eyebrow-inverse */}
+              <p className="bz-eyebrow-inverse">Reward Codex</p>
+              <h3 className="mt-2 text-h1 font-semibold">奖励图鉴</h3>
+              <p className="mt-2 text-body-sm text-white/70">
                 {payload.summary.unlocked}/{payload.summary.total} 已点亮 / 下一件：{payload.summary.nextRewardTitle}
               </p>
             </div>
@@ -480,15 +495,16 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-black text-white">{reward.title}</p>
-                        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-black", rarityClass[reward.rarity])}>
+                        <p className="text-body-sm font-semibold text-white">{reward.title}</p>
+                        <span className={cn("rounded-full border px-2 py-0.5 text-caption font-semibold", rarityClass[reward.rarity])}>
                           {rarityLabel[reward.rarity]}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-white/70">
+                      <p className="mt-1 line-clamp-2 text-caption leading-5 text-white/70">
                         {reward.unlocked ? reward.description : reward.unlockHint}
                       </p>
-                      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-brand-warm">{reward.source}</p>
+                      {/* Source label — eyebrow pattern on dark */}
+                      <p className="mt-2 bz-eyebrow-inverse text-brand-warm">{reward.source}</p>
                     </div>
                   </div>
                 </button>
@@ -499,7 +515,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
           <div data-motion-reward className="mt-5 rounded-[1.35rem] border border-brand/25 bg-brand/12 p-4">
             <div className="flex items-start gap-3">
               <Sparkles className="mt-1 h-5 w-5 shrink-0 text-brand-warm" />
-              <p className="text-sm font-semibold leading-6 text-white/68">{payload.summary.safetyNote}</p>
+              <p className="text-body-sm leading-6 text-white/68">{payload.summary.safetyNote}</p>
             </div>
             <button
               data-motion-button
@@ -510,12 +526,12 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                   autoSend: true,
                 })
               }
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-black text-slate-950 shadow-glow transition hover:-translate-y-0.5"
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-brand px-4 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5"
             >
               让 KeyAI 解释奖励建议
               <ArrowRight className="h-4 w-4" />
             </button>
-            <p className="mt-3 text-xs font-bold text-white/70">更新于 {formatTime(payload.generatedAt)}</p>
+            <p className="mt-3 text-caption text-white/70">更新于 {formatTime(payload.generatedAt)}</p>
           </div>
         </aside>
       </div>
