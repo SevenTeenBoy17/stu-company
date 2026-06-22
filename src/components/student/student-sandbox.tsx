@@ -894,7 +894,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                         type="button"
                         onClick={() =>
                           dispatchAssistantOpen({
-                            prompt: `请帮我复盘这笔历史操作"${entry.label}"，它在当前回合是否合理？`,
+                            prompt: `请帮我复盘这笔历史操作“${entry.label}”，它在当前回合是否合理？`,
                             actionLogId: entry.id,
                           })
                         }

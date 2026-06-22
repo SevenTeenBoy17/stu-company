@@ -356,19 +356,36 @@ function derivedEvidenceLines(input: PersonaSignalInput, limit: number): string[
     lines.push(`本局共交易 ${trades} 笔（约每回合 ${intensityStr} 笔）。`);
   }
 
+  // --- Cash / savings posture (read early so the diversification "dead zone"
+  // branch can confirm no strong negative signal fired before praising) -------
+  const cashSafety = input.radar.find((m) => m.id === "cash-safety")?.score ?? -1;
+  const riskScore = input.wealth.riskScore;
+  const discScore = input.wealth.disciplineScore;
+  const growthOption = input.radar.find((m) => m.id === "growth-option")?.score ?? -1;
+
   // --- Diversification posture --------------------------------------------
   const diversScore = input.wealth.diversificationScore;
   if (diversScore < 55) {
     lines.push(`资产分散度评分 ${Math.round(diversScore)}（满分 100，越低越集中），建议拓宽持仓种类。`);
   } else if (diversScore >= 80) {
     lines.push(`资产分散度评分 ${Math.round(diversScore)}，配置较均衡，继续保持多元化思路。`);
+  } else {
+    // [55, 80) "dead zone": previously silent, which left a healthy/balanced
+    // player with only a (often weakly-negative) cash line. A balanced player
+    // here — controlled risk, decent discipline, no cash-hoarding / over-extended
+    // skew — deserves a POSITIVE deterministic line about their emerging spread.
+    const cashHoarding = cashSafety >= 75 && tradeIntensity <= 0.6;
+    const balancedHealthy = riskScore < 70 && discScore >= 55 && growthOption > 38 && !cashHoarding;
+    if (balancedHealthy) {
+      // Asset-class breadth = distinct investment/savings action classes touched.
+      const assetClasses = (["trade", "property", "venture", "bank"] as const).filter(
+        (kind) => (input.actionCounts[kind] ?? 0) > 0,
+      ).length;
+      lines.push(
+        `已建立 ${Math.max(assetClasses, 2)} 类资产的多元雏形，分散度 ${Math.round(diversScore)}，继续保持。`,
+      );
+    }
   }
-
-  // --- Cash / savings posture ---------------------------------------------
-  // Emit when signals clearly skew one way: high cash safety + low trades
-  // reads as cash-heavy; high risk score reads as over-extended.
-  const cashSafety = input.radar.find((m) => m.id === "cash-safety")?.score ?? -1;
-  const riskScore = input.wealth.riskScore;
   if (cashSafety >= 75 && tradeIntensity <= 0.6) {
     lines.push(`资金安全评分 ${Math.round(cashSafety)}，现金/储蓄占比偏高，机会成本值得关注。`);
   } else if (riskScore >= 70) {
@@ -376,13 +393,11 @@ function derivedEvidenceLines(input: PersonaSignalInput, limit: number): string[
   }
 
   // --- Discipline ---------------------------------------------------------
-  const discScore = input.wealth.disciplineScore;
   if (discScore < 55) {
     lines.push(`操作纪律评分 ${Math.round(discScore)}，频繁的情绪化操作影响了整体纪律性。`);
   }
 
   // --- Growth exposure ----------------------------------------------------
-  const growthOption = input.radar.find((m) => m.id === "growth-option")?.score ?? -1;
   if (growthOption >= 0 && growthOption <= 38) {
     lines.push(`成长弹性评分 ${Math.round(growthOption)}，几乎没有持有任何成长型资产。`);
   }

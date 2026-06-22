@@ -124,7 +124,10 @@ const benefitStatusLabel: Record<StudentBenefitStatus, string> = {
 const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string }> = {
   common: { label: "COMMON", className: "border-slate-200 bg-slate-50 text-slate-700" },
   rare: { label: "RARE", className: "border-brand/25 bg-brand-subtle text-brand-ink" },
-  epic: { label: "EPIC", className: "border-warning/35 bg-warning/10 text-warning" },
+  // EPIC sits on the dark `bg-slate-950` card art; the deep-amber `text-warning`
+  // (#854d0e) only reaches ~2.9:1 on slate-950. Use the light inverse-amber tint
+  // (matching `questCategoryToneInverse`) so the badge clears AA (~11.9:1) on dark.
+  epic: { label: "EPIC", className: "border-warning/35 bg-warning/15 text-amber-300" },
 };
 
 const questCardAssetBase = "/brand/quest-cards";

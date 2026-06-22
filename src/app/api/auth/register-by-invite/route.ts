@@ -24,11 +24,12 @@ export async function POST(request: Request) {
   if (originBlock) return originBlock;
 
   try {
-    const body = registerSchema.parse(await request.json());
     const rl = rateLimit(rateLimitKey("register-invite", undefined, request), 5, 60_000 * 10);
     if (!rl.ok) {
       return apiError("invalid_input", buildRateLimitMessage(rl), 429);
     }
+
+    const body = registerSchema.parse(await request.json());
 
     const user = await registerUserByInvite({ ...body, email: body.email.toLowerCase() });
 

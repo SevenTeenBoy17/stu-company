@@ -697,6 +697,64 @@ describe("ruleFallbackPersona — player-specific derived evidence (F1-3)", () =
     const hasGenericFallback = persona.evidence.some((line) => line.includes("没有触发明显的行为信号"));
     expect(hasGenericFallback).toBe(false);
   });
+
+  // A healthy/balanced player whose diversification lands in the 55–79 "dead
+  // zone" with controlled risk + decent discipline and NO strong negative
+  // signal. Before the fix this produced only the (weakly-negative) cash line,
+  // i.e. a single, off-tone evidence bullet. After the fix the positive
+  // "多元雏形" line fills the gap so the player gets ≥2 evidence lines and the
+  // lead is no longer the cash-hoarding negative.
+  function balancedDeadZoneInput(): PersonaSignalInput {
+    return {
+      currentRound: 8,
+      totalRounds: 12,
+      // One benign info event fills a slot; the positive derived "多元雏形" line
+      // fills another, so a healthy balanced player gets ≥2 evidence lines.
+      adaptiveEvents: [
+        {
+          id: "positive_streak",
+          title: "连续稳健：最近几回合操作平稳",
+          teachingPoint: "保持稳定的节奏，把好习惯延续成连续动作。",
+          confidence: "medium",
+          tone: "info",
+          riskDirection: "neutral",
+        },
+      ],
+      radar: [
+        { id: "cash-safety", label: "资金安全", score: 60 }, // < 75 → no hoarding line
+        { id: "position-discipline", label: "仓位纪律", score: 64 },
+        { id: "risk-control", label: "风险控制", score: 66 },
+        { id: "diversification", label: "配置分散", score: 65 },
+        { id: "growth-option", label: "成长弹性", score: 60 }, // > 38 → no zero-growth line
+        { id: "review-execution", label: "复盘执行", score: 58 },
+      ],
+      wealth: {
+        riskScore: 58, // < 70 → not over-extended
+        disciplineScore: 68, // >= 55 → disciplined
+        diversificationScore: 65, // [55, 80) dead zone
+        netWorth: 138_000,
+        stageLabel: "策略成长期",
+      },
+      // 3 trades + property: 2 asset classes, modest intensity (< 6 and < 1.5/round)
+      // so no trade-frequency line precedes the positive diversification line.
+      actionCounts: { trade: 3, property: 1 },
+      netWorthTrend: [120_000, 124_000, 127_000, 130_000, 133_000, 135_000, 136_500, 138_000],
+    };
+  }
+
+  it("balanced dead-zone player gets ≥2 evidence lines led by a positive, not the cash-hoarding negative", () => {
+    const persona = ruleFallbackPersona(balancedDeadZoneInput());
+
+    // ≥2 evidence lines (was effectively 1 weakly-negative line before the fix).
+    expect(persona.evidence.length).toBeGreaterThanOrEqual(2);
+
+    // The lead must NOT be the cash-hoarding / over-extended negative.
+    expect(persona.evidence[0]).not.toMatch(/现金\/储蓄占比偏高|承担的风险超过建议阈值/);
+
+    // A positive "multi-asset seedling" line must be present.
+    const hasPositiveSpread = persona.evidence.some((line) => line.includes("多元雏形"));
+    expect(hasPositiveSpread).toBe(true);
+  });
 });
 
 describe("personaInputDigest", () => {
