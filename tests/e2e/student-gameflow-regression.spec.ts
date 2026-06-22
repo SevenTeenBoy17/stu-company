@@ -18,10 +18,13 @@ test.describe("student gameflow regression", () => {
   test("auto-invest path stays compact and keeps only recent schedule nodes visible", async ({ page }) => {
     await loginAsStudent(page);
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/student/auto-invest", { waitUntil: "networkidle" });
+    await page.goto("/student/auto-invest", { waitUntil: "domcontentloaded" });
 
     const pathCard = page.getByTestId("auto-invest-path-card");
     const scheduleList = page.getByTestId("auto-invest-schedule-list");
+    // /student/auto-invest never reaches `networkidle` in dev (AI polling + GSAP
+    // timers keep the network busy), so wait on the stable path card instead.
+    await pathCard.waitFor({ state: "visible" });
     await pathCard.scrollIntoViewIfNeeded();
     await page.waitForTimeout(800);
     await expect(pathCard).toBeVisible();
@@ -39,7 +42,9 @@ test.describe("student gameflow regression", () => {
   test("quest hub supports commander selection, blind-box reveal, and detail modal", async ({ page }) => {
     await loginAsStudent(page);
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/student/quests", { waitUntil: "networkidle" });
+    // /student/quests never reaches `networkidle` in dev (AI polling + GSAP
+    // timers keep the connection alive); wait for DOM + the asserted panels.
+    await page.goto("/student/quests", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("quest-commander-panel")).toBeVisible();
     await expect(page.getByTestId("quest-queue-panel")).toBeVisible();

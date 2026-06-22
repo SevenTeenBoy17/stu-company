@@ -19,6 +19,14 @@ function answerCombinations(questionCount: number, optionCount = 4) {
 
 test.describe("Phase 4.1 real DB business chain", () => {
   test("registers, logs in, persists sandbox, auto-invest, risk profile, and quiz progress", async ({ page }) => {
+    // This is a real-DB business-chain integration spec. In the default offline
+    // sweep it shares the dev server's per-IP auth rate-limit with the other
+    // auth specs and false-fails on /api/auth/register. Run it isolated against
+    // a real Postgres: PLAYWRIGHT_DATABASE_URL=... npx playwright test phase4-business-chain
+    test.skip(
+      !process.env.PLAYWRIGHT_DATABASE_URL,
+      "real-DB business chain — run with PLAYWRIGHT_DATABASE_URL set",
+    );
     test.setTimeout(120_000);
 
     const email = `phase4-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@brownzone.test`;
