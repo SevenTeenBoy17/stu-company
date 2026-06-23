@@ -62,7 +62,9 @@ export function StudentAllocationPanel({
   onAskAi,
 }: StudentAllocationPanelProps) {
   const providerLabel =
-    intel.provider === "itick"
+    intel.provider === "tsanghi"
+      ? "沧海真实日线"
+      : intel.provider === "itick"
       ? "iTick 实时"
       : intel.provider === "alltick"
       ? "AllTick 实时"
@@ -92,7 +94,7 @@ export function StudentAllocationPanel({
                 </p>
               </div>
               <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-medium text-white/78">
-                <Radar className="h-3.5 w-3.5" />
+                <Radar className="h-3.5 w-3.5" aria-hidden="true" />
                 {providerLabel}
               </div>
             </div>

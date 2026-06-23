@@ -759,6 +759,17 @@ export type TickerTapePayload = {
 };
 
 export async function getTickerTapePayload(): Promise<TickerTapePayload> {
+  const { fetchTsanghiWatchlistSnapshot } = await import("@/lib/tsanghi");
+  const tsanghiSnapshot = await fetchTsanghiWatchlistSnapshot();
+  if (tsanghiSnapshot.provider !== "fallback") {
+    return {
+      asOf: tsanghiSnapshot.asOf,
+      provider: tsanghiSnapshot.provider,
+      note: tsanghiSnapshot.note,
+      items: buildTickerTapeItems({ quotes: tsanghiSnapshot.quotes }),
+    };
+  }
+
   const { fetchItickWatchlistSnapshot } = await import("@/lib/itick");
   const itickSnapshot = await fetchItickWatchlistSnapshot();
   if (itickSnapshot.provider !== "fallback") {
@@ -785,6 +796,31 @@ export async function getTickerTapePayload(): Promise<TickerTapePayload> {
 export async function getMarketBoardPayload(
   symbol: MarketWatchlistSymbol = "MU",
 ): Promise<MarketBoardPayload> {
+  const { fetchTsanghiMarketBoardSnapshot } = await import("@/lib/tsanghi");
+  const tsanghiSnapshot = await fetchTsanghiMarketBoardSnapshot(symbol);
+  if (tsanghiSnapshot.provider !== "fallback") {
+    // 把每只 symbol 的真实收盘序列透传给评分器，使排行/预览评分与真实现价同源。
+    const seriesBySymbol = tsanghiSnapshot.candlesBySymbol
+      ? (Object.fromEntries(
+          Object.entries(tsanghiSnapshot.candlesBySymbol).map(([sym, candles]) => [
+            sym,
+            (candles ?? []).map((candle) => candle.close),
+          ]),
+        ) as Partial<Record<MarketWatchlistSymbol, number[]>>)
+      : undefined;
+    return buildMarketBoardPayload({
+      selectedSymbol: symbol,
+      asOf: tsanghiSnapshot.asOf,
+      provider: tsanghiSnapshot.provider,
+      note: tsanghiSnapshot.note,
+      quotes: tsanghiSnapshot.quotes,
+      klineSeries: tsanghiSnapshot.selectedKline,
+      klineCandles: tsanghiSnapshot.selectedCandles,
+      staticInfo: tsanghiSnapshot.staticInfo,
+      seriesBySymbol,
+    });
+  }
+
   const { fetchItickMarketBoardSnapshot } = await import("@/lib/itick");
   const itickSnapshot = await fetchItickMarketBoardSnapshot(symbol);
   if (itickSnapshot.provider !== "fallback") {

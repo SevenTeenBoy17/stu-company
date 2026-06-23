@@ -11,8 +11,8 @@ export type MarketWatchlistSymbol =
   | "ORCL"
   | "TSLA"
   | "TSM";
-export type MarketQuoteSource = "itick" | "alltick" | "fallback";
-export type MarketDataProvider = "itick" | "alltick" | "hybrid" | "fallback";
+export type MarketQuoteSource = "tsanghi" | "itick" | "alltick" | "fallback";
+export type MarketDataProvider = "tsanghi" | "itick" | "alltick" | "hybrid" | "fallback";
 
 export type ModuleKey =
   | "equities"
@@ -477,7 +477,7 @@ export interface ExternalMarketSignal {
   region: string;
   currentPrice: number | null;
   changePercent: number;
-  source: "itick" | "alltick" | "simulation";
+  source: "tsanghi" | "itick" | "alltick" | "simulation";
   summary: string;
 }
 

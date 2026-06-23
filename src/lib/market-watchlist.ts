@@ -65,6 +65,8 @@ type BuilderInput = {
   klineSeries?: number[];
   klineCandles?: MarketKlineCandle[];
   staticInfo?: StaticInfoInput;
+  // 每只 symbol 的真实收盘序列：让排行/预览评分吃真实走势而非合成兜底（实时 provider 才会传）。
+  seriesBySymbol?: Partial<Record<MarketWatchlistSymbol, number[]>>;
 };
 
 export const MARKET_WATCHLIST_SYMBOLS: MarketWatchlistSymbol[] = [
@@ -278,9 +280,9 @@ export function isMarketWatchlistSymbol(value: string): value is MarketWatchlist
 }
 
 export function resolveMarketWatchlistSymbol(value?: string | null): MarketWatchlistSymbol {
-  if (!value) return "MU";
+  if (!value) return "NVDA";
   const normalized = value.trim().toUpperCase();
-  return isMarketWatchlistSymbol(normalized) ? normalized : "MU";
+  return isMarketWatchlistSymbol(normalized) ? normalized : "NVDA";
 }
 
 export function getMarketMetadata(symbol: MarketWatchlistSymbol) {
@@ -490,7 +492,9 @@ function buildObservationNotes(
       : "当前回落样本不多，需警惕情绪一致时的回撤风险。",
     provider === "fallback"
       ? "当前行情字段已回退到教学观察池，适合用来看结构、节奏和复盘逻辑。"
-      : "当前行情已接入外部字段，可把价格变化与教学评分一起交叉阅读。",
+      : provider === "tsanghi"
+      ? "当前价格是沧海真实「日线收盘价」（每天收盘后才更新一次、盘中不变），适合练结构与趋势判断，别当实时行情追涨杀跌。"
+      : "当前行情已接入外部实时字段，可把价格变化与教学评分一起交叉阅读。",
   ];
 
   return notes.slice(0, 4);
@@ -558,7 +562,9 @@ function humanizeMarketBoardNote(
 ) {
   const fallbackMessage = `iTick 行情当前异常时会自动回退到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   if (!note) {
-    return provider === "itick"
+    return provider === "tsanghi"
+      ? `沧海数据真实日线收盘已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新（每天收盘后才更新一次，不是盘中实时价）。`
+      : provider === "itick"
       ? `iTick 实时行情与日 K 线已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
       : provider === "alltick"
         ? `AllTick 实时字段已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
@@ -587,6 +593,10 @@ function humanizeMarketBoardNote(
 
   if (provider === "hybrid") {
     return `外部行情当前仅返回了部分字段，缺失部分已由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
+  }
+
+  if (provider === "tsanghi") {
+    return `沧海数据真实日线收盘已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新（每天收盘后才更新一次，不是盘中实时价）。`;
   }
 
   if (provider === "itick") {
@@ -646,7 +656,8 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
         metadata,
         item.currentPrice,
         item.changePercent,
-        metadata.fallbackSeries,
+        // 有真实走势就用真实的（与现价同源），否则回退教学曲线。
+        input?.seriesBySymbol?.[item.symbol] ?? metadata.fallbackSeries,
       );
 
       return {
