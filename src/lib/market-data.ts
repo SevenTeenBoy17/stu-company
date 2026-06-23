@@ -799,6 +799,15 @@ export async function getMarketBoardPayload(
   const { fetchTsanghiMarketBoardSnapshot } = await import("@/lib/tsanghi");
   const tsanghiSnapshot = await fetchTsanghiMarketBoardSnapshot(symbol);
   if (tsanghiSnapshot.provider !== "fallback") {
+    // 把每只 symbol 的真实收盘序列透传给评分器，使排行/预览评分与真实现价同源。
+    const seriesBySymbol = tsanghiSnapshot.candlesBySymbol
+      ? (Object.fromEntries(
+          Object.entries(tsanghiSnapshot.candlesBySymbol).map(([sym, candles]) => [
+            sym,
+            (candles ?? []).map((candle) => candle.close),
+          ]),
+        ) as Partial<Record<MarketWatchlistSymbol, number[]>>)
+      : undefined;
     return buildMarketBoardPayload({
       selectedSymbol: symbol,
       asOf: tsanghiSnapshot.asOf,
@@ -808,6 +817,7 @@ export async function getMarketBoardPayload(
       klineSeries: tsanghiSnapshot.selectedKline,
       klineCandles: tsanghiSnapshot.selectedCandles,
       staticInfo: tsanghiSnapshot.staticInfo,
+      seriesBySymbol,
     });
   }
 

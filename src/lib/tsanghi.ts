@@ -36,6 +36,8 @@ export type TsanghiWatchlistSnapshot = {
   provider: MarketDataProvider;
   note: string;
   quotes: Partial<Record<MarketWatchlistSymbol, QuoteInput>>;
+  // 每只观察池 symbol 的真实近 24 根日 K：让排行/预览评分也吃真实走势，而非合成兜底序列。
+  candlesBySymbol?: Partial<Record<MarketWatchlistSymbol, MarketKlineCandle[]>>;
 };
 
 export type TsanghiMarketBoardSnapshot = TsanghiWatchlistSnapshot & {
@@ -268,6 +270,19 @@ function cachePulseResult(value: { asOf: string; signals: ExternalMarketSignal[]
   return value;
 }
 
+// 小并发限制：分批拉取，规避网络/免费套餐对一次性 10 路连接的丢弃（实测 10 并发会整批失败）。
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    out.push(...(await Promise.all(items.slice(i, i + limit).map(fn))));
+  }
+  return out;
+}
+
 let tsanghiWatchlistInflight: Promise<TsanghiWatchlistSnapshot> | null = null;
 
 export async function fetchTsanghiWatchlistSnapshot(): Promise<TsanghiWatchlistSnapshot> {
@@ -292,13 +307,16 @@ async function computeTsanghiWatchlistSnapshot(): Promise<TsanghiWatchlistSnapsh
     );
   }
 
-  const results = await Promise.all(
-    MARKET_WATCHLIST_SYMBOLS.map(
-      async (symbol) => [symbol, await fetchSymbolBars(symbol, 2)] as const,
-    ),
+  // limit=2 取报价(最新两根)，同时把这 2 根真实走势(昨收→现价)喂给排行/预览评分、与现价同源；
+  // 分批(每批 5)并发，规避网络/免费套餐对一次性 10 路连接的丢弃。
+  const results = await mapWithConcurrency(
+    MARKET_WATCHLIST_SYMBOLS,
+    5,
+    async (symbol) => [symbol, await fetchSymbolBars(symbol, 2)] as const,
   );
 
   const quotes: Partial<Record<MarketWatchlistSymbol, QuoteInput>> = {};
+  const candlesBySymbol: Partial<Record<MarketWatchlistSymbol, MarketKlineCandle[]>> = {};
   const notes = new Set<string>();
   for (const [symbol, result] of results) {
     if (!result.ok) {
@@ -307,6 +325,8 @@ async function computeTsanghiWatchlistSnapshot(): Promise<TsanghiWatchlistSnapsh
     }
     const quote = barsToQuote(result.bars);
     if (quote) quotes[symbol] = quote;
+    const candles = barsToCandles(result.bars).slice(-24);
+    if (candles.length > 0) candlesBySymbol[symbol] = candles;
   }
 
   const liveCount = Object.values(quotes).filter((q) => typeof q?.currentPrice === "number").length;
@@ -325,6 +345,7 @@ async function computeTsanghiWatchlistSnapshot(): Promise<TsanghiWatchlistSnapsh
     provider,
     note: [note, ...Array.from(notes).slice(0, 1)].join(" "),
     quotes,
+    candlesBySymbol,
   });
 }
 
@@ -336,13 +357,15 @@ export async function fetchTsanghiMarketBoardSnapshot(
     return cached.value;
   }
 
-  // watchlist 与选中只的 K 线相互独立，并发拉取以压低 board 冷启动墙钟。
-  const [watchlist, klineResult] = await Promise.all([
+  // watchlist(各只 2 根真实序列) 与选中只的 30 根 K 线并发拉取：选中只用富走势画图+评分，
+  // 其余只用 watchlist 的 2 点真实序列喂预览评分。
+  const [watchlist, selectedResult] = await Promise.all([
     fetchTsanghiWatchlistSnapshot(),
     fetchSymbolBars(symbol, 30),
   ]);
-
-  const candles = klineResult.ok ? barsToCandles(klineResult.bars).slice(-24) : [];
+  const selectedCandles = selectedResult.ok ? barsToCandles(selectedResult.bars).slice(-24) : [];
+  const candles =
+    selectedCandles.length >= 4 ? selectedCandles : (watchlist.candlesBySymbol?.[symbol] ?? []);
   const klineLive = candles.length >= 4;
   const instrument = TSANGHI_INSTRUMENT[symbol];
 
@@ -365,6 +388,11 @@ export async function fetchTsanghiMarketBoardSnapshot(
     provider,
     note: notes.join(" "),
     quotes: watchlist.quotes,
+    // 选中只并入 30 根富走势喂其预览评分；其余只沿用 watchlist 的 2 点真实序列。
+    candlesBySymbol:
+      selectedCandles.length >= 4
+        ? { ...(watchlist.candlesBySymbol ?? {}), [symbol]: selectedCandles }
+        : watchlist.candlesBySymbol,
     selectedKline: klineLive ? candles.map((c) => c.close) : undefined,
     selectedCandles: klineLive ? candles : undefined,
     staticInfo: { exchange: instrument.exchangeName, currency: instrument.currency },

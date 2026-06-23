@@ -65,6 +65,8 @@ type BuilderInput = {
   klineSeries?: number[];
   klineCandles?: MarketKlineCandle[];
   staticInfo?: StaticInfoInput;
+  // 每只 symbol 的真实收盘序列：让排行/预览评分吃真实走势而非合成兜底（实时 provider 才会传）。
+  seriesBySymbol?: Partial<Record<MarketWatchlistSymbol, number[]>>;
 };
 
 export const MARKET_WATCHLIST_SYMBOLS: MarketWatchlistSymbol[] = [
@@ -654,7 +656,8 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
         metadata,
         item.currentPrice,
         item.changePercent,
-        metadata.fallbackSeries,
+        // 有真实走势就用真实的（与现价同源），否则回退教学曲线。
+        input?.seriesBySymbol?.[item.symbol] ?? metadata.fallbackSeries,
       );
 
       return {
