@@ -121,12 +121,19 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
           {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
         </button>
 
-        <div className="hidden shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64 lg:flex">
+        <div
+          className="hidden shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64 lg:flex"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span
+            aria-hidden="true"
             className={cn(
               "inline-flex h-2.5 w-2.5 rounded-full",
-              payload.provider === "itick" || payload.provider === "alltick"
-                ? "bg-info"
+              payload.provider === "tsanghi" ||
+              payload.provider === "itick" ||
+              payload.provider === "alltick"
+                ? "bg-[var(--info-400)]"
                 : payload.provider === "hybrid"
                   ? "bg-brand"
                   : "bg-white/36",
@@ -135,9 +142,13 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
           <span>
             {payload.provider === "fallback"
               ? "教学观察池模式"
-              : payload.provider === "itick"
+              : payload.provider === "tsanghi"
+                ? "沧海真实日线收盘 · 仅供教学（非实时）"
+                : payload.provider === "itick"
                 ? "iTick · 10 分钟自动刷新"
-                : "10 分钟自动刷新"}
+                : payload.provider === "alltick"
+                ? "AllTick · 10 分钟自动刷新"
+                : "混合行情 · 10 分钟自动刷新"}
           </span>
         </div>
       </div>

@@ -21,7 +21,9 @@ export default async function StudentMarketPage() {
     );
   }
 
-  const initialPayload = await getMarketBoardPayload("MU");
+  // 默认落 NVDA：观察池里数值平实、AI 主线叙事最顺的标的，作为教学首屏第一印象最干净
+  // （MU 等仍在观察池里可点选，真实数据不遮蔽）。
+  const initialPayload = await getMarketBoardPayload("NVDA");
   const [state, initialPeerHeatPayload] = await Promise.all([
     getSimulationStateForUser(user.id),
     getPeerHeatForStudent(user.id),
