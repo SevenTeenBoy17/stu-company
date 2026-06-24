@@ -846,7 +846,10 @@ export async function getMarketBoardPayload(
     note: liveAlltick ? snapshot.note : itickSnapshot.note,
     quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes,
     klineSeries: liveAlltick ? snapshot.selectedKline : itickSnapshot.selectedKline,
-    klineCandles: itickSnapshot.selectedCandles,
+    // AllTick 的看板快照只暴露 selectedKline（收盘序列），没有 OHLC 蜡烛数据。
+    // 当 AllTick 实时在线时传 undefined，让 normalizeCandles 用 AllTick 自己的序列合成蜡烛，
+    // 保证蜡烛实体与折线同源；只有真正回退到 iTick 时才借用 iTick 的蜡烛（此时折线也来自 iTick）。
+    klineCandles: liveAlltick ? undefined : itickSnapshot.selectedCandles,
     staticInfo: snapshot.staticInfo,
   });
 }
