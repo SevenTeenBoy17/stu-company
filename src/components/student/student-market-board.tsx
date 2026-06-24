@@ -699,7 +699,7 @@ export function StudentMarketBoard({
                     {payload.selected.changePercent.toFixed(2)}%
                   </p>
                   <p className="text-body-sm text-white/70">{payload.selected.companyName}</p>
-                  {payload.provider === "tsanghi" ? (
+                  {payload.selected.source === "tsanghi" ? (
                     <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-caption font-semibold text-white/75">
                       日线收盘 · 非实时
                     </span>
@@ -720,7 +720,7 @@ export function StudentMarketBoard({
                       <p className="text-h3 text-white">日 K 线与趋势速写</p>
                       <p className="mt-1 text-body-sm text-white/70">
                         实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。
-                        {payload.provider === "tsanghi" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
+                        {payload.selected.source === "tsanghi" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
                       </p>
                     </div>
                     <Activity className="h-5 w-5 text-brand-warm" />
@@ -799,7 +799,7 @@ export function StudentMarketBoard({
                 </div>
                 <p className="mt-4 text-body text-fg-muted">{payload.note}</p>
                 <div className="mt-4 rounded-full bg-white px-3 py-2 text-caption font-semibold text-fg-muted">
-                  {payload.provider === "tsanghi"
+                  {payload.selected.source === "tsanghi"
                     ? `数据日期：${new Date(payload.asOf).getUTCMonth() + 1}月${new Date(payload.asOf).getUTCDate()}日（收盘）`
                     : `更新时间：${formatDateLabel(new Date(payload.asOf))}`}
                 </div>
