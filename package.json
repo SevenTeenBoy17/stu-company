@@ -18,7 +18,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:apply-policies": "tsx scripts/apply-policies.ts",
-    "env:doctor": "tsx scripts/runtime-env-doctor.ts"
+    "env:doctor": "tsx scripts/runtime-env-doctor.ts",
+    "tunnel:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-up.ps1",
+    "tunnel:down": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/tunnel-down.ps1"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
