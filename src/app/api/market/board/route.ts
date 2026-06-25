@@ -3,13 +3,13 @@ import { z } from "zod";
 
 import { apiError, handleRouteError } from "@/lib/api-response";
 import { readSession } from "@/lib/auth";
-import { getMarketBoardPayload } from "@/lib/market-data";
-import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
+import { getCategoryBoardPayload } from "@/lib/market-data";
 
 export const dynamic = "force-dynamic";
 
 const marketBoardQuerySchema = z.object({
-  symbol: z.string().trim().min(1).max(12).optional(),
+  category: z.enum(["us", "cn", "hk", "fund"]).optional(),
+  symbol: z.string().trim().min(1).max(16).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -23,10 +23,11 @@ export async function GET(request: NextRequest) {
     }
 
     const query = marketBoardQuerySchema.parse({
+      category: request.nextUrl.searchParams.get("category") ?? undefined,
       symbol: request.nextUrl.searchParams.get("symbol") ?? undefined,
     });
-    const symbol = resolveMarketWatchlistSymbol(query.symbol);
-    const payload = await getMarketBoardPayload(symbol);
+    // category 缺省时走美股(us)，与历史行为一致；非法 category/symbol 在 data 层收敛兜底。
+    const payload = await getCategoryBoardPayload(query.category, query.symbol);
 
     return NextResponse.json(payload, {
       headers: {

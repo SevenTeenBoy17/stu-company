@@ -169,14 +169,18 @@ function buildDailyBrief(market: MarketBoardPayload): StudentDailyMarketBrief {
   const strongest = [...market.watchlist].sort((left, right) => right.changePercent - left.changePercent)[0];
   const weakest = [...market.watchlist].sort((left, right) => left.changePercent - right.changePercent)[0];
   const focus = strongest ?? market.watchlist[0];
-  const focusMetadata = getMarketMetadata(focus.symbol);
+  // 学生自选盘是美股专属功能：把 payload 放宽后的 string 收敛回 US union。
+  const focusSymbol: MarketWatchlistSymbol = isMarketWatchlistSymbol(focus.symbol)
+    ? focus.symbol
+    : "NVDA";
+  const focusMetadata = getMarketMetadata(focusSymbol);
 
   return {
     title: `今日必看：${focus.name} 与 ${focusMetadata.sectorGroup}`,
     summary: weakest
       ? `${focus.name} 当前表现靠前，${weakest.name} 相对承压。不要只看谁涨得多，要解释“为什么这个板块被资金关注”。`
       : `${focus.name} 当前最值得观察。先写一个原因，再决定是否要问 AI 做二次解释。`,
-    focusSymbol: focus.symbol,
+    focusSymbol,
     question: `如果你只能把一只股票加入自选，${focus.name} 的观察理由应该写“行业热度”“价格动量”还是“AI相关度”？`,
   };
 }
@@ -189,13 +193,13 @@ export function buildStudentWatchlistPayload(
   const selectedItems = Array.from(selected.values()).map((item) => buildItem(market, item));
   const selectedSymbols = new Set(selectedItems.map((item) => item.symbol));
   const suggested = market.watchlist
-    .filter((item) => !selectedSymbols.has(item.symbol))
+    .filter((item) => isMarketWatchlistSymbol(item.symbol) && !selectedSymbols.has(item.symbol))
     .slice()
     .sort((left, right) => Math.abs(right.changePercent) - Math.abs(left.changePercent))
     .slice(0, 4)
     .map((item) =>
       buildItem(market, {
-        symbol: item.symbol,
+        symbol: item.symbol as MarketWatchlistSymbol,
         reason: "系统建议：今天波动或主题较明显，适合先加入自选写观察理由。",
         addedAt: market.asOf,
       }),

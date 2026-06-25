@@ -46,6 +46,18 @@ export type TsanghiMarketBoardSnapshot = TsanghiWatchlistSnapshot & {
   staticInfo?: TsanghiStaticInfo;
 };
 
+// 任意分类(A股/港股/基金)的看板快照：id 为裸 ticker，故 quotes/series 用 string 键。
+export type TsanghiCategorySnapshot = {
+  asOf: string;
+  provider: MarketDataProvider;
+  note: string;
+  quotes: Record<string, QuoteInput>;
+  seriesBySymbol: Record<string, number[]>;
+  selectedKline?: number[];
+  selectedCandles?: MarketKlineCandle[];
+  staticInfo?: TsanghiStaticInfo;
+};
+
 type TsanghiBar = {
   ticker?: string;
   date?: string;
@@ -93,6 +105,9 @@ declare global {
     | Partial<
         Record<MarketWatchlistSymbol, { expiresAt: number; value: TsanghiMarketBoardSnapshot }>
       >
+    | undefined;
+  var __tsanghiCategoryCache__:
+    | Record<string, { expiresAt: number; value: TsanghiCategorySnapshot }>
     | undefined;
 }
 
@@ -204,6 +219,33 @@ async function fetchSymbolBars(
   const bars = extractSortedBars(result.payload);
   if (bars.length === 0) {
     // code=200 但 data 为空（标的不存在 / feed 暂缺）→ 显式判失败，保证 hybrid 计数与 note 准确。
+    return { ok: false as const, message: `沧海数据暂无 ${instrument.ticker} 的日线数据。` };
+  }
+  return { ok: true, bars };
+}
+
+// 通用版：按任意标的({kind,exchange,ticker})取日线（stock/{ex}/daily 或 etf/{ex}/daily）。
+type InstrumentLite = {
+  id: string;
+  kind: "stock" | "etf";
+  exchange: string;
+  ticker: string;
+  exchangeName: string;
+  currency: string;
+};
+
+async function fetchInstrumentBars(
+  instrument: Pick<InstrumentLite, "kind" | "exchange" | "ticker">,
+  limit: number,
+): Promise<{ ok: true; bars: TsanghiBar[] } | { ok: false; message: string }> {
+  const result = await requestTsanghi(`${instrument.kind}/${instrument.exchange}/daily`, {
+    ticker: instrument.ticker,
+    order: 2,
+    limit: Math.max(1, Math.floor(limit)),
+  });
+  if (!result.ok) return result;
+  const bars = extractSortedBars(result.payload);
+  if (bars.length === 0) {
     return { ok: false as const, message: `沧海数据暂无 ${instrument.ticker} 的日线数据。` };
   }
   return { ok: true, bars };
@@ -396,6 +438,101 @@ export async function fetchTsanghiMarketBoardSnapshot(
     selectedKline: klineLive ? candles.map((c) => c.close) : undefined,
     selectedCandles: klineLive ? candles : undefined,
     staticInfo: { exchange: instrument.exchangeName, currency: instrument.currency },
+  });
+}
+
+function cacheCategorySnapshot(key: string, value: TsanghiCategorySnapshot) {
+  globalThis.__tsanghiCategoryCache__ = {
+    ...(globalThis.__tsanghiCategoryCache__ ?? {}),
+    [key]: { expiresAt: Date.now() + MARKET_REFRESH_INTERVAL_MS, value },
+  };
+  return value;
+}
+
+function fallbackCategorySnapshot(note: string): TsanghiCategorySnapshot {
+  return { asOf: new Date().toISOString(), provider: "fallback", note, quotes: {}, seriesBySymbol: {} };
+}
+
+// 任意分类的真实日线快照：各只取 2 根(报价+预览走势)、选中只取 30 根(画图+评分)，
+// 与美股盘同构（小并发分批、强制按 date 升序、code≠200/空数据按失败回退教学池）。
+export async function fetchTsanghiCategorySnapshot(
+  category: string,
+  instruments: InstrumentLite[],
+  selectedId: string,
+): Promise<TsanghiCategorySnapshot> {
+  const cacheKey = `${category}:${selectedId}`;
+  const cached = globalThis.__tsanghiCategoryCache__?.[cacheKey];
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (!env.TSANGHI_API_TOKEN || instruments.length === 0) {
+    return cacheCategorySnapshot(
+      cacheKey,
+      fallbackCategorySnapshot(
+        `未配置沧海数据 token，当前分类使用教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`,
+      ),
+    );
+  }
+
+  const selected = instruments.find((item) => item.id === selectedId) ?? instruments[0];
+
+  // 选中只在同一批里直接取 30 根（其余取 2 根），避免额外并发请求被免费套餐丢弃，
+  // 保证大图 K 线可靠地落在真实日线上。
+  const results = await mapWithConcurrency(
+    instruments,
+    5,
+    async (instrument) =>
+      [
+        instrument.id,
+        await fetchInstrumentBars(instrument, instrument.id === selected.id ? 30 : 2),
+      ] as const,
+  );
+
+  const quotes: Record<string, QuoteInput> = {};
+  const seriesBySymbol: Record<string, number[]> = {};
+  const notes = new Set<string>();
+  let selectedBars: TsanghiBar[] = [];
+  for (const [id, result] of results) {
+    if (!result.ok) {
+      notes.add(result.message);
+      continue;
+    }
+    if (id === selected.id) selectedBars = result.bars;
+    const quote = barsToQuote(result.bars);
+    if (quote) quotes[id] = quote;
+    const closes = barsToCandles(result.bars)
+      .slice(-24)
+      .map((candle) => candle.close);
+    if (closes.length > 0) seriesBySymbol[id] = closes;
+  }
+
+  const selectedCandles = barsToCandles(selectedBars).slice(-24);
+  const klineLive = selectedCandles.length >= 4;
+
+  const liveCount = Object.values(quotes).filter((q) => typeof q?.currentPrice === "number").length;
+  const provider: MarketDataProvider =
+    liveCount === 0 ? "fallback" : liveCount === instruments.length ? "tsanghi" : "hybrid";
+
+  const note =
+    provider === "tsanghi"
+      ? `沧海数据真实日线收盘已接入，该分类按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新（每天收盘后才更新一次，不是盘中实时价）。`
+      : provider === "hybrid"
+        ? `沧海数据已返回部分真实日线，缺失部分由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 重试。`
+        : `沧海数据本次没有返回可用日线，已切换到教学观察池，并会在每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+
+  const asOf = klineLive
+    ? (selectedCandles.at(-1)?.time ?? new Date().toISOString())
+    : new Date().toISOString();
+
+  return cacheCategorySnapshot(cacheKey, {
+    asOf,
+    provider,
+    note: [note, ...Array.from(notes).slice(0, 1)].join(" "),
+    quotes,
+    seriesBySymbol,
+    selectedKline: klineLive ? selectedCandles.map((candle) => candle.close) : undefined,
+    selectedCandles: klineLive ? selectedCandles : undefined,
+    staticInfo: { exchange: selected.exchangeName, currency: selected.currency },
   });
 }
 

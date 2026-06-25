@@ -4,12 +4,22 @@ import type {
   MarketBoardPayload,
   MarketBoardSector,
   MarketBoardStock,
+  MarketCategoryId,
+  MarketCategoryTab,
   MarketDataProvider,
   MarketKlineCandle,
   MarketQuoteSource,
   MarketWatchlistSymbol,
   TickerTapeItem,
 } from "@/lib/types";
+import {
+  CATEGORY_LABELS,
+  MARKET_CATEGORY_ORDER,
+  NON_US_CATEGORY_INSTRUMENTS,
+  US_ROUTING,
+  industryImagePath,
+  type CatalogInstrument,
+} from "@/lib/market-catalog";
 import { MARKET_REFRESH_INTERVAL_LABEL } from "@/lib/market-refresh";
 import { clamp } from "@/lib/utils";
 
@@ -57,16 +67,17 @@ type StaticInfoInput = {
 };
 
 type BuilderInput = {
-  selectedSymbol?: MarketWatchlistSymbol;
+  // 选中标的 id（美股=固定 union 值，新分类=裸 ticker）。
+  selectedSymbol?: string;
   asOf?: string;
   provider?: MarketDataProvider;
   note?: string;
-  quotes?: Partial<Record<MarketWatchlistSymbol, QuoteInput>>;
+  quotes?: Record<string, QuoteInput>;
   klineSeries?: number[];
   klineCandles?: MarketKlineCandle[];
   staticInfo?: StaticInfoInput;
   // 每只 symbol 的真实收盘序列：让排行/预览评分吃真实走势而非合成兜底（实时 provider 才会传）。
-  seriesBySymbol?: Partial<Record<MarketWatchlistSymbol, number[]>>;
+  seriesBySymbol?: Record<string, number[]>;
 };
 
 export const MARKET_WATCHLIST_SYMBOLS: MarketWatchlistSymbol[] = [
@@ -289,13 +300,82 @@ export function getMarketMetadata(symbol: MarketWatchlistSymbol) {
   return MARKET_METADATA[symbol];
 }
 
-function resolveQuote(symbol: MarketWatchlistSymbol, quotes?: BuilderInput["quotes"]) {
-  const metadata = getMarketMetadata(symbol);
-  const quote = quotes?.[symbol];
+// 把现有美股元数据 + 路由字段拼成统一的 CatalogInstrument —— 美股盘数据与排序保持字节级不变。
+function metadataToInstrument(symbol: MarketWatchlistSymbol): CatalogInstrument {
+  const m = MARKET_METADATA[symbol];
+  const r = US_ROUTING[symbol];
+  return {
+    id: symbol,
+    category: "us",
+    kind: "stock",
+    exchange: r.exchange,
+    ticker: r.ticker,
+    exchangeName: r.exchangeName,
+    currency: r.currency,
+    code: m.code,
+    name: m.name,
+    companyName: m.companyName,
+    sector: m.sector,
+    sectorGroup: m.sectorGroup,
+    industryKey: r.industryKey,
+    tags: m.tags,
+    monogram: m.monogram,
+    accentColor: m.accentColor,
+    summary: m.summary,
+    teachingNote: m.teachingNote,
+    observationAngle: m.observationAngle,
+    aiRelevance: m.aiRelevance,
+    sectorHeat: m.sectorHeat,
+    fallbackPrice: m.fallbackPrice,
+    fallbackChange: m.fallbackChange,
+    fallbackSeries: m.fallbackSeries,
+  };
+}
+
+const US_INSTRUMENTS: CatalogInstrument[] = MARKET_WATCHLIST_SYMBOLS.map(metadataToInstrument);
+
+export const MARKET_CATALOG: Record<MarketCategoryId, CatalogInstrument[]> = {
+  us: US_INSTRUMENTS,
+  cn: NON_US_CATEGORY_INSTRUMENTS.cn,
+  hk: NON_US_CATEGORY_INSTRUMENTS.hk,
+  fund: NON_US_CATEGORY_INSTRUMENTS.fund,
+};
+
+export function getCategoryInstruments(category: MarketCategoryId): CatalogInstrument[] {
+  return MARKET_CATALOG[category] ?? MARKET_CATALOG.us;
+}
+
+export function resolveMarketCategory(value?: string | null): MarketCategoryId {
+  const v = (value ?? "").trim().toLowerCase();
+  return (MARKET_CATEGORY_ORDER as string[]).includes(v) ? (v as MarketCategoryId) : "us";
+}
+
+// 在某分类内把外部传入的 symbol 收敛到合法 id（大小写不敏感），非法时回退该类首个标的。
+export function resolveCategoryInstrumentId(category: MarketCategoryId, value?: string | null): string {
+  const list = getCategoryInstruments(category);
+  const want = (value ?? "").trim();
+  const hit = list.find((i) => i.id === want || i.id.toUpperCase() === want.toUpperCase());
+  return hit?.id ?? list[0].id;
+}
+
+export function getCatalogInstrument(category: MarketCategoryId, id: string): CatalogInstrument | undefined {
+  return getCategoryInstruments(category).find((i) => i.id === id);
+}
+
+function categoryTabs(): MarketCategoryTab[] {
+  return MARKET_CATEGORY_ORDER.map((id) => ({
+    id,
+    ...CATEGORY_LABELS[id],
+    defaultSymbol: getCategoryInstruments(id)[0].id,
+  }));
+}
+
+function resolveQuote(instrument: CatalogInstrument, quotes?: BuilderInput["quotes"]) {
+  const quote = quotes?.[instrument.id];
 
   return {
-    currentPrice: quote?.currentPrice ?? metadata.fallbackPrice,
-    changePercent: quote?.changePercent ?? metadata.fallbackChange,
+    currentPrice: quote?.currentPrice ?? instrument.fallbackPrice,
+    changePercent: quote?.changePercent ?? instrument.fallbackChange,
     source:
       quote?.source && typeof quote.currentPrice === "number" ? quote.source : ("fallback" as const),
   };
@@ -379,7 +459,7 @@ function buildTrendIntegrity(series: number[]) {
 }
 
 function buildTeachingMetrics(
-  metadata: MarketMetadata,
+  metadata: CatalogInstrument,
   currentPrice: number,
   changePercent: number,
   series: number[],
@@ -435,7 +515,7 @@ function buildTeachingMetrics(
   ];
 }
 
-function buildFacts(metadata: MarketMetadata, staticInfo?: StaticInfoInput) {
+function buildFacts(metadata: CatalogInstrument, staticInfo?: StaticInfoInput) {
   return [
     {
       label: "行业板块",
@@ -443,11 +523,11 @@ function buildFacts(metadata: MarketMetadata, staticInfo?: StaticInfoInput) {
     },
     {
       label: "交易所",
-      value: staticInfo?.exchange || "NASDAQ / NYSE",
+      value: staticInfo?.exchange || metadata.exchangeName,
     },
     {
       label: "交易货币",
-      value: staticInfo?.currency || "USD",
+      value: staticInfo?.currency || metadata.currency,
     },
     {
       label: "每手股数",
@@ -537,23 +617,27 @@ function buildContentCards(selected: MarketBoardStock): MarketBoardContentCard[]
   ];
 }
 
-export function buildTickerTapeItems(input?: Pick<BuilderInput, "quotes">): TickerTapeItem[] {
-  return MARKET_WATCHLIST_SYMBOLS.map((symbol) => {
-    const metadata = getMarketMetadata(symbol);
-    const quote = resolveQuote(symbol, input?.quotes);
+function toTickerItem(
+  instrument: CatalogInstrument,
+  quote: ReturnType<typeof resolveQuote>,
+): TickerTapeItem {
+  return {
+    symbol: instrument.id,
+    code: instrument.code,
+    name: instrument.name,
+    companyName: instrument.companyName,
+    currentPrice: quote.currentPrice,
+    changePercent: quote.changePercent,
+    source: quote.source,
+    accentColor: instrument.accentColor,
+    monogram: instrument.monogram,
+    imageUrl: industryImagePath(instrument.industryKey),
+  } satisfies TickerTapeItem;
+}
 
-    return {
-      symbol,
-      code: metadata.code,
-      name: metadata.name,
-      companyName: metadata.companyName,
-      currentPrice: quote.currentPrice,
-      changePercent: quote.changePercent,
-      source: quote.source,
-      accentColor: metadata.accentColor,
-      monogram: metadata.monogram,
-    } satisfies TickerTapeItem;
-  });
+// 首页轮播条 / 脉冲只用美股观察池（保持现有公开站行为）。
+export function buildTickerTapeItems(input?: Pick<BuilderInput, "quotes">): TickerTapeItem[] {
+  return US_INSTRUMENTS.map((instrument) => toTickerItem(instrument, resolveQuote(instrument, input?.quotes)));
 }
 
 function humanizeMarketBoardNote(
@@ -610,54 +694,66 @@ function humanizeMarketBoardNote(
   return fallbackMessage;
 }
 
-export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayload {
-  const selectedSymbol = input?.selectedSymbol ?? "MU";
-  const watchlist = buildTickerTapeItems({ quotes: input?.quotes });
+// 分类驱动的统一看板构建器：任意分类(美股/A股/港股/基金)同一套结构。
+export function buildCategoryBoardPayload(
+  category: MarketCategoryId,
+  input?: BuilderInput,
+): MarketBoardPayload {
+  const instruments = getCategoryInstruments(category);
+  const byId = new Map(instruments.map((instrument) => [instrument.id, instrument] as const));
+  const selectedId =
+    input?.selectedSymbol && byId.has(input.selectedSymbol) ? input.selectedSymbol : instruments[0].id;
+  const selectedInstrument = byId.get(selectedId)!;
 
-  const selectedMetadata = getMarketMetadata(selectedSymbol);
-  const selectedQuote = resolveQuote(selectedSymbol, input?.quotes);
+  const watchlist = instruments.map((instrument) =>
+    toTickerItem(instrument, resolveQuote(instrument, input?.quotes)),
+  );
+
+  const selectedQuote = resolveQuote(selectedInstrument, input?.quotes);
   const selectedSeries =
     input?.klineSeries && input.klineSeries.length >= 4
       ? input.klineSeries
-      : selectedMetadata.fallbackSeries;
+      : selectedInstrument.fallbackSeries;
   const selectedCandles = normalizeCandles(input?.klineCandles, selectedSeries);
   const metrics = buildTeachingMetrics(
-    selectedMetadata,
+    selectedInstrument,
     selectedQuote.currentPrice,
     selectedQuote.changePercent,
     selectedSeries,
   );
   const selected: MarketBoardStock = {
-    symbol: selectedSymbol,
-    code: selectedMetadata.code,
-    name: input?.staticInfo?.nameCn || selectedMetadata.name,
-    companyName: input?.staticInfo?.nameEn || selectedMetadata.companyName,
+    symbol: selectedInstrument.id,
+    code: selectedInstrument.code,
+    name: input?.staticInfo?.nameCn || selectedInstrument.name,
+    companyName: input?.staticInfo?.nameEn || selectedInstrument.companyName,
     currentPrice: selectedQuote.currentPrice,
     changePercent: selectedQuote.changePercent,
     source: selectedQuote.source,
     score: buildOverallScore(metrics),
-    summary: selectedMetadata.summary,
-    teachingNote: selectedMetadata.teachingNote,
-    sector: selectedMetadata.sector,
-    sectorGroup: selectedMetadata.sectorGroup,
-    tags: selectedMetadata.tags,
-    monogram: selectedMetadata.monogram,
-    accentColor: selectedMetadata.accentColor,
+    summary: selectedInstrument.summary,
+    teachingNote: selectedInstrument.teachingNote,
+    sector: selectedInstrument.sector,
+    sectorGroup: selectedInstrument.sectorGroup,
+    tags: selectedInstrument.tags,
+    monogram: selectedInstrument.monogram,
+    accentColor: selectedInstrument.accentColor,
     miniSeries: selectedSeries,
     candles: selectedCandles,
     metrics,
-    facts: buildFacts(selectedMetadata, input?.staticInfo),
+    facts: buildFacts(selectedInstrument, input?.staticInfo),
+    imageUrl: industryImagePath(selectedInstrument.industryKey),
+    currency: selectedInstrument.currency,
   };
 
   const marketSummary = watchlist
     .map((item) => {
-      const metadata = getMarketMetadata(item.symbol);
+      const instrument = byId.get(item.symbol)!;
       const previewMetrics = buildTeachingMetrics(
-        metadata,
+        instrument,
         item.currentPrice,
         item.changePercent,
         // 有真实走势就用真实的（与现价同源），否则回退教学曲线。
-        input?.seriesBySymbol?.[item.symbol] ?? metadata.fallbackSeries,
+        input?.seriesBySymbol?.[item.symbol] ?? instrument.fallbackSeries,
       );
 
       return {
@@ -672,24 +768,21 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     .slice(0, 8);
 
   const sectorPerformance = Array.from(
-    new Map(
-      MARKET_WATCHLIST_SYMBOLS.map((symbol) => {
-        const metadata = getMarketMetadata(symbol);
-        return [metadata.sectorGroup, metadata] as const;
-      }),
-    ).values(),
+    new Map(instruments.map((instrument) => [instrument.sectorGroup, instrument] as const)).values(),
   )
-    .map((metadata) => {
-      const members = watchlist.filter((item) => getMarketMetadata(item.symbol).sectorGroup === metadata.sectorGroup);
+    .map((instrument) => {
+      const members = watchlist.filter(
+        (item) => byId.get(item.symbol)?.sectorGroup === instrument.sectorGroup,
+      );
       const average =
         members.reduce((sum, item) => sum + item.changePercent, 0) / Math.max(members.length, 1);
       const leadSymbol =
         members.slice().sort((left, right) => right.changePercent - left.changePercent)[0]?.symbol ??
-        metadata.symbol;
+        instrument.id;
 
       return {
-        id: metadata.sectorGroup,
-        label: metadata.sectorGroup,
+        id: instrument.sectorGroup,
+        label: instrument.sectorGroup,
         changePercent: Number(average.toFixed(2)),
         leadSymbol,
       } satisfies MarketBoardSector;
@@ -702,6 +795,8 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     asOf: input?.asOf ?? new Date().toISOString(),
     provider: input?.provider ?? "fallback",
     note: sanitizedNote,
+    category,
+    categories: categoryTabs(),
     watchlist,
     selected,
     marketSummary,
@@ -709,4 +804,9 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     observationNotes: buildObservationNotes(selected, marketSummary, sectorPerformance, input?.provider ?? "fallback"),
     contentCards: buildContentCards(selected),
   };
+}
+
+// 美股盘 back-compat 包装：行为与原 buildMarketBoardPayload 完全一致（含默认选中 MU）。
+export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayload {
+  return buildCategoryBoardPayload("us", input);
 }

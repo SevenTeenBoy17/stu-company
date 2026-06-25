@@ -6,7 +6,7 @@ import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { canUserOperate } from "@/lib/billing/subscription";
 import { createStudentWatchlistActionForUser, getSimulationStateForUser } from "@/lib/db/repo";
 import { getMarketBoardPayload } from "@/lib/market-data";
-import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
+import { isMarketWatchlistSymbol, resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
 import { buildStudentWatchlistPayload } from "@/lib/student-watchlist";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +50,11 @@ export async function POST(request: Request) {
     const parsed = requestSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return apiError("invalid_input", "请选择一只观察标的，并写下不超过 120 字的观察理由。", 400);
+    }
+
+    // 自选观察绑定 12 轮经济沙盘的美股观察池；非美股标的显式拒绝，绝不静默回退成 NVDA。
+    if (!isMarketWatchlistSymbol(parsed.data.symbol.trim().toUpperCase())) {
+      return apiError("invalid_input", "自选观察目前仅支持美股观察池的标的。", 400);
     }
 
     const input = {
