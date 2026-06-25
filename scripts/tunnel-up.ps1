@@ -108,7 +108,12 @@ Write-Host ("    APP_URL=" + $url)
 Write-Host ("6/6 production server :" + $Port + "...") -ForegroundColor Cyan
 $old = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($old) { $old.OwningProcess | Sort-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }
-foreach ($f in @($srvLog, "$srvLog.err")) { if (Test-Path $f) { Remove-Item $f -Force } }
+# also kill the parent cmd.exe that holds the redirected log file open (the port-listener kill above only gets node)
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and $_.CommandLine -match [regex]::Escape("npm run start -- -H 127.0.0.1 -p " + $Port) } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Seconds 2
+foreach ($f in @($srvLog, "$srvLog.err")) { if (Test-Path $f) { Remove-Item $f -Force -ErrorAction SilentlyContinue } }
 Start-Process -FilePath "cmd.exe" -ArgumentList ("/c npm run start -- -H 127.0.0.1 -p " + $Port) `
   -WorkingDirectory $repo -RedirectStandardOutput $srvLog -RedirectStandardError "$srvLog.err" -WindowStyle Hidden
 $ready = $false
