@@ -138,9 +138,12 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("写下证据");
 
-    await user.click(screen.getByRole("button", { name: "查看任务详情" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("先看证据");
-    await user.click(screen.getByRole("button", { name: "关闭任务详情" }));
+    // findBy* (async) waits for the post-flip a11y tree to settle — the back-face content
+    // renders immediately (testids above) but the accessibility tree can update a tick later,
+    // which the synchronous getByRole loses on slower CI runners (passes locally, flaked on CI).
+    await user.click(await screen.findByRole("button", { name: "查看任务详情" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("先看证据");
+    await user.click(await screen.findByRole("button", { name: "关闭任务详情" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
