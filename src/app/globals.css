@@ -389,6 +389,11 @@ select {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* 前庭安全：取消常驻浮动头像及其 hover 缩放的 transform 终态（不止过渡时长）。 */
+  [data-creature-float] {
+    transform: none !important;
+    animation: none !important;
+  }
 }
 
 .bz-primary-action {

@@ -129,7 +129,7 @@ describe("StudentQuestDashboard quest flip", () => {
     const flipButton = screen.getByTestId("quest-flip-observe-quest");
 
     expect(flipButton).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("第 1 号任务盲盒");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("第 1 号任务锦囊");
 
     await user.click(flipButton);
 

@@ -65,8 +65,9 @@ test.describe("student gameflow regression", () => {
 
     await page.waitForFunction(() => {
       const images = Array.from(document.querySelectorAll('[data-testid^="quest-box-art-"] img'));
+      // 当前设计：主区为单张任务锦囊主卡（航线节点用角色头像而非整张卡面），故 box-art 主卡为 1 张。
       return (
-        images.length >= 4 &&
+        images.length >= 1 &&
         images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0)
       );
     });
@@ -95,7 +96,7 @@ test.describe("student gameflow regression", () => {
     await page.locator('[data-testid^="quest-flip-"]').first().click();
     await page.getByRole("button", { name: "查看任务详情" }).first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("dialog")).toContainText("Mission Detail");
+    await expect(page.getByRole("dialog")).toContainText("任务详情");
     await page.getByRole("button", { name: "关闭任务详情" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
