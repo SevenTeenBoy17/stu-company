@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
-import { buildCollectionProgress, type QuestCard } from "@/lib/cards";
+import { buildCollectionProgress, QUEST_CARD_SERIES_LABEL, questCardSeries, type QuestCard } from "@/lib/cards";
 import { questCardDeck } from "@/lib/content";
 import type { CardCollectionItem } from "@/lib/db/repo";
 import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
@@ -188,7 +188,7 @@ function QuestCardFallbackArt({ card }: { card: QuestCard }) {
           {meta.label}
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{QUEST_CARD_SERIES_LABEL[questCardSeries(card)]}</p>
           <h3 className="mt-2 text-h2 font-bold text-white">{card.name}</h3>
         </div>
       </div>
@@ -234,7 +234,7 @@ function QuestCardArt({
           {meta.label}
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{card.artKey}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">{QUEST_CARD_SERIES_LABEL[questCardSeries(card)]}</p>
           <h3 className={cn("mt-2 font-bold text-white", compact ? "text-lg" : "text-h2")}>{card.name}</h3>
         </div>
       </div>
@@ -262,7 +262,7 @@ function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] 
       )}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-950/64 via-transparent to-slate-950/70" />
       <div className="relative z-10 flex min-h-32 flex-col justify-end p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">学习纪念卡</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">学习收藏卡</p>
         <p className="mt-1 text-sm font-bold text-white">完成任务后领取</p>
       </div>
     </div>
@@ -1140,7 +1140,7 @@ function QuestCommanderPanel({
             <div className="flex items-start gap-3">
               <Orbit className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
               <p className="text-sm font-bold leading-6 text-brand-ink">
-                页面默认只展示关键信息。任务细节、奖励解释和导师建议会在拆盒或点击详情后展开，降低认知负荷。
+                页面默认只展示关键信息。任务细节、奖励解释和导师建议会在打开任务锦囊或点击详情后展开。
               </p>
             </div>
           </div>
@@ -1246,8 +1246,10 @@ function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-5 text-fg-muted">
               {s.complete
-                ? `✓ ${s.label}套系已集齐，你已掌握这组工具的语言`
-                : `还差 ${s.total - s.owned} 张 · 完成对应任务即可集齐`}
+                ? `✓ ${s.label}套系已集齐 · 这组工具你都练过一遍`
+                : s.series === "systems-thinking"
+                  ? "赛季限定 · 即将开放"
+                  : `还差 ${s.total - s.owned} 张 · 完成对应任务即可集齐`}
             </p>
           </div>
         );
@@ -1587,13 +1589,22 @@ function CompanionAlbum({
 }) {
   const unlocked = useMemo(() => {
     const set = new Set<string>();
-    // 已收藏卡 → 点亮其来源伙伴；完成/已领的任务 → 也点亮对应伙伴（doc §5.5：完成对应任务即解锁）。
+    // 永久里程碑（绝不变灰）：已收藏卡 + 已领取(claimed)的任务——两者都是一次性持久记录。
+    // 另把 status==="done"（当前可领取）也点亮做即时反馈（doc §5.5 完成即解锁）。这部分基于 live
+    // 指标，若 diversification/cashBuffer 等回合间下跌会回到未点亮——但只影响「尚未领取」的伙伴，
+    // 反映「当前已不再达标、需重新完成才能领取」；已领取/已收藏的永久伙伴不受影响，故可接受。
     collection.forEach((item) => set.add(themeForCollectionItem(item, quests).id));
     quests.forEach((quest, index) => {
       if (quest.status === "done" || quest.claimed) set.add(questBoxThemeFor(quest, index).id);
     });
     return set;
   }, [collection, quests]);
+  // 任一任务位置可点亮的伙伴集合 = 可达；其余（如 lion-rank/penguin-review）为赛季 roadmap、当前不可达，
+  // 不再对其谎称「完成对应任务即可点亮」（避免图鉴永远集不满的习得性无助）。
+  const reachableIds = useMemo(
+    () => new Set(quests.map((quest, index) => questBoxThemeFor(quest, index).id)),
+    [quests],
+  );
   const unlockedCount = questBoxThemes.filter((theme) => unlocked.has(theme.id)).length;
 
   return (
@@ -1605,16 +1616,17 @@ function CompanionAlbum({
             <h2 className="text-h1 font-semibold text-fg-strong">伙伴图鉴</h2>
           </div>
           <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-            每收藏一类任务卡，就点亮一位学习伙伴。未点亮的伙伴以剪影出现，集齐它们记录你的学习足迹。
+            每收藏一类任务卡，就点亮一位学习伙伴。集齐已开放的伙伴，记录你的学习足迹。
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold tabular-nums text-white">
-          这是你的第 {unlockedCount} 位学习伙伴
+          已点亮 {unlockedCount} 位伙伴
         </span>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {questBoxThemes.map((theme, index) => {
           const isUnlocked = unlocked.has(theme.id);
+          const isRoadmap = !isUnlocked && !reachableIds.has(theme.id);
           return (
             <article
               key={theme.id}
@@ -1622,7 +1634,9 @@ function CompanionAlbum({
               aria-label={
                 isUnlocked
                   ? `已点亮的学习伙伴：${theme.creature}，来自${theme.world}`
-                  : `未点亮的学习伙伴 ${index + 1}，完成对应任务后解锁`
+                  : isRoadmap
+                    ? `赛季限定学习伙伴 ${index + 1}，即将开放`
+                    : `未点亮的学习伙伴 ${index + 1}，完成对应任务后点亮`
               }
               className={cn(
                 "group relative flex aspect-[3/4] flex-col overflow-hidden rounded-[1.3rem] border p-3 shadow-sm transition duration-300",
@@ -1656,7 +1670,7 @@ function CompanionAlbum({
                   {isUnlocked ? theme.creature : theme.badge}
                 </p>
                 <p className={cn("mt-0.5 truncate text-[0.7rem] font-semibold", isUnlocked ? "text-white/82" : "text-slate-500")}>
-                  {isUnlocked ? theme.world : "完成任务即可点亮"}
+                  {isUnlocked ? theme.world : isRoadmap ? "赛季限定 · 即将开放" : "完成任务即可点亮"}
                 </p>
               </div>
               <span
@@ -1668,6 +1682,10 @@ function CompanionAlbum({
                 {isUnlocked ? (
                   <>
                     <BadgeCheck className="h-3 w-3" /> 已点亮
+                  </>
+                ) : isRoadmap ? (
+                  <>
+                    <Lock className="h-3 w-3" /> 即将开放
                   </>
                 ) : (
                   <>
@@ -2332,6 +2350,7 @@ export function StudentQuestDashboard({
                 key={item.id}
                 type="button"
                 onClick={() => setFilter(item.id)}
+                aria-pressed={filter === item.id}
                 className={cn(
                   "min-h-10 rounded-full border px-4 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   filter === item.id

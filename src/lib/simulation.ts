@@ -688,10 +688,15 @@ export function computeLearningStreak(run: ScenarioRun): { current: number; best
     segment = rounds[i] === rounds[i - 1] + 1 ? segment + 1 : 1;
     best = Math.max(best, segment);
   }
-  let current = 1;
-  for (let i = rounds.length - 1; i > 0; i -= 1) {
-    if (rounds[i] === rounds[i - 1] + 1) current += 1;
-    else break;
+  // current 仅在「末段延伸到当前回合（或上一回合，允许本回合进行中）」时有效；否则连续学习已断 → 0。
+  // 避免一个早断了 6 回合的学生 UI 仍显示虚高的「连续学习 N」。
+  let current = 0;
+  if (rounds[rounds.length - 1] >= run.currentRound - 1) {
+    current = 1;
+    for (let i = rounds.length - 1; i > 0; i -= 1) {
+      if (rounds[i] === rounds[i - 1] + 1) current += 1;
+      else break;
+    }
   }
   return { current, best };
 }
