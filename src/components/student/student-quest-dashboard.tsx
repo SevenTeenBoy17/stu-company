@@ -465,6 +465,13 @@ function stableQuestThemeIndex(id: string) {
 }
 
 function questBoxThemeFor(quest: QuestItem, index = 0) {
+  // 一能力一角色：先按概念匹配任务 profile，取与之同 asset 的主题，让盲盒卡面与任务角色=同一动物；
+  // 未匹配概念的任务再退回稳定位置/哈希分配。
+  const matched = questVisualProfiles.find((item) => item.match(quest.id, quest.category));
+  if (matched) {
+    const byConcept = questBoxThemes.find((theme) => theme.asset === matched.profile.creatureAsset);
+    if (byConcept) return byConcept;
+  }
   const preferredIndex = Number.isFinite(index) ? index : stableQuestThemeIndex(quest.id);
   return questBoxThemes[preferredIndex % questBoxThemes.length] ?? questBoxThemes[stableQuestThemeIndex(quest.id)];
 }
@@ -578,7 +585,7 @@ const questVisualProfiles: Array<{ match: (id: string, category: string) => bool
       visualTitle: "市场观察",
       shortAction: "去观察",
       conceptTag: "证据链",
-      creatureName: "狐狸侦察员",
+      creatureName: "狐队长",
       creatureAsset: "fox-market-scout",
       plantLabel: "雷达叶片",
       accent: "#f08a38",
@@ -591,7 +598,7 @@ const questVisualProfiles: Array<{ match: (id: string, category: string) => bool
       visualTitle: "机会证据",
       shortAction: "写证据",
       conceptTag: "机会观察单",
-      creatureName: "猫头鹰分析师",
+      creatureName: "猫头鹰",
       creatureAsset: "owl-evidence-analyst",
       plantLabel: "放大镜花",
       accent: "#7aa7ff",
@@ -617,7 +624,7 @@ const questVisualProfiles: Array<{ match: (id: string, category: string) => bool
       visualTitle: "安全底座",
       shortAction: "建底座",
       conceptTag: "风险缓冲",
-      creatureName: "乌龟守护者",
+      creatureName: "龟护卫",
       creatureAsset: "turtle-safety-guard",
       plantLabel: "盾牌蘑菇",
       accent: "#78d8ad",
@@ -643,7 +650,7 @@ const questVisualProfiles: Array<{ match: (id: string, category: string) => bool
       visualTitle: "现金管理",
       shortAction: "管现金",
       conceptTag: "现金流",
-      creatureName: "鲸鱼现金队长",
+      creatureName: "鲸艇长",
       creatureAsset: "whale-cash-captain",
       plantLabel: "水滴钱袋",
       accent: "#3b82f6",
@@ -656,7 +663,7 @@ const questVisualProfiles: Array<{ match: (id: string, category: string) => bool
       visualTitle: "知识火花",
       shortAction: "去学习",
       conceptTag: "课程转化",
-      creatureName: "雷达机器人",
+      creatureName: "小机器人",
       creatureAsset: "robot-radar-helper",
       plantLabel: "学习火苗",
       accent: "#06b6d4",
