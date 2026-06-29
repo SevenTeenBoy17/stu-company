@@ -2118,30 +2118,37 @@ export function StudentQuestDashboard({
               回到策略台执行
               <ArrowRight className="h-4 w-4" />
             </Link>
-            {claimResult && (
-              <div
-                role="status"
-                data-testid="quest-claim-result"
-                className="mt-5 rounded-[1.35rem] border border-brand/25 bg-brand/12 p-4"
-              >
-                <p className="text-sm font-bold text-brand-warm">奖励已领取</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
-                  {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变战力或净值。
-                </p>
-              </div>
-            )}
-            {drawResult && (
-              <div
-                role="status"
-                data-testid="quest-draw-result"
-                className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.08] p-4"
-              >
-                <p className="text-sm font-bold text-brand-warm">已加入卡库</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
-                  你收藏了 {drawResult.card.name}。这张卡已加入“我的卡库”，只记录学习轨迹，不改变净值、战力或排行榜。
-                </p>
-              </div>
-            )}
+            {/* 常驻 live region（WCAG 4.1.3）：容器始终在 DOM，仅内容更新，读屏才稳定播报。 */}
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="quest-claim-result"
+              className={cn(claimResult && "mt-5 rounded-[1.35rem] border border-brand/25 bg-brand/12 p-4")}
+            >
+              {claimResult ? (
+                <>
+                  <p className="text-sm font-bold text-brand-warm">奖励已领取</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
+                    {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变战力或净值。
+                  </p>
+                </>
+              ) : null}
+            </div>
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="quest-draw-result"
+              className={cn(drawResult && "mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.08] p-4")}
+            >
+              {drawResult ? (
+                <>
+                  <p className="text-sm font-bold text-brand-warm">已加入卡库</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
+                    你收藏了 {drawResult.card.name}。这张卡已加入“我的卡库”，只记录学习轨迹，不改变净值、战力或排行榜。
+                  </p>
+                </>
+              ) : null}
+            </div>
             {claimError && (
               <p role="alert" className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
                 {claimError}
