@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
-import { drawCard, seedFromString, type QuestCard } from "@/lib/cards";
+import { drawCard, type QuestCard } from "@/lib/cards";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
 import {
@@ -85,10 +85,8 @@ export async function POST(request: Request) {
     }
 
     const ownedCardIds = collection.map((item) => item.cardId);
-    const seed = seedFromString(
-      [auth.user.id, state.run.id, state.run.currentRound, parsed.data.questId, parsed.data.source].join(":"),
-    );
-    const card = drawCard(questCardDeck, ownedCardIds, seed);
+    // 去随机化（合规）：确定性领取下一张未拥有卡，不再用含 user.id 的 seed 抽稀有度。
+    const card = drawCard(questCardDeck, ownedCardIds);
     const collectionItem = await drawCardForUser(auth.user.id, {
       cardId: card.id,
       source: parsed.data.source,
@@ -98,7 +96,6 @@ export async function POST(request: Request) {
         reward: quest.reward,
         runId: state.run.id,
         round: state.run.currentRound,
-        seed,
         rarity: card.rarity,
       },
     });
