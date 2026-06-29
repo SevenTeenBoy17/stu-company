@@ -34,3 +34,57 @@ export function drawCard(deck: readonly QuestCard[], ownedCardIds: Iterable<stri
   const nextUnowned = deck.find((card) => !owned.has(card.id));
   return nextUnowned ?? deck[0]!;
 }
+
+export type QuestCardSeries = "foundations" | "risk-control" | "systems-thinking";
+
+// 套系 = 学习单元（doc §2.1）。本牌库套系与稀有度一一对应：
+// foundations(5 common) / risk-control(5 rare) / systems-thinking(2 epic)，
+// 故由 rarity 派生，避免给 12 张卡 + 测试夹具逐一加字段；若未来套系与稀有度解耦再升级为独立字段。
+const RARITY_TO_SERIES: Record<QuestCardRarity, QuestCardSeries> = {
+  common: "foundations",
+  rare: "risk-control",
+  epic: "systems-thinking",
+};
+
+export const QUEST_CARD_SERIES_LABEL: Record<QuestCardSeries, string> = {
+  foundations: "基础工具箱",
+  "risk-control": "风险管理",
+  "systems-thinking": "系统思维",
+};
+
+export function questCardSeries(card: Pick<QuestCard, "rarity">): QuestCardSeries {
+  return RARITY_TO_SERIES[card.rarity];
+}
+
+export type SeriesProgress = {
+  series: QuestCardSeries;
+  label: string;
+  owned: number;
+  total: number;
+  complete: boolean;
+  missingNames: string[];
+};
+
+/**
+ * 集卡套系进度（doc §2.2）：按套系分组、对照已拥有卡，给出 owned/total、是否集齐、缺失卡名。
+ * 纯函数，无 IO。助推语义为「差 N 张→去完成对应任务」，不诱导「再抽」（抽取已确定性）。
+ */
+export function buildCollectionProgress(
+  ownedCardIds: Iterable<string>,
+  deck: readonly QuestCard[],
+): SeriesProgress[] {
+  const owned = new Set(ownedCardIds);
+  const order: QuestCardSeries[] = ["foundations", "risk-control", "systems-thinking"];
+  return order.map((series) => {
+    const cards = deck.filter((card) => questCardSeries(card) === series);
+    const missing = cards.filter((card) => !owned.has(card.id));
+    return {
+      series,
+      label: QUEST_CARD_SERIES_LABEL[series],
+      owned: cards.length - missing.length,
+      total: cards.length,
+      complete: cards.length > 0 && missing.length === 0,
+      missingNames: missing.map((card) => card.name),
+    };
+  });
+}

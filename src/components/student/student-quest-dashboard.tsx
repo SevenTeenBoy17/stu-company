@@ -29,7 +29,8 @@ import {
 } from "lucide-react";
 
 import { MoneyText } from "@/components/shared/money-text";
-import type { QuestCard } from "@/lib/cards";
+import { buildCollectionProgress, type QuestCard } from "@/lib/cards";
+import { questCardDeck } from "@/lib/content";
 import type { CardCollectionItem } from "@/lib/db/repo";
 import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload, StudentQuestStatus } from "@/lib/quests";
 import type { SeasonClaimResult, StudentSeasonChallengePayload } from "@/lib/season-challenges";
@@ -1214,6 +1215,52 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
   );
 }
 
+// 集卡套系进度（doc §2.2）：把「N 张已收藏」升级为有完成度的三套系进度，
+// 助推「差 N 张→去完成对应任务」（非诱导再抽，抽取已确定性）；禁倒计时词。
+function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
+  const progress = useMemo(
+    () => buildCollectionProgress(items.map((item) => item.card.id), questCardDeck),
+    [items],
+  );
+  return (
+    <div
+      data-testid="collection-meter"
+      className="mt-5 grid gap-3 rounded-[1.4rem] border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-3"
+    >
+      {progress.map((s) => {
+        const pct = s.total > 0 ? Math.round((s.owned / s.total) * 100) : 0;
+        return (
+          <div key={s.series} className="rounded-[1.1rem] border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-black text-fg-strong">{s.label}</p>
+              <span className="text-xs font-bold tabular-nums text-fg-muted">
+                {s.owned}/{s.total}
+              </span>
+            </div>
+            <div
+              {...progressAria(`${s.label}套系进度`, pct)}
+              className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"
+            >
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width] duration-500",
+                  s.complete ? "bg-gradient-to-r from-amber-400 to-amber-500" : "bg-gradient-to-r from-brand via-warning to-up",
+                )}
+                style={{ width: `${Math.max(s.owned > 0 ? 8 : 0, pct)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] font-semibold leading-5 text-fg-muted">
+              {s.complete
+                ? `✓ ${s.label}套系已集齐，你已掌握这组工具的语言`
+                : `还差 ${s.total - s.owned} 张 · 完成对应任务即可集齐`}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
   return (
     <section
@@ -1236,6 +1283,8 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
           {items.length} 张已收藏
         </span>
       </div>
+
+      <CollectionMeter items={items} />
 
       {items.length > 0 ? (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
