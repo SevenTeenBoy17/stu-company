@@ -23,6 +23,9 @@ export type LearningModuleQuizGrade = {
   correct: number;
 };
 
+// 套系(series)由 cards.ts 的 RARITY_TO_SERIES 从 rarity 派生：本牌库须保持
+// 5 common(基础工具箱) + 5 rare(风险管理) + 2 epic(系统思维)；改动配比需同步 cards.ts
+// 的派生表（cards.test.ts 的 5/5/2 断言会在 CI 拦住失配）。
 export const questCardDeck = [
   {
     id: "calm-observer",

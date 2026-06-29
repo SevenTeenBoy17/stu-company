@@ -466,13 +466,8 @@ function stableQuestThemeIndex(id: string) {
 }
 
 function questBoxThemeFor(quest: QuestItem, index = 0) {
-  // 一能力一角色：先按概念匹配任务 profile，取与之同 asset 的主题，让盲盒卡面与任务角色=同一动物；
-  // 未匹配概念的任务再退回稳定位置/哈希分配。
-  const matched = questVisualProfiles.find((item) => item.match(quest.id, quest.category));
-  if (matched) {
-    const byConcept = questBoxThemes.find((theme) => theme.asset === matched.profile.creatureAsset);
-    if (byConcept) return byConcept;
-  }
+  // 按稳定位置/哈希分配主题，保证 12 个伙伴在图鉴里都可点亮（概念匹配只有 7 个 profile，
+  // 会让另外 5 个孤儿动物无法解锁，故角色名已统一即可，不强制卡面=概念动物）。
   const preferredIndex = Number.isFinite(index) ? index : stableQuestThemeIndex(quest.id);
   return questBoxThemes[preferredIndex % questBoxThemes.length] ?? questBoxThemes[stableQuestThemeIndex(quest.id)];
 }

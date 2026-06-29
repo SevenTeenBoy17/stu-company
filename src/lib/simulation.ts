@@ -663,8 +663,9 @@ export function computeStreak(run: ScenarioRun): { current: number; best: number
  * 最长段(best) 与 当前段(current = 结束于最近学习回合的连续段)；排除纯 trade/bank 等投机操作。
  * 纯函数：不读时钟、按 round 折叠，可测、可复盘。
  */
+// 注意：刻意不含 "advance"（纯推进回合）——否则只点「下一回合」零理财动作也会刷出连续学习，
+// 与「奖励学习而非被动在线」的目标相悖。只计含真实学习/复盘/理财动作的回合。
 const LEARNING_ACTION_TYPES: ReadonlySet<string> = new Set([
-  "advance",
   "wealth_review",
   "opportunity",
   "fund_lab",
