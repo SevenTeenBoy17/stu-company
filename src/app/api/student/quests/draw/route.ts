@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
-import { drawCard, type QuestCard } from "@/lib/cards";
+import { drawCard, questCardSeries, type QuestCard } from "@/lib/cards";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
 import {
@@ -15,6 +15,7 @@ import {
   type CardCollectionSource,
 } from "@/lib/db/repo";
 import { buildStudentQuestPayload } from "@/lib/quests";
+import { computeTaskCenterTelemetry } from "@/lib/simulation";
 
 export const dynamic = "force-dynamic";
 
@@ -99,6 +100,15 @@ export async function POST(request: Request) {
         rarity: card.rarity,
       },
     });
+
+    // 学习护栏遥测（H3）：以稳定前缀结构化日志记录交易占比 + 学习连续，供聚合监测；
+    // 无 PII（仅 run id）、无新表/外部 provider——遥测目的地的架构决策留给后续，但度量已就位。
+    const telemetry = computeTaskCenterTelemetry(state.run);
+    console.info(
+      `[task-center] event=draw run=${state.run.id} round=${state.run.currentRound} ` +
+        `series=${questCardSeries(card)} tradeShare=${telemetry.tradeShare.toFixed(3)} ` +
+        `learningStreak=${telemetry.learningStreakBest} guardrail=${telemetry.guardrailHealthy ? "ok" : "alert"}`,
+    );
 
     return NextResponse.json({
       card,

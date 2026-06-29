@@ -696,6 +696,45 @@ export function computeLearningStreak(run: ScenarioRun): { current: number; best
   return { current, best };
 }
 
+export type TaskCenterTelemetry = {
+  totalActions: number;
+  tradeActions: number;
+  learningActions: number;
+  questClaims: number;
+  /** H3 学习护栏：游戏化不得使「交易占比」上升（区别于 gacha 的关键证伪条件）。 */
+  tradeShare: number;
+  learningStreakBest: number;
+  guardrailHealthy: boolean;
+};
+
+/**
+ * 任务中心学习护栏遥测（doc §288 / 留存假设 H3）：从现有 actionLog 纯派生交易占比、学习动作量、
+ * 领取数与学习连续段。无新增数据/管线，供漏斗与「trade 占比不得随游戏化上升」的护栏监测。纯函数。
+ */
+export function computeTaskCenterTelemetry(
+  run: ScenarioRun,
+  opts: { maxTradeShare?: number } = {},
+): TaskCenterTelemetry {
+  const maxTradeShare = opts.maxTradeShare ?? 0.6;
+  const log = run.actionLog;
+  const totalActions = log.length;
+  const tradeActions = log.filter((entry) => entry.type === "trade").length;
+  const learningActions = log.filter((entry) => LEARNING_ACTION_TYPES.has(entry.type)).length;
+  const questClaims = log.filter(
+    (entry) => entry.type === "quest" || entry.meta?.kind === "quest_reward_claim",
+  ).length;
+  const tradeShare = totalActions > 0 ? tradeActions / totalActions : 0;
+  return {
+    totalActions,
+    tradeActions,
+    learningActions,
+    questClaims,
+    tradeShare,
+    learningStreakBest: computeLearningStreak(run).best,
+    guardrailHealthy: tradeShare <= maxTradeShare,
+  };
+}
+
 /** P2 growth: a copyable share card built from the student's investor persona. */
 export function buildPersonaShareText(
   persona: { label: string; summary: string },
