@@ -1,5 +1,5 @@
 import { buildWealthSummary } from "@/lib/allocation";
-import { computeStreak } from "@/lib/simulation";
+import { computeLearningStreak } from "@/lib/simulation";
 import type { ActionLog, LearningProgressSummary, ScenarioRun } from "@/lib/types";
 import { clamp } from "@/lib/utils";
 
@@ -368,7 +368,7 @@ export function buildStudentPetPayload(
 ): StudentPetPayload {
   const latest = latestSnapshot(run);
   const wealth = buildWealthSummary(run);
-  const streak = computeStreak(run);
+  const streak = computeLearningStreak(run);
   const questClaims = questClaimEntries(run);
   const seasonClaims = seasonClaimEntries(run);
   const actionXp = Math.min(260, run.actionLog.length * 7);

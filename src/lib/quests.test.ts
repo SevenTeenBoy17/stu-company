@@ -66,7 +66,19 @@ describe("buildStudentQuestPayload", () => {
       expect.objectContaining({ round: 2, delta: 3000, tone: "up" }),
       expect.objectContaining({ round: 3, delta: -2000, tone: "down" }),
     ]);
-    expect(payload.overview.streakBest).toBe(1);
+  });
+
+  it("学习型 streak：overview 按连续学习回合数派生（净值连跌也不归零，去运气钩子）", () => {
+    const run = runWithSnapshots([100000, 99000, 98000]); // 净值连跌——旧的净值连升会得 0
+    const ts = (value: string) => new Date(value).toISOString();
+    run.actionLog.unshift({ id: "lr-1", round: 1, type: "wealth_review", label: "复盘", amount: 0, timestamp: ts("2026-06-01T00:00:00.000Z") });
+    run.actionLog.unshift({ id: "lr-2", round: 2, type: "opportunity", label: "机会观察", amount: 0, timestamp: ts("2026-06-02T00:00:00.000Z") });
+    run.actionLog.unshift({ id: "lr-3", round: 3, type: "fund_lab", label: "组合实验", amount: 0, timestamp: ts("2026-06-03T00:00:00.000Z") });
+
+    const payload = buildStudentQuestPayload(run, learning());
+
+    expect(payload.overview.streakBest).toBe(3);
+    expect(payload.overview.streakCurrent).toBe(3);
   });
 
   it("locks the cooldown quest before the first trade", () => {

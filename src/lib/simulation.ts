@@ -657,6 +657,44 @@ export function computeStreak(run: ScenarioRun): { current: number; best: number
   return { current, best };
 }
 
+/**
+ * 学习型连续（替代 computeStreak 的「净值连升」运气钩子——后者奖励市场涨跌、诱导追涨，
+ * 是项目自陈的伦理 bug）。统计 actionLog 中「有学习/复盘动作」的回合，按回合连续计算
+ * 最长段(best) 与 当前段(current = 结束于最近学习回合的连续段)；排除纯 trade/bank 等投机操作。
+ * 纯函数：不读时钟、按 round 折叠，可测、可复盘。
+ */
+const LEARNING_ACTION_TYPES: ReadonlySet<string> = new Set([
+  "advance",
+  "wealth_review",
+  "opportunity",
+  "fund_lab",
+  "auto_invest",
+  "quest",
+  "protection",
+  "goal_account",
+]);
+
+export function computeLearningStreak(run: ScenarioRun): { current: number; best: number } {
+  const learningRounds = new Set<number>();
+  for (const entry of run.actionLog) {
+    if (LEARNING_ACTION_TYPES.has(entry.type)) learningRounds.add(entry.round);
+  }
+  if (learningRounds.size === 0) return { current: 0, best: 0 };
+  const rounds = [...learningRounds].sort((a, b) => a - b);
+  let best = 1;
+  let segment = 1;
+  for (let i = 1; i < rounds.length; i += 1) {
+    segment = rounds[i] === rounds[i - 1] + 1 ? segment + 1 : 1;
+    best = Math.max(best, segment);
+  }
+  let current = 1;
+  for (let i = rounds.length - 1; i > 0; i -= 1) {
+    if (rounds[i] === rounds[i - 1] + 1) current += 1;
+    else break;
+  }
+  return { current, best };
+}
+
 /** P2 growth: a copyable share card built from the student's investor persona. */
 export function buildPersonaShareText(
   persona: { label: string; summary: string },

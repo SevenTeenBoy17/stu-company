@@ -2010,13 +2010,13 @@ export function StudentQuestDashboard({
                 </div>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
-                <p className="text-sm font-semibold text-white/56">净值连升</p>
+                <p className="text-sm font-semibold text-white/56">连续学习</p>
                 <p className="mt-3 text-h2 tabular-nums text-white">
                   {questPayload.overview.streakCurrent}
                   <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.streakBest}
                 </p>
-                <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续回合</p>
+                <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续学习回合</p>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">学习进度</p>

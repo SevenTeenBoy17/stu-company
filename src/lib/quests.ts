@@ -1,5 +1,5 @@
 import { buildWealthSummary, type WealthSummary } from "@/lib/allocation";
-import { computeStreak } from "@/lib/simulation";
+import { computeLearningStreak } from "@/lib/simulation";
 import type { LearningProgressSummary, ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
 
@@ -283,7 +283,8 @@ export function buildStudentQuestPayload(
   now = new Date(),
 ): StudentQuestPayload {
   const wealth = buildWealthSummary(run);
-  const streak = computeStreak(run);
+  // 学习型连续（替代净值连升运气钩子）：streakCurrent/Best 现表示连续学习回合数。
+  const streak = computeLearningStreak(run);
   const tradeCount = countActions(run, "trade");
   const bankCount = countActions(run, "bank");
   const opportunityCount = countActions(run, "opportunity");
@@ -448,7 +449,7 @@ export function buildStudentQuestPayload(
       id: "streak-maker",
       title: "连续成长记录",
       unlocked: streak.best >= 2,
-      detail: `历史最佳净值连升 ${streak.best} 回合。`,
+      detail: `历史最佳连续学习 ${streak.best} 回合。`,
       decorativeReward: "收益日历贴纸",
     },
   ];
