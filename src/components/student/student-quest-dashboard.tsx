@@ -858,7 +858,7 @@ function MissionRouteNode({
                 aria-label={`选择航线 ${index + 1}：${profile.visualTitle}，${progress}%`}
                 aria-pressed={active}
                 data-testid={`mission-route-select-${quest.id}`}
-                className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 选择航线
               </button>
@@ -866,7 +866,7 @@ function MissionRouteNode({
                 type="button"
                 onClick={hideRouteCard}
                 data-testid={`mission-route-return-${quest.id}`}
-                className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white/75 px-3 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-brand/45 hover:text-brand-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white/75 px-3 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-brand/45 hover:text-brand-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 翻回
               </button>
@@ -1055,7 +1055,7 @@ function MissionHabitatShelf({
   return (
     <div data-habitat-shelf className="relative z-10 mt-4 rounded-[1.35rem] border border-slate-200/80 bg-white/70 p-3 shadow-inner shadow-slate-950/5 backdrop-blur">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <p className="text-sm font-bold text-slate-700">今日栖息地</p>
+        <p className="text-sm font-bold text-slate-700">成长栖息地</p>
         <div className="flex items-center gap-1.5">
           <span
             className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-800"
@@ -1106,7 +1106,7 @@ function MissionHabitatShelf({
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <span className="text-[10px] font-bold text-emerald-700">赛季植物成长</span>
         <span className="text-[10px] font-bold tabular-nums text-emerald-700">
-          今天已点亮 {unlockedCount} 位伙伴
+          已点亮 {unlockedCount} 位伙伴
         </span>
       </div>
       <div
@@ -1583,6 +1583,12 @@ function MascotRewardModal({
           <X className="h-5 w-5" />
         </button>
         <div className="relative grid items-center gap-2 p-7 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] sm:p-9">
+          {/* a11y：主题渐变 from 段为浅色(#fff1d8 等)，白字对比仅 ~1.12:1。左侧文字栏铺深色 scrim
+              使白字稳定 ≥4.5:1（大标题更宽裕），右侧渐隐保留角色与渐变的海报观感。 */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
+          />
           <div className="relative z-10">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-caption font-bold uppercase tracking-[0.2em] backdrop-blur">
               新伙伴加入图鉴 · 第 {number} 张
@@ -2496,7 +2502,7 @@ export function StudentQuestDashboard({
                 onClick={() => setFilter(item.id)}
                 aria-pressed={filter === item.id}
                 className={cn(
-                  "min-h-10 rounded-full border px-4 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                  "min-h-11 rounded-full border px-4 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                   filter === item.id
                     ? "border-border-brand bg-brand text-slate-950 shadow-glow"
                     : "border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand-ink",
@@ -2583,7 +2589,6 @@ export function StudentQuestDashboard({
                         data-motion-button
                         type="button"
                         data-testid={`quest-flip-${quest.id}`}
-                        aria-pressed={isFlipped}
                         aria-controls={`quest-card-front-${quest.id}`}
                         aria-expanded={isFlipped}
                         aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开任务卡正面：${quest.title}`}
@@ -2635,7 +2640,7 @@ export function StudentQuestDashboard({
                           data-testid={`quest-detail-trigger-${quest.id}`}
                           aria-label={`查看任务详情：${quest.title}`}
                           onClick={() => setDetailQuestId(quest.id)}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
                           <Eye className="h-4 w-4" />
                           查看任务详情

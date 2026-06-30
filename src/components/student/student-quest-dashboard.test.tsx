@@ -245,13 +245,13 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(screen.getByTestId("quest-card-observe-quest")).toBeInTheDocument();
     const flipButton = screen.getByTestId("quest-flip-observe-quest");
 
-    expect(flipButton).toHaveAttribute("aria-pressed", "false");
+    // a11y：翻卡是 disclosure 模式，只用 aria-expanded + aria-controls，不再与 aria-pressed 混用（语义冲突）。
+    expect(flipButton).not.toHaveAttribute("aria-pressed");
     expect(flipButton).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("第 1 号任务卡背");
 
     await user.click(flipButton);
 
-    expect(flipButton).toHaveAttribute("aria-pressed", "true");
     expect(flipButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");

@@ -140,18 +140,20 @@ test.describe("学生端 P2 复测：揭示 / 无障碍 / 校验门", () => {
 
     // Wealth — note must be >= 8 chars (server: wealth-summary note.min(8)).
     await page.goto("/student/wealth", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    await scrollThrough(page);
     const wSubmit = page.getByTestId("wealth-review-submit");
+    // CI 冷启动时 Next dev 对该路由按需编译 + 重水合可能 > 默认 5s 断言超时，
+    // 导致偶发「element not found」。显式等待表单挂载（≤45s）再断言，消除 flake。
+    await wSubmit.waitFor({ state: "attached", timeout: 45_000 });
+    await scrollThrough(page);
     await expect(wSubmit, "wealth submit disabled with empty note").toBeDisabled();
     await page.getByPlaceholder(/成长资产比例偏高/).fill("先观察现金垫是否回到目标区间再决定加仓");
     await expect(wSubmit, "wealth submit enabled once note >= 8").toBeEnabled();
 
     // Opportunity — note must be >= 8 chars (server: opportunity note.min(8)).
     await page.goto("/student/opportunity", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    await scrollThrough(page);
     const oSubmit = page.getByTestId("opportunity-submit");
+    await oSubmit.waitFor({ state: "attached", timeout: 45_000 });
+    await scrollThrough(page);
     await expect(oSubmit, "opportunity submit disabled with empty note").toBeDisabled();
     await page.getByTestId("opportunity-note").fill("AI 算力需求还在增长，但要观察估值与集中度是否回撤");
     await expect(oSubmit, "opportunity submit enabled once note >= 8").toBeEnabled();
