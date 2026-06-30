@@ -46,6 +46,7 @@ yarn-error.log*
 /test-results/
 /agency-agents-review/
 /tmp-ui-check/
+.cloudflared/
 
 # typescript
 *.tsbuildinfo

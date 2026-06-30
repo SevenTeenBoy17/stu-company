@@ -195,7 +195,7 @@ describe("normalizeBehaviorPersona", () => {
     const text = `这里是模型解释：\n{
       "band": "growth",
       "label": "进取挑战者",
-      "archetype": "敢冲榜",
+      "archetype": "进取探索",
       "summary": "你倾向于追逐成长。",
       "evidence": ["频繁交易", "现金比例偏低"],
       "nextSteps": ["先写买入理由", "设置回撤线"],
@@ -205,7 +205,7 @@ describe("normalizeBehaviorPersona", () => {
 
     expect(persona.band).toBe("growth");
     expect(persona.label).toBe("进取挑战者");
-    expect(persona.archetype).toBe("敢冲榜");
+    expect(persona.archetype).toBe("进取探索");
     expect(persona.summary).toBe("你倾向于追逐成长。");
     expect(persona.evidence).toEqual(["频繁交易", "现金比例偏低"]);
     expect(persona.nextSteps).toEqual(["先写买入理由", "设置回撤线"]);

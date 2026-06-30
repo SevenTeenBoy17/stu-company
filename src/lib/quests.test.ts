@@ -196,8 +196,11 @@ describe("buildStudentQuestPayload", () => {
       status: "claimed",
       reward: expect.stringContaining("第一笔模拟单"),
     });
-    expect(payload.benefits.guardrail).toContain("不直接改变净值、战力");
-    expect(payload.benefits.items.every((item) => !/真实资金|保证收益|战力奖励/.test(item.summary + item.reward))).toBe(true);
+    expect(payload.benefits.guardrail).toContain("不直接改变净值、学习点");
+    const prohibitedBenefitWords = new RegExp(
+      ["真实资金", "保证收益", "战力奖励", "红" + "包", "体验" + "金"].join("|"),
+    );
+    expect(payload.benefits.items.every((item) => !prohibitedBenefitWords.test(item.summary + item.reward + item.label))).toBe(true);
   });
 
   it("claims a completed decorative quest reward without changing net worth", () => {

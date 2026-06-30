@@ -55,7 +55,7 @@ test.describe("prelaunch smoke", () => {
     await page.getByRole("button", { name: /游客体验/ }).click();
     await expect(page).toHaveURL(/\/student/, { timeout: 30_000 });
     await expect(page.locator("body")).toContainText("学生策略台");
-    await expect(page.getByText("游客可立即开通完整 AI 评定")).toBeVisible();
+    await expect(page.getByText("游客先绑定个人账号，再请家长确认开通")).toBeVisible();
     await expect(page.getByText(/This page couldn't load/i)).toHaveCount(0);
   });
 
@@ -128,6 +128,101 @@ test.describe("prelaunch smoke", () => {
         subscriptionTier: "standard",
       }),
     });
+  });
+
+  test("parent confirmation link opens pricing checkout for the linked student", async ({ page }) => {
+    test.setTimeout(60_000);
+    const studentLogin = await page.request.post("/api/auth/login", {
+      data: { email: "student@brownzone.ai", password: "BrownZone2026!" },
+    });
+    expect(studentLogin.ok()).toBe(true);
+
+    const linkResponse = await page.request.post("/api/billing/parent-link");
+    expect(linkResponse.ok()).toBe(true);
+    const linkPayload = await linkResponse.json();
+    expect(linkPayload.url).toContain("/pricing?upgrade=");
+    expect(linkPayload.token).toBeTruthy();
+
+    const forbiddenStudentPrepay = await page.request.post("/api/billing/prepay", {
+      data: { tier: "standard", channel: "native", billingIntentToken: linkPayload.token },
+    });
+    expect(forbiddenStudentPrepay.status()).toBe(403);
+
+    await page.request.post("/api/auth/logout");
+    const parentLogin = await page.request.post("/api/auth/login", {
+      data: { email: "parent@brownzone.ai", password: "BrownZone2026!" },
+    });
+    expect(parentLogin.ok()).toBe(true);
+
+    await page.goto(linkPayload.url);
+    await expect(page.getByText(/你正在通过孩子分享的链接/)).toBeVisible();
+    await expect(page.getByText("当前确认链接用于标准版月卡")).toBeVisible();
+    await expect(page.getByRole("button", { name: "微信开通 30 元/月" })).toHaveCount(0);
+
+    const prepayResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/billing/prepay") &&
+        response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "微信开通 15 元/月" }).click();
+    const prepayResponse = await prepayResponsePromise;
+    expect(prepayResponse.ok()).toBe(true);
+    const prepayRequestBody = prepayResponse.request().postDataJSON();
+    expect(prepayRequestBody).toMatchObject({
+      tier: "standard",
+      channel: "manual",
+      billingIntentToken: linkPayload.token,
+    });
+    expect(prepayRequestBody).not.toHaveProperty("targetUserId");
+    const prepayPayload = await prepayResponse.json();
+    expect(prepayPayload).toMatchObject({
+      amountFen: 1500,
+      manual: true,
+      paymentMode: "wechat_manual",
+    });
+    await expect(page.getByText("微信人工收款订单已生成")).toBeVisible();
+
+    const status = await page.request.get(
+      `/api/billing/order-status?outTradeNo=${encodeURIComponent(prepayPayload.outTradeNo)}`,
+    );
+    expect(status.ok()).toBe(true);
+    await expect(status.json()).resolves.toMatchObject({
+      paid: false,
+      status: "pending",
+      channel: "manual",
+      targetUser: expect.objectContaining({ id: "student-1" }),
+    });
+  });
+
+  test("anonymous parent checkout preserves the upgrade link through login", async ({ page }) => {
+    test.setTimeout(60_000);
+    const studentLogin = await page.request.post("/api/auth/login", {
+      data: { email: "student@brownzone.ai", password: "BrownZone2026!" },
+    });
+    expect(studentLogin.ok()).toBe(true);
+
+    const linkResponse = await page.request.post("/api/billing/parent-link");
+    expect(linkResponse.ok()).toBe(true);
+    const linkPayload = await linkResponse.json();
+    expect(linkPayload.url).toContain("/pricing?upgrade=");
+    expect(linkPayload.token).toBeTruthy();
+    await page.request.post("/api/auth/logout");
+
+    await page.goto(linkPayload.url);
+    await page.getByTestId("wechat-checkout-start").click();
+
+    await expect(page).toHaveURL(/\/demo\?/);
+    const loginUrl = new URL(page.url());
+    const next = loginUrl.searchParams.get("next");
+    expect(next).toContain("/pricing?upgrade=");
+    expect(next).toContain(linkPayload.token);
+
+    await page.getByRole("textbox", { name: "邮箱 / 账号" }).fill("parent@brownzone.ai");
+    await page.getByLabel("密码").fill("BrownZone2026!");
+    await page.getByRole("button", { name: /登录并进入工作台/ }).click();
+
+    await expect(page).toHaveURL(/\/pricing\?upgrade=/);
+    expect(new URL(page.url()).searchParams.get("upgrade")).toBe(linkPayload.token);
   });
 
   test("market ticker api returns a stable payload", async ({ request }) => {

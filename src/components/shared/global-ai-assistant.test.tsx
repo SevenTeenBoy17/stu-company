@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
@@ -28,9 +28,42 @@ async function openPanel() {
   return user;
 }
 
+function mockReducedMotion(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)" ? matches : false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe("GlobalAiAssistant (guest)", () => {
+  const originalMatchMedia = window.matchMedia;
+  const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
+
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: originalMatchMedia,
+    });
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: originalScrollIntoView,
+    });
+    vi.restoreAllMocks();
   });
 
   it("renders the launcher and keeps the panel closed initially", () => {
@@ -63,6 +96,42 @@ describe("GlobalAiAssistant (guest)", () => {
     // ground truth: clicking the launcher mounts the panel (send affordance appears).
     expect(await screen.findByRole("button", { name: "发送消息" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/问我任何问题/)).toBeInTheDocument();
+  });
+
+  it("scrolls smoothly to the latest message by default", async () => {
+    server.use(http.post(AI_CHAT_ENDPOINT, () => HttpResponse.json({ reply: "ok", provider: "remote" })));
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    mockReducedMotion(false);
+
+    const user = await openPanel();
+    await user.type(screen.getByRole("textbox"), "scroll check");
+    await user.click(screen.getByRole("button", { name: "发送消息" }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "end" }),
+    );
+  });
+
+  it("uses instant scrolling when the user prefers reduced motion", async () => {
+    server.use(http.post(AI_CHAT_ENDPOINT, () => HttpResponse.json({ reply: "ok", provider: "remote" })));
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    mockReducedMotion(true);
+
+    const user = await openPanel();
+    await user.type(screen.getByRole("textbox"), "scroll check");
+    await user.click(screen.getByRole("button", { name: "发送消息" }));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "end" }),
+    );
   });
 
   it("sends a prompt and renders the assistant reply (remote success)", async () => {

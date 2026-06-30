@@ -126,6 +126,14 @@ function getLatestContextMeta(messages: AiChatMessage[]) {
   };
 }
 
+function preferredScrollBehavior(): ScrollBehavior {
+  if (typeof window === "undefined") return "auto";
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
 export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -443,7 +451,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    messagesEndRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "end" });
   }, [isOpen, messages]);
 
   const placeholder =

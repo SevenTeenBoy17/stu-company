@@ -394,6 +394,17 @@ select {
     transform: none !important;
     animation: none !important;
   }
+
+  .quest-flip-inner,
+  .quest-flip-face {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .quest-flip-face[aria-hidden="true"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 }
 
 .bz-primary-action {

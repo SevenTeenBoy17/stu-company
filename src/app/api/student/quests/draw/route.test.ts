@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api-guard", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/billing/subscription", () => ({ canUserOperate: vi.fn() }));
 vi.mock("@/lib/db/repo", () => ({
   drawCardForUser: vi.fn(),
   getLearningProgress: vi.fn(),
@@ -11,6 +12,7 @@ vi.mock("@/lib/quests", () => ({ buildStudentQuestPayload: vi.fn() }));
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError } from "@/lib/api-response";
+import { canUserOperate } from "@/lib/billing/subscription";
 import {
   drawCardForUser,
   getLearningProgress,
@@ -67,6 +69,7 @@ describe("POST /api/student/quests/draw", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(requireUser).mockResolvedValue(asRequireUser({ user: STUDENT }));
+    vi.mocked(canUserOperate).mockReturnValue(true);
     vi.mocked(getSimulationStateForUser).mockResolvedValue(asState({ run }));
     vi.mocked(getLearningProgress).mockResolvedValue(learning);
     vi.mocked(buildStudentQuestPayload).mockReturnValue({
@@ -147,6 +150,18 @@ describe("POST /api/student/quests/draw", () => {
     expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
   });
 
+  it("blocks learning-card claims when the trial or subscription cannot operate", async () => {
+    vi.mocked(canUserOperate).mockReturnValue(false);
+
+    const res = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("forbidden");
+    expect(body.message).toContain("试用已结束");
+    expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
+  });
+
   it("returns 429 with Chinese message after 20 draws from one user within the window", async () => {
     // Use a unique user id so this test has its own isolated rate-limit bucket.
     const RL_USER = { ...STUDENT, id: "student-rl-draw-test" };
@@ -169,7 +184,7 @@ describe("POST /api/student/quests/draw", () => {
 
   it("propagates auth blocks and maps DB failures to db_unavailable", async () => {
     vi.mocked(requireUser).mockResolvedValueOnce(
-      asRequireUser({ error: apiError("unauthorized", "请先登录后再抽取任务卡。", 401) }),
+      asRequireUser({ error: apiError("unauthorized", "请先登录后再领取任务学习卡。", 401) }),
     );
     const unauthorized = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
     expect(unauthorized.status).toBe(401);

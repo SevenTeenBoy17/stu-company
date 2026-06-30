@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { canUserOperate } from "@/lib/billing/subscription";
 import { claimQuestRewardForUser, getLearningProgress, getSimulationStateForUser } from "@/lib/db/repo";
 import { buildStudentQuestPayload } from "@/lib/quests";
 
@@ -37,10 +38,14 @@ export async function POST(request: Request) {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
+  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
+    return apiError("forbidden", "试用已结束，请升级后继续领取任务学习卡。", 403);
+  }
+
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return apiError("invalid_input", "请选择要领取的任务奖励。", 400);
+      return apiError("invalid_input", "请选择要领取的任务学习卡。", 400);
     }
 
     const outcome = await claimQuestRewardForUser(auth.user.id, parsed.data.questId);
@@ -49,6 +54,6 @@ export async function POST(request: Request) {
       claimed: outcome.claimed,
     });
   } catch (error) {
-    return handleRouteError(error, "任务奖励领取失败，请稍后再试。");
+    return handleRouteError(error, "任务学习卡领取失败，请稍后再试。");
   }
 }

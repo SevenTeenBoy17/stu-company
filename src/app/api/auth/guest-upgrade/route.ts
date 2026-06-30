@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     });
 
     const { token, intent } = await createBillingIntent({
+      purpose: "parent-link-prepay",
       userId: user.id,
       tier: "standard",
     });
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
       redirectTo: "/student",
       billingIntentToken: token,
       billingIntent: intent,
+      parentLinkUrl: `/pricing?upgrade=${encodeURIComponent(token)}`,
       user: {
         id: user.id,
         email: user.email,

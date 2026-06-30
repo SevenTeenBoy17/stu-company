@@ -177,7 +177,7 @@ function buildCoach(summary: WealthSummary, run: ScenarioRun, learning: Learning
           ? "先把风险温度降下来"
           : "把好习惯变成连续任务",
     summary:
-      "任务中心不会直接增加战力，它只把真实行为转成可见目标。这样既保留榜单公平，也让你知道自己下一步该练哪一种能力。",
+      "任务中心不会直接增加学习点，它只把真实行为转成可见目标。这样既保留学习榜公平，也让你知道自己下一步该练哪一种能力。",
     nextActions: nextActions.slice(0, 3),
   };
 }
@@ -206,14 +206,14 @@ function buildBenefits(
       id: "guess-direction",
       kind: "practice",
       title: "猜涨跌微练习",
-      label: "波动红包",
+      label: "波动观察",
       summary: "先写下你对下一回合冷热方向的判断，再用结果复盘“预测为什么会失误”。",
       href: "/student/market",
       actionLabel: "去市场雷达练习",
       reward: "装饰贴纸：波动侦探",
       progress: clamp(opportunityCount / 1, 0, 1),
       status: benefitStatus(opportunityCount / 1),
-      guardrail: "猜测只用于训练概率感，不改变净值、战力和排行榜。",
+      guardrail: "猜测只用于训练概率感，不改变净值、学习点和学习榜。",
     },
     {
       id: "season-mini-league",
@@ -226,26 +226,26 @@ function buildBenefits(
       reward: "称号：稳健挑战者",
       progress: clamp((reviewCount + fundLabCount) / 3, 0, 1),
       status: benefitStatus((reviewCount + fundLabCount) / 3),
-      guardrail: "赛事奖励只做展示，不额外发放战力。",
+      guardrail: "赛事奖励只做展示，不额外发放学习点。",
     },
     {
       id: "trial-cash-lab",
       kind: "perk",
-      title: "体验金首单训练",
-      label: "体验金",
+      title: "模拟资金首单训练",
+      label: "练习资金",
       summary: "完成第一笔模拟交易后，系统会引导你复盘“为什么买、亏了怎么办、什么时候退出”。",
       href: "/student",
       actionLabel: tradeCount > 0 ? "回到策略台复盘" : "去策略台完成首单",
       reward: "头像角标：第一笔模拟单",
       progress: clamp(tradeCount / 1, 0, 1),
       status: benefitStatus(tradeCount / 1),
-      guardrail: "体验金是课堂练习概念，不是真实资金，也不进入真实交易。",
+      guardrail: "练习资金只用于课堂模拟，不是真实资金，也不进入真实交易。",
     },
     {
       id: "learn-to-earn",
       kind: "perk",
       title: "学投资课程领皮肤",
-      label: "学习红包",
+      label: "学习皮肤",
       summary: "完成课程与小测后解锁界面皮肤，让“先学再做”变成可见的成长仪式。",
       href: "/learn",
       actionLabel: "去投教课程",
@@ -271,8 +271,8 @@ function buildBenefits(
 
   return {
     title: "活动权益中心",
-    summary: "把参考图里的波动红包、模拟炒股、学习红包和大盘晴雨，改造成未成年人友好的课堂练习货架。",
-    guardrail: "所有活动权益都只用于学习、装饰和复盘，不直接改变净值、战力或真实收益。",
+    summary: "把参考图里的波动观察、模拟资金练习、学习皮肤和大盘晴雨，改造成未成年人友好的课堂练习货架。",
+    guardrail: "所有活动权益都只用于学习、装饰和复盘，不直接改变净值、学习点或真实收益。",
     items,
   };
 }
@@ -308,7 +308,7 @@ export function buildStudentQuestPayload(
       progress: clamp(wealth.diversificationScore / 72, 0, 1),
       target: "学会不把鸡蛋放在同一个篮子里",
       reward: "装饰称号：均衡侦探",
-      coachNote: `当前分散度 ${wealth.diversificationScore}，奖励只做展示，不影响战力。`,
+      coachNote: `当前分散度 ${wealth.diversificationScore}，奖励只做展示，不影响学习点。`,
     }),
     withClaimState(run, {
       id: "cash-buffer-20",
@@ -520,7 +520,7 @@ export function claimQuestReward(
       title: quest.title,
       reward: quest.reward,
       claimedAt,
-      summary: "奖励已加入你的成长轨迹。它只作为装饰和记录，不会直接改变战力或净值。",
+      summary: "奖励已加入你的成长轨迹。它只作为装饰和记录，不会直接改变学习点或净值。",
     },
   };
 }

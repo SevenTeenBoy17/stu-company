@@ -933,7 +933,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               type="button"
               onClick={() =>
                 dispatchAssistantOpen({
-                  prompt: "请结合我当前仓位、现金流和排行榜位置，给我下一回合建议。",
+                  prompt: "请结合我当前仓位、现金流和学习榜位置，给我下一回合建议。",
                   autoSend: true,
                 })
               }
@@ -965,7 +965,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
           {/* Eyebrow on light panel → bz-eyebrow */}
           <p className="bz-eyebrow bz-brand-text-on-light">Leaderboard</p>
-          <h2 className="mt-3 text-display-sm font-semibold text-fg-strong">排行榜与当前位置</h2>
+          <h2 className="mt-3 text-display-sm font-semibold text-fg-strong">学习榜与当前位置</h2>
           <div className="mt-5 space-y-3">
             {topLeaderboard.map((entry) => {
               const isCurrentUser = entry.userId === state.user.id;

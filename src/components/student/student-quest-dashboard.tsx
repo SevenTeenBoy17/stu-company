@@ -122,13 +122,13 @@ const benefitStatusLabel: Record<StudentBenefitStatus, string> = {
   claimed: "已点亮",
 };
 
-// 去射幸（合规）：稀有度文案中性化为「收藏分组」语义，移除 COMMON/RARE/EPIC 开奖色彩。
-// 卡牌奖励本就只装饰、不改净值/战力/排行榜，这里只去掉感知层的"中奖"暗示（面向未成年人）。
+// 去射幸（合规）：收藏分组文案中性化，移除 COMMON/RARE/EPIC 开奖色彩。
+// 卡牌奖励本就只装饰、不改净值/学习点/学习榜，这里只去掉感知层的"中奖"暗示（面向未成年人）。
 const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string }> = {
   common: { label: "基础", className: "border-slate-200 bg-slate-50 text-slate-700" },
   rare: { label: "进阶", className: "border-brand/25 bg-brand-subtle text-brand-ink" },
-  // 「典藏」在深色卡面(bg-slate-950)上用浅靛蓝 text-sky-200(~13:1，AA 通过)，不再用金色高亮做开奖惊喜。
-  epic: { label: "典藏", className: "border-sky-300/35 bg-sky-300/15 text-sky-200" },
+  // 「系统」在深色卡面(bg-slate-950)上用浅靛蓝 text-sky-200(~13:1，AA 通过)，避免开奖刺激。
+  epic: { label: "系统", className: "border-sky-300/35 bg-sky-300/15 text-sky-200" },
 };
 
 const questCardAssetBase = "/brand/quest-cards";
@@ -161,6 +161,11 @@ function questIdFromCard(item: QuestCardCollectionView | CardCollectionItem) {
   return typeof item.meta?.questId === "string" ? item.meta.questId : null;
 }
 
+// 卡面 teachingLine（记忆层）↔ 触发任务的财商概念（行为层）的显式语义指针：来源任务 category。
+function questCategoryFromCard(item: QuestCardCollectionView | CardCollectionItem) {
+  return typeof item.meta?.category === "string" ? item.meta.category : null;
+}
+
 function progressAria(label: string, percent: number) {
   // §13 可访问性：进度条需 role=progressbar + aria-valuenow，且 valuenow 用真实进度（不被视觉最小宽度污染）。
   return {
@@ -170,6 +175,24 @@ function progressAria(label: string, percent: number) {
     "aria-valuemin": 0,
     "aria-valuemax": 100,
   };
+}
+
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function preferredScrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? "auto" : "smooth";
+}
+
+function focusAfterFlip(element: HTMLElement | null) {
+  if (!element) return;
+  element.focus({ preventScroll: true });
+  window.setTimeout(() => {
+    if (document.activeElement !== element) {
+      element.focus({ preventScroll: true });
+    }
+  }, 0);
 }
 
 function QuestCardFallbackArt({ card }: { card: QuestCard }) {
@@ -727,39 +750,55 @@ function MissionRouteNode({
 }) {
   const profile = questVisualProfileFor(quest, index);
   const progress = Math.round(quest.progress * 100);
-  const [revealed, setRevealed] = useState(active || quest.status === "done");
-  const isRevealed = revealed || active;
+  const [revealed, setRevealed] = useState(false);
+  const isRevealed = revealed;
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const selectButtonRef = useRef<HTMLButtonElement>(null);
+  const hasInteractedRef = useRef(false);
 
-  const flipAndSelect = () => {
+  const revealRouteCard = () => {
+    hasInteractedRef.current = true;
     setRevealed(true);
-    onSelect(quest.id);
   };
+  const hideRouteCard = () => {
+    hasInteractedRef.current = true;
+    setRevealed(false);
+  };
+
+  useEffect(() => {
+    if (!hasInteractedRef.current) return;
+    focusAfterFlip(isRevealed ? selectButtonRef.current : backButtonRef.current);
+  }, [isRevealed]);
 
   return (
     <div
       data-route-node
       key={quest.id}
       className={cn(
-        "group relative min-h-[176px] rounded-[1.5rem] [perspective:1100px]",
+        "group relative min-h-[156px] rounded-[1.5rem] [perspective:1100px] sm:min-h-[176px]",
         active && "z-10",
       )}
     >
       <div
         data-route-flip-inner
         className={cn(
-          "absolute inset-0 rounded-[1.5rem] transition-transform duration-700 [transform-style:preserve-3d]",
+          "quest-flip-inner absolute inset-0 rounded-[1.5rem] transition-transform duration-700 [transform-style:preserve-3d]",
           isRevealed && "[transform:rotateY(180deg)]",
         )}
       >
         <button
+          ref={backButtonRef}
           type="button"
-          onClick={flipAndSelect}
+          onClick={revealRouteCard}
           aria-label={`翻开航线 ${index + 1} 的任务卡：${profile.visualTitle}`}
+          aria-controls={`mission-route-card-front-${quest.id}`}
+          aria-expanded={isRevealed}
           aria-hidden={isRevealed}
-          inert={isRevealed}
-          className="absolute inset-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950 p-4 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
+          inert={isRevealed ? true : undefined}
+          data-testid={`mission-route-card-back-${quest.id}`}
+          className="quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950 p-3 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-4 [backface-visibility:hidden]"
         >
-          <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-30 blur-2xl" style={{ background: profile.accent }} />
+          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-2xl" style={{ background: profile.accent }} />
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_42%,rgba(240,138,56,0.12))]" />
           <div className="relative z-10 flex items-start justify-between gap-3">
             <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
@@ -767,49 +806,73 @@ function MissionRouteNode({
             </span>
             <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950">点击翻开</span>
           </div>
-          <div className="relative z-10 mt-4 flex items-center gap-4">
-            <CreaturePortrait profile={profile} className="h-20 w-20 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+          <div className="relative z-10 mt-3 flex items-center gap-3 sm:mt-4 sm:gap-4">
+            <CreaturePortrait profile={profile} className="h-12 w-12 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 sm:h-16 sm:w-16" />
             <div className="min-w-0 flex-1">
-              <p className="text-xl font-black text-white">任务锦囊</p>
+              <p className="text-base font-black text-white sm:text-lg">任务锦囊</p>
               <p className="mt-1 line-clamp-1 text-sm font-bold text-white/62">{profile.creatureName} 正在守护线索</p>
-              <div {...progressAria(`${profile.visualTitle} 进度`, progress)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/12">
+              <div {...progressAria(`${profile.visualTitle} 进度`, progress)} className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/12 sm:mt-3">
                 <div className="h-full rounded-full" style={{ width: `${Math.max(8, progress)}%`, background: profile.accent }} />
               </div>
             </div>
           </div>
         </button>
 
-        <button
-          type="button"
-          onClick={() => onSelect(quest.id)}
+        <div
+          id={`mission-route-card-front-${quest.id}`}
+          role="group"
           aria-label={`选择航线 ${index + 1}：${profile.visualTitle}，${progress}%`}
           aria-hidden={!isRevealed}
-          inert={!isRevealed}
+          inert={!isRevealed ? true : undefined}
+          data-testid={`mission-route-card-front-${quest.id}`}
           className={cn(
-            "absolute inset-0 overflow-hidden rounded-[1.5rem] border p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden] [transform:rotateY(180deg)]",
+            "quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border p-3 text-left shadow-sm transition duration-300 sm:p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]",
             active ? "border-brand bg-white shadow-[0_22px_70px_rgba(240,138,56,0.20)]" : "border-slate-200 bg-white/86 hover:border-brand/40",
           )}
           style={{ background: active ? profile.softBg : undefined }}
         >
-          <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-20 blur-2xl" style={{ background: profile.accent }} />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-black text-slate-800 shadow-sm">
-              航线 {index + 1}
-            </span>
-            <QuestStatusBadge status={quest.status} />
-          </div>
-          <div className="relative z-10 mt-4 flex items-center gap-4">
-            <CreaturePortrait profile={profile} className="h-20 w-20 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xl font-black text-slate-950">{profile.visualTitle}</p>
-              <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">{profile.creatureName}</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">{profile.shortAction}</span>
-                <span className="text-xs font-bold tabular-nums text-slate-500">{progress}%</span>
+          <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-2xl" style={{ background: profile.accent }} />
+          <div className="relative z-10 flex h-full flex-col">
+            <div className="flex items-start justify-between gap-2 sm:gap-3">
+              <span className="rounded-full bg-white/85 px-3 py-1 text-xs font-black text-slate-800 shadow-sm">
+                航线 {index + 1}
+              </span>
+              <QuestStatusBadge status={quest.status} />
+            </div>
+            <div className="mt-3 flex min-h-0 flex-1 items-center gap-3 sm:mt-4 sm:gap-4">
+              <CreaturePortrait profile={profile} className="h-12 w-12 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 sm:h-16 sm:w-16" />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-black text-slate-950 sm:text-lg">{profile.visualTitle}</p>
+                <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">{profile.creatureName}</p>
+                <div className="mt-2 flex items-center gap-2 sm:mt-3">
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">{profile.shortAction}</span>
+                  <span className="text-xs font-bold tabular-nums text-slate-500">{progress}%</span>
+                </div>
               </div>
             </div>
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:mt-3">
+              <button
+                ref={selectButtonRef}
+                type="button"
+                onClick={() => onSelect(quest.id)}
+                aria-label={`选择航线 ${index + 1}：${profile.visualTitle}，${progress}%`}
+                aria-pressed={active}
+                data-testid={`mission-route-select-${quest.id}`}
+                className="inline-flex min-h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                选择航线
+              </button>
+              <button
+                type="button"
+                onClick={hideRouteCard}
+                data-testid={`mission-route-return-${quest.id}`}
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white/75 px-3 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-brand/45 hover:text-brand-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                翻回
+              </button>
+            </div>
           </div>
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -822,7 +885,10 @@ function SeasonObjectiveCreatureCard({
   objective: StudentSeasonChallengePayload["objectives"][number];
   index: number;
 }) {
-  const [revealed, setRevealed] = useState(objective.done);
+  const [revealed, setRevealed] = useState(false);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const primaryLinkRef = useRef<HTMLAnchorElement>(null);
+  const hasInteractedRef = useRef(false);
   const pseudoQuest = {
     id: objective.id,
     category:
@@ -838,74 +904,118 @@ function SeasonObjectiveCreatureCard({
   } as QuestItem;
   const profile = questVisualProfileFor(pseudoQuest, index);
   const progressText = `${Math.min(objective.target, Math.round(objective.progress * objective.target))}/${objective.target}`;
+  const revealObjective = () => {
+    hasInteractedRef.current = true;
+    setRevealed(true);
+  };
+  const hideObjective = () => {
+    hasInteractedRef.current = true;
+    setRevealed(false);
+  };
+
+  useEffect(() => {
+    if (!hasInteractedRef.current) return;
+    focusAfterFlip(revealed ? primaryLinkRef.current : backButtonRef.current);
+  }, [revealed]);
 
   return (
     <div
       data-motion-card
       data-objective-creature
       key={objective.id}
-      className="group relative min-h-[176px] rounded-[1.55rem] [perspective:1100px]"
+      className="group relative min-h-[224px] rounded-[1.55rem] [perspective:1100px]"
     >
       <div
         data-objective-flip-inner
         className={cn(
-          "absolute inset-0 rounded-[1.55rem] transition-transform duration-700 [transform-style:preserve-3d]",
+          "quest-flip-inner absolute inset-0 rounded-[1.55rem] transition-transform duration-700 [transform-style:preserve-3d]",
           revealed && "[transform:rotateY(180deg)]",
         )}
       >
         <button
+          ref={backButtonRef}
           type="button"
-          onClick={() => setRevealed(true)}
-          aria-label={`翻开赛季任务卡：${profile.visualTitle}`}
+          onClick={revealObjective}
+          aria-label={`翻开赛季任务卡：${profile.visualTitle}，进度 ${progressText}`}
+          aria-controls={`season-objective-card-front-${objective.id}`}
+          aria-expanded={revealed}
           aria-hidden={revealed}
-          inert={revealed}
-          className="absolute inset-0 overflow-hidden rounded-[1.55rem] border border-slate-200 bg-slate-950 p-4 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
+          inert={revealed ? true : undefined}
+          data-testid={`season-objective-card-back-${objective.id}`}
+          className="quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white p-4 text-left text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 hover:shadow-[0_22px_58px_rgba(240,138,56,0.16)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
+          style={{ background: profile.softBg }}
         >
-          <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-30 blur-2xl" style={{ background: profile.accent }} />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_42%,rgba(240,138,56,0.12))]" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <CreaturePortrait profile={profile} className="h-16 w-16 transition duration-300 group-hover:-translate-y-1" />
-            <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950 shadow-sm">
-              翻开任务
+          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-2xl" style={{ background: profile.accent }} />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.84),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.68),transparent_46%,rgba(240,138,56,0.10))]" />
+          <div className="relative z-10 flex items-start justify-between gap-2 sm:gap-3">
+            <CreaturePortrait profile={profile} className="h-14 w-14 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+            <span className="rounded-full bg-white/82 px-3 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm ring-1 ring-white">
+              {progressText}
             </span>
           </div>
           <div className="relative z-10 mt-4">
-            <h3 className="text-xl font-black text-white">{profile.visualTitle}</h3>
-            <p className="mt-1 line-clamp-1 text-sm font-bold text-white/62">{profile.creatureName} 带来一个小挑战</p>
-            <div {...progressAria(`${profile.visualTitle} 进度`, objective.progress * 100)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/12">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
+                卡背
+              </span>
+              <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950 shadow-sm">
+              翻开任务
+              </span>
+            </div>
+            <h3 className="mt-3 text-lg font-black text-slate-950">{profile.visualTitle}</h3>
+            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-600">{profile.creatureName} 带来一个小挑战</p>
+            <div {...progressAria(`${profile.visualTitle} 进度`, objective.progress * 100)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/70">
               <div className="h-full rounded-full" style={{ width: `${Math.max(8, objective.progress * 100)}%`, background: profile.accent }} />
             </div>
           </div>
         </button>
 
         <div
+          id={`season-objective-card-front-${objective.id}`}
           aria-hidden={!revealed}
-          inert={!revealed}
+          inert={!revealed ? true : undefined}
+          data-testid={`season-objective-card-front-${objective.id}`}
           className={cn(
-            "absolute inset-0 overflow-hidden rounded-[1.55rem] border p-4 shadow-sm transition duration-300 [backface-visibility:hidden] [transform:rotateY(180deg)]",
+            "quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border p-4 shadow-sm transition duration-300 [backface-visibility:hidden] [transform:rotateY(180deg)]",
             objective.done ? "border-up/20 bg-up-soft" : "border-slate-200 bg-white hover:border-brand/35",
           )}
           style={{ background: objective.done ? undefined : profile.softBg }}
         >
-          <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-20 blur-2xl" style={{ background: profile.accent }} />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <CreaturePortrait profile={profile} className="h-16 w-16 transition duration-300 group-hover:-translate-y-1" />
-            <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm">
-              {progressText}
-            </span>
-          </div>
-          <div className="relative z-10 mt-4">
-            <h3 className="text-xl font-black text-slate-950">{profile.visualTitle}</h3>
-            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">{profile.plantLabel}</p>
+          <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-2xl" style={{ background: profile.accent }} />
+          <div className="relative z-10 flex h-full flex-col">
+            <div className="flex items-start justify-between gap-3">
+              <CreaturePortrait profile={profile} className="h-14 w-14 transition duration-300 group-hover:-translate-y-1" />
+              <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm">
+                {progressText}
+              </span>
+            </div>
+            <div className="mt-3 min-h-0 flex-1">
+              <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">任务正面</span>
+              <h3 className="mt-3 text-xl font-black text-slate-950">{profile.visualTitle}</h3>
+              <p className="mt-1 line-clamp-2 text-sm font-bold leading-6 text-slate-600">{objective.detail}</p>
+              <p className="mt-2 line-clamp-1 text-xs font-black text-brand-ink">{profile.conceptTag} · {profile.plantLabel}</p>
+            </div>
             <div {...progressAria(`${profile.visualTitle} 进度`, objective.done ? 100 : objective.progress * 100)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/70">
               <div className="h-full rounded-full" style={{ width: `${Math.max(objective.done ? 100 : 8, objective.progress * 100)}%`, background: profile.accent }} />
             </div>
-            <Link
-              href={objective.href}
-              className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
-            >
-              去完成
-            </Link>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Link
+                ref={primaryLinkRef}
+                href={objective.href}
+                aria-label={`去完成赛季任务：${profile.visualTitle}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                去完成
+              </Link>
+              <button
+                type="button"
+                onClick={hideObjective}
+                aria-label={`翻回赛季任务卡背：${profile.visualTitle}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white/70 px-4 text-xs font-black text-slate-700 transition hover:-translate-y-0.5 hover:border-brand/40 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                翻回卡背
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1073,7 +1183,7 @@ function QuestCommanderPanel({
       className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft"
     >
       <div className="grid gap-0 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <div className="relative min-h-[320px] overflow-hidden bg-slate-950 text-white">
+        <div className="relative min-h-[260px] overflow-hidden bg-slate-950 text-white sm:min-h-[320px]">
           <Image
             src={`${questWorldAssetBase}/commander-mission.webp`}
             alt="任务指挥官、锦囊与动物行星插画"
@@ -1084,7 +1194,7 @@ function QuestCommanderPanel({
             data-testid="quest-commander-image"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/58 to-slate-950/10" />
-          <div className="relative z-10 flex min-h-[320px] flex-col justify-between p-6 md:p-7">
+          <div className="relative z-10 flex min-h-[260px] flex-col justify-between p-5 sm:min-h-[320px] md:p-7">
             <div>
               <p className="bz-eyebrow-inverse">指挥官简报</p>
               <h2 className="mt-3 max-w-lg text-display-md font-semibold md:text-display-lg">先和指挥官对话，再打开任务锦囊</h2>
@@ -1210,8 +1320,8 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
   );
 }
 
-// 集卡套系进度（doc §2.2）：把「N 张已收藏」升级为有完成度的三套系进度，
-// 助推「差 N 张→去完成对应任务」（非诱导再抽，抽取已确定性）；禁倒计时词。
+// 学习工具组进度（doc §2.2）：把「N 张已收藏」升级为有完成度的三套系进度，
+// 只表达学习路径，不使用数量缺口、完成套系等收集压力词；禁倒计时词。
 function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
   const progress = useMemo(
     () => buildCollectionProgress(items.map((item) => item.card.id), questCardDeck),
@@ -1246,10 +1356,10 @@ function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-5 text-fg-muted">
               {s.complete
-                ? `✓ ${s.label}套系已集齐 · 这组工具你都练过一遍`
+                ? `✓ ${s.label}工具组已点亮 · 这组工具你都练过一遍`
                 : s.series === "systems-thinking"
                   ? "赛季限定 · 即将开放"
-                  : `还差 ${s.total - s.owned} 张 · 完成对应任务即可集齐`}
+                  : `已收藏 ${s.owned}/${s.total} · 完成对应任务继续点亮`}
             </p>
           </div>
         );
@@ -1273,7 +1383,7 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
             <h2 className="text-h1 font-semibold text-fg-strong">我的卡库</h2>
           </div>
           <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-            卡片只记录学习与复盘轨迹，不改变净值、战力或排行榜。刷新页面后，已经抽到的卡也会继续保留。
+            卡片只记录学习与复盘轨迹，不改变净值、学习点或学习榜。刷新页面后，已经收藏的卡也会继续保留。
           </p>
         </div>
         <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold tabular-nums text-white">
@@ -1317,6 +1427,11 @@ function QuestCardCollection({ items }: { items: QuestCardCollectionView[] }) {
                     <BadgeCheck className="h-3 w-3 text-[var(--down-700)]" /> 已收藏 · NO.{cardNo}
                   </span>
                   <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-fg-strong">{item.card.teachingLine}</p>
+                  {questCategoryFromCard(item) ? (
+                    <p className="mt-1 text-[11px] font-bold text-brand-ink">
+                      呼应你练过的「{questCategoryLabel(questCategoryFromCard(item)!)}」
+                    </p>
+                  ) : null}
                   <div className="mt-3 rounded-[1.1rem] bg-white/72 p-3 text-xs leading-5 text-fg-muted">
                     来自「{cardTheme.world}」· {questTitle}
                   </div>
@@ -1448,7 +1563,7 @@ function MascotRewardModal({
       <div
         ref={cardRef}
         onClick={(event) => event.stopPropagation()}
-        className="relative z-10 w-full max-w-[720px] overflow-hidden rounded-[2rem] text-white shadow-[0_40px_120px_rgba(2,6,23,0.5)]"
+        className="relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-[720px] overflow-x-hidden overflow-y-auto rounded-[2rem] text-white shadow-[0_40px_120px_rgba(2,6,23,0.5)]"
         style={{ background: `linear-gradient(135deg, ${theme.from} 0%, ${theme.via} 54%, ${theme.to} 100%)` }}
       >
         <span
@@ -1475,6 +1590,11 @@ function MascotRewardModal({
             <h2 className="mt-4 text-display-md font-black leading-[1.05] sm:text-display-lg">{theme.creature}</h2>
             <p className="mt-1 text-h3 font-bold text-white/92">{item.card.name}</p>
             <p className="mt-3 max-w-sm text-body-sm font-medium leading-7 text-white/82">{item.card.teachingLine}</p>
+            {questCategoryFromCard(item) ? (
+              <p className="mt-2 text-caption font-semibold text-white/80">
+                这张卡呼应你刚练的「{questCategoryLabel(questCategoryFromCard(item)!)}」
+              </p>
+            ) : null}
             <p className="mt-3 text-caption font-semibold text-white/72">
               来自「{theme.world}」· 卡片只记录学习轨迹，不代表真实收益
             </p>
@@ -1616,7 +1736,7 @@ function CompanionAlbum({
             <h2 className="text-h1 font-semibold text-fg-strong">伙伴图鉴</h2>
           </div>
           <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-            每收藏一类任务卡，就点亮一位学习伙伴。集齐已开放的伙伴，记录你的学习足迹。
+            每收藏一类任务卡，就点亮一位学习伙伴。点亮已开放的伙伴，记录你的学习足迹。
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold tabular-nums text-white">
@@ -1727,6 +1847,8 @@ export function StudentQuestDashboard({
   const [claimError, setClaimError] = useState("");
   const [drawError, setDrawError] = useState("");
   const [flippedQuestIds, setFlippedQuestIds] = useState<ReadonlySet<string>>(() => new Set());
+  const questFlipButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const questBackActionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const { contextSafe } = useGSAP(
     () => {
@@ -1845,11 +1967,20 @@ export function StudentQuestDashboard({
     });
 
     const card = rootRef.current?.querySelector<HTMLElement>(`[data-quest-card-inner="${questId}"]`);
-    if (!card) return;
+    const focusTarget = () => {
+      focusAfterFlip(
+        nextFlipped ? questBackActionRefs.current[questId] ?? null : questFlipButtonRefs.current[questId] ?? null,
+      );
+    };
+    if (!card) {
+      focusTarget();
+      return;
+    }
 
     const targetRotation = nextFlipped ? 180 : 0;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       gsap.set(card, { rotateY: targetRotation, transformPerspective: 900 });
+      focusTarget();
       return;
     }
 
@@ -1858,6 +1989,7 @@ export function StudentQuestDashboard({
       transformPerspective: 900,
       duration: premiumMotion.duration.reward,
       ease: premiumMotion.ease.reward,
+      onComplete: focusTarget,
     });
   });
 
@@ -2062,7 +2194,7 @@ export function StudentQuestDashboard({
               把理财好习惯变成可完成的任务
             </h1>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
-              这里不会直接给战力加分，而是把你的学习、交易、现金管理和复盘行为变成可见目标。好任务让你知道下一步练什么，也让每次打开沙盘都有明确方向。
+              这里不会直接给学习点加分，而是把你的学习、交易、现金管理和复盘行为变成可见目标。好任务让你知道下一步练什么，也让每次打开沙盘都有明确方向。
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -2142,7 +2274,7 @@ export function StudentQuestDashboard({
                 <>
                   <p className="text-sm font-bold text-brand-warm">奖励已领取</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
-                    {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变战力或净值。
+                    {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变学习点或净值。
                   </p>
                 </>
               ) : null}
@@ -2157,7 +2289,7 @@ export function StudentQuestDashboard({
                 <>
                   <p className="text-sm font-bold text-brand-warm">已加入卡库</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
-                    你收藏了 {drawResult.card.name}。这张卡已加入“我的卡库”，只记录学习轨迹，不改变净值、战力或排行榜。
+                    你收藏了 {drawResult.card.name}。这张卡已加入“我的卡库”，只记录学习轨迹，不改变净值、学习点或学习榜。
                   </p>
                 </>
               ) : null}
@@ -2323,9 +2455,21 @@ export function StudentQuestDashboard({
           </div>
 
           <div className="grid gap-4 bg-white p-5 md:p-6 xl:grid-cols-2">
-            {season.objectives.map((objective, index) => (
-              <SeasonObjectiveCreatureCard key={objective.id} objective={objective} index={index} />
-            ))}
+            {season.objectives.length > 0 ? (
+              season.objectives.map((objective, index) => (
+                <SeasonObjectiveCreatureCard key={objective.id} objective={objective} index={index} />
+              ))
+            ) : (
+              <div
+                data-testid="season-objectives-empty"
+                className="flex min-h-[204px] flex-col justify-center rounded-[1.55rem] border border-dashed border-slate-200 bg-slate-50/80 p-5 xl:col-span-2"
+              >
+                <p className="text-lg font-black text-slate-950">本周任务正在整理</p>
+                <p className="mt-2 max-w-xl text-sm font-bold leading-6 text-slate-600">
+                  先完成一条任务航线或一次复盘，系统会把新的观察、分散、保护目标补到这里。
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -2393,9 +2537,9 @@ export function StudentQuestDashboard({
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <div
-                      data-testid={`quest-card-front-${quest.id}`}
+                      data-testid={`quest-card-back-${quest.id}`}
                       aria-hidden={isFlipped}
-                      inert={isFlipped}
+                      inert={isFlipped ? true : undefined}
                       className="absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(145deg,#fffaf2,white_45%,#eef6ff)] p-5 shadow-lg shadow-slate-950/5"
                       style={{ backfaceVisibility: "hidden" }}
                     >
@@ -2404,7 +2548,7 @@ export function StudentQuestDashboard({
                       <div className="relative z-10 flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="bz-eyebrow bz-brand-text-on-light">任务锦囊</p>
-                          <h3 className="mt-2 text-h2 text-fg-strong">第 {visualIndex + 1} 号任务锦囊</h3>
+                          <h3 className="mt-2 text-h2 text-fg-strong">第 {visualIndex + 1} 号任务卡背</h3>
                         </div>
                         <QuestStatusBadge status={quest.status} />
                       </div>
@@ -2433,22 +2577,29 @@ export function StudentQuestDashboard({
                         />
                       </div>
                       <button
+                        ref={(node) => {
+                          questFlipButtonRefs.current[quest.id] = node;
+                        }}
                         data-motion-button
                         type="button"
                         data-testid={`quest-flip-${quest.id}`}
                         aria-pressed={isFlipped}
+                        aria-controls={`quest-card-front-${quest.id}`}
+                        aria-expanded={isFlipped}
+                        aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开任务卡正面：${quest.title}`}
                         onClick={() => toggleQuestFlip(quest.id)}
                         className="relative z-10 mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
                         <PackageOpen className="h-4 w-4" />
-                        打开任务锦囊
+                        翻开任务正面
                       </button>
                     </div>
 
                     <div
-                      data-testid={`quest-card-back-${quest.id}`}
+                      id={`quest-card-front-${quest.id}`}
+                      data-testid={`quest-card-front-${quest.id}`}
                       aria-hidden={!isFlipped}
-                      inert={!isFlipped}
+                      inert={!isFlipped ? true : undefined}
                       className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
                       style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                     >
@@ -2459,10 +2610,12 @@ export function StudentQuestDashboard({
                         </div>
                         <button
                           type="button"
+                          data-testid={`quest-return-back-${quest.id}`}
+                          aria-label={`翻回任务卡背面：${quest.title}`}
                           onClick={() => toggleQuestFlip(quest.id)}
                           className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
-                          返回任务
+                          翻回卡背
                         </button>
                       </div>
                       <div className="mt-5 grid gap-3">
@@ -2475,7 +2628,12 @@ export function StudentQuestDashboard({
                           <p className="mt-2 text-sm font-semibold leading-6 text-white">{quest.reward}</p>
                         </div>
                         <button
+                          ref={(node) => {
+                            questBackActionRefs.current[quest.id] = node;
+                          }}
                           type="button"
+                          data-testid={`quest-detail-trigger-${quest.id}`}
+                          aria-label={`查看任务详情：${quest.title}`}
                           onClick={() => setDetailQuestId(quest.id)}
                           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
@@ -2501,6 +2659,9 @@ export function StudentQuestDashboard({
                           <p className="mt-2 text-sm font-semibold leading-6 text-white/76">
                             {collectedCard.card.teachingLine}
                           </p>
+                          <p className="mt-1 text-[11px] font-bold text-brand-warm">
+                            呼应你刚练的「{questCategoryLabel(quest.category)}」
+                          </p>
                         </div>
                       ) : (
                         <div className="hidden sm:block">
@@ -2508,7 +2669,7 @@ export function StudentQuestDashboard({
                         </div>
                       )}
                       <p className="mt-3 text-[11px] font-semibold leading-5 text-white/55">
-                        完成任务即可获得对应卡片 · 仅作学习收藏，不改变净值、战力或排行榜。
+                        完成任务即可获得对应卡片 · 仅作学习收藏，不改变净值、学习点或学习榜。
                       </p>
                       <button
                         data-motion-button
@@ -2645,7 +2806,7 @@ export function StudentQuestDashboard({
                   <p className="text-sm font-semibold text-fg-strong">第 {day.round} 回合</p>
                   <span className="text-xs font-semibold text-fg-muted">{day.label}</span>
                 </div>
-                <p className="mt-3 text-xl font-bold tabular-nums">
+                <p className="mt-3 break-words text-sm font-bold tabular-nums sm:text-base">
                   <MoneyText>{formatCurrency(day.netWorth)}</MoneyText>
                 </p>
                 <p className="mt-2 text-sm font-semibold tabular-nums">
@@ -2662,7 +2823,7 @@ export function StudentQuestDashboard({
             <h2 className="text-h1 font-semibold text-fg-strong">成就墙</h2>
           </div>
           <p className="mt-2 text-body leading-7 text-fg-muted">
-            成就只代表学习轨迹，不代表真实投资能力，也不会直接改变榜单战力。
+            成就只代表学习轨迹，不代表真实投资能力，也不会直接改变学习榜位置。
           </p>
           <div className="mt-5 space-y-3">
             {questPayload.achievements.map((achievement) => (
@@ -2712,7 +2873,7 @@ export function StudentQuestDashboard({
             if (typeof document !== "undefined") {
               document
                 .querySelector('[data-testid="quest-card-collection"]')
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
             }
           }}
         />

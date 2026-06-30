@@ -6,7 +6,7 @@ describe("handleRouteError", () => {
   it("maps the client-side query-race 'timed out' error to 503 db_unavailable — never leaks the raw internal message", async () => {
     // Regression: withQueryTimeout throws "<fn> timed out after Nms" ("timed out",
     // not "timeout"). The old regex used /timeout/ and missed it, so the raw
-    // English message leaked to a student on the 财商战力榜 onboarding screen.
+    // English message leaked to a student on the learning-growth board onboarding screen.
     const res = handleRouteError(
       new Error("findOrCreateSchool timed out after 5000ms"),
       "保存排行榜信息失败，请稍后再试。",

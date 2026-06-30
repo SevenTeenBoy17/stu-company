@@ -91,8 +91,8 @@ export function SeasonLeaderboard() {
           {topThreeViewer ? (
             <p className="mt-3 rounded-xl bg-brand-subtle px-3 py-2 text-center text-sm font-bold text-brand-ink">
               {topThreeViewer.rank === 1
-                ? "🥇 本周你暂列第一，守住到周一刷新！"
-                : `${topThreeViewer.rank === 2 ? "🥈" : "🥉"} 你已挤进本周前三，继续加油！`}
+                ? "🥇 本周你的复盘表现很稳定，继续保持节奏！"
+                : `${topThreeViewer.rank === 2 ? "🥈" : "🥉"} 本周你的学习记录进入前列，继续复盘！`}
             </p>
           ) : null}
           <ol className="mt-3 space-y-1.5">

@@ -242,7 +242,8 @@ export function WechatCheckoutButton({
       });
       const data = (await response.json()) as CheckoutPayload;
       if (response.status === 401) {
-        window.location.href = "/demo?reason=login_required";
+        const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        window.location.href = `/demo?auth=login&reason=login_required&next=${encodeURIComponent(currentPath)}`;
         return;
       }
       setPayload(data);
@@ -365,6 +366,7 @@ export function WechatCheckoutButton({
 
       <button
         type="button"
+        data-testid="wechat-checkout-start"
         onClick={startCheckout}
         disabled={isPending}
         className="block w-full rounded-full bg-[var(--brand)] px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-md transition-all hover:bg-[var(--amber-600)] hover:shadow-lg disabled:opacity-60"

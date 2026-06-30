@@ -234,7 +234,7 @@ export interface AppSetting<TValue = unknown> {
 }
 
 export interface BillingIntent {
-  purpose: "guest-upgrade";
+  purpose: "guest-upgrade-prepay" | "parent-link-prepay";
   userId: string;
   tier: Exclude<SubscriptionTier, "free">;
   expiresAt: string;
@@ -263,6 +263,7 @@ export interface GuestUpgradeResult {
   redirectTo: "/student";
   billingIntentToken: string;
   billingIntent: BillingIntent;
+  parentLinkUrl: string;
   user: Pick<
     UserRecord,
     "id" | "email" | "name" | "role" | "trialExpiresAt" | "subscriptionTier"

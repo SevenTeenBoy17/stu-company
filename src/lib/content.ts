@@ -370,7 +370,7 @@ const learningModuleDefinitions: LearningModuleDefinition[] = [
       },
       {
         question: "每周挑战赛应该鼓励学生提交什么？",
-        options: ["策略理由和风险复盘", "只提交最终净值", "只截图最高排名", "完全不解释操作"],
+        options: ["策略理由和风险复盘", "只提交最终净值", "只截图最好结果", "完全不解释操作"],
         answerIndex: 0,
         explanation: "有理由、有证据、有复盘的挑战才有教学价值。",
       },

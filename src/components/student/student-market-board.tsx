@@ -30,7 +30,14 @@ import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import type { PeerHeatPayload } from "@/lib/peer-heat";
 import type { StudentWatchlistPayload } from "@/lib/student-watchlist";
-import type { MarketBoardPayload, MarketCategoryId, MarketKlineCandle } from "@/lib/types";
+import type {
+  MarketBoardMetric,
+  MarketBoardPayload,
+  MarketBoardSector,
+  MarketBoardStock,
+  MarketCategoryId,
+  MarketKlineCandle,
+} from "@/lib/types";
 import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
@@ -46,6 +53,45 @@ function formatPrice(value: number) {
     minimumFractionDigits: value >= 100 ? 2 : 3,
     maximumFractionDigits: value >= 100 ? 2 : 3,
   });
+}
+
+function formatSignedPercent(value: number) {
+  if (value > 0) return `上涨 ${value.toFixed(2)}%`;
+  if (value < 0) return `下跌 ${Math.abs(value).toFixed(2)}%`;
+  return "持平 0.00%";
+}
+
+export function buildMarketKlineSummary(
+  stock: Pick<MarketBoardStock, "name" | "symbol" | "currentPrice" | "changePercent" | "miniSeries" | "candles">,
+) {
+  const firstPoint = stock.miniSeries[0] ?? stock.currentPrice;
+  const lastPoint = stock.miniSeries.at(-1) ?? stock.currentPrice;
+  const rangeChange = firstPoint === 0 ? 0 : ((lastPoint - firstPoint) / firstPoint) * 100;
+  const recentCandles = stock.candles.slice(-6);
+  const risingCandles = recentCandles.filter((item) => item.close >= item.open).length;
+  const trendLabel = rangeChange > 0.6 ? "整体上行" : rangeChange < -0.6 ? "整体回落" : "窄幅整理";
+
+  return `${stock.name}（${stock.symbol}）当前价格 ${formatPrice(stock.currentPrice)}，日内${formatSignedPercent(stock.changePercent)}。近 ${stock.miniSeries.length} 个趋势点呈现${trendLabel}，区间约${formatSignedPercent(rangeChange)}；最近 ${recentCandles.length} 根K线中 ${risingCandles} 根收涨。该图用于课堂复盘，不代表真实交易信号。`;
+}
+
+export function buildMarketRadarSummary(stockName: string, metrics: MarketBoardMetric[]) {
+  if (metrics.length === 0) return `${stockName} 暂无可比较的教学观察维度。`;
+
+  const sorted = [...metrics].sort((a, b) => b.score - a.score);
+  const strongest = sorted[0];
+  const weakest = sorted.at(-1) ?? strongest;
+
+  return `${stockName} 的 6 维观察里，最强项是${strongest.label}（${strongest.score}），需要重点复核的是${weakest.label}（${weakest.score}）。阅读雷达图时先比较强弱项，再结合右侧说明写出证据。`;
+}
+
+export function buildMarketSectorSummary(sectors: MarketBoardSector[]) {
+  if (sectors.length === 0) return "观察池暂时没有可汇总的板块结构。";
+
+  const sorted = [...sectors].sort((a, b) => b.changePercent - a.changePercent);
+  const strongest = sorted[0];
+  const weakest = sorted.at(-1) ?? strongest;
+
+  return `观察池覆盖 ${sectors.length} 个板块；当前最强的是${strongest.label}，${formatSignedPercent(strongest.changePercent)}，代表标的是 ${strongest.leadSymbol}；最弱的是${weakest.label}，${formatSignedPercent(weakest.changePercent)}，适合作为风险对照。`;
 }
 
 function buildLinePath(values: number[]) {
@@ -313,10 +359,16 @@ export function StudentMarketBoard({
   const linePath = useMemo(() => buildLinePath(payload.selected.miniSeries), [payload.selected.miniSeries]);
   const areaPath = useMemo(() => buildAreaPath(payload.selected.miniSeries), [payload.selected.miniSeries]);
   const candleGeometry = useMemo(() => buildCandleGeometry(payload.selected.candles), [payload.selected.candles]);
+  const klineSummary = useMemo(() => buildMarketKlineSummary(payload.selected), [payload.selected]);
+  const radarSummary = useMemo(
+    () => buildMarketRadarSummary(payload.selected.name, payload.selected.metrics),
+    [payload.selected.metrics, payload.selected.name],
+  );
   const sectorTotal = useMemo(
     () => payload.sectorPerformance.reduce((total, item) => total + Math.max(Math.abs(item.changePercent), 0.4), 0),
     [payload.sectorPerformance],
   );
+  const sectorSummary = useMemo(() => buildMarketSectorSummary(payload.sectorPerformance), [payload.sectorPerformance]);
   const sectorSlices = useMemo(
     () =>
       payload.sectorPerformance.map((item, index) => ({
@@ -435,7 +487,7 @@ export function StudentMarketBoard({
                   aria-pressed={activeTab}
                   data-motion-button
                   className={cn(
-                    "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-body-sm font-semibold transition-colors will-change-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500",
+                    "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-body-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500",
                     activeTab
                       ? "border-orange-400 bg-orange-100 text-orange-900 shadow-[0_12px_30px_rgba(240,138,56,0.22)]"
                       : "border-slate-200 bg-white text-fg-muted hover:border-orange-300 hover:text-orange-700",
@@ -466,6 +518,7 @@ export function StudentMarketBoard({
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                aria-label="搜索股票或代码"
                 placeholder="搜索股票或代码"
                 className="min-h-10 w-full bg-transparent text-body text-fg-default outline-none placeholder:text-fg-muted"
               />
@@ -491,7 +544,7 @@ export function StudentMarketBoard({
                   onClick={() => selectSymbol(item.symbol)}
                   data-motion-card
                   className={cn(
-                    "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200 will-change-transform",
+                    "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200",
                     active
                       ? "border-orange-400 bg-orange-50 shadow-[0_18px_44px_rgba(240,138,56,0.16)]"
                       : "border-slate-200 bg-white hover:border-orange-300 hover:bg-slate-50",
@@ -509,7 +562,7 @@ export function StudentMarketBoard({
                       </div>
                       <div className="min-w-0">
                         <p className="break-all text-body font-semibold leading-6 text-fg-strong">{item.name}</p>
-                        <p className="mt-1 text-caption uppercase tracking-[0.18em] text-fg-muted">
+                        <p className="mt-1 max-w-full truncate text-caption uppercase tracking-[0.08em] text-fg-muted">
                           {item.symbol}
                         </p>
                       </div>
@@ -777,7 +830,7 @@ export function StudentMarketBoard({
                       })
                     }
                     data-motion-button
-                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-body font-semibold text-white transition-colors hover:bg-white/15 will-change-transform"
+                    className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/10 px-4 text-body font-semibold text-white transition-colors hover:bg-white/15"
                   >
                     <Bot className="h-4 w-4" />
                     让 AI 解读
@@ -819,7 +872,12 @@ export function StudentMarketBoard({
                     </div>
                     <Activity className="h-5 w-5 text-brand-warm" />
                   </div>
-                  <svg aria-hidden="true" viewBox={`0 0 ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT}`} className="mt-4 h-52 w-full">
+                  <svg
+                    role="img"
+                    aria-label={`${payload.selected.name}（${payload.selected.symbol}）日 K 线速写：当前价格 ${formatPrice(payload.selected.currentPrice)}，日内变化 ${payload.selected.changePercent >= 0 ? "+" : ""}${payload.selected.changePercent.toFixed(2)}%。`}
+                    viewBox={`0 0 ${MINI_CHART_WIDTH} ${MINI_CHART_HEIGHT}`}
+                    className="mt-4 h-52 w-full"
+                  >
                     <defs>
                       <linearGradient id="market-board-fill" x1="0" x2="0" y1="0" y2="1">
                         <stop offset="0%" stopColor={payload.selected.accentColor} stopOpacity="0.42" />
@@ -863,6 +921,12 @@ export function StudentMarketBoard({
                     ))}
                     <path className="market-trend-line" d={linePath} fill="none" stroke="#fff4e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
+                  <p
+                    data-testid="market-kline-summary"
+                    className="mt-3 rounded-[1.25rem] border border-white/10 bg-white/[0.08] px-4 py-3 text-body-sm leading-6 text-white/75"
+                  >
+                    {klineSummary}
+                  </p>
                   <div className="mt-4 grid gap-2 text-caption font-semibold text-white/80 sm:grid-cols-3">
                     {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
                       <span key={task} data-motion-card className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
@@ -926,8 +990,15 @@ export function StudentMarketBoard({
             <p className="text-body-sm text-fg-muted">文字说明移到右侧，避免图内拥挤。</p>
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)]">
-            <div data-motion-viz className="flex items-center justify-center rounded-[2rem] bg-slate-50 p-4">
-              <svg aria-hidden="true" viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`} className="h-72 w-full max-w-[300px]">
+            <div data-motion-viz className="flex flex-col items-center justify-center rounded-[2rem] bg-slate-50 p-4">
+              <svg
+                role="img"
+                aria-label={`${payload.selected.name} 6 维教学观察雷达：${payload.selected.metrics
+                  .map((metric) => `${metric.label} ${metric.score}`)
+                  .join("，")}。`}
+                viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`}
+                className="h-72 w-full max-w-[300px]"
+              >
                 {[0.25, 0.5, 0.75, 1].map((ratio) => (
                   <polygon
                     key={ratio}
@@ -957,6 +1028,9 @@ export function StudentMarketBoard({
                 <path data-motion-viz-path d={radarPath} fill={`${payload.selected.accentColor}2b`} stroke={payload.selected.accentColor} strokeWidth="3" />
                 <circle data-motion-viz-point cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
               </svg>
+              <p data-testid="market-radar-summary" className="mt-3 text-center text-body-sm leading-6 text-fg-muted">
+                {radarSummary}
+              </p>
             </div>
             <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-1">
               {payload.selected.metrics.map((metric) => (
@@ -986,6 +1060,12 @@ export function StudentMarketBoard({
                 <span className="text-caption font-semibold text-fg-muted">观察标的</span>
               </div>
             </div>
+            <p
+              data-testid="market-sector-summary"
+              className="w-full rounded-[1.35rem] bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted"
+            >
+              {sectorSummary}
+            </p>
             <ul className="w-full space-y-2.5">
               {sectorSlices.map((item) => (
                 <li

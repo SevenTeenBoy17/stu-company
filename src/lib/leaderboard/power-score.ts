@@ -1,5 +1,5 @@
 /**
- * 财商战力 (Financial Power Score) — the leaderboard ranking metric.
+ * Financial learning score — the transparent growth-board metric.
  *
  * Decision 1: ranks decision QUALITY, not luck. A composite of risk-adjusted
  * return, discipline, drawdown control, learning completion, and growth — so a
@@ -69,7 +69,7 @@ export function powerComponents(input: PowerScoreInput): PowerComponents {
   };
 }
 
-/** 合成战力（0..maxPower）+ 分项（透明展示）。 */
+/** 合成学习积分（0..maxPower）+ 分项（透明展示）。 */
 export interface PowerScoreResult {
   power: number;
   components: PowerComponents;

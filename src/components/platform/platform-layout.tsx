@@ -30,7 +30,7 @@ const navMap: Record<Role, NavItem[]> = {
     { href: "/student/credit", label: "信用实验室", group: "life" },
     { href: "/student/quests", label: "任务中心", group: "learning" },
     { href: "/student/history", label: "历史复盘", group: "learning" },
-    { href: "/student/rank", label: "战力榜", group: "learning" },
+    { href: "/student/rank", label: "学习榜", group: "learning" },
     { href: "/learn", label: "课程模块", group: "learning" },
     { href: "/demo", label: "重新登录", group: "account" },
   ],
@@ -54,7 +54,7 @@ const navMap: Record<Role, NavItem[]> = {
 const studentNavGroups: Array<{ key: NonNullable<NavItem["group"]>; label: string; summary: string }> = [
   { key: "assets", label: "资产成长", summary: "基金、定投和风险画像" },
   { key: "life", label: "生活理财", summary: "预算、目标、信用和保护伞" },
-  { key: "learning", label: "学习留存", summary: "任务、复盘、课程与排行榜" },
+  { key: "learning", label: "学习留存", summary: "任务、复盘、课程与学习榜" },
   { key: "account", label: "账号", summary: "切换身份或重新登录" },
 ];
 

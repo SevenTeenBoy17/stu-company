@@ -14,6 +14,20 @@ async function expectNoHorizontalOverflow(page: import("playwright/test").Page) 
   expect(overflow).toBe(false);
 }
 
+async function routeCardLayout(page: import("playwright/test").Page) {
+  return page.locator('[data-testid^="mission-route-card-back-"]').evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      };
+    }),
+  );
+}
+
 test.describe("student gameflow regression", () => {
   test("auto-invest path stays compact and keeps only recent schedule nodes visible", async ({ page }) => {
     await loginAsStudent(page);
@@ -120,6 +134,106 @@ test.describe("student gameflow regression", () => {
       .locator('[data-testid^="achievement-badge-"] img')
       .evaluateAll((images) => images.length >= 7);
     expect(achievementBadgesLoaded).toBe(true);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("quest center tablet layout keeps route cards readable without horizontal overflow", async ({ page }) => {
+    await loginAsStudent(page);
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto("/student/quests", { waitUntil: "domcontentloaded" });
+
+    const commander = page.getByTestId("quest-commander-panel");
+    await expect(commander).toBeVisible();
+    await expect(page.locator('[data-testid^="mission-route-card-back-"]')).toHaveCount(4);
+    await expect(page.locator('[data-testid^="season-objective-card-back-"]')).toHaveCount(5);
+
+    const commanderBox = await commander.boundingBox();
+    expect(commanderBox?.width ?? 0).toBeGreaterThan(700);
+    expect(commanderBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(950);
+    const routeCards = await routeCardLayout(page);
+    expect(routeCards.every((card) => card.width > 320)).toBe(true);
+    expect(routeCards.every((card) => card.height >= 148)).toBe(true);
+    expect(new Set(routeCards.map((card) => card.x)).size).toBe(2);
+    expect(new Set(routeCards.map((card) => card.y)).size).toBe(2);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("mission route cards can be revealed and selected with keyboard only", async ({ page }) => {
+    await loginAsStudent(page);
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/student/quests", { waitUntil: "domcontentloaded" });
+
+    const secondBack = page.locator('[data-testid^="mission-route-card-back-"]').nth(1);
+    const secondFront = page.locator('[data-testid^="mission-route-card-front-"]').nth(1);
+    const secondSelect = page.locator('[data-testid^="mission-route-select-"]').nth(1);
+    const secondReturn = page.locator('[data-testid^="mission-route-return-"]').nth(1);
+
+    await expect(secondBack).toBeVisible();
+    await secondBack.focus();
+    await expect(secondBack).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(secondBack).toHaveAttribute("aria-hidden", "true");
+    await expect(secondFront).toHaveAttribute("aria-hidden", "false");
+    await expect(secondSelect).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(secondSelect).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Tab");
+    await expect(secondReturn).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(secondBack).toHaveAttribute("aria-hidden", "false");
+    await expect(secondFront).toHaveAttribute("aria-hidden", "true");
+    await expect(secondBack).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("season mission cards support keyboard reveal and return", async ({ page }) => {
+    await loginAsStudent(page);
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/student/quests", { waitUntil: "domcontentloaded" });
+
+    const firstBack = page.locator('[data-testid^="season-objective-card-back-"]').first();
+    const firstFront = page.locator('[data-testid^="season-objective-card-front-"]').first();
+    const primaryLink = page.getByRole("link", { name: /去完成赛季任务/ }).first();
+    const returnButton = page.getByRole("button", { name: /翻回赛季任务卡背/ }).first();
+
+    await firstBack.focus();
+    await expect(firstBack).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(firstBack).toHaveAttribute("aria-hidden", "true");
+    await expect(firstFront).toHaveAttribute("aria-hidden", "false");
+    await expect(primaryLink).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(returnButton).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(firstBack).toHaveAttribute("aria-hidden", "false");
+    await expect(firstFront).toHaveAttribute("aria-hidden", "true");
+    await expect(firstBack).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("season mission cards flip on mobile with reduced motion", async ({ page }) => {
+    await loginAsStudent(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/student/quests", { waitUntil: "domcontentloaded" });
+
+    const firstBack = page.locator('[data-testid^="season-objective-card-back-"]').first();
+    const firstFront = page.locator('[data-testid^="season-objective-card-front-"]').first();
+
+    await expect(firstBack).toBeVisible();
+    await expect(firstBack).toHaveAttribute("aria-hidden", "false");
+    await firstBack.click();
+
+    await expect(firstBack).toHaveAttribute("aria-hidden", "true");
+    await expect(firstFront).toHaveAttribute("aria-hidden", "false");
+    await expect(page.getByRole("link", { name: /去完成赛季任务/ }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /翻回赛季任务卡背/ }).first()).toBeVisible();
+    const commanderBox = await page.getByTestId("quest-commander-panel").boundingBox();
+    expect(commanderBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(1300);
     await expectNoHorizontalOverflow(page);
   });
 });

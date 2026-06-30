@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     await recomputePowerForUser(auth.user.id).catch(() => {});
 
     const progress = await getLearningProgress(auth.user.id);
-    return NextResponse.json({ progress, message: "已记录学习完成，财商战力的学习分已更新。" });
+    return NextResponse.json({ progress, message: "已记录学习完成，学习进度的课程分已更新。" });
   } catch (error) {
     return handleRouteError(error, "记录学习失败，请稍后再试。");
   }

@@ -9,21 +9,17 @@ import { ModuleIllustration } from "@/components/site/module-illustration";
 
 const levelFilters = [
   { label: "全部", value: "all" },
-  { label: "核心", value: "鏍稿績" },
-  { label: "进阶", value: "杩涢樁" },
-  { label: "运营", value: "杩愯惀" },
-  { label: "家校", value: "瀹舵牎" },
+  { label: "核心", value: "核心" },
+  { label: "进阶", value: "进阶" },
+  { label: "运营", value: "运营" },
+  { label: "家校", value: "家校" },
 ] as const;
 
 const levelTints: Record<string, string> = {
   "核心": "bg-[var(--amber-50)]",
-  "鏍稿績": "bg-[var(--amber-50)]",
   "进阶": "bg-[var(--info-50)]",
-  "杩涢樁": "bg-[var(--info-50)]",
   "运营": "bg-[var(--down-50)]",
-  "杩愯惀": "bg-[var(--down-50)]",
   "家校": "bg-[var(--warning-50)]",
-  "瀹舵牎": "bg-[var(--warning-50)]",
 };
 
 const levelLabels: Record<string, string> = Object.fromEntries(

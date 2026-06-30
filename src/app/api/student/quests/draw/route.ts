@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { canUserOperate } from "@/lib/billing/subscription";
 import { drawCard, questCardSeries, type QuestCard } from "@/lib/cards";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
@@ -46,6 +47,10 @@ export async function POST(request: Request) {
     const auth = await requireUser("student");
     if (auth.error) return auth.error;
 
+    if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
+      return apiError("forbidden", "试用已结束，请升级后继续领取任务学习卡。", 403);
+    }
+
     const rl = rateLimit(rateLimitKey("quest-draw", auth.user.id, request), 20, 60_000);
     if (!rl.ok) {
       return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
 
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return apiError("invalid_input", "请选择要抽取卡片的已完成任务。", 400);
+      return apiError("invalid_input", "请选择要领取学习卡的已完成任务。", 400);
     }
 
     const [state, learning, collection] = await Promise.all([
@@ -68,7 +73,7 @@ export async function POST(request: Request) {
       return apiError("invalid_input", "任务不存在，请刷新任务中心后再试。", 400);
     }
     if (!quest.claimable && !quest.claimed) {
-      return apiError("forbidden", "这个任务还没有完成，暂时不能抽取装饰卡。", 403);
+      return apiError("forbidden", "这个任务还没有完成，暂时不能领取学习卡。", 403);
     }
 
     const alreadyDrawn = existingCardForTrigger(collection, parsed.data.source, parsed.data.questId);
@@ -86,7 +91,7 @@ export async function POST(request: Request) {
     }
 
     const ownedCardIds = collection.map((item) => item.cardId);
-    // 去随机化（合规）：确定性领取下一张未拥有卡，不再用含 user.id 的 seed 抽稀有度。
+    // 去随机化（合规）：确定性领取下一张未拥有卡，不再用含 user.id 的 seed 生成收藏分组。
     const card = drawCard(questCardDeck, ownedCardIds);
     const collectionItem = await drawCardForUser(auth.user.id, {
       cardId: card.id,
@@ -98,6 +103,7 @@ export async function POST(request: Request) {
         runId: state.run.id,
         round: state.run.currentRound,
         rarity: card.rarity,
+        category: quest.category,
       },
     });
 
@@ -116,6 +122,6 @@ export async function POST(request: Request) {
       alreadyDrawn: false,
     });
   } catch (error) {
-    return handleRouteError(error, "任务装饰卡抽取失败，请稍后再试。");
+    return handleRouteError(error, "任务学习卡领取失败，请稍后再试。");
   }
 }

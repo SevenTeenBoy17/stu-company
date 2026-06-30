@@ -46,7 +46,7 @@ const ROUTES: RouteDef[] = [
   { name: "home", path: "/student", label: "学生主页 / 沙盘 hub" },
   { name: "market", path: "/student/market", label: "市场行情板" },
   { name: "history", path: "/student/history", label: "复盘 / 历史回顾" },
-  { name: "rank", path: "/student/rank", label: "财商战力榜" },
+  { name: "rank", path: "/student/rank", label: "学习成长榜" },
   { name: "wealth", path: "/student/wealth", label: "财富配置总览" },
   { name: "risk-profile", path: "/student/risk-profile", label: "风险测评" },
   { name: "auto-invest", path: "/student/auto-invest", label: "定投计划" },

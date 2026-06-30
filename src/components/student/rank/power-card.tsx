@@ -18,6 +18,14 @@ import {
 
 const SCOPE_ORDER: RankScope[] = ["school", "city", "province", "nation"];
 
+function preferredScrollBehavior(): ScrollBehavior {
+  if (typeof window === "undefined") return "auto";
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
 function tierAccent(tier: number): string {
   // Neutral -> gold ramp; avoids the market red/green so tiers never read as P&L.
   return (
@@ -107,7 +115,7 @@ export function PowerCard({
               ) : (
                 <Share2 className="h-3.5 w-3.5" />
               )}
-              {shareState === "copied" ? "已复制" : shareState === "failed" ? "复制失败" : "分享战绩"}
+              {shareState === "copied" ? "已复制" : shareState === "failed" ? "复制失败" : "分享学习记录"}
             </button>
           ) : (
             <span className="text-xs font-medium text-white/80">{card.seasonName} · 本周榜</span>
@@ -116,7 +124,7 @@ export function PowerCard({
 
         <div className="mt-6">
           <p className="text-xs font-medium uppercase tracking-wider text-white/75">
-            财商战力
+            学习点
             <span className="ml-1.5 normal-case tracking-normal text-white/60">· {card.seasonName} 本周榜</span>
           </p>
           <p className="bz-hero-stat text-hero-num mt-1 font-mono tabular-nums leading-none">
@@ -131,10 +139,10 @@ export function PowerCard({
           <div className="mt-5">
             <div className="flex items-center justify-between text-xs font-medium text-white/90">
               <span className="inline-flex items-center gap-1">
-                <TrendingUp className="h-3.5 w-3.5" /> 冲刺下一段位
+                <TrendingUp className="h-3.5 w-3.5" /> 接近下一学习区间
               </span>
               <span className="font-mono tabular-nums">
-                还差 {nextTierGap.toLocaleString("zh-CN")} 战力
+                还差 {nextTierGap.toLocaleString("zh-CN")} 学习点
               </span>
             </div>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/20">
@@ -148,7 +156,7 @@ export function PowerCard({
           </div>
         ) : (
           <p className="mt-5 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90">
-            <TrendingUp className="h-3.5 w-3.5" /> 已达最高段位，保持住！
+            <TrendingUp className="h-3.5 w-3.5" /> 已完成当前学习区间，继续记录！
           </p>
         )}
 
@@ -162,12 +170,13 @@ export function PowerCard({
               <button
                 key={scopeKey}
                 type="button"
+                data-testid={`rank-scope-${scopeKey}`}
                 aria-pressed={isSelected}
                 onClick={() => {
                   onScopeChange(scopeKey);
                   document
                     .getElementById("rank-board")
-                    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "nearest" });
                 }}
                 className={cn(
                   "relative cursor-pointer rounded-xl px-2 py-2.5 text-center backdrop-blur transition",
@@ -191,7 +200,7 @@ export function PowerCard({
 
         {!card.ranked ? (
           <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
-            完成一局沙盘即可生成战力并参与排名。
+            完成一局沙盘即可生成学习记录，并查看自己的复盘区间。
           </p>
         ) : card.consent !== 1 ? (
           <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
@@ -212,7 +221,7 @@ export function PowerCard({
       <section className="rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 text-brand" />
-          <h3 className="text-sm font-semibold text-fg-default">战力是怎么算出来的</h3>
+          <h3 className="text-sm font-semibold text-fg-default">学习点是怎么算出来的</h3>
         </div>
         <p className="mt-1.5 text-xs leading-5 text-fg-muted">
           满分 {formula.maxPower}。每项 = 该项表现 × 权重 × 满分。比的是决策质量，运气好乱赌不会更高。

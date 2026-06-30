@@ -23,8 +23,8 @@ gsap.registerPlugin(useGSAP);
 
 const rarityLabel: Record<StudentPetReward["rarity"], string> = {
   common: "基础",
-  rare: "稀有",
-  epic: "史诗",
+  rare: "进阶",
+  epic: "荣誉",
 };
 
 const rarityClass: Record<StudentPetReward["rarity"], string> = {
@@ -352,6 +352,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <button
               data-motion-button
               type="button"
+              aria-label="同步萌宠状态"
               onClick={() => void refreshPet()}
               disabled={isRefreshing}
               className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20 disabled:cursor-not-allowed disabled:opacity-60"
@@ -475,6 +476,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                   data-motion-card
                   key={reward.id}
                   type="button"
+                  aria-label={`${reward.unlocked ? "装备奖励" : "查看解锁条件"}：${reward.title}`}
                   onClick={() => {
                     if (reward.unlocked) {
                       setSelectedRewardId(reward.id);
@@ -522,6 +524,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <button
               data-motion-button
               type="button"
+              aria-label="让 KeyAI 解释奖励建议"
               onClick={() =>
                 dispatchAssistantOpen({
                   prompt: `请结合我的萌宠状态（${payload.pet.moodLabel}，等级 ${payload.pet.level}）和已解锁奖励，解释下一步该训练哪个理财习惯。`,

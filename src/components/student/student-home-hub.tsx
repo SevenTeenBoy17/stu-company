@@ -166,8 +166,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-white/82">{domain.summary}</p>
                     <div className="mt-4 min-w-0 rounded-2xl bg-slate-900/80 px-3 py-2">
                       <p className="text-caption text-white/78">{domain.metricLabel}</p>
-                      {/* 域卡较窄（xl 四列）：用可收缩字号 + truncate，长币种值(¥120,100)不再溢出到相邻卡片。 */}
-                      <p className="mt-1 truncate text-[1.75rem] font-extrabold leading-tight tracking-tight tabular-nums text-orange-200">
+                      <p className="mt-1 break-words text-h3 font-extrabold leading-tight tracking-tight tabular-nums text-orange-200">
                         {domain.metricValue}
                       </p>
                     </div>
@@ -237,6 +236,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             data-testid="season-claim"
             data-motion-button
             data-motion-reward={season.claimable && !season.claimed ? "true" : undefined}
+            aria-label={season.claimed ? "赛季奖励已领取" : season.claimable ? "领取赛季奖励" : "赛季奖励尚未解锁"}
             onClick={() => void claimSeasonReward()}
             disabled={!season.claimable || season.claimed || claimingSeason}
             className={cn(
@@ -286,6 +286,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               <Link
                 key={item.id}
                 href={item.href}
+                aria-label={`${item.title}：${item.summary}`}
                 data-daily-card
                 data-testid={`daily-action-${item.id}`}
                 className={cn(

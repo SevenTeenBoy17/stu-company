@@ -17,6 +17,7 @@ import {
   registerFieldErrors,
   type RegisterField,
 } from "@/lib/auth-validation";
+import { sanitizeAuthNextPath } from "@/lib/safe-next-path";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
 type Credentials = { label: string; email: string; trial?: boolean };
@@ -84,6 +85,7 @@ export function DemoPortal({
   const [registerErrors, setRegisterErrors] = useState<Partial<Record<RegisterField, string>>>({});
   const [message, setMessage] = useState<FormMessage | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState<string | null>(null);
 
   // Update a register field and clear that field's error the moment the user
   // starts correcting it, so the inline hint disappears as soon as it's stale.
@@ -103,6 +105,8 @@ export function DemoPortal({
     if (mode === "login" || mode === "register" || mode === "invite") {
       setActiveModal(mode);
     }
+    const next = sanitizeAuthNextPath(params.get("next"));
+    if (next) setNextPath(next);
     const verify = params.get("verify");
     if (verify === "success") {
       setMessage({ tone: "success", text: "邮箱验证成功，已激活完整功能。" });
@@ -155,7 +159,7 @@ export function DemoPortal({
 
   function redirectAfterLogin(path = "/demo") {
     startTransition(() => {
-      router.push(path);
+      router.push(nextPath ?? path);
       router.refresh();
     });
   }

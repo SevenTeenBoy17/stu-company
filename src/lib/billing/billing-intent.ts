@@ -4,11 +4,11 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import type { BillingIntent } from "@/lib/types";
 
-const PURPOSE = "guest-upgrade";
+const BILLING_INTENT_PURPOSES = ["guest-upgrade-prepay", "parent-link-prepay"] as const;
 const INTENT_TTL_SECONDS = 15 * 60;
 
 const billingIntentSchema = z.object({
-  purpose: z.literal(PURPOSE),
+  purpose: z.enum(BILLING_INTENT_PURPOSES),
   userId: z.string().min(1),
   tier: z.enum(["standard", "premium"]),
   exp: z.number().optional(),
@@ -25,10 +25,10 @@ function getBillingSecret() {
   return new TextEncoder().encode(secret);
 }
 
-export async function createBillingIntent(input: Pick<BillingIntent, "userId" | "tier">) {
+export async function createBillingIntent(input: Pick<BillingIntent, "purpose" | "userId" | "tier">) {
   const expiresAt = new Date(Date.now() + INTENT_TTL_SECONDS * 1000);
   const token = await new SignJWT({
-    purpose: PURPOSE,
+    purpose: input.purpose,
     userId: input.userId,
     tier: input.tier,
   })
@@ -41,7 +41,7 @@ export async function createBillingIntent(input: Pick<BillingIntent, "userId" | 
   return {
     token,
     intent: {
-      purpose: PURPOSE,
+      purpose: input.purpose,
       userId: input.userId,
       tier: input.tier,
       expiresAt: expiresAt.toISOString(),

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { StudentQuestDashboard, type QuestCardCollectionView } from "@/components/student/student-quest-dashboard";
@@ -46,7 +46,7 @@ function makeQuestPayload(): StudentQuestPayload {
     benefits: {
       title: "学习留存",
       summary: "把复盘变成连续任务。",
-      guardrail: "奖励只做装饰，不改变净值和排行榜。",
+      guardrail: "奖励只做装饰，不改变净值和学习榜。",
       items: [],
     },
     calendar: [
@@ -121,6 +121,123 @@ describe("StudentQuestDashboard quest flip", () => {
     vi.restoreAllMocks();
   });
 
+  it("reveals season objective cards from the playful card back", async () => {
+    render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
+
+    const user = userEvent.setup();
+    const cardBack = screen.getByTestId("season-objective-card-back-market-observe");
+    const cardFront = screen.getByTestId("season-objective-card-front-market-observe");
+
+    expect(cardBack).toHaveAttribute("aria-hidden", "false");
+    expect(cardBack).toHaveAttribute("aria-expanded", "false");
+    expect(cardBack).toHaveAttribute("aria-controls", "season-objective-card-front-market-observe");
+    expect(cardBack).toHaveTextContent("卡背");
+    expect(cardBack).toHaveTextContent("翻开任务");
+    expect(cardFront).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(cardBack);
+
+    expect(cardBack).toHaveAttribute("aria-hidden", "true");
+    expect(cardBack).toHaveAttribute("aria-expanded", "true");
+    expect(cardFront).toHaveAttribute("aria-hidden", "false");
+    expect(cardFront).toHaveTextContent("市场观察");
+    expect(cardFront).toHaveTextContent("加入 1 个自选观察");
+    expect(cardFront).toHaveTextContent("任务正面");
+    expect(cardFront).not.toHaveAttribute("inert");
+    const primaryLink = screen.getByRole("link", { name: "去完成赛季任务：市场观察" });
+    expect(primaryLink).toBeVisible();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(primaryLink);
+    });
+
+    await user.click(screen.getByRole("button", { name: "翻回赛季任务卡背：市场观察" }));
+    await waitFor(() => {
+      expect(cardBack).toHaveAttribute("aria-hidden", "false");
+      expect(cardBack).not.toHaveAttribute("inert");
+      expect(cardFront).toHaveAttribute("inert");
+      expect(document.activeElement).toBe(cardBack);
+    });
+  });
+
+  it("reveals mission route cards before selecting the route", async () => {
+    const payload = makeQuestPayload();
+    const secondQuest = {
+      ...payload.quests[0],
+      id: "portfolio-quest",
+      title: "做组合实验",
+      category: "finance" as const,
+      status: "active" as const,
+      progress: 0.2,
+      claimable: false,
+      claimed: false,
+      target: "做 1 次基金/ETF 实验或定投计划。",
+      reward: "组合研究员卡背",
+      coachNote: "先比较分散后的波动，再决定下一步。",
+    };
+
+    render(
+      <StudentQuestDashboard
+        payload={{ ...payload, quests: [payload.quests[0], secondQuest] }}
+        seasonPayload={makeSeasonPayload()}
+      />,
+    );
+
+    const user = userEvent.setup();
+    const routeBack = screen.getByTestId("mission-route-card-back-portfolio-quest");
+    const routeFront = screen.getByTestId("mission-route-card-front-portfolio-quest");
+
+    expect(routeBack).toHaveAttribute("aria-hidden", "false");
+    expect(routeBack).toHaveAttribute("aria-expanded", "false");
+    expect(routeBack).toHaveAttribute("aria-controls", "mission-route-card-front-portfolio-quest");
+    expect(routeFront).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(routeBack);
+
+    expect(routeBack).toHaveAttribute("aria-hidden", "true");
+    expect(routeBack).toHaveAttribute("aria-expanded", "true");
+    expect(routeFront).toHaveAttribute("aria-hidden", "false");
+    expect(routeFront).toHaveTextContent("组合实验");
+    const selectButton = screen.getByTestId("mission-route-select-portfolio-quest");
+    const returnButton = screen.getByTestId("mission-route-return-portfolio-quest");
+    await waitFor(() => {
+      expect(routeBack).toHaveAttribute("inert");
+      expect(routeFront).not.toHaveAttribute("inert");
+      expect(selectButton).toHaveAttribute("aria-pressed", "false");
+      expect(document.activeElement).toBe(selectButton);
+    });
+
+    await user.click(selectButton);
+    await waitFor(() => {
+      expect(selectButton).toHaveAttribute("aria-pressed", "true");
+    });
+
+    await user.click(returnButton);
+
+    await waitFor(() => {
+      expect(routeBack).toHaveAttribute("aria-hidden", "false");
+      expect(routeBack).not.toHaveAttribute("inert");
+      expect(routeFront).toHaveAttribute("inert");
+      expect(document.activeElement).toBe(routeBack);
+    });
+  });
+
+  it("shows a friendly empty state when no season objectives are available", () => {
+    render(
+      <StudentQuestDashboard
+        payload={makeQuestPayload()}
+        seasonPayload={{
+          ...makeSeasonPayload(),
+          completedObjectives: 0,
+          totalObjectives: 0,
+          progress: 0,
+          objectives: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("season-objectives-empty")).toHaveTextContent("本周任务正在整理");
+  });
+
   it("flips a weekly quest card to reveal reward and coach note", async () => {
     render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
 
@@ -129,22 +246,32 @@ describe("StudentQuestDashboard quest flip", () => {
     const flipButton = screen.getByTestId("quest-flip-observe-quest");
 
     expect(flipButton).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("第 1 号任务锦囊");
+    expect(flipButton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("第 1 号任务卡背");
 
     await user.click(flipButton);
 
     expect(flipButton).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("先写观察单");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("写下证据");
+    expect(flipButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("写下证据");
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId("quest-detail-trigger-observe-quest"));
+    });
 
     // findBy* (async) waits for the post-flip a11y tree to settle — the back-face content
     // renders immediately (testids above) but the accessibility tree can update a tick later,
     // which the synchronous getByRole loses on slower CI runners (passes locally, flaked on CI).
-    await user.click(await screen.findByRole("button", { name: "查看任务详情" }));
+    await user.click(await screen.findByRole("button", { name: /查看任务详情：先写观察单/ }));
     expect(await screen.findByRole("dialog")).toHaveTextContent("先看证据");
     await user.click(await screen.findByRole("button", { name: "关闭任务详情" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("quest-return-back-observe-quest"));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(flipButton);
+    });
   });
 
   it("claims a completed quest, draws a card, reveals it, and adds it to the collection", async () => {

@@ -59,8 +59,11 @@ export async function POST(request: Request) {
     }
 
     const intent = await verifyBillingIntent(body.billingIntentToken);
-    const intentTarget =
-      intent?.purpose === "guest-upgrade" && intent.tier === body.tier ? intent.userId : undefined;
+    const guestUpgradeTarget =
+      intent?.purpose === "guest-upgrade-prepay" && intent.tier === body.tier ? intent.userId : undefined;
+    const parentLinkTarget =
+      intent?.purpose === "parent-link-prepay" && intent.tier === body.tier ? intent.userId : undefined;
+    const intentTarget = guestUpgradeTarget ?? parentLinkTarget;
 
     const targetUserId = body.targetUserId ?? intentTarget ?? auth.user.id;
     const targetUser = await findUserById(targetUserId);
@@ -68,20 +71,16 @@ export async function POST(request: Request) {
       return apiError("not_found", "订阅目标账号不存在。", 404);
     }
 
-    const intentAuthorizesTarget = intentTarget !== undefined && intentTarget === targetUserId;
+    const guestUpgradeAuthorizesTarget = guestUpgradeTarget !== undefined && guestUpgradeTarget === targetUserId;
+    const parentLinkAuthorizesTarget = parentLinkTarget !== undefined && parentLinkTarget === targetUserId;
+    const intentAuthorizesTarget = guestUpgradeAuthorizesTarget || parentLinkAuthorizesTarget;
 
     if (auth.user.role === "student") {
       if (isSharedGuest(auth.user)) {
-        return apiError("forbidden", "请先升级为个人账号，再开通月卡。", 403);
+        return apiError("forbidden", "请先升级为个人账号，再生成家长确认链接。", 403);
       }
 
-      if (!intentAuthorizesTarget || intentTarget !== auth.user.id) {
-        return apiError(
-          "forbidden",
-          "学生账号不能直接发起付款，请通过游客升级入口或把家长付款链接发给家长完成开通。",
-          403,
-        );
-      }
+      return apiError("forbidden", "学生账号不能直接发起付款，请让家长或老师查看开通说明。", 403);
     } else if (!intentAuthorizesTarget) {
       if ((auth.user.role === "teacher" || auth.user.role === "parent") && !body.targetUserId) {
         return apiError("invalid_input", "请选择要开通的学生账号后再创建订单。", 400);

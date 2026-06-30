@@ -7,7 +7,7 @@ import { recomputeAllRankedUsers } from "@/lib/leaderboard/service";
 export const dynamic = "force-dynamic";
 
 /**
- * Vercel Cron daily 财商战力 recompute. Scheduled in vercel.json; Vercel sends
+ * Vercel Cron daily learning progress recompute. Scheduled in vercel.json; Vercel sends
  * `Authorization: Bearer $CRON_SECRET`. Refreshes every onboarded student's
  * weekly/monthly/season power so boards stay current and the season soft-floor
  * reset reaches inactive students at term boundaries.

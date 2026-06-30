@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Swords } from "lucide-react";
+import { ChevronRight, LineChart } from "lucide-react";
 
 import { SCOPE_LABELS, type PowerCardDTO, type RankScope } from "./types";
 
 const SCOPE_ORDER: RankScope[] = ["school", "city", "province", "nation"];
 
-/** Compact 财商战力 teaser for the student dashboard — drives discovery of /student/rank. */
+/** Compact learning progress teaser for the student dashboard — drives discovery of /student/rank. */
 export function PowerRankTeaser() {
   const [card, setCard] = useState<PowerCardDTO | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -28,14 +28,14 @@ export function PowerRankTeaser() {
         if (!alive) return;
         if (!response.ok) {
           setCard(null);
-          setError(data?.message ?? "战力入口暂时加载失败，请重试。");
+          setError(data?.message ?? "学习榜入口暂时加载失败，请重试。");
           return;
         }
         setCard(data?.card ?? null);
       } catch {
         if (alive) {
           setCard(null);
-          setError("网络连接不稳定，战力入口暂时加载失败。");
+          setError("网络连接不稳定，学习榜入口暂时加载失败。");
         }
       } finally {
         if (alive) setLoaded(true);
@@ -55,7 +55,7 @@ export function PowerRankTeaser() {
       <div className="mt-5 rounded-[1.7rem] border border-[var(--error-100)] bg-[var(--error-50)] p-5">
         <div className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--error-600)]">
-            <Swords className="h-4 w-4" /> 财商战力
+            <LineChart className="h-4 w-4" /> 学习进度
           </span>
           <button
             type="button"
@@ -82,18 +82,18 @@ export function PowerRankTeaser() {
     >
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-fg-default">
-          <Swords className="h-4 w-4 text-brand" /> 财商战力
+          <LineChart className="h-4 w-4 text-brand" /> 学习进度
         </span>
         <ChevronRight className="h-4 w-4 text-fg-muted" />
       </div>
 
       {!card || !card.hasProfile ? (
         <p className="mt-3 rounded-xl bg-brand-subtle px-3 py-3 text-center text-sm font-semibold text-brand-ink">
-          加入战力榜，和同校 / 同城同学比拼财商 →
+          建立学习档案，查看你的复盘节奏 →
         </p>
       ) : !card.ranked ? (
         <p className="mt-3 text-sm leading-6 text-fg-muted">
-          完成一局沙盘即可生成你的财商战力并参与排名。
+          完成一局沙盘即可生成学习记录，看到自己的复盘区间。
         </p>
       ) : (
         <div className="mt-3 flex items-end justify-between gap-3">
@@ -112,7 +112,7 @@ export function PowerRankTeaser() {
               ) : null}
             </p>
           </div>
-          <span className="shrink-0 text-xs font-medium text-brand">查看战力榜</span>
+          <span className="shrink-0 text-xs font-medium text-brand">查看学习榜</span>
         </div>
       )}
     </Link>

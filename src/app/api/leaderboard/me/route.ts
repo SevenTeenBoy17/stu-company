@@ -13,7 +13,7 @@ function coercePeriod(value: string | null): RankPeriod {
   return PERIODS.includes(value as RankPeriod) ? (value as RankPeriod) : "weekly";
 }
 
-/** The caller's 财商战力 card: power, tier, components, and 4-scope ranks. */
+/** The caller's 学习进度 card: learning points, tier, components, and 4-scope bands. */
 export async function GET(request: Request) {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
