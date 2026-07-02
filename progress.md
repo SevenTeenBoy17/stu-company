@@ -3543,3 +3543,20 @@ Honest correction: 之前"全套 33 passed"含 1 did-not-run —— 恰是 gamef
 CI 如实揭穿。修正：该断言段重写为新契约（主卡卡背 mission-card-back.webp 经 next/image 加载且
 naturalWidth≥300 + src 校验）；wealth/opportunity 表单挂载等待 45s→120s（CI 双核多路由并发编译实测可 >45s）。
 复验：gameflow+reveal-a11y 两 spec 本地 8/8 passed (1.7m)，axe serious/critical=0。
+
+## 2026-07-02 补记 2：CI E2E 连挂的系统化调试终局（三层根因）
+
+Systematic debugging (trace.zip 网络流水 = 决定性证据：429 /api/auth/login → 307 /student/wealth → 200 /demo?reason=login_required)：
+1. 【主因·容量回归】login-account 限流 12 次/10 分钟：全套 e2e 同一演示账号登录数十次，晚跑的
+   reveal-a11y submit-gating 必撞 429；loginApi 未断言返回 → 静默未登录 → 平台层重定向 /demo →
+   元素 120s 不挂载。bb5ae86 新增 22 测试把登录量推过阈值 = "从那时起连挂"的真相。
+   修复：rate-limit.ts 支持显式 E2E_RATE_LIMIT_MULTIPLIER（playwright.config webServer.env 注入 20×；
+   生产/常规 dev 不设置，行为不变）；submit-gating 的 loginApi 改为断言成功、快速失败。
+2. 【叠加·会话吊销】prelaunch 两处用 logout 切身份 → bumpTokenVersion 吊销共享 student@ 的所有
+   并行 worker 会话。修复：学生侧改走隔离的 request fixture，彻底去 logout（phase4 的 logout 用
+   一次性账号，安全保留）。
+3. 【本地噪声】长命 dev server 跨多轮套件累积状态（旧 store 日期/限流桶）曾制造 11-failed 假象；
+   另 Git Bash 下 taskkill /F 被 MSYS 转成 F:/ 杀不掉进程（用 PowerShell Stop-Process）。
+
+Gates: tsc ✓ / lint ✓ / rate-limit 单测 5/5 ✓ / 全套 e2e（全新 Playwright 自管 server + workers=2 CI 同构）
+= 41 passed, 1 skipped(既有条件跳过), 0 failed, 0 did-not-run (4.1m)。

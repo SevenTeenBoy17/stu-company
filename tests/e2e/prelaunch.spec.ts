@@ -130,25 +130,27 @@ test.describe("prelaunch smoke", () => {
     });
   });
 
-  test("parent confirmation link opens pricing checkout for the linked student", async ({ page }) => {
+  test("parent confirmation link opens pricing checkout for the linked student", async ({ page, request }) => {
     test.setTimeout(60_000);
-    const studentLogin = await page.request.post("/api/auth/login", {
+    // 学生侧全部走独立的 `request` fixture（与 page cookie 隔离），不再 logout 切换身份：
+    // logout 会 bumpTokenVersion 吊销 student@ 的所有在途 JWT，并行 worker 里其它 spec 的
+    // 会话会被连坐踢下线（CI 上 wealth-review-submit 永不挂载的根因）。
+    const studentLogin = await request.post("/api/auth/login", {
       data: { email: "student@brownzone.ai", password: "BrownZone2026!" },
     });
     expect(studentLogin.ok()).toBe(true);
 
-    const linkResponse = await page.request.post("/api/billing/parent-link");
+    const linkResponse = await request.post("/api/billing/parent-link");
     expect(linkResponse.ok()).toBe(true);
     const linkPayload = await linkResponse.json();
     expect(linkPayload.url).toContain("/pricing?upgrade=");
     expect(linkPayload.token).toBeTruthy();
 
-    const forbiddenStudentPrepay = await page.request.post("/api/billing/prepay", {
+    const forbiddenStudentPrepay = await request.post("/api/billing/prepay", {
       data: { tier: "standard", channel: "native", billingIntentToken: linkPayload.token },
     });
     expect(forbiddenStudentPrepay.status()).toBe(403);
 
-    await page.request.post("/api/auth/logout");
     const parentLogin = await page.request.post("/api/auth/login", {
       data: { email: "parent@brownzone.ai", password: "BrownZone2026!" },
     });
@@ -194,19 +196,20 @@ test.describe("prelaunch smoke", () => {
     });
   });
 
-  test("anonymous parent checkout preserves the upgrade link through login", async ({ page }) => {
+  test("anonymous parent checkout preserves the upgrade link through login", async ({ page, request }) => {
     test.setTimeout(60_000);
-    const studentLogin = await page.request.post("/api/auth/login", {
+    // 学生只在隔离的 `request` fixture 里生成链接；page 从未登录、天生匿名 —— 无需 logout
+    // （logout 会吊销共享 student@ 账号的所有并行会话，见上一个用例的注释）。
+    const studentLogin = await request.post("/api/auth/login", {
       data: { email: "student@brownzone.ai", password: "BrownZone2026!" },
     });
     expect(studentLogin.ok()).toBe(true);
 
-    const linkResponse = await page.request.post("/api/billing/parent-link");
+    const linkResponse = await request.post("/api/billing/parent-link");
     expect(linkResponse.ok()).toBe(true);
     const linkPayload = await linkResponse.json();
     expect(linkPayload.url).toContain("/pricing?upgrade=");
     expect(linkPayload.token).toBeTruthy();
-    await page.request.post("/api/auth/logout");
 
     await page.goto(linkPayload.url);
     await page.getByTestId("wechat-checkout-start").click();

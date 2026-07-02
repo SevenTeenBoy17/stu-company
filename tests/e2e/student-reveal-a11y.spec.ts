@@ -135,7 +135,8 @@ test.describe("学生端 P2 复测：揭示 / 无障碍 / 校验门", () => {
 
   test("submit gating mirrors server validation", async ({ page }) => {
     test.setTimeout(4 * 60_000);
-    await loginApi(page);
+    // 登录失败必须立刻失败（曾因 429 限流静默未登录 → 重定向 /demo → 120s 超时难排查）。
+    expect(await loginApi(page), "student login must succeed (429 = rate-limit, see E2E_RATE_LIMIT_MULTIPLIER)").toBe(true);
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // Wealth — note must be >= 8 chars (server: wealth-summary note.min(8)).
