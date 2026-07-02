@@ -96,37 +96,24 @@ test.describe("student gameflow regression", () => {
       .evaluate((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0);
     expect(imageLoaded).toBe(true);
 
-    const questCardThemes = await page
-      .locator('[data-testid^="quest-box-art-"]')
-      .evaluateAll((elements) => elements.map((element) => element.getAttribute("data-theme")).filter(Boolean));
-    expect(new Set(questCardThemes).size).toBe(questCardThemes.length);
-
-    await page.locator('[data-testid^="quest-box-art-"]').first().scrollIntoViewIfNeeded();
-
+    // 设计演进：盲盒卡阵(quest-box-art)已被统一「任务锦囊」卡背美术取代 ——
+    // 断言主卡卡背的 mission-card-back.webp 经 next/image 真实加载且足够清晰（≥300px 源宽）。
+    const mainCardBack = page.locator('[data-testid^="quest-card-back-"]').first();
+    await mainCardBack.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => {
-      const images = Array.from(document.querySelectorAll('[data-testid^="quest-box-art-"] img'));
-      // 当前设计：主区为单张任务锦囊主卡（航线节点用角色头像而非整张卡面），故 box-art 主卡为 1 张。
-      return (
-        images.length >= 1 &&
-        images.every((image) => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0)
-      );
+      const image = document.querySelector('[data-testid^="quest-card-back-"] img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth >= 300;
     });
-
-    const characterImagesLoaded = await page
-      .locator('[data-testid^="quest-box-art-"] img')
-      .evaluateAll((images) => {
-        const loaded = images.every(
-          (image) =>
-            image instanceof HTMLImageElement &&
-            image.complete &&
-            image.naturalWidth >= 90 &&
-            image.currentSrc.includes("/_next/image") &&
-            image.currentSrc.includes("quest-world"),
-        );
-        const mainCardIsCrisp = images[0] instanceof HTMLImageElement && images[0].naturalWidth >= 176;
-        return loaded && mainCardIsCrisp;
-      });
-    expect(characterImagesLoaded).toBe(true);
+    const backArtSrcOk = await mainCardBack
+      .locator("img")
+      .first()
+      .evaluate(
+        (image) =>
+          image instanceof HTMLImageElement &&
+          image.currentSrc.includes("/_next/image") &&
+          image.currentSrc.includes("mission-card-back"),
+      );
+    expect(backArtSrcOk).toBe(true);
 
     const queueCanScroll = await page
       .getByTestId("quest-queue-scroll")

@@ -3535,3 +3535,11 @@ Gates (real output):
 - npm run test → "Test Files  92 passed (92) / Tests  612 passed (612)"
 - npx playwright test (full) → "33 passed (3.1m), 1 skipped" exit 0 (incl. gameflow flip suite 6/6, reveal-a11y axe AA all student routes, internal-test 14 pages)
 - Visual: .tmp/shots re-1..re-5 — mid-turn 3D foreshortening, route/season fronts clean, 去完成 white-on-dark, crisp CJK glyphs (DPR2 zoom crop)
+
+## 2026-07-02 补记：CI E2E 红 → 测试契约修正（020e642 后续）
+
+Honest correction: 之前"全套 33 passed"含 1 did-not-run —— 恰是 gameflow "quest hub" 用例，
+其 quest-box-art 断言指向已被设计演进删除的 QuestBlindBoxArt（020e642 里仅测试残留该 testid），
+CI 如实揭穿。修正：该断言段重写为新契约（主卡卡背 mission-card-back.webp 经 next/image 加载且
+naturalWidth≥300 + src 校验）；wealth/opportunity 表单挂载等待 45s→120s（CI 双核多路由并发编译实测可 >45s）。
+复验：gameflow+reveal-a11y 两 spec 本地 8/8 passed (1.7m)，axe serious/critical=0。
