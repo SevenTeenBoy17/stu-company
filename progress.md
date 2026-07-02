@@ -3579,3 +3579,14 @@ Gates: tsc ✓ / lint ✓ / rate-limit 单测 5/5 ✓ / 全套 e2e（全新 Play
 Gates（真实输出）：tsc ✓ / eslint ✓ / vitest 92 文件 616/617（唯一失败=已知本地高负载 flake
 「reveals season objective cards」，单跑 8/8 绿、CI Unit 四连绿从未失败）/ npm run build ✓ /
 gameflow e2e 6/6 passed (24.9s)。quests.test 12/12（含 3 个新回归锁）。
+
+## 2026-07-02 批次 4：移动端横滑卡组重构（规格 §12.3/§19.7）
+
+五大高度贡献者在 sm 以下改横滑卡组（snap-x + 85%/88%/70% 宽=保留约 1.15 张露出；图鉴用双行横向流
+auto-cols-[44%] 滑动距离减半），sm 起完全还原原网格/列表；横滑容器自身 overflow-x-auto 裁剪，
+根级 scrollWidth 不受影响。
+实测（390px）：总高 14878 → 10076px（-32%）；赛季挑战 1816→664 / 权益中心 2057→741 /
+图鉴 1498→617 / 成就墙 1225→276 / 任务地图 1084→632；根级横向溢出 390/768 均为 0；
+平板 768 网格原样（season backs 5 张、宽 678px）。
+Gates：tsc ✓ / lint ✓ / gameflow e2e 6/6（含 390px reduced-motion 翻卡）/ 组件测试 8/8 /
+视觉抽查（赛季横滑露出 1.15 张、图鉴双行流）✓。

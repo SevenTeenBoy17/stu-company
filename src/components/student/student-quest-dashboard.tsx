@@ -1234,7 +1234,8 @@ function QuestMapGallery({
             点击切换今日航线
           </span>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {/* §19.7 移动端：任务地图节点横滑（70% 宽），sm 起还原网格。 */}
+        <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&>*]:w-[70%] [&>*]:shrink-0 [&>*]:snap-start sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 sm:[&>*]:w-auto sm:[&>*]:shrink xl:grid-cols-3">
           {taskNodes.map((quest, index) => {
             const active = quest.id === selectedQuestId;
             const profile = questVisualProfileFor(quest, index);
@@ -1792,7 +1793,8 @@ function CompanionAlbum({
           已点亮 {unlockedCount} 位伙伴
         </span>
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      {/* §19.7 移动端：图鉴改双行横向流（44% 宽≈2.3 列露出），滑动距离减半；sm 起还原网格。 */}
+      <div className="mt-6 grid snap-x snap-mandatory grid-flow-col grid-rows-2 auto-cols-[44%] gap-3 overflow-x-auto pb-3 [&>*]:snap-start sm:snap-none sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-3 sm:grid-rows-none sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-6">
         {questBoxThemes.map((theme, index) => {
           const isUnlocked = unlocked.has(theme.id);
           const isRoadmap = !isUnlocked && !reachableIds.has(theme.id);
@@ -2375,7 +2377,8 @@ export function StudentQuestDashboard({
             </div>
           </div>
 
-          <div className="grid gap-3 bg-white p-5 md:p-6 xl:grid-cols-2 2xl:grid-cols-3">
+          {/* §19.7 移动端：权益项改横滑卡组，sm 起还原网格。 */}
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto bg-white p-5 [&>*]:w-[85%] [&>*]:shrink-0 [&>*]:snap-start sm:grid sm:snap-none sm:overflow-visible sm:[&>*]:w-auto sm:[&>*]:shrink md:p-6 xl:grid-cols-2 2xl:grid-cols-3">
             {questPayload.benefits.items.map((item) => {
               const meta = benefitKindMeta[item.kind];
               const Icon = meta.icon;
@@ -2494,7 +2497,9 @@ export function StudentQuestDashboard({
             </div>
           </div>
 
-          <div className="grid gap-4 bg-white p-5 md:p-6 xl:grid-cols-2">
+          {/* §12.3/§19.7 移动端：赛季目标改横滑卡组（85% 宽=保留约 1.15 张露出提示还有更多），
+              sm 起还原网格；横滑容器自身裁剪溢出，不影响根级 scrollWidth。 */}
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto bg-white p-5 [&>*]:w-[85%] [&>*]:shrink-0 [&>*]:snap-start sm:grid sm:snap-none sm:overflow-visible sm:[&>*]:w-auto sm:[&>*]:shrink md:p-6 xl:grid-cols-2">
             {season.objectives.length > 0 ? (
               season.objectives.map((objective, index) => (
                 <SeasonObjectiveCreatureCard key={objective.id} objective={objective} index={index} />
@@ -2862,7 +2867,8 @@ export function StudentQuestDashboard({
           <p className="mt-2 text-body leading-7 text-fg-muted">
             成就只代表学习轨迹，不代表真实投资能力，也不会直接改变学习榜位置。
           </p>
-          <div className="mt-5 space-y-3">
+          {/* §19.7 移动端：成就条目改横滑卡组，sm 起还原纵向列表。 */}
+          <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [&>*]:w-[88%] [&>*]:shrink-0 [&>*]:snap-start sm:block sm:snap-none sm:space-y-3 sm:overflow-visible sm:pb-0 sm:[&>*]:w-auto">
             {questPayload.achievements.map((achievement) => (
               <article
                 key={achievement.id}
