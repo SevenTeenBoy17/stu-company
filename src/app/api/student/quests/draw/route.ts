@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
-import { canUserOperate } from "@/lib/billing/subscription";
 import { drawCard, questCardSeries, type QuestCard } from "@/lib/cards";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
@@ -47,10 +46,10 @@ export async function POST(request: Request) {
     const auth = await requireUser("student");
     if (auth.error) return auth.error;
 
-    if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
-      return apiError("forbidden", "试用已结束，请升级后继续领取任务学习卡。", 403);
-    }
-
+    // 合规（未成年人）：学习卡纯装饰、不改净值/学习点/任何榜单，领卡不做订阅门控——
+    // 实质功能（沙盘操作、AI 评定）仍由各自路由的 canUserOperate 把守；此处若门控，
+    // 相当于在情绪唤起峰值向学生推送付费（评审会 P1），且 /api/learn/complete 本就
+    // 不门控，学生可合法挣得学习任务完成却领不到卡，规则自相矛盾。
     const rl = rateLimit(rateLimitKey("quest-draw", auth.user.id, request), 20, 60_000);
     if (!rl.ok) {
       return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
@@ -102,7 +101,9 @@ export async function POST(request: Request) {
         reward: quest.reward,
         runId: state.run.id,
         round: state.run.currentRound,
-        rarity: card.rarity,
+        // 合规收尾：不再把原始 rarity(common/rare/epic 开奖词汇)写进 DB/返回给客户端，
+        // 改用中性的收藏套系 id（feeds 图鉴/套系进度的同一语义）。
+        series: questCardSeries(card),
         category: quest.category,
       },
     });

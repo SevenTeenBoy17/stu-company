@@ -1398,11 +1398,11 @@ function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
               />
             </div>
             <p className="mt-2 text-[11px] font-semibold leading-5 text-fg-muted">
+              {/* systems-thinking 已由「解锁 4 种工具 / 黑天鹅演练」两个任务触发器接通，
+                  三套系全部真实可达，进度文案统一（不再有"即将开放"占位）。 */}
               {s.complete
                 ? `✓ ${s.label}工具组已点亮 · 这组工具你都练过一遍`
-                : s.series === "systems-thinking"
-                  ? "赛季限定 · 即将开放"
-                  : `已收藏 ${s.owned}/${s.total} · 完成对应任务继续点亮`}
+                : `已收藏 ${s.owned}/${s.total} · 完成对应任务继续点亮`}
             </p>
           </div>
         );
@@ -1804,7 +1804,7 @@ function CompanionAlbum({
                 isUnlocked
                   ? `已点亮的学习伙伴：${theme.creature}，来自${theme.world}`
                   : isRoadmap
-                    ? `赛季限定学习伙伴 ${index + 1}，即将开放`
+                    ? `学习伙伴 ${index + 1}，本期暂未开放`
                     : `未点亮的学习伙伴 ${index + 1}，完成对应任务后点亮`
               }
               className={cn(
@@ -1839,7 +1839,9 @@ function CompanionAlbum({
                   {isUnlocked ? theme.creature : theme.badge}
                 </p>
                 <p className={cn("mt-0.5 truncate text-[0.7rem] font-semibold", isUnlocked ? "text-white/82" : "text-slate-500")}>
-                  {isUnlocked ? theme.world : isRoadmap ? "赛季限定 · 即将开放" : "完成任务即可点亮"}
+                  {/* 12 任务已一一对应 12 伙伴（systems-thinking 触发器接通），isRoadmap 仅在
+                      任务数少于图鉴格数的中途态才出现；文案去时间稀缺（合规），如实说"暂未开放"。 */}
+                  {isUnlocked ? theme.world : isRoadmap ? "本期暂未开放" : "完成任务即可点亮"}
                 </p>
               </div>
               <span
@@ -1854,7 +1856,7 @@ function CompanionAlbum({
                   </>
                 ) : isRoadmap ? (
                   <>
-                    <Lock className="h-3 w-3" /> 即将开放
+                    <Lock className="h-3 w-3" /> 暂未开放
                   </>
                 ) : (
                   <>
@@ -2242,12 +2244,20 @@ export function StudentQuestDashboard({
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">连续学习</p>
+                {/* streak 断裂时不把 0 当失败信号裸展示（评审会 P2·羞耻感暴露）：
+                    改为 — + 可立即行动的重启文案，归因指向行动而非能力。 */}
                 <p className="mt-3 text-h2 tabular-nums text-white">
-                  {questPayload.overview.streakCurrent}
+                  {questPayload.overview.streakCurrent > 0 ? questPayload.overview.streakCurrent : "—"}
                   <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.streakBest}
                 </p>
-                <p className="mt-3 text-sm text-white/58">当前 / 历史最佳连续学习回合</p>
+                <p className="mt-3 text-sm text-white/58">
+                  {questPayload.overview.streakCurrent > 0
+                    ? "当前 / 历史最佳连续学习回合"
+                    : questPayload.overview.streakBest > 0
+                      ? `上次连续 ${questPayload.overview.streakBest} 回合 · 本回合做一个理财动作即可重新开始`
+                      : "做第一个理财动作，开启你的连续学习记录"}
+                </p>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
                 <p className="text-sm font-semibold text-white/56">学习进度</p>

@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
-import { canUserOperate } from "@/lib/billing/subscription";
 import { claimQuestRewardForUser, getLearningProgress, getSimulationStateForUser } from "@/lib/db/repo";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { buildStudentQuestPayload } from "@/lib/quests";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +38,12 @@ export async function POST(request: Request) {
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
-  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
-    return apiError("forbidden", "试用已结束，请升级后继续领取任务学习卡。", 403);
+  // 合规（未成年人）：任务奖励纯装饰（claimQuestReward 只追加 amount:0 的日志行），
+  // 不做订阅门控——否则等于在领取按钮的即时反馈位向学生推送付费（评审会 P1）。
+  // 实质功能（沙盘操作/AI）仍由各自路由的 canUserOperate 把守。
+  const rl = rateLimit(rateLimitKey("quest-claim", auth.user.id, request), 20, 60_000);
+  if (!rl.ok) {
+    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
   }
 
   try {

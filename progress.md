@@ -3560,3 +3560,22 @@ Systematic debugging (trace.zip 网络流水 = 决定性证据：429 /api/auth/l
 
 Gates: tsc ✓ / lint ✓ / rate-limit 单测 5/5 ✓ / 全套 e2e（全新 Playwright 自管 server + workers=2 CI 同构）
 = 41 passed, 1 skipped(既有条件跳过), 0 failed, 0 did-not-run (4.1m)。
+
+## 2026-07-02 批次 3：评审会三 P1 + P2 批量落地（任务中心机制层）
+
+1. 付费↔领卡解绑（P1 合规）：draw/claim 路由移除 canUserOperate 门控与「试用已结束请升级」403
+   文案（装饰卡不门控付费；learn/complete 本就未门控，规则自相矛盾）；两个 route.test 的 403 用例
+   翻转为「过期学生仍可领取」去付费墙回归锁。
+2. 集卡死结（P1 完成度）：新增 2 个 systems-thinking 任务——toolkit-composer（≥4 种不同理财工具，
+   跨工具广度）+ black-swan-drill（同一回合 保护伞×持有复盘 配对）；判据零运气、单沙盘必可完成；
+   12 任务=12 卡全可达；CollectionMeter/图鉴「赛季限定·即将开放」占位删除/中性化为「暂未开放」；
+   新增跨模块回归锁：quests.length ≥ questCardDeck.length。
+3. review-rhythm 假成就（P1）：去 advance/event，只数 wealth_review，阈值 4→3，文案讲明
+   「推进回合不算」。
+4. P2 批量：withClaimState 已领取任务锁定 done/100%（防指标回落回退→习得性无助，附回归测试）；
+   quests claim POST 补 rateLimit 20/60s（含 429 中文文案测试）；draw meta 不再写 rarity 原始值
+   （epic 等开奖词），改中性 series；连续学习 streak=0 改「—」+重启引导文案。
+
+Gates（真实输出）：tsc ✓ / eslint ✓ / vitest 92 文件 616/617（唯一失败=已知本地高负载 flake
+「reveals season objective cards」，单跑 8/8 绿、CI Unit 四连绿从未失败）/ npm run build ✓ /
+gameflow e2e 6/6 passed (24.9s)。quests.test 12/12（含 3 个新回归锁）。

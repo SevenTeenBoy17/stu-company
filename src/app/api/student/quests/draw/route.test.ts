@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api-guard", () => ({ requireUser: vi.fn() }));
-vi.mock("@/lib/billing/subscription", () => ({ canUserOperate: vi.fn() }));
 vi.mock("@/lib/db/repo", () => ({
   drawCardForUser: vi.fn(),
   getLearningProgress: vi.fn(),
@@ -12,7 +11,6 @@ vi.mock("@/lib/quests", () => ({ buildStudentQuestPayload: vi.fn() }));
 
 import { requireUser } from "@/lib/api-guard";
 import { apiError } from "@/lib/api-response";
-import { canUserOperate } from "@/lib/billing/subscription";
 import {
   drawCardForUser,
   getLearningProgress,
@@ -69,7 +67,6 @@ describe("POST /api/student/quests/draw", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(requireUser).mockResolvedValue(asRequireUser({ user: STUDENT }));
-    vi.mocked(canUserOperate).mockReturnValue(true);
     vi.mocked(getSimulationStateForUser).mockResolvedValue(asState({ run }));
     vi.mocked(getLearningProgress).mockResolvedValue(learning);
     vi.mocked(buildStudentQuestPayload).mockReturnValue({
@@ -150,16 +147,26 @@ describe("POST /api/student/quests/draw", () => {
     expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
   });
 
-  it("blocks learning-card claims when the trial or subscription cannot operate", async () => {
-    vi.mocked(canUserOperate).mockReturnValue(false);
+  it("去付费墙回归锁：试用已过期的学生仍可领取学习收藏卡（不得 403 推送升级）", async () => {
+    // 合规（未成年人）：学习卡纯装饰，领卡不做订阅门控——若本用例失败，
+    // 说明有人把 canUserOperate 加回了领卡路径，请先阅读评审会 P1 结论。
+    vi.mocked(requireUser).mockResolvedValue(
+      asRequireUser({
+        user: {
+          ...STUDENT,
+          id: "student-expired-draw-test",
+          subscriptionTier: "free",
+          trialExpiresAt: "2020-01-01T00:00:00.000Z",
+          subscriptionExpiresAt: null,
+        },
+      }),
+    );
 
     const res = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
 
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toBe("forbidden");
-    expect(body.message).toContain("试用已结束");
-    expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect((await res.json()).alreadyDrawn).toBe(false);
+    expect(vi.mocked(drawCardForUser)).toHaveBeenCalledTimes(1);
   });
 
   it("returns 429 with Chinese message after 20 draws from one user within the window", async () => {
