@@ -232,7 +232,7 @@ describe("StudentQuestDashboard quest flip", () => {
       expect(routeFront).not.toHaveAttribute("inert");
       expect(selectButton).toHaveAttribute("aria-pressed", "false");
       expect(document.activeElement).toBe(selectButton);
-    });
+    }, { timeout: 4000 });
 
     await user.click(selectButton);
     await waitFor(() => {
@@ -246,7 +246,7 @@ describe("StudentQuestDashboard quest flip", () => {
       expect(routeBack).not.toHaveAttribute("inert");
       expect(routeFront).toHaveAttribute("inert");
       expect(document.activeElement).toBe(routeBack);
-    });
+    }, { timeout: 4000 });
   });
 
   it("shows a friendly empty state when no season objectives are available", () => {
@@ -330,9 +330,10 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("写下证据");
+    // 主卡翻面焦点经 240ms 真实 setTimeout 迁移；CI 覆盖率插桩下 1s 默认超时会偶发翻车（已实锤），放宽 4s。
     await waitFor(() => {
       expect(document.activeElement).toBe(screen.getByTestId("quest-detail-trigger-observe-quest"));
-    });
+    }, { timeout: 4000 });
 
     // findBy* (async) waits for the post-flip a11y tree to settle — the back-face content
     // renders immediately (testids above) but the accessibility tree can update a tick later,
@@ -345,7 +346,7 @@ describe("StudentQuestDashboard quest flip", () => {
     await user.click(screen.getByTestId("quest-return-back-observe-quest"));
     await waitFor(() => {
       expect(document.activeElement).toBe(flipButton);
-    });
+    }, { timeout: 4000 });
   });
 
   it("claims a completed quest, draws a card, reveals it, and adds it to the collection", async () => {
