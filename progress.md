@@ -3516,3 +3516,22 @@ No .env.local staged.
 No raw external AI/provider fetches added outside src/lib/ai.ts.
 No leaderboard, power-score, or scenario financial mutation path touched by B3.
 ```
+
+## 2026-07-02 任务卡翻转 + 卡面字体修复（用户复检回归）
+
+Root causes fixed (all in uncommitted working-tree batch, user-visible):
+1. Fake flip: poker-flip CSS had no rotation (`transform:none` + 120ms fade + one-face swing-in). Rebuilt as real two-face 3D flip: `.poker-flip-inner-front{rotateY(180deg)}` + backface-culled faces + pre-rotated front. Verified computed matrix3d(-1,...,-1) after flip; mid-turn frame shows perspective foreshortening.
+2. Blurry text: permanent `filter:drop-shadow` + `will-change:transform,filter` on text plate (violates ANIM-JANK-2) → removed; glyphs re-rasterize crisp at identity.
+3. Washed text: permanent `::after` white sheen (opacity .42) across text faces → replaced by `.poker-gloss` hover sweep on dark card BACKS only, under z-10 text layer.
+4. Invisible "去完成": unlayered `a{color:inherit}` in globals.css beat `@layer utilities` text-* classes app-wide (Tailwind v4 cascade layers) → moved into `@layer base`. Probe: link color rgb(16,23,38) → rgb(255,255,255).
+5. Route/season card front overlap (buttons over meta/desc) → compact 2-row middle + `mt-auto` buttons; season shell 224→272px.
+6. mission-card-back.png 1.75MB → webp 48KB (1260w q80).
+7. Seeded invites MRB-STUDENT/PARENT-2026 expired 2026-06-30 (live demo register broken since Jul 1; 3 unit tests red) → extended to 2027-08-31 (store.ts feeds scripts/seed.ts).
+8. Season focus waitFor 1s → 4s (full-suite load flake; solo-green).
+
+Gates (real output):
+- npx tsc --noEmit → clean
+- npm run lint → clean (eslint, no output)
+- npm run test → "Test Files  92 passed (92) / Tests  612 passed (612)"
+- npx playwright test (full) → "33 passed (3.1m), 1 skipped" exit 0 (incl. gameflow flip suite 6/6, reveal-a11y axe AA all student routes, internal-test 14 pages)
+- Visual: .tmp/shots re-1..re-5 — mid-turn 3D foreshortening, route/season fronts clean, 去完成 white-on-dark, crisp CJK glyphs (DPR2 zoom crop)

@@ -63,6 +63,32 @@ test.describe("student gameflow regression", () => {
     await expect(page.getByTestId("quest-commander-panel")).toBeVisible();
     await expect(page.getByTestId("quest-queue-panel")).toBeVisible();
     await expect(page.getByTestId("quest-queue-scroll-hint")).toBeVisible();
+    await expect(page.getByTestId("quest-map-gallery")).toBeVisible();
+    await expect(page.getByTestId("quest-task-map")).toBeVisible();
+    await expect(page.getByTestId("quest-season-map")).toBeVisible();
+    const taskMapBox = await page.getByTestId("quest-task-map").boundingBox();
+    const seasonMapBox = await page.getByTestId("quest-season-map").boundingBox();
+    // 任务地图(1.15fr)与赛季地图(0.85fr)是有意的主次宽度：副面板 1440 视口实测 ~413px，下限取 380 保可用性。
+    expect(taskMapBox?.width ?? 0).toBeGreaterThan(420);
+    expect(seasonMapBox?.width ?? 0).toBeGreaterThan(380);
+    expect(Math.abs((taskMapBox?.x ?? 0) - (seasonMapBox?.x ?? 0))).toBeGreaterThan(420);
+    expect(Math.abs((taskMapBox?.y ?? 0) - (seasonMapBox?.y ?? 0))).toBeLessThan(28);
+    expect(Math.abs((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0))).toBeLessThan(120);
+    await expect(page.locator('[data-testid^="quest-task-map-node-"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid^="quest-season-map-node-"]').first()).toBeVisible();
+    const mapNodeImagesLoaded = await page
+      .locator('[data-testid^="quest-task-map-node-"] img, [data-testid^="quest-season-map-node-"] img')
+      .evaluateAll((images) =>
+        images.length >= 2 &&
+        images.every(
+          (image) =>
+            image instanceof HTMLImageElement &&
+            image.complete &&
+            image.naturalWidth >= 40 &&
+            image.currentSrc.includes("quest-world"),
+        ),
+      );
+    expect(mapNodeImagesLoaded).toBe(true);
     await expect(page.locator('[data-testid^="quest-flip-"]')).toHaveCount(1);
 
     const imageLoaded = await page
@@ -107,7 +133,15 @@ test.describe("student gameflow regression", () => {
       .evaluate((element) => element.scrollHeight > element.clientHeight);
     expect(queueCanScroll).toBe(true);
 
+    const selectedMissionCard = page.locator("[data-selected-mission-card]").first();
+    await expect(selectedMissionCard).toHaveAttribute("data-flip-state", "back");
+    await expect(selectedMissionCard.locator(".poker-flip-inner")).toHaveCount(1);
     await page.locator('[data-testid^="quest-flip-"]').first().click();
+    await expect(selectedMissionCard).toHaveAttribute("data-flip-state", "front");
+    const pokerTransform = await selectedMissionCard
+      .locator("[data-quest-card-inner]")
+      .evaluate((element) => getComputedStyle(element).transform);
+    expect(pokerTransform).not.toBe("none");
     await page.getByRole("button", { name: "查看任务详情" }).first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog")).toContainText("任务详情");
@@ -196,19 +230,23 @@ test.describe("student gameflow regression", () => {
 
     const firstBack = page.locator('[data-testid^="season-objective-card-back-"]').first();
     const firstFront = page.locator('[data-testid^="season-objective-card-front-"]').first();
+    const firstShell = page.locator('[data-testid^="season-objective-flip-shell-"]').first();
     const primaryLink = page.getByRole("link", { name: /去完成赛季任务/ }).first();
     const returnButton = page.getByRole("button", { name: /翻回赛季任务卡背/ }).first();
 
+    await expect(firstShell).toHaveAttribute("data-flip-state", "back");
     await firstBack.focus();
     await expect(firstBack).toBeFocused();
     await page.keyboard.press("Enter");
 
     await expect(firstBack).toHaveAttribute("aria-hidden", "true");
     await expect(firstFront).toHaveAttribute("aria-hidden", "false");
+    await expect(firstShell).toHaveAttribute("data-flip-state", "front");
     await expect(primaryLink).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(returnButton).toBeFocused();
     await page.keyboard.press("Enter");
+    await expect(firstShell).toHaveAttribute("data-flip-state", "back");
     await expect(firstBack).toHaveAttribute("aria-hidden", "false");
     await expect(firstFront).toHaveAttribute("aria-hidden", "true");
     await expect(firstBack).toBeFocused();

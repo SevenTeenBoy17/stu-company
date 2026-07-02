@@ -231,9 +231,14 @@ body[data-scroll-locked="true"] {
   overflow: hidden;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* 必须留在 @layer base：Tailwind v4 中未分层规则会永远压过 @layer utilities，
+   顶层的 a{color:inherit} 曾让写在 <a> 上的所有 text-* 工具类静默失效
+   （如赛季卡「去完成」的 text-white 被吃掉 → 深底深字不可读）。 */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 button,
@@ -377,6 +382,67 @@ select {
   outline-offset: 2px;
 }
 
+/* Task-center card flip: a REAL two-face 3D flip (physical trading-card feel).
+   The shell owns perspective; `.poker-flip-inner-front` rotates the inner plate
+   0→180°; both faces are backface-culled and the front face is pre-rotated
+   180°, so the flip reads as one solid card turning over — not a crossfade.
+   Deliberately NO `filter` / `will-change` on the plate (ANIM-JANK-2): once the
+   turn settles the net face transform is identity, so glyphs re-rasterize on
+   crisp non-composited layers — blurry card text was the bug this replaces. */
+.poker-flip-shell {
+  perspective: 1400px;
+}
+
+.poker-flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 640ms cubic-bezier(0.16, 0.84, 0.28, 1);
+}
+
+.poker-flip-inner-front {
+  transform: rotateY(180deg);
+}
+
+.poker-flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.poker-flip-front-face {
+  transform: rotateY(180deg);
+}
+
+.poker-flip-face[aria-hidden="true"] {
+  pointer-events: none;
+}
+
+/* Glossy sweep for the dark card BACKS only, rendered UNDER the z-10 text layer
+   inside MissionCardBackArtwork — a "this card flips" affordance on hover/focus.
+   Never applied to text-bearing front faces: a resting sheen over ink was what
+   washed the typography out. */
+.poker-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.14) 46%,
+    rgb(255 255 255 / 0.26) 51%,
+    transparent 66%
+  );
+  transform: translateX(-72%);
+  transition:
+    transform 720ms cubic-bezier(0.16, 0.84, 0.28, 1),
+    opacity 320ms ease;
+}
+
+.poker-flip-shell:hover .poker-gloss,
+.poker-flip-shell:focus-within .poker-gloss {
+  opacity: 1;
+  transform: translateX(72%);
+}
+
 /* A11y: honor the OS "reduce motion" preference for CSS transitions/animations
    and programmatic smooth scrolling (WCAG 2.3.3). GSAP entrances are gated in JS
    where they matter. */
@@ -395,13 +461,21 @@ select {
     animation: none !important;
   }
 
+  /* 前庭安全：翻卡退化为瞬时换面（无 3D 旋转），由 aria-hidden 的透明度接管可见性。 */
   .quest-flip-inner,
-  .quest-flip-face {
+  .quest-flip-face,
+  .poker-flip-inner,
+  .poker-flip-face {
     transition: none !important;
     transform: none !important;
   }
 
-  .quest-flip-face[aria-hidden="true"] {
+  .poker-gloss {
+    display: none !important;
+  }
+
+  .quest-flip-face[aria-hidden="true"],
+  .poker-flip-face[aria-hidden="true"] {
     opacity: 0 !important;
     pointer-events: none !important;
   }

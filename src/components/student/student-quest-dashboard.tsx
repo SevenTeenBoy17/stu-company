@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
@@ -132,6 +132,7 @@ const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string
 };
 
 const questCardAssetBase = "/brand/quest-cards";
+const missionCardBackAsset = `${questCardAssetBase}/mission-card-back.webp`;
 const questWorldAssetBase = "/brand/quest-world";
 const achievementBadgeAssetBase = "/brand/achievement-badges";
 
@@ -288,6 +289,35 @@ function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] 
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">学习收藏卡</p>
         <p className="mt-1 text-sm font-bold text-white">完成任务后领取</p>
       </div>
+    </div>
+  );
+}
+
+function MissionCardBackArtwork({
+  children,
+  className,
+  priority = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <div className={cn("absolute inset-0 isolate overflow-hidden bg-slate-950", className)}>
+      <Image
+        src={missionCardBackAsset}
+        alt=""
+        aria-hidden="true"
+        fill
+        priority={priority}
+        sizes="(min-width: 1280px) 420px, (min-width: 768px) 45vw, 92vw"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950/18 via-slate-950/8 to-slate-950/46" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-950/72 via-slate-950/24 to-transparent" />
+      {/* 光泽扫过只放在深色卡背、且在 z-10 文字层之下 —— 永不覆盖正面文字。 */}
+      <div aria-hidden className="poker-gloss" />
+      <div className="relative z-10 flex h-full flex-col">{children}</div>
     </div>
   );
 }
@@ -495,97 +525,6 @@ function questBoxThemeFor(quest: QuestItem, index = 0) {
   return questBoxThemes[preferredIndex % questBoxThemes.length] ?? questBoxThemes[stableQuestThemeIndex(quest.id)];
 }
 
-function QuestBlindBoxArt({
-  quest,
-  index = 0,
-  compact = false,
-}: {
-  quest: QuestItem;
-  index?: number;
-  compact?: boolean;
-}) {
-  const theme = questBoxThemeFor(quest, index);
-  const characterSrc = `${questWorldAssetBase}/characters/${theme.asset}.webp`;
-  const style = {
-    "--quest-from": theme.from,
-    "--quest-via": theme.via,
-    "--quest-to": theme.to,
-    "--quest-accent": theme.accent,
-    "--quest-accent-2": theme.accent2,
-    "--quest-ink": theme.ink,
-    "--quest-glow": theme.glow,
-  } as CSSProperties;
-
-  return (
-    <div
-      data-testid={`quest-box-art-${quest.id}`}
-      data-theme={theme.id}
-      aria-label={`${theme.creature} ${theme.world} 任务锦囊卡面`}
-      className={cn(
-        "relative isolate overflow-hidden rounded-[1.45rem] border border-white/50 shadow-[0_22px_55px_rgba(15,23,42,0.18)]",
-        compact ? "h-24 w-28 shrink-0" : "min-h-[18rem] w-full",
-      )}
-      style={{
-        ...style,
-        background:
-          "radial-gradient(circle at 22% 18%, var(--quest-accent-2), transparent 30%), radial-gradient(circle at 76% 18%, var(--quest-glow), transparent 28%), linear-gradient(135deg, var(--quest-from), var(--quest-via) 48%, var(--quest-to))",
-      }}
-    >
-      <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,.28)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.22)_1px,transparent_1px)] [background-size:22px_22px]" />
-      <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-white/30 blur-xl" />
-      <div className="absolute -right-10 bottom-4 h-28 w-28 rounded-full bg-black/18 blur-2xl" />
-      <div className="absolute left-[12%] top-[22%] h-12 w-12 rounded-[1.2rem] border border-white/45 bg-white/20 shadow-inner" />
-      <div className="absolute right-[14%] top-[16%] h-9 w-9 rounded-full border border-white/35 bg-white/18" />
-      <div className="absolute bottom-[20%] left-[12%] right-[12%] h-7 rounded-full border border-white/35 bg-white/18 backdrop-blur" />
-      <div className="absolute bottom-[26%] left-[18%] h-1.5 w-[34%] rounded-full bg-[var(--quest-accent-2)]" />
-      <div className="absolute bottom-[26%] right-[18%] h-1.5 w-[24%] rounded-full bg-white/55" />
-
-      <div className={cn("relative z-10 flex h-full flex-col", compact ? "p-2" : "p-5")}>
-        <div className="flex items-start justify-between gap-2">
-          <span
-            className={cn(
-              "rounded-full bg-white/72 font-semibold text-[var(--quest-ink)] shadow-sm backdrop-blur",
-              compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs",
-            )}
-          >
-            {theme.badge}
-          </span>
-          {!compact ? (
-            <span className="rounded-full bg-slate-950/74 px-3 py-1 text-xs font-semibold text-white">#{index + 1}</span>
-          ) : null}
-        </div>
-
-        <div className={cn("flex flex-1 items-center justify-center", compact ? "py-1" : "py-3")}>
-          <div
-            className={cn(
-              "relative overflow-hidden rounded-[28%] bg-white/88 shadow-[0_26px_70px_rgba(15,23,42,0.28)] ring-1 ring-white/70",
-              compact ? "h-14 w-14" : "h-40 w-40 sm:h-44 sm:w-44",
-            )}
-          >
-            <Image
-              src={characterSrc}
-              alt={`${theme.creature} 3D 卡通形象`}
-              fill
-              sizes={compact ? "96px" : "(min-width: 1280px) 176px, 42vw"}
-              className="object-cover"
-            />
-            <span className="absolute -top-2 right-2 h-4 w-4 rounded-full bg-[var(--quest-accent)] shadow-md" />
-            <span className="absolute -bottom-2 left-3 h-3 w-8 rounded-full bg-[var(--quest-accent-2)]" />
-          </div>
-        </div>
-
-        {!compact ? (
-          <div className="rounded-[1.1rem] border border-white/45 bg-white/58 p-3 text-[var(--quest-ink)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] opacity-70">专属角色皮肤</p>
-            <p className="mt-1 text-lg font-bold">{theme.world}</p>
-            <p className="mt-1 line-clamp-1 text-xs font-semibold opacity-70">每个任务都有独立 3D 角色图案，打开后再显示目标。</p>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 type QuestVisualProfile = {
   visualTitle: string;
   shortAction: string;
@@ -773,49 +712,50 @@ function MissionRouteNode({
   return (
     <div
       data-route-node
+      data-flip-state={isRevealed ? "front" : "back"}
       key={quest.id}
       className={cn(
-        "group relative min-h-[156px] rounded-[1.5rem] [perspective:1100px] sm:min-h-[176px]",
+        "poker-flip-shell group relative min-h-[156px] rounded-[1.5rem] [perspective:1100px] sm:min-h-[176px]",
         active && "z-10",
       )}
     >
       <div
         data-route-flip-inner
         className={cn(
-          "quest-flip-inner absolute inset-0 rounded-[1.5rem] transition-transform duration-700 [transform-style:preserve-3d]",
-          isRevealed && "[transform:rotateY(180deg)]",
+          "poker-flip-inner quest-flip-inner absolute inset-0 rounded-[1.5rem]",
+          isRevealed && "poker-flip-inner-front",
         )}
       >
         <button
           ref={backButtonRef}
           type="button"
           onClick={revealRouteCard}
-          aria-label={`翻开航线 ${index + 1} 的任务卡：${profile.visualTitle}`}
+          aria-label={`翻开航线 ${index + 1} 的任务卡`}
           aria-controls={`mission-route-card-front-${quest.id}`}
           aria-expanded={isRevealed}
           aria-hidden={isRevealed}
           inert={isRevealed ? true : undefined}
           data-testid={`mission-route-card-back-${quest.id}`}
-          className="quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950 p-3 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-4 [backface-visibility:hidden]"
+          className="poker-flip-face quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border border-brand/35 bg-slate-950 p-0 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.22)] transition duration-300 hover:-translate-y-1 hover:border-brand/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
         >
-          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-2xl" style={{ background: profile.accent }} />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.10),transparent_42%,rgba(240,138,56,0.12))]" />
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
-              航线 {index + 1}
-            </span>
-            <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950">点击翻开</span>
-          </div>
-          <div className="relative z-10 mt-3 flex items-center gap-3 sm:mt-4 sm:gap-4">
-            <CreaturePortrait profile={profile} className="h-12 w-12 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 sm:h-16 sm:w-16" />
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-black text-white sm:text-lg">任务锦囊</p>
-              <p className="mt-1 line-clamp-1 text-sm font-bold text-white/62">{profile.creatureName} 正在守护线索</p>
-              <div {...progressAria(`${profile.visualTitle} 进度`, progress)} className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/12 sm:mt-3">
-                <div className="h-full rounded-full" style={{ width: `${Math.max(8, progress)}%`, background: profile.accent }} />
+          <MissionCardBackArtwork>
+            <div className="flex items-start justify-between gap-3 p-4">
+              <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
+                航线 {index + 1}
+              </span>
+              <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950 shadow-glow">
+                点击翻开
+              </span>
+            </div>
+            <div className="flex flex-1 items-end p-4 pt-8">
+              <div className="w-full rounded-[1.1rem] border border-white/12 bg-slate-950/58 p-3 shadow-inner backdrop-blur-md">
+                <p className="text-base font-black text-white sm:text-lg">任务锦囊</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-white/78">
+                  先翻开卡片，再查看目标、进度和下一步行动。
+                </p>
               </div>
             </div>
-          </div>
+          </MissionCardBackArtwork>
         </button>
 
         <div
@@ -826,7 +766,7 @@ function MissionRouteNode({
           inert={!isRevealed ? true : undefined}
           data-testid={`mission-route-card-front-${quest.id}`}
           className={cn(
-            "quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border p-3 text-left shadow-sm transition duration-300 sm:p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]",
+            "poker-flip-front-face poker-flip-face quest-flip-face absolute inset-0 overflow-hidden rounded-[1.5rem] border p-3 text-left shadow-sm transition duration-300 sm:p-4 [backface-visibility:hidden]",
             active ? "border-brand bg-white shadow-[0_22px_70px_rgba(240,138,56,0.20)]" : "border-slate-200 bg-white/86 hover:border-brand/40",
           )}
           style={{ background: active ? profile.softBg : undefined }}
@@ -839,18 +779,19 @@ function MissionRouteNode({
               </span>
               <QuestStatusBadge status={quest.status} />
             </div>
-            <div className="mt-3 flex min-h-0 flex-1 items-center gap-3 sm:mt-4 sm:gap-4">
-              <CreaturePortrait profile={profile} className="h-12 w-12 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 sm:h-16 sm:w-16" />
+            {/* 中段压成两行（标题 + 角色·概念·进度单行），按钮 mt-auto 贴底 —— 156/176px 内不再叠压。 */}
+            <div className="mt-2 flex min-h-0 flex-1 items-center gap-3">
+              <CreaturePortrait profile={profile} className="h-12 w-12 shrink-0 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105 sm:h-14 sm:w-14" />
               <div className="min-w-0 flex-1">
-                <p className="text-base font-black text-slate-950 sm:text-lg">{profile.visualTitle}</p>
-                <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-500">{profile.creatureName}</p>
-                <div className="mt-2 flex items-center gap-2 sm:mt-3">
-                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">{profile.shortAction}</span>
-                  <span className="text-xs font-bold tabular-nums text-slate-500">{progress}%</span>
-                </div>
+                <p className="line-clamp-1 text-base font-black text-slate-950 sm:text-lg">{profile.visualTitle}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-slate-500">
+                  <span className="line-clamp-1">{profile.creatureName}</span>
+                  <span className="rounded-full bg-slate-950 px-2.5 py-0.5 text-[11px] font-black text-white">{profile.shortAction}</span>
+                  <span className="tabular-nums">{progress}%</span>
+                </p>
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:mt-3">
+            <div className="mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-2">
               <button
                 ref={selectButtonRef}
                 type="button"
@@ -922,52 +863,51 @@ function SeasonObjectiveCreatureCard({
     <div
       data-motion-card
       data-objective-creature
+      data-flip-state={revealed ? "front" : "back"}
+      data-testid={`season-objective-flip-shell-${objective.id}`}
       key={objective.id}
-      className="group relative min-h-[224px] rounded-[1.55rem] [perspective:1100px]"
+      className="poker-flip-shell group relative min-h-[272px] rounded-[1.55rem] [perspective:1100px]"
     >
       <div
         data-objective-flip-inner
         className={cn(
-          "quest-flip-inner absolute inset-0 rounded-[1.55rem] transition-transform duration-700 [transform-style:preserve-3d]",
-          revealed && "[transform:rotateY(180deg)]",
+          "poker-flip-inner quest-flip-inner absolute inset-0 rounded-[1.55rem]",
+          revealed && "poker-flip-inner-front",
         )}
       >
         <button
           ref={backButtonRef}
           type="button"
           onClick={revealObjective}
-          aria-label={`翻开赛季任务卡：${profile.visualTitle}，进度 ${progressText}`}
+          aria-label={`翻开赛季任务卡 ${index + 1}`}
           aria-controls={`season-objective-card-front-${objective.id}`}
           aria-expanded={revealed}
           aria-hidden={revealed}
           inert={revealed ? true : undefined}
           data-testid={`season-objective-card-back-${objective.id}`}
-          className="quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white p-4 text-left text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-1 hover:border-brand/60 hover:shadow-[0_22px_58px_rgba(240,138,56,0.16)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
-          style={{ background: profile.softBg }}
+          className="poker-flip-face quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border border-brand/35 bg-slate-950 p-0 text-left text-white shadow-[0_18px_50px_rgba(15,23,42,0.20)] transition duration-300 hover:-translate-y-1 hover:border-brand/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand [backface-visibility:hidden]"
         >
-          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-2xl" style={{ background: profile.accent }} />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.84),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.68),transparent_46%,rgba(240,138,56,0.10))]" />
-          <div className="relative z-10 flex items-start justify-between gap-2 sm:gap-3">
-            <CreaturePortrait profile={profile} className="h-14 w-14 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
-            <span className="rounded-full bg-white/82 px-3 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm ring-1 ring-white">
-              {progressText}
-            </span>
-          </div>
-          <div className="relative z-10 mt-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
-                卡背
+          <MissionCardBackArtwork>
+            <div className="flex items-start justify-between gap-3 p-4">
+              <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
+                赛季任务 {index + 1}
               </span>
-              <span className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950 shadow-sm">
-              翻开任务
+              <span
+                data-testid={`season-objective-flip-hint-${objective.id}`}
+                className="rounded-full bg-brand px-3 py-1 text-xs font-black text-slate-950 shadow-glow"
+              >
+                翻开任务
               </span>
             </div>
-            <h3 className="mt-3 text-lg font-black text-slate-950">{profile.visualTitle}</h3>
-            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-600">{profile.creatureName} 带来一个小挑战</p>
-            <div {...progressAria(`${profile.visualTitle} 进度`, objective.progress * 100)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/70">
-              <div className="h-full rounded-full" style={{ width: `${Math.max(8, objective.progress * 100)}%`, background: profile.accent }} />
+            <div className="flex flex-1 items-end p-4 pt-8">
+              <div className="w-full rounded-[1.1rem] border border-white/12 bg-slate-950/58 p-3 shadow-inner backdrop-blur-md">
+                <p className="text-base font-black text-white sm:text-lg">赛季任务卡背</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-white/78">
+                  翻开后再查看任务目标、进度和完成入口。
+                </p>
+              </div>
             </div>
-          </div>
+          </MissionCardBackArtwork>
         </button>
 
         <div
@@ -976,29 +916,32 @@ function SeasonObjectiveCreatureCard({
           inert={!revealed ? true : undefined}
           data-testid={`season-objective-card-front-${objective.id}`}
           className={cn(
-            "quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border p-4 shadow-sm transition duration-300 [backface-visibility:hidden] [transform:rotateY(180deg)]",
+            "poker-flip-front-face poker-flip-face quest-flip-face absolute inset-0 overflow-hidden rounded-[1.55rem] border p-4 shadow-sm transition duration-300 [backface-visibility:hidden]",
             objective.done ? "border-up/20 bg-up-soft" : "border-slate-200 bg-white hover:border-brand/35",
           )}
           style={{ background: objective.done ? undefined : profile.softBg }}
         >
           <div className="pointer-events-none absolute right-0 top-0 h-28 w-28 translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-2xl" style={{ background: profile.accent }} />
           <div className="relative z-10 flex h-full flex-col">
-            <div className="flex items-start justify-between gap-3">
-              <CreaturePortrait profile={profile} className="h-14 w-14 transition duration-300 group-hover:-translate-y-1" />
-              <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm">
-                {progressText}
+            {/* 顶行合并「任务正面」标识与进度计数，中段两行标题+描述 —— 272px 内不再叠压。 */}
+            <div className="flex items-center justify-between gap-3">
+              <CreaturePortrait profile={profile} className="h-12 w-12 shrink-0 transition duration-300 group-hover:-translate-y-1" />
+              <span className="flex shrink-0 items-center gap-1.5">
+                <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[11px] font-black text-white">任务正面</span>
+                <span className="rounded-full bg-white/80 px-2.5 py-1 text-sm font-black tabular-nums text-slate-700 shadow-sm">
+                  {progressText}
+                </span>
               </span>
             </div>
-            <div className="mt-3 min-h-0 flex-1">
-              <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">任务正面</span>
-              <h3 className="mt-3 text-xl font-black text-slate-950">{profile.visualTitle}</h3>
+            <div className="mt-2 min-h-0 flex-1">
+              <h3 className="line-clamp-1 text-lg font-black text-slate-950">{profile.visualTitle}</h3>
               <p className="mt-1 line-clamp-2 text-sm font-bold leading-6 text-slate-600">{objective.detail}</p>
-              <p className="mt-2 line-clamp-1 text-xs font-black text-brand-ink">{profile.conceptTag} · {profile.plantLabel}</p>
+              <p className="mt-1.5 line-clamp-1 text-xs font-black text-brand-ink">{profile.conceptTag} · {profile.plantLabel}</p>
             </div>
-            <div {...progressAria(`${profile.visualTitle} 进度`, objective.done ? 100 : objective.progress * 100)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/70">
+            <div {...progressAria(`${profile.visualTitle} 进度`, objective.done ? 100 : objective.progress * 100)} className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/70">
               <div className="h-full rounded-full" style={{ width: `${Math.max(objective.done ? 100 : 8, objective.progress * 100)}%`, background: profile.accent }} />
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <Link
                 ref={primaryLinkRef}
                 href={objective.href}
@@ -1254,6 +1197,106 @@ function QuestCommanderPanel({
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function QuestMapGallery({
+  quests,
+  selectedQuestId,
+  season,
+  onSelect,
+}: {
+  quests: QuestItem[];
+  selectedQuestId: string | null;
+  season: StudentSeasonChallengePayload;
+  onSelect: (questId: string) => void;
+}) {
+  const taskNodes = quests.slice(0, 6);
+  const seasonNodes = season.objectives.slice(0, 4);
+
+  return (
+    <section
+      data-quest-reveal
+      data-motion-reveal
+      data-testid="quest-map-gallery"
+      className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]"
+    >
+      <div data-testid="quest-task-map" className="panel rounded-[1.8rem] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="bz-eyebrow bz-brand-text-on-light">Route Map</p>
+            <h2 className="mt-2 text-h2 font-semibold text-fg-strong">任务地图</h2>
+          </div>
+          <span className="rounded-full bg-brand-subtle px-3 py-1 text-xs font-bold text-brand-ink">
+            点击切换今日航线
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {taskNodes.map((quest, index) => {
+            const active = quest.id === selectedQuestId;
+            const profile = questVisualProfileFor(quest, index);
+            return (
+              <button
+                key={quest.id}
+                type="button"
+                data-testid={`quest-task-map-node-${quest.id}`}
+                aria-pressed={active}
+                onClick={() => onSelect(quest.id)}
+                className={cn(
+                  "group flex min-h-20 items-center gap-3 rounded-[1.2rem] border p-3 text-left transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                  active ? "border-brand bg-brand-subtle shadow-glow" : "border-slate-200 bg-white hover:border-brand/45",
+                )}
+              >
+                <CreaturePortrait profile={profile} className="h-11 w-11 shrink-0 transition group-hover:scale-105" />
+                <span className="min-w-0">
+                  <span className="block line-clamp-1 text-sm font-black text-fg-strong">{profile.visualTitle}</span>
+                  <span className="mt-1 block text-xs font-semibold tabular-nums text-fg-muted">
+                    航线 {index + 1} · {Math.round(quest.progress * 100)}%
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div data-testid="quest-season-map" className="panel rounded-[1.8rem] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="bz-eyebrow bz-brand-text-on-light">Season Map</p>
+            <h2 className="mt-2 text-h2 font-semibold text-fg-strong">本赛季地图</h2>
+          </div>
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">
+            {season.completedObjectives}/{season.totalObjectives}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3">
+          {seasonNodes.map((objective, index) => {
+            const pseudoQuest = {
+              id: objective.id,
+              category: objective.id.includes("portfolio") ? "finance" : "learning",
+              status: objective.done ? "done" : "active",
+              progress: objective.progress,
+            } as QuestItem;
+            const profile = questVisualProfileFor(pseudoQuest, index);
+            return (
+              <Link
+                key={objective.id}
+                href={objective.href}
+                data-testid={`quest-season-map-node-${objective.id}`}
+                className="flex min-h-16 items-center justify-between gap-3 rounded-[1.15rem] border border-slate-200 bg-white p-3 transition hover:-translate-y-0.5 hover:border-brand/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <span className="min-w-0">
+                  <span className="block line-clamp-1 text-sm font-black text-fg-strong">{profile.visualTitle}</span>
+                  <span className="mt-1 block text-xs font-semibold text-fg-muted">{profile.conceptTag}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-brand" />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -1863,7 +1906,6 @@ export function StudentQuestDashboard({
           autoAlpha: 1,
           clearProps: "transform,opacity,visibility",
         });
-        gsap.set("[data-quest-card-inner]", { rotateY: 0, transformPerspective: 900 });
         return;
       }
 
@@ -1972,31 +2014,13 @@ export function StudentQuestDashboard({
       return next;
     });
 
-    const card = rootRef.current?.querySelector<HTMLElement>(`[data-quest-card-inner="${questId}"]`);
     const focusTarget = () => {
       focusAfterFlip(
         nextFlipped ? questBackActionRefs.current[questId] ?? null : questFlipButtonRefs.current[questId] ?? null,
       );
     };
-    if (!card) {
-      focusTarget();
-      return;
-    }
-
-    const targetRotation = nextFlipped ? 180 : 0;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.set(card, { rotateY: targetRotation, transformPerspective: 900 });
-      focusTarget();
-      return;
-    }
-
-    gsap.to(card, {
-      rotateY: targetRotation,
-      transformPerspective: 900,
-      duration: premiumMotion.duration.reward,
-      ease: premiumMotion.ease.reward,
-      onComplete: focusTarget,
-    });
+    // 焦点落点等到翻面过半（~90° 后新面已可见）再移动，避免焦点环出现在被剔除的背面上。
+    window.setTimeout(focusTarget, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 240);
   });
 
   const toggleQuestFlip = contextSafe((questId: string) => {
@@ -2480,6 +2504,13 @@ export function StudentQuestDashboard({
         </div>
       </section>
 
+      <QuestMapGallery
+        quests={questPayload.quests}
+        selectedQuestId={selectedQuestId}
+        season={season}
+        onSelect={setSelectedQuestId}
+      />
+
       <QuestCommanderPanel quests={questPayload.quests} selectedQuestId={selectedQuestId} onSelect={setSelectedQuestId} />
 
       <section data-quest-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
@@ -2523,7 +2554,6 @@ export function StudentQuestDashboard({
               const isQuestBusy = claimingQuestId === quest.id || drawingQuestId === quest.id;
               const canDraw = quest.claimable || quest.claimed;
               const selected = selectedQuestId === quest.id;
-              const tone = questCategoryTone[quest.category] ?? questCategoryTone.review;
               const visualIndex = Math.max(0, visibleQuests.findIndex((item) => item.id === quest.id));
 
               return (
@@ -2531,57 +2561,49 @@ export function StudentQuestDashboard({
                   data-motion-card
                   data-selected-mission-card
                   data-testid={`quest-card-${quest.id}`}
+                  data-flip-state={isFlipped ? "front" : "back"}
                   key={quest.id}
                   className={cn(
-                    "min-h-[42rem] lg:min-h-[44rem] rounded-[1.7rem] [perspective:1200px]",
+                    "poker-flip-shell min-h-[42rem] rounded-[1.7rem] [perspective:1200px] lg:min-h-[44rem]",
                     selected && "ring-2 ring-brand ring-offset-4 ring-offset-white",
                   )}
                 >
                   <div
                     data-quest-card-inner={quest.id}
-                    className="relative min-h-[42rem] rounded-[1.7rem] lg:min-h-[44rem]"
+                    className={cn(
+                      "poker-flip-inner relative min-h-[42rem] rounded-[1.7rem] lg:min-h-[44rem]",
+                      isFlipped && "poker-flip-inner-front",
+                    )}
                     style={{ transformStyle: "preserve-3d" }}
                   >
                     <div
                       data-testid={`quest-card-back-${quest.id}`}
                       aria-hidden={isFlipped}
                       inert={isFlipped ? true : undefined}
-                      className="absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(145deg,#fffaf2,white_45%,#eef6ff)] p-5 shadow-lg shadow-slate-950/5"
+                      className="poker-flip-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-brand/30 bg-slate-950 p-0 text-white shadow-lg shadow-slate-950/10"
                       style={{ backfaceVisibility: "hidden" }}
                     >
-                      <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand/16 blur-3xl" />
-                      <div className="pointer-events-none absolute bottom-14 left-10 h-14 w-14 rounded-full bg-down/18 blur-xl" />
-                      <div className="relative z-10 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="bz-eyebrow bz-brand-text-on-light">任务锦囊</p>
-                          <h3 className="mt-2 text-h2 text-fg-strong">第 {visualIndex + 1} 号任务卡背</h3>
+                      <MissionCardBackArtwork priority>
+                        <div className="flex items-start justify-between gap-3 p-5">
+                          <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
+                            第 {visualIndex + 1} 号任务卡背
+                          </span>
+                          <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
+                            待揭晓
+                          </span>
                         </div>
-                        <QuestStatusBadge status={quest.status} />
-                      </div>
-                      <div className="relative z-10 mt-5 flex flex-1 items-center justify-center">
-                        <QuestBlindBoxArt quest={quest} index={visualIndex} />
-                      </div>
-                      <div className="relative z-10 mt-5 flex items-center justify-between gap-3">
-                        <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", tone.className)}>
-                          {questCategoryLabel(quest.category)}
-                        </span>
-                        <span className="text-xs font-semibold tabular-nums text-fg-muted">{Math.round(quest.progress * 100)}%</span>
-                      </div>
-                      <div {...progressAria(`${questCategoryLabel(quest.category)} 进度`, quest.progress * 100)} data-motion-viz className="relative z-10 mt-3 h-3 rounded-full bg-slate-100">
-                        <div
-                          data-motion-viz-bar
-                          data-motion-origin="left center"
-                          className={cn(
-                            "h-full rounded-full",
-                            quest.status === "watch"
-                              ? "bg-warning"
-                              : quest.status === "locked"
-                                ? "bg-slate-300"
-                                : "bg-gradient-to-r from-brand to-down",
-                          )}
-                          style={{ width: `${Math.max(quest.status === "locked" ? 0 : 8, quest.progress * 100)}%` }}
-                        />
-                      </div>
+                        <div className="mt-auto p-5">
+                          <div className="rounded-[1.3rem] border border-white/12 bg-slate-950/62 p-4 shadow-inner backdrop-blur-md">
+                            <p className="text-2xl font-black text-white">任务锦囊</p>
+                            <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
+                              点击翻开任务正面，查看目标、导师提示与可领取的学习卡。
+                            </p>
+                            <div aria-hidden="true" className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/14">
+                              <div className="h-full w-3/5 rounded-full bg-gradient-to-r from-brand via-warning to-down" />
+                            </div>
+                          </div>
+                        </div>
+                      </MissionCardBackArtwork>
                       <button
                         ref={(node) => {
                           questFlipButtonRefs.current[quest.id] = node;
@@ -2591,9 +2613,9 @@ export function StudentQuestDashboard({
                         data-testid={`quest-flip-${quest.id}`}
                         aria-controls={`quest-card-front-${quest.id}`}
                         aria-expanded={isFlipped}
-                        aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开任务卡正面：${quest.title}`}
+                        aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开第 ${visualIndex + 1} 号任务卡正面`}
                         onClick={() => toggleQuestFlip(quest.id)}
-                        className="relative z-10 mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-950 px-4 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        className="relative z-10 mx-5 mb-5 mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand/35 bg-slate-950/82 px-4 text-sm font-semibold text-white shadow-glow backdrop-blur transition hover:-translate-y-0.5 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
                         <PackageOpen className="h-4 w-4" />
                         翻开任务正面
@@ -2605,8 +2627,8 @@ export function StudentQuestDashboard({
                       data-testid={`quest-card-front-${quest.id}`}
                       aria-hidden={!isFlipped}
                       inert={!isFlipped ? true : undefined}
-                      className="absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
-                      style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                      className="poker-flip-front-face poker-flip-face absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
+                      style={{ backfaceVisibility: "hidden" }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
