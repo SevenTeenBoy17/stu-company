@@ -799,7 +799,7 @@ function MissionRouteNode({
                 aria-label={`选择航线 ${index + 1}：${profile.visualTitle}，${progress}%`}
                 aria-pressed={active}
                 data-testid={`mission-route-select-${quest.id}`}
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="bz-press inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 选择航线
               </button>
@@ -946,7 +946,7 @@ function SeasonObjectiveCreatureCard({
                 ref={primaryLinkRef}
                 href={objective.href}
                 aria-label={`去完成赛季任务：${profile.visualTitle}`}
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="bz-press inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 text-xs font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 去完成
               </Link>
@@ -1316,17 +1316,21 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/56 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={`任务详情：${quest.title}`}
       onClick={onClose}
     >
+      {/* §19.7：手机上长详情用底部抽屉（贴底滑入、可内滚），sm 起保持居中弹窗。 */}
       <div
         ref={cardRef}
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white shadow-soft"
+        className="bz-sheet-in max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-t-[1.8rem] bg-white shadow-soft sm:max-h-[85dvh] sm:rounded-[2rem]"
       >
+        <div aria-hidden className="flex justify-center pt-2.5 sm:hidden">
+          <span className="h-1.5 w-12 rounded-full bg-slate-300" />
+        </div>
         <div className="relative bg-slate-950 p-6 text-white">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="relative z-10 flex items-start justify-between gap-4">
@@ -1778,7 +1782,7 @@ function CompanionAlbum({
   const unlockedCount = questBoxThemes.filter((theme) => unlocked.has(theme.id)).length;
 
   return (
-    <section data-quest-reveal data-testid="companion-album" className="panel rounded-[2rem] p-5 md:p-6">
+    <section id="companion-album" data-quest-reveal data-testid="companion-album" className="panel scroll-mt-24 rounded-[2rem] p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
@@ -2218,6 +2222,28 @@ export function StudentQuestDashboard({
 
   return (
     <div ref={rootRef} className="space-y-6">
+      {/* §19.7 顶部小图标锚点导航（仅手机）：目标 / 主卡 / 队列 / 图鉴 —— 长页快速跳转。 */}
+      <nav
+        aria-label="任务中心快捷导航"
+        data-testid="quest-anchor-nav"
+        className="sticky top-2 z-30 flex gap-1.5 overflow-x-auto rounded-full border border-slate-200/80 bg-white/92 p-1.5 shadow-soft backdrop-blur md:hidden"
+      >
+        {[
+          { href: "#season-goals", label: "目标", Icon: Target },
+          { href: "#mission-main", label: "主卡", Icon: PackageOpen },
+          { href: "#mission-queue", label: "队列", Icon: CircleDot },
+          { href: "#companion-album", label: "图鉴", Icon: Sparkles },
+        ].map(({ href, label, Icon }) => (
+          <a
+            key={href}
+            href={href}
+            className="bz-press inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-black text-slate-700 transition hover:bg-brand-subtle hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <Icon className="h-4 w-4 text-brand" />
+            {label}
+          </a>
+        ))}
+      </nav>
       <section data-quest-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
@@ -2434,8 +2460,9 @@ export function StudentQuestDashboard({
       <section
         data-quest-reveal
         data-motion-reveal
+        id="season-goals"
         data-testid="quest-season-challenge"
-        className="panel overflow-hidden rounded-[2rem] p-0"
+        className="panel scroll-mt-24 overflow-hidden rounded-[2rem] p-0"
       >
         <div className="grid gap-0 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white md:px-7 md:py-7">
@@ -2528,7 +2555,7 @@ export function StudentQuestDashboard({
 
       <QuestCommanderPanel quests={questPayload.quests} selectedQuestId={selectedQuestId} onSelect={setSelectedQuestId} />
 
-      <section data-quest-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
+      <section id="mission-main" data-quest-reveal data-motion-reveal className="panel scroll-mt-24 rounded-[2rem] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -2630,7 +2657,7 @@ export function StudentQuestDashboard({
                         aria-expanded={isFlipped}
                         aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开第 ${visualIndex + 1} 号任务卡正面`}
                         onClick={() => toggleQuestFlip(quest.id)}
-                        className="relative z-10 mx-5 mb-5 mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand/35 bg-slate-950/82 px-4 text-sm font-semibold text-white shadow-glow backdrop-blur transition hover:-translate-y-0.5 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        className="bz-press relative z-10 mx-5 mb-5 mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand/35 bg-slate-950/82 px-4 text-sm font-semibold text-white shadow-glow backdrop-blur transition hover:-translate-y-0.5 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
                         <PackageOpen className="h-4 w-4" />
                         翻开任务正面
@@ -2727,7 +2754,7 @@ export function StudentQuestDashboard({
                         disabled={!canDraw || Boolean(collectedCard) || claimingQuestId !== null || drawingQuestId !== null}
                         aria-busy={isQuestBusy}
                         className={cn(
-                          "mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                          "bz-press mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                           canDraw && !collectedCard
                             ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                             : collectedCard
@@ -2759,7 +2786,7 @@ export function StudentQuestDashboard({
               );
             })}
             </div>
-            <aside data-testid="quest-queue-panel" className="rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-soft">
+            <aside id="mission-queue" data-testid="quest-queue-panel" className="scroll-mt-24 rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-soft">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">任务队列</p>

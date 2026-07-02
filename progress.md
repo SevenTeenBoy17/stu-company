@@ -3590,3 +3590,14 @@ auto-cols-[44%] 滑动距离减半），sm 起完全还原原网格/列表；横
 平板 768 网格原样（season backs 5 张、宽 678px）。
 Gates：tsc ✓ / lint ✓ / gameflow e2e 6/6（含 390px reduced-motion 翻卡）/ 组件测试 8/8 /
 视觉抽查（赛季横滑露出 1.15 张、图鉴双行流）✓。
+
+## 2026-07-02 批次 5：§19.7 移动端增强三件套
+
+① 顶部小图标锚点导航（目标/主卡/队列/图鉴，仅 <md，sticky top-2 z-30，44px 触控高）：4 个
+   目标区块加 id + scroll-mt-24；实测两锚点 smooth-scroll 落位均为 96px（精确让出导航），
+   桌面 display:none。② 长详情底部抽屉：QuestDetailDialog 手机 items-end + rounded-t +
+   max-h-[88dvh] 内滚 + 抓手 + 260ms bz-sheet-in 滑入（sm 起居中弹窗不变；reduced-motion
+   被全局规则压 0.01ms）；实测 drawerBottomGap=0 贴底。③ bz-press 触控按压（pointer:coarse
+   限定 120ms scale 0.98，注释明确禁用于 3D 翻卡面）：挂于翻卡/领卡/选航线/去完成/锚点chips。
+Gates：tsc ✓ / lint ✓ / 组件 8/8 / gameflow e2e 6/6 (22.6s) / 实机探针（navY=8 sticky、
+albumTop/seasonTop=96、drawerBottomGap=0、desktopNavDisplay=none）+ 抽屉截图目检 ✓。
