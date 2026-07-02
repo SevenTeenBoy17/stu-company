@@ -3609,3 +3609,14 @@ CI Unit 首败：「flips a weekly quest card」的 activeElement 断言 1645ms 
 本轮改动仅 className 不触焦点逻辑，此前 4 连绿属边缘时序。
 修复：该文件全部 6 处 activeElement waitFor 统一加 timeout:4000（CI 实测失败点 1.6s 有 2.4x 余量）。
 验证：coverage 模式（CI 同款）连跑 3/3 全过「Tests 8 passed (8)」。
+
+## 2026-07-03 批次 6：quest-dashboard 组件拆分（评审 deferred 项，P1/P2 清零后启动）
+
+2953 行单文件 → 主编排 1449 行 + 5 个内聚子模块（shared.ts 168 / themes.ts 336 /
+card-art.tsx 219 / mission-cards.tsx 434 / collection.tsx 424）；依赖单向
+shared←themes←card-art←{mission-cards,collection}←main，无环；对外 API 不变
+（main 继续导出 StudentQuestDashboard + 再导出 QuestCardCollectionView，页面/测试零改动）。
+方法：python 锚点断言行区间机械搬运（4 处边界被断言逮住并修正）+ tsc/lint 循环收敛导入
+（32 个未用导入全剪）。
+Gates：tsc ✓ / lint 0 警告 ✓ / 组件+quests 20/20 / 全量 vitest 92 文件 617/617（零 flake）/
+build 61 页 ✓ / gameflow e2e 6/6 (29.4s)。f42e811（焦点 4s 加固）CI 六项全绿在先。
