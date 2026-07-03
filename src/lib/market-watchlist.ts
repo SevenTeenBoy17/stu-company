@@ -4,6 +4,9 @@ import type {
   MarketBoardPayload,
   MarketBoardSector,
   MarketBoardStock,
+  MarketDataProvider,
+  MarketKlineCandle,
+  MarketQuoteSource,
   MarketWatchlistSymbol,
   TickerTapeItem,
 } from "@/lib/types";
@@ -39,7 +42,7 @@ type MarketMetadata = {
 type QuoteInput = {
   currentPrice?: number | null;
   changePercent?: number | null;
-  source?: "alltick" | "fallback";
+  source?: MarketQuoteSource;
 };
 
 type StaticInfoInput = {
@@ -56,11 +59,14 @@ type StaticInfoInput = {
 type BuilderInput = {
   selectedSymbol?: MarketWatchlistSymbol;
   asOf?: string;
-  provider?: "alltick" | "hybrid" | "fallback";
+  provider?: MarketDataProvider;
   note?: string;
   quotes?: Partial<Record<MarketWatchlistSymbol, QuoteInput>>;
   klineSeries?: number[];
+  klineCandles?: MarketKlineCandle[];
   staticInfo?: StaticInfoInput;
+  // 每只 symbol 的真实收盘序列：让排行/预览评分吃真实走势而非合成兜底（实时 provider 才会传）。
+  seriesBySymbol?: Partial<Record<MarketWatchlistSymbol, number[]>>;
 };
 
 export const MARKET_WATCHLIST_SYMBOLS: MarketWatchlistSymbol[] = [
@@ -274,9 +280,9 @@ export function isMarketWatchlistSymbol(value: string): value is MarketWatchlist
 }
 
 export function resolveMarketWatchlistSymbol(value?: string | null): MarketWatchlistSymbol {
-  if (!value) return "MU";
+  if (!value) return "NVDA";
   const normalized = value.trim().toUpperCase();
-  return isMarketWatchlistSymbol(normalized) ? normalized : "MU";
+  return isMarketWatchlistSymbol(normalized) ? normalized : "NVDA";
 }
 
 export function getMarketMetadata(symbol: MarketWatchlistSymbol) {
@@ -293,6 +299,42 @@ function resolveQuote(symbol: MarketWatchlistSymbol, quotes?: BuilderInput["quot
     source:
       quote?.source && typeof quote.currentPrice === "number" ? quote.source : ("fallback" as const),
   };
+}
+
+function buildSyntheticCandles(series: number[]): MarketKlineCandle[] {
+  const values = series.length >= 4 ? series : [100, 101, 100.4, 102];
+  const now = Date.now();
+
+  return values.map((close, index) => {
+    const previous = index === 0 ? close * 0.992 : values[index - 1];
+    const open = previous ?? close;
+    const spread = Math.max(Math.abs(close - open), close * 0.006);
+    const high = Math.max(open, close) + spread * 0.42;
+    const low = Math.max(0.01, Math.min(open, close) - spread * 0.36);
+
+    return {
+      time: new Date(now - (values.length - 1 - index) * 24 * 60 * 60 * 1000).toISOString(),
+      open: Number(open.toFixed(3)),
+      high: Number(high.toFixed(3)),
+      low: Number(low.toFixed(3)),
+      close: Number(close.toFixed(3)),
+    };
+  });
+}
+
+function normalizeCandles(
+  candles: MarketKlineCandle[] | undefined,
+  series: number[],
+): MarketKlineCandle[] {
+  const valid = (candles ?? []).filter(
+    (item) =>
+      Number.isFinite(item.open) &&
+      Number.isFinite(item.high) &&
+      Number.isFinite(item.low) &&
+      Number.isFinite(item.close),
+  );
+
+  return valid.length >= 4 ? valid.slice(-24) : buildSyntheticCandles(series).slice(-24);
 }
 
 function formatShares(raw?: string) {
@@ -450,7 +492,9 @@ function buildObservationNotes(
       : "当前回落样本不多，需警惕情绪一致时的回撤风险。",
     provider === "fallback"
       ? "当前行情字段已回退到教学观察池，适合用来看结构、节奏和复盘逻辑。"
-      : "当前行情已接入外部字段，可把价格变化与教学评分一起交叉阅读。",
+      : provider === "tsanghi"
+      ? "当前价格是沧海真实「日线收盘价」（每天收盘后才更新一次、盘中不变），适合练结构与趋势判断，别当实时行情追涨杀跌。"
+      : "当前行情已接入外部实时字段，可把价格变化与教学评分一起交叉阅读。",
   ];
 
   return notes.slice(0, 4);
@@ -514,12 +558,16 @@ export function buildTickerTapeItems(input?: Pick<BuilderInput, "quotes">): Tick
 
 function humanizeMarketBoardNote(
   note: string | undefined,
-  provider: "alltick" | "hybrid" | "fallback",
+  provider: MarketDataProvider,
 ) {
-  const fallbackMessage = `AllTick 当前异常时会自动回退到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+  const fallbackMessage = `iTick 行情当前异常时会自动回退到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   if (!note) {
-    return provider === "alltick"
-      ? `AllTick 实时字段已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
+    return provider === "tsanghi"
+      ? `沧海数据真实日线收盘已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新（每天收盘后才更新一次，不是盘中实时价）。`
+      : provider === "itick"
+      ? `iTick 实时行情与日 K 线已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
+      : provider === "alltick"
+        ? `AllTick 实时字段已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`
       : fallbackMessage;
   }
 
@@ -531,7 +579,7 @@ function humanizeMarketBoardNote(
     normalized.includes("http 5") ||
     normalized.includes("ret=")
   ) {
-    return `AllTick 当前鉴权或权限返回异常，已自动切换到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+    return `外部行情当前鉴权或权限返回异常，已自动切换到教学观察池，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   }
 
   if (
@@ -540,11 +588,19 @@ function humanizeMarketBoardNote(
     normalized.includes("超时") ||
     normalized.includes("网络")
   ) {
-    return `AllTick 当前请求波动，已回退到教学观察池，并会在每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
+    return `外部行情当前请求波动，已回退到教学观察池，并会在每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动重试。`;
   }
 
   if (provider === "hybrid") {
-    return `AllTick 当前仅返回了部分字段，缺失部分已由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
+    return `外部行情当前仅返回了部分字段，缺失部分已由教学观察池补齐，并按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
+  }
+
+  if (provider === "tsanghi") {
+    return `沧海数据真实日线收盘已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新（每天收盘后才更新一次，不是盘中实时价）。`;
+  }
+
+  if (provider === "itick") {
+    return `iTick 实时行情与日 K 线已接入，观察池按每 ${MARKET_REFRESH_INTERVAL_LABEL} 自动刷新。`;
   }
 
   if (provider === "alltick") {
@@ -564,6 +620,7 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     input?.klineSeries && input.klineSeries.length >= 4
       ? input.klineSeries
       : selectedMetadata.fallbackSeries;
+  const selectedCandles = normalizeCandles(input?.klineCandles, selectedSeries);
   const metrics = buildTeachingMetrics(
     selectedMetadata,
     selectedQuote.currentPrice,
@@ -587,6 +644,7 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
     monogram: selectedMetadata.monogram,
     accentColor: selectedMetadata.accentColor,
     miniSeries: selectedSeries,
+    candles: selectedCandles,
     metrics,
     facts: buildFacts(selectedMetadata, input?.staticInfo),
   };
@@ -598,7 +656,8 @@ export function buildMarketBoardPayload(input?: BuilderInput): MarketBoardPayloa
         metadata,
         item.currentPrice,
         item.changePercent,
-        metadata.fallbackSeries,
+        // 有真实走势就用真实的（与现价同源），否则回退教学曲线。
+        input?.seriesBySymbol?.[item.symbol] ?? metadata.fallbackSeries,
       );
 
       return {

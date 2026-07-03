@@ -2,6 +2,7 @@ import type {
   EventCard,
   MarketAsset,
   MarketBoardPayload,
+  MarketDataProvider,
   MarketRound,
   MarketWatchlistSymbol,
   TickerTapeItem,
@@ -52,6 +53,24 @@ export const marketAssets: MarketAsset[] = [
     category: "fx",
     description: "帮助学生感知汇率波动与避险需求之间的关系。",
     basePrice: 64,
+    risk: "中",
+  },
+  {
+    id: "asset-gold",
+    symbol: "AUG",
+    name: "避险黄金",
+    category: "commodity",
+    description: "在恐慌、衰退和地缘冲击中常被当作防守资产，但平静行情里也可能回落。",
+    basePrice: 98,
+    risk: "中",
+  },
+  {
+    id: "asset-index",
+    symbol: "MIX",
+    name: "全市场指数基金",
+    category: "etf",
+    description: "把多类股票打包成一篮子，用较低波动训练长期分散配置。",
+    basePrice: 92,
     risk: "中",
   },
 ];
@@ -734,36 +753,103 @@ export const marketRounds: MarketRound[] = [
 
 export type TickerTapePayload = {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   note: string;
   items: TickerTapeItem[];
 };
 
 export async function getTickerTapePayload(): Promise<TickerTapePayload> {
+  const { fetchTsanghiWatchlistSnapshot } = await import("@/lib/tsanghi");
+  const tsanghiSnapshot = await fetchTsanghiWatchlistSnapshot();
+  if (tsanghiSnapshot.provider !== "fallback") {
+    return {
+      asOf: tsanghiSnapshot.asOf,
+      provider: tsanghiSnapshot.provider,
+      note: tsanghiSnapshot.note,
+      items: buildTickerTapeItems({ quotes: tsanghiSnapshot.quotes }),
+    };
+  }
+
+  const { fetchItickWatchlistSnapshot } = await import("@/lib/itick");
+  const itickSnapshot = await fetchItickWatchlistSnapshot();
+  if (itickSnapshot.provider !== "fallback") {
+    return {
+      asOf: itickSnapshot.asOf,
+      provider: itickSnapshot.provider,
+      note: itickSnapshot.note,
+      items: buildTickerTapeItems({ quotes: itickSnapshot.quotes }),
+    };
+  }
+
   const { fetchWatchlistSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchWatchlistSnapshot();
+  const liveAlltick = snapshot.provider !== "fallback";
 
   return {
-    asOf: snapshot.asOf,
-    provider: snapshot.provider,
-    note: snapshot.note,
-    items: buildTickerTapeItems({ quotes: snapshot.quotes }),
+    asOf: liveAlltick ? snapshot.asOf : itickSnapshot.asOf,
+    provider: liveAlltick ? snapshot.provider : itickSnapshot.provider,
+    note: liveAlltick ? snapshot.note : itickSnapshot.note,
+    items: buildTickerTapeItems({ quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes }),
   };
 }
 
 export async function getMarketBoardPayload(
   symbol: MarketWatchlistSymbol = "MU",
 ): Promise<MarketBoardPayload> {
+  const { fetchTsanghiMarketBoardSnapshot } = await import("@/lib/tsanghi");
+  const tsanghiSnapshot = await fetchTsanghiMarketBoardSnapshot(symbol);
+  if (tsanghiSnapshot.provider !== "fallback") {
+    // 把每只 symbol 的真实收盘序列透传给评分器，使排行/预览评分与真实现价同源。
+    const seriesBySymbol = tsanghiSnapshot.candlesBySymbol
+      ? (Object.fromEntries(
+          Object.entries(tsanghiSnapshot.candlesBySymbol).map(([sym, candles]) => [
+            sym,
+            (candles ?? []).map((candle) => candle.close),
+          ]),
+        ) as Partial<Record<MarketWatchlistSymbol, number[]>>)
+      : undefined;
+    return buildMarketBoardPayload({
+      selectedSymbol: symbol,
+      asOf: tsanghiSnapshot.asOf,
+      provider: tsanghiSnapshot.provider,
+      note: tsanghiSnapshot.note,
+      quotes: tsanghiSnapshot.quotes,
+      klineSeries: tsanghiSnapshot.selectedKline,
+      klineCandles: tsanghiSnapshot.selectedCandles,
+      staticInfo: tsanghiSnapshot.staticInfo,
+      seriesBySymbol,
+    });
+  }
+
+  const { fetchItickMarketBoardSnapshot } = await import("@/lib/itick");
+  const itickSnapshot = await fetchItickMarketBoardSnapshot(symbol);
+  if (itickSnapshot.provider !== "fallback") {
+    return buildMarketBoardPayload({
+      selectedSymbol: symbol,
+      asOf: itickSnapshot.asOf,
+      provider: itickSnapshot.provider,
+      note: itickSnapshot.note,
+      quotes: itickSnapshot.quotes,
+      klineSeries: itickSnapshot.selectedKline,
+      klineCandles: itickSnapshot.selectedCandles,
+    });
+  }
+
   const { fetchMarketBoardSnapshot } = await import("@/lib/alltick");
   const snapshot = await fetchMarketBoardSnapshot(symbol);
+  const liveAlltick = snapshot.provider !== "fallback";
 
   return buildMarketBoardPayload({
     selectedSymbol: symbol,
-    asOf: snapshot.asOf,
-    provider: snapshot.provider,
-    note: snapshot.note,
-    quotes: snapshot.quotes,
-    klineSeries: snapshot.selectedKline,
+    asOf: liveAlltick ? snapshot.asOf : itickSnapshot.asOf,
+    provider: liveAlltick ? snapshot.provider : itickSnapshot.provider,
+    note: liveAlltick ? snapshot.note : itickSnapshot.note,
+    quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes,
+    klineSeries: liveAlltick ? snapshot.selectedKline : itickSnapshot.selectedKline,
+    // AllTick 的看板快照只暴露 selectedKline（收盘序列），没有 OHLC 蜡烛数据。
+    // 当 AllTick 实时在线时传 undefined，让 normalizeCandles 用 AllTick 自己的序列合成蜡烛，
+    // 保证蜡烛实体与折线同源；只有真正回退到 iTick 时才借用 iTick 的蜡烛（此时折线也来自 iTick）。
+    klineCandles: liveAlltick ? undefined : itickSnapshot.selectedCandles,
     staticInfo: snapshot.staticInfo,
   });
 }

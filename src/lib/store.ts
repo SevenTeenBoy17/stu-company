@@ -16,6 +16,47 @@ import {
   deriveInvestorPersona,
 } from "@/lib/simulation";
 import {
+  cancelAutoInvestPlan,
+  createAutoInvestPlan,
+  executeAutoInvestForRound,
+  type AutoInvestInput,
+} from "@/lib/auto-invest";
+import {
+  applyLifeCashflowChallenge,
+  type LifeCashflowApplyInput,
+} from "@/lib/life-cashflow";
+import {
+  applyCreditLabAction,
+  type CreditLabActionInput,
+} from "@/lib/credit-lab";
+import { claimQuestReward } from "@/lib/quests";
+import { claimSeasonChallengeReward } from "@/lib/season-challenges";
+import {
+  createFundLabAction,
+  type FundLabActionInput,
+} from "@/lib/fund-lab";
+import {
+  createOpportunityNote,
+  type OpportunityNoteInput,
+} from "@/lib/opportunity";
+import {
+  createGoalAccountAction,
+  type GoalAccountActionInput,
+} from "@/lib/goal-accounts";
+import {
+  createProtectionUmbrellaAction,
+  type ProtectionUmbrellaActionInput,
+} from "@/lib/protection-umbrella";
+import {
+  createStudentWatchlistAction,
+  type StudentWatchlistActionInput,
+} from "@/lib/student-watchlist";
+import {
+  createWealthReview,
+  type WealthReviewInput,
+} from "@/lib/wealth-review";
+import { buildPeerHeatPayload } from "@/lib/peer-heat";
+import {
   canAddFamilyMember,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
@@ -23,6 +64,7 @@ import type {
   AiChatMessage,
   AiChatMode,
   AiChatSession,
+  AppSetting,
   Assignment,
   Classroom,
   FamilyDigest,
@@ -64,6 +106,7 @@ type Store = {
   parentLinks: StudentParentLink[];
   growthReports: GrowthReport[];
   aiSessions: AiChatSession[];
+  appSettings: AppSetting[];
   paymentOrders: PaymentOrder[];
   subscriptionGrants: SubscriptionGrant[];
   familyMembers: FamilyMember[];
@@ -437,6 +480,7 @@ export function createSeedStore(): Store {
     ],
     growthReports: [buildGrowthReport(runs[0], "student-1", "parent-1")],
     aiSessions: [],
+    appSettings: [],
     paymentOrders: [],
     subscriptionGrants: [],
     familyMembers: [],
@@ -454,6 +498,9 @@ export function getStore() {
 
   if (!globalThis.__brownZoneStore__.aiSessions) {
     globalThis.__brownZoneStore__.aiSessions = [];
+  }
+  if (!globalThis.__brownZoneStore__.appSettings) {
+    globalThis.__brownZoneStore__.appSettings = [];
   }
   if (!globalThis.__brownZoneStore__.paymentOrders) {
     globalThis.__brownZoneStore__.paymentOrders = [];
@@ -803,19 +850,50 @@ export function markModuleComplete(userId: string, moduleKey: string): LearningP
   const existing = store.learningProgress.find(
     (p) => p.userId === userId && p.moduleKey === moduleKey,
   );
-  if (existing) return existing;
+  if (existing) {
+    existing.quizPassed = true;
+    return existing;
+  }
   const row: LearningProgressRow = {
     userId,
     moduleKey,
+    quizPassed: true,
     completedAt: new Date().toISOString(),
   };
   store.learningProgress.push(row);
   return row;
 }
 
+export function markModuleQuizPassed(userId: string, moduleKey: string): LearningProgressRow {
+  const store = getStore();
+  const existing = store.learningProgress.find(
+    (p) => p.userId === userId && p.moduleKey === moduleKey,
+  );
+  if (existing) {
+    existing.quizPassed = true;
+    return existing;
+  }
+  const row: LearningProgressRow = {
+    userId,
+    moduleKey,
+    quizPassed: true,
+    completedAt: new Date().toISOString(),
+  };
+  store.learningProgress.push(row);
+  return row;
+}
+
+export function hasModuleQuizPassed(userId: string, moduleKey: string): boolean {
+  return getStore().learningProgress.some(
+    (p) => p.userId === userId && p.moduleKey === moduleKey && p.quizPassed,
+  );
+}
+
 export function getLearningProgress(userId: string): LearningProgressSummary {
   const completedKeys = getStore()
-    .learningProgress.filter((p) => p.userId === userId && VALID_MODULE_KEYS.has(p.moduleKey))
+    .learningProgress.filter(
+      (p) => p.userId === userId && p.quizPassed && VALID_MODULE_KEYS.has(p.moduleKey),
+    )
     .map((p) => p.moduleKey);
   return { completed: completedKeys.length, total: VALID_MODULE_KEYS.size, completedKeys };
 }
@@ -1043,6 +1121,36 @@ export async function updateAdminManagedUser(
   return adminUserSummary(user);
 }
 
+export async function getAppSetting<TValue = unknown>(key: string) {
+  return (getStore().appSettings.find((setting) => setting.key === key) as AppSetting<TValue> | undefined) ?? null;
+}
+
+export async function upsertAppSetting<TValue = unknown>(
+  key: string,
+  value: TValue,
+  updatedBy?: string,
+) {
+  const store = getStore();
+  const now = new Date().toISOString();
+  const existing = store.appSettings.find((setting) => setting.key === key);
+  if (existing) {
+    existing.value = value;
+    existing.updatedBy = updatedBy;
+    existing.updatedAt = now;
+    return existing as AppSetting<TValue>;
+  }
+
+  const setting: AppSetting<TValue> = {
+    key,
+    value,
+    updatedBy,
+    createdAt: now,
+    updatedAt: now,
+  };
+  store.appSettings.push(setting);
+  return setting;
+}
+
 export async function createPaymentOrder(input: {
   userId: string;
   targetUserId: string;
@@ -1084,6 +1192,26 @@ export async function updatePaymentOrderProviderFields(
   if (!order) throw new Error("支付订单不存在。");
   order.codeUrl = fields.codeUrl ?? order.codeUrl;
   order.prepayId = fields.prepayId ?? order.prepayId;
+  order.updatedAt = new Date().toISOString();
+  return order;
+}
+
+export async function attachManualPaymentProof(
+  outTradeNo: string,
+  input: { note: string; submittedBy: string; proofImageDataUrl?: string },
+) {
+  const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
+  if (!order) throw new Error("支付订单不存在。");
+  if (order.channel !== "manual") throw new Error("该订单不是人工核验订单。");
+  if (order.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+  order.rawNotify = {
+    manualProof: {
+      note: input.note,
+      submittedBy: input.submittedBy,
+      proofImageDataUrl: input.proofImageDataUrl,
+      submittedAt: new Date().toISOString(),
+    },
+  };
   order.updatedAt = new Date().toISOString();
   return order;
 }
@@ -1350,6 +1478,23 @@ export function getSimulationStateForUser(userId: string) {
   return buildSimulationState(user, classroom, run, relatedRuns, relatedUsers);
 }
 
+export function getPeerHeatForStudent(userId: string) {
+  const store = getStore();
+  const user = findUserById(userId);
+  if (!user || user.role !== "student" || !user.classroomId) {
+    throw new Error("当前账号没有可用的学生沙盘。");
+  }
+
+  const classroom = getClassroomById(user.classroomId);
+  const run = getRunForUser(userId);
+  if (!classroom || !run) {
+    throw new Error("未找到对应的班级或沙盘进度。");
+  }
+
+  const relatedRuns = store.runs.filter((item) => item.classroomId === user.classroomId);
+  return buildPeerHeatPayload(relatedRuns, run, classroom.name);
+}
+
 export function applyActionForUser(userId: string, input: Parameters<typeof applySimulationAction>[1]) {
   const store = getStore();
   const run = getRunForUser(userId);
@@ -1405,11 +1550,179 @@ export function advanceRunForUser(userId: string) {
     throw new Error("未找到对应的学生沙盘。");
   }
 
-  const updated = advanceSimulationRun(run);
+  const updated = executeAutoInvestForRound(advanceSimulationRun(run));
   const index = store.runs.findIndex((item) => item.id === updated.id);
   store.runs[index] = updated;
   syncGrowthReports(userId);
   return updated;
+}
+
+export function createAutoInvestPlanForUser(userId: string, input: Partial<AutoInvestInput>) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const updated = createAutoInvestPlan(run, input);
+  const index = store.runs.findIndex((item) => item.id === updated.id);
+  store.runs[index] = updated;
+  syncGrowthReports(userId);
+  return updated;
+}
+
+export function cancelAutoInvestPlanForUser(userId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const updated = cancelAutoInvestPlan(run);
+  const index = store.runs.findIndex((item) => item.id === updated.id);
+  store.runs[index] = updated;
+  syncGrowthReports(userId);
+  return updated;
+}
+
+export function applyLifeCashflowChallengeForUser(userId: string, input: LifeCashflowApplyInput = {}) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = applyLifeCashflowChallenge(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function applyCreditLabActionForUser(userId: string, input: CreditLabActionInput = {}) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = applyCreditLabAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function claimQuestRewardForUser(userId: string, questId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = claimQuestReward(run, getLearningProgress(userId), questId);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function claimSeasonRewardForUser(userId: string, challengeId: string) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = claimSeasonChallengeReward(run, challengeId);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createOpportunityNoteForUser(userId: string, input: OpportunityNoteInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createOpportunityNote(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createFundLabActionForUser(userId: string, input: FundLabActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createFundLabAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createGoalAccountActionForUser(userId: string, input: GoalAccountActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createGoalAccountAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createProtectionUmbrellaActionForUser(userId: string, input: ProtectionUmbrellaActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createProtectionUmbrellaAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createStudentWatchlistActionForUser(userId: string, input: StudentWatchlistActionInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createStudentWatchlistAction(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
+}
+
+export function createWealthReviewForUser(userId: string, input: WealthReviewInput) {
+  const store = getStore();
+  const run = getRunForUser(userId);
+  if (!run) {
+    throw new Error("未找到对应的学生沙盘。");
+  }
+
+  const outcome = createWealthReview(run, input);
+  const index = store.runs.findIndex((item) => item.id === outcome.run.id);
+  store.runs[index] = outcome.run;
+  syncGrowthReports(userId);
+  return outcome;
 }
 
 function syncGrowthReports(studentUserId: string) {
@@ -1590,6 +1903,19 @@ export function getAdminOverview() {
       revenueFen: paidOrders.reduce((sum, order) => sum + order.amountFen, 0),
       modules: learningModules.length,
     },
+    manualOrders: store.paymentOrders
+      .filter((order) => order.channel === "manual" && order.status === "pending")
+      .map((order) => {
+        const payer = store.users.find((user) => user.id === order.userId);
+        const target = store.users.find((user) => user.id === order.targetUserId);
+        if (!payer || !target) return null;
+        return {
+          order,
+          payer: adminUserSummary(payer),
+          target: adminUserSummary(target),
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
     invites: store.invites,
     classrooms: store.classrooms,
     topUsers: leaderboard.slice(0, 5),

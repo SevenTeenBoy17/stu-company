@@ -18,7 +18,7 @@ const plans = [
       "试用结束后仍可查看历史",
     ],
     cta: "立即注册",
-    href: "/demo",
+    href: "/demo?auth=register",
     highlight: false,
   },
   {
@@ -74,7 +74,7 @@ const plans = [
       "优先支持与培训",
     ],
     cta: "联系开通",
-    href: "/demo",
+    href: "mailto:contact@brownzone.ai?subject=学校授权咨询&body=学校名称：%0A班级数与年级：%0A联系人/电话：%0A期望开通学期：",
     highlight: false,
   },
 ];
@@ -119,6 +119,7 @@ export default async function PricingPage() {
             <SectionReveal
               key={plan.id}
               delay={index * 0.06}
+              motionCard
               className={`rounded-3xl p-6 sm:p-8 ${
                 plan.highlight
                   ? "relative border-2 border-[var(--brand)] bg-[var(--surface)] shadow-xl ring-1 ring-[var(--amber-200)] lg:-mt-4 lg:mb-4"
@@ -126,7 +127,7 @@ export default async function PricingPage() {
               }`}
             >
               {plan.highlight ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--brand)] px-4 py-1 text-xs font-bold text-white shadow-md">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--brand)] px-4 py-1 text-xs font-bold text-slate-950 shadow-md">
                   推荐体验
                 </span>
               ) : null}
@@ -157,9 +158,10 @@ export default async function PricingPage() {
               ) : (
                 <Link
                   href={plan.href}
+                  data-motion-button
                   className={`mt-8 block rounded-full px-6 py-3 text-center text-sm font-semibold transition-all ${
                     plan.highlight
-                      ? "bg-[var(--brand)] text-white shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
+                      ? "bg-[var(--brand)] text-slate-950 shadow-md hover:bg-[var(--amber-600)] hover:shadow-lg"
                       : "border border-[var(--ink-200)] text-[var(--ink-700)] hover:border-[var(--ink-300)] hover:bg-[var(--ink-50)]"
                   }`}
                 >
@@ -181,6 +183,7 @@ export default async function PricingPage() {
             <SectionReveal
               key={faq.q}
               delay={index * 0.05}
+              motionCard
               className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-5"
             >
               <p className="text-sm font-semibold text-[var(--ink-900)]">{faq.q}</p>

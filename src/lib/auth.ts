@@ -65,7 +65,7 @@ export async function readSession() {
   }
 
   try {
-    const result = await jwtVerify<SessionPayload>(cookie, getSecret());
+    const result = await jwtVerify<SessionPayload>(cookie, getSecret(), { algorithms: ["HS256"] });
     return result.payload;
   } catch {
     return null;

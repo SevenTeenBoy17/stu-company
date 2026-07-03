@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db/client", () => ({
   getDb: () => null,
+  getDirectFallbackDb: () => null,
+  getSupabaseDirectFallbackUrl: () => null,
   isDatabaseConfigured: () => false,
 }));
 
@@ -10,8 +12,10 @@ import {
   appendAiMessage,
   applyActionForUser,
   authenticateUser,
+  attachManualPaymentProof,
   buildTeacherLeaderboardCards,
   canUserPayForTarget,
+  createRoundPredictionForUser,
   createAiSession,
   createAssignmentForTeacher,
   findInviteByCode,
@@ -20,21 +24,41 @@ import {
   findUserById,
   getAdminOverview,
   getAiSessionById,
+  getAppSetting,
   getClassroomById,
+  getLearningProgress,
   getLeaderboardSnapshot,
+  createPaymentOrder,
+  fulfillPaymentOrder,
+  drawCardForUser,
+  getPaymentOrderByOutTradeNo,
   getParentOverview,
   getQuickDemoCredentials,
+  getRiskProfile,
   getRunForUser,
   getSimulationStateForUser,
+  listRoundPredictionsForRun,
   getTeacherOverview,
+  hasModuleQuizPassed,
   listAiSessionsForUser,
+  listCardCollectionForUser,
   listSubscriptionTargetsForUser,
+  markModuleComplete,
+  markModuleQuizPassed,
   registerUserByEmail,
   registerUserByInvite,
   resetStoreForTests,
   roleHomePath,
+  upsertAppSetting,
+  upsertRiskProfile,
   validateInviteCode,
 } from "@/lib/db/repo";
+import {
+  getManualWechatCollectionConfig,
+  getManualWechatReadiness,
+  saveManualWechatCollectionConfig,
+} from "@/lib/billing/manual-wechat";
+import type { BehaviorPersona } from "@/lib/types";
 
 describe("db repo fallback adapter", () => {
   beforeEach(async () => {
@@ -80,6 +104,22 @@ describe("db repo fallback adapter", () => {
     });
   });
 
+  it("rejects wildcard invite codes instead of treating them as patterns", async () => {
+    await expect(findInviteByCode("MRB-TE%")).resolves.toBeNull();
+    await expect(validateInviteCode("MRB-TE%")).resolves.toMatchObject({
+      valid: false,
+      reason: "邀请码不存在。",
+    });
+    await expect(
+      registerUserByInvite({
+        inviteCode: "MRB-TE%",
+        name: "通配码",
+        email: "wildcard-invite@brownzone.ai",
+        password: "BrownZone2026!",
+      }),
+    ).rejects.toThrow("邀请码不存在");
+  });
+
   it("mutates simulation runs through action and advance helpers", async () => {
     const before = await getRunForUser("student-1");
     const afterTrade = await applyActionForUser("student-1", {
@@ -93,6 +133,32 @@ describe("db repo fallback adapter", () => {
 
     const advanced = await advanceRunForUser("student-1");
     expect(advanced.currentRound).toBe(afterTrade.currentRound + 1);
+  });
+
+  it("records one decorative prediction per round and settles it without changing net worth", async () => {
+    const before = await getRunForUser("student-1");
+    expect(before).toBeTruthy();
+
+    const prediction = await createRoundPredictionForUser("student-1", { guess: "up" });
+    expect(prediction).toMatchObject({
+      userId: "student-1",
+      runId: before!.id,
+      round: before!.currentRound,
+      guess: "up",
+      resolved: false,
+    });
+
+    await expect(createRoundPredictionForUser("student-1", { guess: "down" })).rejects.toThrow(/预测|提交|回合/);
+
+    const advancedWithPrediction = await advanceRunForUser("student-1");
+    const settled = await listRoundPredictionsForRun(before!.id);
+    expect(settled).toHaveLength(1);
+    expect(settled[0]).toMatchObject({ resolved: true });
+    expect(typeof settled[0]?.correct).toBe("boolean");
+
+    await resetStoreForTests();
+    const advancedWithoutPrediction = await advanceRunForUser("student-1");
+    expect(advancedWithPrediction.netWorth).toBe(advancedWithoutPrediction.netWorth);
   });
 
   it("builds teacher, parent and admin overviews and creates assignments", async () => {
@@ -116,6 +182,27 @@ describe("db repo fallback adapter", () => {
       metrics: expect.any(Array),
       invites: expect.any(Array),
     });
+  });
+
+  // SECURITY REGRESSION (internal-test 2026-06-05, P0): teacher/parent overviews
+  // embed full user rows (their own + students'). They MUST NOT serialize the
+  // bcrypt passwordHash — doing so shipped offline-crackable credential material
+  // to any teacher/parent browser. Pin it so the projection can't be removed.
+  it("teacher & parent overviews never expose a passwordHash", async () => {
+    const teacherOverview = await getTeacherOverview("teacher-1");
+    expect(JSON.stringify(teacherOverview)).not.toContain("passwordHash");
+    expect(teacherOverview.teacher).not.toHaveProperty("passwordHash");
+    expect(teacherOverview.students.length).toBeGreaterThan(0);
+    for (const student of teacherOverview.students) {
+      expect(student).not.toHaveProperty("passwordHash");
+      expect(student.id).toBeTruthy(); // data still present, only the hash is gone
+    }
+
+    const parentOverview = await getParentOverview("parent-1");
+    expect(JSON.stringify(parentOverview)).not.toContain("passwordHash");
+    expect(parentOverview.parent).not.toHaveProperty("passwordHash");
+    expect(parentOverview.student).not.toHaveProperty("passwordHash");
+    expect(parentOverview.student.id).toBe("student-1");
   });
 
   it("stores AI sessions and trims message history", async () => {
@@ -148,6 +235,27 @@ describe("db repo fallback adapter", () => {
     expect(buildTeacherLeaderboardCards([{ userId: "u", name: "A", classroomId: "c", netWorth: 1, disciplineScore: 1, rank: 1 }])[0]?.headline).toBeTruthy();
   });
 
+  it("counts learning progress only after quiz pass", async () => {
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 0,
+      completedKeys: [],
+    });
+    await expect(hasModuleQuizPassed("student-1", "equities")).resolves.toBe(false);
+
+    await markModuleQuizPassed("student-1", "equities");
+    await expect(hasModuleQuizPassed("student-1", "equities")).resolves.toBe(true);
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 1,
+      completedKeys: ["equities"],
+    });
+
+    await markModuleComplete("student-1", "equities");
+    await expect(getLearningProgress("student-1")).resolves.toMatchObject({
+      completed: 1,
+      completedKeys: ["equities"],
+    });
+  });
+
   it("checks sponsored subscription target permissions in fallback mode", async () => {
     await expect(canUserPayForTarget("teacher-1", "student-1")).resolves.toBe(true);
     await expect(canUserPayForTarget("parent-1", "student-1")).resolves.toBe(true);
@@ -157,6 +265,138 @@ describe("db repo fallback adapter", () => {
     await expect(listSubscriptionTargetsForUser("parent-1")).resolves.toEqual([
       expect.objectContaining({ id: "student-1" }),
     ]);
+  });
+
+  it("creates, fulfills and reads back a paid subscription order", async () => {
+    const order = await createPaymentOrder({
+      userId: "parent-1",
+      targetUserId: "student-1",
+      tier: "standard",
+      channel: "mock",
+      amountFen: 1500,
+      description: "Mr.Brown AI 经济沙盘标准版月卡",
+      outTradeNo: "wxorder-repo-paid",
+      expiresAt: new Date("2026-06-11T12:30:00.000Z"),
+      codeUrl: "brown-zone://mock-wechat-pay/wxorder-repo-paid",
+    });
+
+    await expect(getPaymentOrderByOutTradeNo(order.outTradeNo)).resolves.toMatchObject({
+      status: "pending",
+      codeUrl: expect.stringContaining("wxorder-repo-paid"),
+    });
+
+    const result = await fulfillPaymentOrder({
+      outTradeNo: order.outTradeNo,
+      transactionId: "mock-wxorder-repo-paid",
+      paidAt: "2026-06-11T12:00:00.000Z",
+      paidAmountFen: 1500,
+    });
+
+    await expect(getPaymentOrderByOutTradeNo(order.outTradeNo)).resolves.toMatchObject({
+      status: "paid",
+      transactionId: "mock-wxorder-repo-paid",
+    });
+    await expect(findUserById("student-1")).resolves.toMatchObject({
+      subscriptionTier: "standard",
+    });
+    expect(result.grant?.expiresAt).toContain("2026-07-11");
+  });
+
+  it("records manual WeChat proof before admin fulfillment in fallback mode", async () => {
+    const order = await createPaymentOrder({
+      userId: "parent-1",
+      targetUserId: "student-1",
+      tier: "standard",
+      channel: "manual",
+      amountFen: 1500,
+      description: "Mr.Brown AI 经济沙盘 · 标准版月卡",
+      outTradeNo: "wxorder-repo-manual",
+      expiresAt: new Date("2026-06-12T12:30:00.000Z"),
+    });
+
+    await expect(
+      attachManualPaymentProof(order.outTradeNo, {
+        note: "微信转账单号 420000-repo",
+        proofImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        submittedBy: "parent-1",
+      }),
+    ).resolves.toMatchObject({
+      rawNotify: expect.objectContaining({
+        manualProof: expect.objectContaining({
+          note: "微信转账单号 420000-repo",
+          proofImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+        }),
+      }),
+    });
+
+    await expect(
+      fulfillPaymentOrder({
+        outTradeNo: order.outTradeNo,
+        transactionId: "manual-wxorder-repo-manual",
+        paidAmountFen: 1500,
+      }),
+    ).resolves.toMatchObject({
+      order: expect.objectContaining({ status: "paid" }),
+      grant: expect.objectContaining({ tier: "standard" }),
+    });
+  });
+
+  it("persists manual WeChat settings through the repo fallback adapter", async () => {
+    const saved = await upsertAppSetting("billing.manual_wechat", {
+      qrUrl: "https://cdn.example.com/repo-wechat.png",
+      payeeName: "Brown Zone Demo",
+      instruction: "Submit the transfer note after payment.",
+    }, "superadmin");
+
+    expect(saved.updatedBy).toBe("superadmin");
+    await expect(getAppSetting("billing.manual_wechat")).resolves.toMatchObject({
+      value: expect.objectContaining({
+        qrUrl: "https://cdn.example.com/repo-wechat.png",
+        payeeName: "Brown Zone Demo",
+      }),
+    });
+  });
+
+  it("uses an uploaded WeChat QR image ahead of the external URL", async () => {
+    const qrImageDataUrl = "data:image/png;base64,iVBORw0KGgo=";
+    await saveManualWechatCollectionConfig({
+      qrUrl: "https://cdn.example.com/external-wechat.png",
+      qrImageDataUrl,
+      payeeName: "Brown Zone Upload",
+      instruction: "Scan the uploaded QR and submit proof.",
+    }, "superadmin");
+
+    await expect(getManualWechatCollectionConfig()).resolves.toMatchObject({
+      qrUrl: qrImageDataUrl,
+      qrImageDataUrl,
+      externalQrUrl: "https://cdn.example.com/external-wechat.png",
+      qrConfigured: true,
+      payeeName: "Brown Zone Upload",
+      source: "database",
+    });
+  });
+
+  it("reports manual WeChat launch readiness from the saved QR config", async () => {
+    const initial = await getManualWechatCollectionConfig();
+    expect(getManualWechatReadiness(initial)).toMatchObject({
+      ready: false,
+      label: "needs_setup",
+      nextSteps: expect.arrayContaining([
+        expect.stringContaining("需要上传真实收款码图片"),
+      ]),
+    });
+
+    const config = await saveManualWechatCollectionConfig({
+      qrImageDataUrl: "data:image/png;base64,iVBORw0KGgo=",
+      payeeName: "Brown Zone",
+      instruction: "扫码付款后提交订单号和付款截图。",
+    }, "superadmin");
+
+    expect(getManualWechatReadiness(config)).toMatchObject({
+      ready: true,
+      label: "ready",
+      nextSteps: [],
+    });
   });
 
   it("registers a new user by email without invite code", async () => {
@@ -188,6 +428,183 @@ describe("db repo fallback adapter", () => {
 
     expect(user.role).toBe("student");
     expect(user.classroomId).toBe("class-1");
+  });
+
+  it("persists and overwrites risk-profile answers in fallback mode", async () => {
+    await expect(getRiskProfile("student-1")).resolves.toBeNull();
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "稳健观察者",
+        answers: {
+          selectedAnswers: [
+            { questionId: "loss-reaction", optionId: "steady" },
+            { questionId: "time-horizon", optionId: "long" },
+          ],
+        },
+      }),
+    ).resolves.toMatchObject({
+      userId: "student-1",
+      riskLabel: "稳健观察者",
+      answers: expect.objectContaining({
+        selectedAnswers: expect.any(Array),
+      }),
+      updatedAt: expect.any(String),
+    });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      riskLabel: "稳健观察者",
+      answers: expect.objectContaining({
+        selectedAnswers: expect.arrayContaining([
+          expect.objectContaining({ questionId: "loss-reaction", optionId: "steady" }),
+        ]),
+      }),
+    });
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "成长进攻型",
+        answers: {
+          selectedAnswers: [{ questionId: "loss-reaction", optionId: "growth" }],
+        },
+      }),
+    ).resolves.toMatchObject({
+      riskLabel: "成长进攻型",
+    });
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      riskLabel: "成长进攻型",
+      answers: expect.objectContaining({
+        selectedAnswers: [expect.objectContaining({ optionId: "growth" })],
+      }),
+    });
+  });
+
+  it("round-trips and updates the AI behavior persona in fallback mode", async () => {
+    const persona: BehaviorPersona = {
+      band: "steady",
+      label: "稳健配置者",
+      archetype: "防守型",
+      summary: "在波动期倾向于保留现金并分散持仓。",
+      evidence: ["第3轮市场下跌时未追涨", "持仓集中度低于同侪"],
+      nextSteps: ["尝试在低波动期建立小额定投", "学习债券资产的稳健作用"],
+      confidence: "medium",
+    };
+    const analyzedAt = "2026-06-18T08:00:00.000Z";
+
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "稳健观察者",
+        answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "steady" }] },
+        behaviorPersona: persona,
+        personaProvider: "fallback",
+        analyzedAt,
+        inputDigest: "digest-abc123",
+      }),
+    ).resolves.toMatchObject({
+      userId: "student-1",
+      behaviorPersona: persona,
+      personaProvider: "fallback",
+      analyzedAt,
+      inputDigest: "digest-abc123",
+    });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      behaviorPersona: persona,
+      personaProvider: "fallback",
+      analyzedAt,
+      inputDigest: "digest-abc123",
+    });
+
+    const nextPersona: BehaviorPersona = {
+      ...persona,
+      band: "growth",
+      label: "成长进攻者",
+      archetype: "进攻型",
+      confidence: "high",
+    };
+    await expect(
+      upsertRiskProfile("student-1", {
+        riskLabel: "成长进攻型",
+        answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "growth" }] },
+        behaviorPersona: nextPersona,
+        personaProvider: "ai",
+        analyzedAt: "2026-06-19T09:30:00.000Z",
+        inputDigest: "digest-def456",
+      }),
+    ).resolves.toMatchObject({ personaProvider: "ai" });
+
+    await expect(getRiskProfile("student-1")).resolves.toMatchObject({
+      behaviorPersona: nextPersona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-19T09:30:00.000Z",
+      inputDigest: "digest-def456",
+    });
+  });
+
+  it("preserves existing AI persona when questionnaire is re-saved without persona keys", async () => {
+    const persona: BehaviorPersona = {
+      band: "balanced",
+      label: "均衡配置者",
+      archetype: "稳健型",
+      summary: "在不同市场环境中灵活调整仓位。",
+      evidence: ["第5轮加仓债券", "第8轮减仓股票"],
+      nextSteps: ["继续保持多元化配置"],
+      confidence: "high",
+    };
+
+    // Step 1: upsert with a full persona payload
+    await upsertRiskProfile("student-1", {
+      riskLabel: "均衡配置者",
+      answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "balanced" }] },
+      behaviorPersona: persona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-18T10:00:00.000Z",
+      inputDigest: "digest-preserve-test",
+    });
+
+    // Step 2: re-save with ONLY questionnaire fields — no persona keys at all
+    await upsertRiskProfile("student-1", {
+      riskLabel: "稳健观察者",
+      answers: { selectedAnswers: [{ questionId: "loss-reaction", optionId: "steady" }] },
+    });
+
+    // Step 3: persona fields must still be intact
+    const profile = await getRiskProfile("student-1");
+    expect(profile).toMatchObject({
+      riskLabel: "稳健观察者",
+      behaviorPersona: persona,
+      personaProvider: "ai",
+      analyzedAt: "2026-06-18T10:00:00.000Z",
+      inputDigest: "digest-preserve-test",
+    });
+  });
+
+  it("draws the same decorative card idempotently without changing sandbox power or finance state", async () => {
+    const beforeRun = await getRunForUser("student-1");
+    expect(beforeRun).toBeTruthy();
+
+    const first = await drawCardForUser("student-1", {
+      cardId: "calm-observer",
+      source: "quest_claim",
+      meta: { questId: "observe-quest" },
+    });
+    const second = await drawCardForUser("student-1", {
+      cardId: "calm-observer",
+      source: "quest_claim",
+      meta: { questId: "observe-quest" },
+    });
+
+    expect(second).toEqual(first);
+    await expect(listCardCollectionForUser("student-1")).resolves.toEqual([first]);
+
+    const afterRun = await getRunForUser("student-1");
+    expect(afterRun).toMatchObject({
+      netWorth: beforeRun?.netWorth,
+      cash: beforeRun?.cash,
+      savings: beforeRun?.savings,
+      debt: beforeRun?.debt,
+      actionLog: beforeRun?.actionLog,
+    });
   });
 
   it("rejects duplicate email in registerUserByEmail", async () => {

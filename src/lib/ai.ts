@@ -1,11 +1,17 @@
 import type {
   AiChatMessage,
   AiChatMode,
+  BehaviorPersona,
   HistoryReviewInsight,
   Role,
   SimulationState,
   TutorRadarPayload,
 } from "@/lib/types";
+import {
+  normalizeBehaviorPersona,
+  ruleFallbackPersona,
+  type PersonaSignalInput,
+} from "@/lib/behavior-persona";
 import {
   buildTutorRadarContext,
   buildTutorRadarPayload,
@@ -247,6 +253,49 @@ function buildTutorRadarPrompt(input: TutorRadarRequest) {
     getTutorRadarPromptTemplate(),
     "以下是学生当前沙盘信息：",
     buildTutorRadarContext(input.state),
+  ].join("\n\n");
+}
+
+export function buildBehaviorPersonaSystemPrompt() {
+  return [
+    buildTutorSystemPrompt(),
+    "你正在做投资人格的行为复评，只能基于学生在教育沙盘里的行为信号。",
+    "请只返回一个 JSON 对象，不要 Markdown、不要解释文字、不要真实投资建议。",
+    "JSON 键必须且只能围绕：band、label、archetype、summary、evidence、nextSteps、confidence。",
+    "band 只能是 defensive、steady、balanced、growth；confidence 只能是 low、medium、high。",
+    "【band 判定规则】",
+    "- band 必须反映真实行为方向，不要一味给温和标签。",
+    "- 过度交易 / 使用杠杆（借贷）/ 单一标的高集中 → band 不低于 balanced（不能判 defensive 或 steady）。",
+    "- 高分散（持有多类资产）且有足够成长仓 → 不要判 defensive。",
+    "- 风险控制弱 + 交易很少 + 几乎无成长仓（或明显囤现金）→ 应判 defensive。",
+    "- 仅有现金安全垫但已分散持仓 → 不等于囤现金，不要因此判 defensive。",
+  ].join("\n");
+}
+
+function buildBehaviorPersonaPrompt(input: PersonaSignalInput) {
+  return [
+    "请根据以下紧凑行为信号，生成一个面向中学生的投资人格复评 JSON：",
+    JSON.stringify(
+      {
+        round: `${input.currentRound}/${input.totalRounds}`,
+        adaptiveEvents: input.adaptiveEvents.map((event) => ({
+          id: event.id,
+          title: event.title,
+          teachingPoint: event.teachingPoint,
+          confidence: event.confidence,
+          tone: event.tone,
+        })),
+        radar: input.radar,
+        wealth: input.wealth,
+        actionCounts: input.actionCounts,
+        netWorthTrend: input.netWorthTrend,
+        questionnaireScore: input.questionnaireScore,
+        coachNextSteps: input.coachNextSteps,
+      },
+      null,
+      2,
+    ),
+    "输出要求：summary 用一句话说明行为画像；evidence 给 1-3 条行为证据；nextSteps 给 2-3 条下一步训练建议。",
   ].join("\n\n");
 }
 
@@ -554,5 +603,26 @@ export async function requestTutorRadarPayload(input: TutorRadarRequest): Promis
     provider: response.provider,
     baseUrl: response.baseUrl,
     ...normalized,
+  };
+}
+
+export async function requestBehaviorPersona(
+  input: PersonaSignalInput,
+): Promise<{ persona: BehaviorPersona; provider: string }> {
+  const fallback = ruleFallbackPersona(input);
+  const response = await requestRemoteText({
+    system: buildBehaviorPersonaSystemPrompt(),
+    messages: [
+      {
+        role: "user",
+        content: [{ type: "text", text: buildBehaviorPersonaPrompt(input) }],
+      },
+    ],
+    fallbackText: JSON.stringify(fallback, null, 2),
+  });
+
+  return {
+    persona: normalizeBehaviorPersona(response.text, fallback),
+    provider: response.provider,
   };
 }

@@ -86,3 +86,18 @@ export const COMPONENT_LABELS: Record<keyof ComponentsDTO, string> = {
   learning: "学习进度",
   growth: "资产成长",
 };
+
+const JUNK_ALIAS = /^[?？\s]*$/u;
+
+/**
+ * Resolve a stored alias to what's shown on screen. Blank or all-"?" aliases
+ * (placeholder / junk input) collapse to a friendly "匿名玩家" so a board seen by
+ * other minors never displays a broken-looking "????". Real names — full-width,
+ * latin, or CJK — pass through untouched. Shared by the hero card and the board
+ * so both render identically.
+ */
+export function aliasInfo(alias: string): { name: string; anonymous: boolean } {
+  return JUNK_ALIAS.test(alias)
+    ? { name: "匿名玩家", anonymous: true }
+    : { name: alias.trim(), anonymous: false };
+}

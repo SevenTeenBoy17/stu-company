@@ -1,18 +1,25 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
   BadgeCheck,
+  Check,
   LockKeyhole,
   Sparkles,
   UserPlus,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
-type Credentials = { label: string; email: string; password: string; trial?: boolean };
+import {
+  passwordRequirements,
+  registerFieldErrors,
+  type RegisterField,
+} from "@/lib/auth-validation";
+import { useFocusTrap } from "@/lib/use-focus-trap";
+
+type Credentials = { label: string; email: string; trial?: boolean };
 type InviteHint = { role: string; code: string; note: string };
 
 type AuthMode = "login" | "register" | "invite";
@@ -41,6 +48,14 @@ async function readPayload(response: Response) {
   }
 }
 
+function normalizeLoginError(message?: string) {
+  if (!message) return "账号或密码错误，请重新输入。";
+  if (/请求参数格式|invalid_input|请输入有效邮箱|邮箱格式|password/i.test(message)) {
+    return "账号或密码错误，请重新输入。";
+  }
+  return message;
+}
+
 export function DemoPortal({
   credentials,
   inviteHints,
@@ -66,8 +81,21 @@ export function DemoPortal({
     password: "BrownZone2026!",
     inviteCode: inviteHints[0]?.code ?? "",
   });
+  const [registerErrors, setRegisterErrors] = useState<Partial<Record<RegisterField, string>>>({});
   const [message, setMessage] = useState<FormMessage | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  // Update a register field and clear that field's error the moment the user
+  // starts correcting it, so the inline hint disappears as soon as it's stale.
+  function updateRegisterField(field: keyof typeof registerForm, value: string) {
+    setRegisterForm((current) => ({ ...current, [field]: value }));
+    setRegisterErrors((current) => {
+      if (current[field] === undefined) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -97,25 +125,19 @@ export function DemoPortal({
       credentials.find((item) => item.trial) ?? {
         label: "游客试玩",
         email: "guest@brownzone.ai",
-        password: "Guest001!!!",
         trial: true,
       },
     [credentials],
   );
 
   const demoCredentials = useMemo(
-    () =>
-      credentials.filter(
-        (item) =>
-          !item.trial &&
-          item.email.toLowerCase() !== "superadmin" &&
-          !item.label.includes("超级"),
-      ),
+    () => credentials.filter((item) => !item.trial),
     [credentials],
   );
 
   function openModal(mode: AuthMode) {
     setMessage(null);
+    setRegisterErrors({});
     setActiveModal(mode);
   }
 
@@ -123,7 +145,13 @@ export function DemoPortal({
     if (busyAction) return;
     setActiveModal(null);
     setMessage(null);
+    setRegisterErrors({});
   }
+
+  // A11y: full modal keyboard contract — focus-in, Tab-trap, Esc, focus-restore.
+  // closeModal already no-ops while a submit is in flight.
+  const dialogRef = useRef<HTMLElement>(null);
+  useFocusTrap(Boolean(activeModal), dialogRef, closeModal);
 
   function redirectAfterLogin(path = "/demo") {
     startTransition(() => {
@@ -144,7 +172,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "登录失败，请检查邮箱和密码。");
+        throw new Error(normalizeLoginError(payload.message));
       }
 
       setMessage({ tone: "success", text: payload.message ?? "登录成功，正在进入对应工作台。" });
@@ -171,7 +199,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "发起找回密码失败，请稍后重试。");
+        throw new Error(payload.message ?? "发起找回密码失败，请稍后重试。");
       }
       // Dev convenience: when no email provider is configured the API returns the
       // link directly so it can be opened without an inbox.
@@ -201,9 +229,27 @@ export function DemoPortal({
       window.localStorage.setItem(key, String(nextCount));
     }
 
-    const nextLogin = { email: item.email, password: item.password };
-    setLoginForm(nextLogin);
-    await submitLogin(nextLogin, item.trial ? "guest" : `credential-${item.email}`);
+    // Demo passwords stay server-side: send email only; the server looks up the
+    // built-in demo password and establishes the session.
+    setBusyAction(item.trial ? "guest" : `credential-${item.email}`);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/auth/demo-login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: item.email }),
+      });
+      const payload = await readPayload(response);
+      if (!response.ok) {
+        throw new Error(normalizeLoginError(payload.message));
+      }
+      setMessage({ tone: "success", text: payload.message ?? "正在进入演示账号。" });
+      redirectAfterLogin(payload.redirectTo ?? "/demo");
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "登录失败，请稍后重试。" });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function submitInvite() {
@@ -218,7 +264,7 @@ export function DemoPortal({
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "邀请码注册失败，请检查邀请码是否有效。");
+        throw new Error(payload.message ?? "邀请码注册失败，请检查邀请码是否有效。");
       }
 
       setMessage({ tone: "success", text: payload.message ?? "邀请码注册完成，正在进入对应工作台。" });
@@ -231,6 +277,24 @@ export function DemoPortal({
   }
 
   async function submitRegister() {
+    const requestBody = {
+      name: registerForm.name,
+      email: registerForm.email,
+      password: registerForm.password,
+      inviteCode: registerForm.inviteCode || undefined,
+    };
+
+    // Validate against the same schema the server uses, BEFORE the network call:
+    // the user gets the specific reason next to each field instantly, and a
+    // malformed attempt never counts against the registration rate limit.
+    const fieldErrors = registerFieldErrors(requestBody);
+    if (Object.keys(fieldErrors).length > 0) {
+      setRegisterErrors(fieldErrors);
+      setMessage(null);
+      return;
+    }
+    setRegisterErrors({});
+
     setBusyAction("register");
     setMessage(null);
 
@@ -238,16 +302,11 @@ export function DemoPortal({
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: registerForm.name,
-          email: registerForm.email,
-          password: registerForm.password,
-          inviteCode: registerForm.inviteCode || undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
       const payload = await readPayload(response);
       if (!response.ok) {
-        throw new Error(payload.message ?? payload.error ?? "注册失败，请检查邮箱和密码格式。");
+        throw new Error(payload.message ?? "注册失败，请检查邮箱和密码格式。");
       }
 
       setMessage({ tone: "success", text: payload.message ?? "注册成功，正在进入沙盘体验。" });
@@ -274,6 +333,7 @@ export function DemoPortal({
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <button
               type="button"
+              data-motion-card
               onClick={() => openModal("login")}
               className="group rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 text-left text-white shadow-[0_20px_54px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-1"
             >
@@ -283,6 +343,7 @@ export function DemoPortal({
             </button>
             <button
               type="button"
+              data-motion-card
               onClick={() => openModal("register")}
               className="rounded-[1.5rem] border border-orange-200 bg-orange-50 p-5 text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(240,138,56,0.16)]"
             >
@@ -292,6 +353,7 @@ export function DemoPortal({
             </button>
             <button
               type="button"
+              data-motion-card
               onClick={() => void submitCredential(trialCredential)}
               disabled={Boolean(busyAction)}
               className="rounded-[1.5rem] border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-orange-200 disabled:opacity-60"
@@ -314,6 +376,7 @@ export function DemoPortal({
             </p>
             <button
               type="button"
+              data-motion-button
               onClick={() => openModal("invite")}
               className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-sm font-black text-slate-950 transition-all hover:-translate-y-0.5 hover:border-orange-200"
             >
@@ -332,6 +395,7 @@ export function DemoPortal({
                 <button
                   key={item.email}
                   type="button"
+                  data-motion-card
                   onClick={() => void submitCredential(item)}
                   disabled={Boolean(busyAction)}
                   className="rounded-[1.2rem] border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-200 disabled:opacity-60"
@@ -351,13 +415,10 @@ export function DemoPortal({
         </p>
       ) : null}
 
-      <AnimatePresence>
-        {activeModal ? (
-          <motion.div
+      {activeModal ? (
+          <div
+            data-motion-overlay
             className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-slate-950/54 px-4 py-6 backdrop-blur-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
             <button
               type="button"
@@ -365,20 +426,20 @@ export function DemoPortal({
               className="absolute inset-0 cursor-default"
               onClick={closeModal}
             />
-            <motion.section
+            <section
+              ref={dialogRef}
+              data-motion-modal
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-labelledby="demo-auth-title"
-              className="relative w-full max-w-[760px] overflow-hidden rounded-[2.25rem] border border-white/70 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_48%,#fff6ec_100%)] p-5 shadow-[0_34px_120px_rgba(15,23,42,0.32)] sm:p-7"
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-[760px] overflow-hidden rounded-[2.25rem] border border-white/70 bg-[linear-gradient(135deg,#ffffff_0%,#f8fafc_48%,#fff6ec_100%)] p-5 shadow-[0_34px_120px_rgba(15,23,42,0.32)] focus:outline-none sm:p-7"
             >
               <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-orange-200/50 blur-3xl" />
               <div className="absolute -bottom-20 left-10 h-52 w-52 rounded-full bg-slate-200/70 blur-3xl" />
               <button
                 type="button"
+                data-motion-button
                 onClick={closeModal}
                 className="absolute right-5 top-5 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-slate-500 shadow-sm transition-colors hover:text-slate-950"
                 aria-label="关闭登录窗口"
@@ -422,6 +483,7 @@ export function DemoPortal({
                   </div>
                   <button
                     type="button"
+                    data-motion-button
                     onClick={() => void submitLogin()}
                     disabled={Boolean(busyAction)}
                     className="bz-primary-action mt-6 inline-flex min-h-13 w-full items-center justify-center gap-2 px-6 text-base disabled:opacity-60 sm:w-auto"
@@ -431,6 +493,7 @@ export function DemoPortal({
                   </button>
                   <button
                     type="button"
+                    data-motion-button
                     onClick={() => void submitForgot()}
                     disabled={Boolean(busyAction)}
                     className="mt-3 block text-sm font-semibold text-slate-500 underline-offset-4 transition-colors hover:text-slate-800 hover:underline disabled:opacity-60"
@@ -449,15 +512,27 @@ export function DemoPortal({
                   <p className="mt-3 max-w-2xl text-base leading-8 text-slate-600">
                     一个邮箱只能注册一个账号。没有邀请码时会创建普通体验账号。
                   </p>
-                  <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                  <div className="mt-7 grid items-start gap-4 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-2 block text-sm font-bold text-slate-700">昵称</span>
                       <input
                         placeholder="2-16 个字"
                         value={registerForm.name}
-                        onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))}
+                        onChange={(event) => updateRegisterField("name", event.target.value)}
+                        aria-invalid={Boolean(registerErrors.name)}
+                        aria-describedby={registerErrors.name ? "register-name-error" : undefined}
                         className="bz-field min-h-13 rounded-[1.2rem] bg-white/86"
                       />
+                      {registerErrors.name ? (
+                        <p
+                          id="register-name-error"
+                          role="alert"
+                          className="mt-1.5 text-xs font-semibold"
+                          style={{ color: "var(--color-error)" }}
+                        >
+                          {registerErrors.name}
+                        </p>
+                      ) : null}
                     </label>
                     <label className="block">
                       <span className="mb-2 block text-sm font-bold text-slate-700">邮箱</span>
@@ -466,33 +541,88 @@ export function DemoPortal({
                         placeholder="your@email.com"
                         autoComplete="email"
                         value={registerForm.email}
-                        onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))}
+                        onChange={(event) => updateRegisterField("email", event.target.value)}
+                        aria-invalid={Boolean(registerErrors.email)}
+                        aria-describedby={registerErrors.email ? "register-email-error" : undefined}
                         className="bz-field min-h-13 rounded-[1.2rem] bg-white/86"
                       />
+                      {registerErrors.email ? (
+                        <p
+                          id="register-email-error"
+                          role="alert"
+                          className="mt-1.5 text-xs font-semibold"
+                          style={{ color: "var(--color-error)" }}
+                        >
+                          {registerErrors.email}
+                        </p>
+                      ) : null}
                     </label>
                     <label className="block">
                       <span className="mb-2 block text-sm font-bold text-slate-700">密码</span>
                       <input
                         type="password"
-                        placeholder="至少 8 位"
+                        placeholder="设置登录密码"
                         autoComplete="new-password"
                         value={registerForm.password}
-                        onChange={(event) => setRegisterForm((current) => ({ ...current, password: event.target.value }))}
+                        onChange={(event) => updateRegisterField("password", event.target.value)}
+                        aria-invalid={Boolean(registerErrors.password)}
+                        aria-describedby={`register-password-reqs${registerErrors.password ? " register-password-error" : ""}`}
                         className="bz-field min-h-13 rounded-[1.2rem] bg-white/86"
                       />
+                      <ul id="register-password-reqs" className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                        {passwordRequirements.map((requirement) => {
+                          const met = requirement.test(registerForm.password);
+                          return (
+                            <li
+                              key={requirement.label}
+                              className={`inline-flex items-center gap-1 text-xs font-semibold transition-colors ${met ? "text-emerald-700" : "text-slate-500"}`}
+                            >
+                              {met ? (
+                                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                              ) : (
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300" aria-hidden="true" />
+                              )}
+                              {requirement.label}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {registerErrors.password ? (
+                        <p
+                          id="register-password-error"
+                          role="alert"
+                          className="mt-1.5 text-xs font-semibold"
+                          style={{ color: "var(--color-error)" }}
+                        >
+                          {registerErrors.password}
+                        </p>
+                      ) : null}
                     </label>
                     <label className="block">
                       <span className="mb-2 block text-sm font-bold text-slate-700">邀请码（可选）</span>
                       <input
                         placeholder="有邀请码可填写"
                         value={registerForm.inviteCode}
-                        onChange={(event) => setRegisterForm((current) => ({ ...current, inviteCode: event.target.value }))}
+                        onChange={(event) => updateRegisterField("inviteCode", event.target.value)}
+                        aria-invalid={Boolean(registerErrors.inviteCode)}
+                        aria-describedby={registerErrors.inviteCode ? "register-invite-error" : undefined}
                         className="bz-field min-h-13 rounded-[1.2rem] bg-white/86"
                       />
+                      {registerErrors.inviteCode ? (
+                        <p
+                          id="register-invite-error"
+                          role="alert"
+                          className="mt-1.5 text-xs font-semibold"
+                          style={{ color: "var(--color-error)" }}
+                        >
+                          {registerErrors.inviteCode}
+                        </p>
+                      ) : null}
                     </label>
                   </div>
                   <button
                     type="button"
+                    data-motion-button
                     onClick={() => void submitRegister()}
                     disabled={Boolean(busyAction)}
                     className="bz-primary-action mt-6 inline-flex min-h-13 w-full items-center justify-center gap-2 px-6 text-base disabled:opacity-60 sm:w-auto"
@@ -562,6 +692,7 @@ export function DemoPortal({
                   </div>
                   <button
                     type="button"
+                    data-motion-button
                     onClick={() => void submitInvite()}
                     disabled={Boolean(busyAction)}
                     className="bz-primary-action mt-6 inline-flex min-h-13 w-full items-center justify-center gap-2 px-6 text-base disabled:opacity-60 sm:w-auto"
@@ -577,10 +708,9 @@ export function DemoPortal({
                   {message.text}
                 </p>
               ) : null}
-            </motion.section>
-          </motion.div>
+            </section>
+          </div>
         ) : null}
-      </AnimatePresence>
     </div>
   );
 }

@@ -4,7 +4,13 @@ import { z } from "zod";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { authenticateUser, roleHomePath } from "@/lib/db/repo";
-import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
+import { buildRateLimitMessage, peekRateLimit, rateLimit, rateLimitKey } from "@/lib/rate-limit";
+
+// Per-IP failed-login budget over 10 min. Tolerant enough for a whole classroom
+// behind one school NAT IP (only FAILURES count, not successful logins), but low
+// enough to throttle password spraying (1 password × many accounts from one IP).
+const LOGIN_IP_FAILURE_LIMIT = 50;
+const INVALID_LOGIN_MESSAGE = "账号或密码错误，请重新输入。";
 
 const loginSchema = z.object({
   email: z
@@ -24,16 +30,33 @@ export async function POST(request: Request) {
   if (originBlock) return originBlock;
 
   try {
-    const body = loginSchema.parse(await request.json());
+    const parsed = loginSchema.safeParse(await request.json().catch(() => null));
+
+    if (!parsed.success) {
+      return apiError("unauthorized", INVALID_LOGIN_MESSAGE, 401);
+    }
+
+    const body = parsed.data;
+
+    // (1) Per-account window — stops single-account brute force.
     const rl = rateLimit(rateLimitKey("login-account", body.email.toLowerCase(), request), 12, 60_000 * 10);
     if (!rl.ok) {
       return apiError("invalid_input", buildRateLimitMessage(rl), 429);
     }
 
+    // (2) Per-IP failure budget — stops password spraying across many accounts
+    // from one IP. Peek (don't consume) so a successful login never costs a slot.
+    const ipFailureKey = rateLimitKey("login-ip-fail", undefined, request);
+    if (!peekRateLimit(ipFailureKey, LOGIN_IP_FAILURE_LIMIT)) {
+      return apiError("invalid_input", "登录尝试过于频繁，请稍后再试。", 429);
+    }
+
     const user = await authenticateUser(body.email.toLowerCase(), body.password);
 
     if (!user) {
-      return apiError("unauthorized", "邮箱或密码不正确。", 401);
+      // Only failures consume the IP budget.
+      rateLimit(ipFailureKey, LOGIN_IP_FAILURE_LIMIT, 60_000 * 10);
+      return apiError("unauthorized", INVALID_LOGIN_MESSAGE, 401);
     }
 
     await persistSession({

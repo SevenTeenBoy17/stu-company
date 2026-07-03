@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, MapPin, School2, ShieldCheck } from "lucide-react";
 
 import type { RankVisibility } from "./types";
@@ -16,17 +16,38 @@ const VISIBILITY_OPTIONS: { value: RankVisibility; label: string; hint: string }
   { value: "hidden", label: "隐身", hint: "只自己可见战力，不进入任何榜单" },
 ];
 
-export function RankOnboarding({ onComplete }: { onComplete: () => void }) {
+export interface RankOnboardingInitial {
+  provinceCode: string;
+  cityCode: string;
+  schoolName: string;
+  alias: string;
+  visibility: RankVisibility;
+  consent: boolean;
+}
+
+export function RankOnboarding({
+  onComplete,
+  initial,
+  onCancel,
+}: {
+  onComplete: () => void;
+  initial?: RankOnboardingInitial;
+  onCancel?: () => void;
+}) {
+  const editing = Boolean(initial);
   const [provinces, setProvinces] = useState<Option[]>([]);
   const [cities, setCities] = useState<Option[]>([]);
   const [citySchools, setCitySchools] = useState<string[]>([]);
 
-  const [provinceCode, setProvinceCode] = useState("");
-  const [cityCode, setCityCode] = useState("");
-  const [schoolName, setSchoolName] = useState("");
-  const [alias, setAlias] = useState("");
-  const [visibility, setVisibility] = useState<RankVisibility>("public");
-  const [consent, setConsent] = useState(false);
+  const [provinceCode, setProvinceCode] = useState(initial?.provinceCode ?? "");
+  const [cityCode, setCityCode] = useState(initial?.cityCode ?? "");
+  const [schoolName, setSchoolName] = useState(initial?.schoolName ?? "");
+  const [alias, setAlias] = useState(initial?.alias ?? "");
+  const [visibility, setVisibility] = useState<RankVisibility>(initial?.visibility ?? "public");
+  const [consent, setConsent] = useState(initial?.consent ?? false);
+  // When pre-filling for an edit, the first province effect must NOT wipe the
+  // pre-selected city (that effect clears city on user-driven province changes).
+  const preserveCityRef = useRef(Boolean(initial?.cityCode));
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +64,11 @@ export function RankOnboarding({ onComplete }: { onComplete: () => void }) {
       setCities([]);
       return;
     }
-    setCityCode("");
+    if (preserveCityRef.current) {
+      preserveCityRef.current = false;
+    } else {
+      setCityCode("");
+    }
     void fetch(`/api/leaderboard/regions?provinceCode=${provinceCode}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { cities?: Option[] } | null) => setCities(data?.cities ?? []))
@@ -93,7 +118,7 @@ export function RankOnboarding({ onComplete }: { onComplete: () => void }) {
     <section className="overflow-hidden rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
       <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-brand" />
-        <h2 className="text-base font-semibold text-fg-default">加入财商战力榜</h2>
+        <h2 className="text-base font-semibold text-fg-default">{editing ? "编辑档案与隐私设置" : "加入财商战力榜"}</h2>
       </div>
       <p className="mt-2 text-sm leading-6 text-fg-muted">
         填写你的学校与所在地区，即可和同校、同城、同省乃至全国的同学比拼财商战力。信息为必填，仅用于排名分组。
@@ -205,15 +230,27 @@ export function RankOnboarding({ onComplete }: { onComplete: () => void }) {
 
       {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!canSubmit}
-        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
-      >
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {consent ? "加入排行榜" : "保存信息"}
-      </button>
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!canSubmit}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {editing ? "保存修改" : consent ? "加入排行榜" : "保存信息"}
+        </button>
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-border bg-bg-muted px-4 py-2.5 text-sm font-semibold text-fg-default transition hover:border-brand/40 disabled:opacity-50 sm:w-auto"
+          >
+            取消
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

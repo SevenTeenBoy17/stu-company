@@ -6,10 +6,11 @@ import { OnboardingFlow } from "@/components/student/onboarding-flow";
 interface Props {
   userName: string;
   needsOnboarding: boolean;
+  showUpgradeShortcut?: boolean;
   children: ReactNode;
 }
 
-export function StudentOnboardingGate({ userName, needsOnboarding, children }: Props) {
+export function StudentOnboardingGate({ userName, needsOnboarding, showUpgradeShortcut = false, children }: Props) {
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
 
   return (
@@ -17,6 +18,7 @@ export function StudentOnboardingGate({ userName, needsOnboarding, children }: P
       {showOnboarding && (
         <OnboardingFlow
           userName={userName}
+          showUpgradeShortcut={showUpgradeShortcut}
           onComplete={() => setShowOnboarding(false)}
         />
       )}

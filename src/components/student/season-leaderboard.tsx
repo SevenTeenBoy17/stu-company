@@ -14,21 +14,38 @@ type SeasonPayload = {
 /** P2: global weekly season leaderboard — everyone this week shares one market. */
 export function SeasonLeaderboard() {
   const [data, setData] = useState<SeasonPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    void fetch("/api/market/season-leaderboard", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: SeasonPayload | null) => {
-        if (alive && payload) setData(payload);
-      })
-      .catch(() => {
-        // Leaderboard is non-critical; hide on failure.
-      });
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const response = await fetch("/api/market/season-leaderboard", { cache: "no-store" });
+        const payload = (await response.json().catch(() => null)) as (SeasonPayload & { message?: string }) | null;
+        if (!alive) return;
+        if (!response.ok || !payload) {
+          setData(null);
+          setError(payload?.message ?? "本周赛季榜暂时加载失败，请稍后重试。");
+          return;
+        }
+        setData(payload);
+      } catch {
+        if (alive) {
+          setData(null);
+          setError("网络连接不稳定，本周赛季榜暂时加载失败。");
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [retryKey]);
 
   const topThreeViewer =
     data?.leaderboard.find((entry) => entry.userId === data.viewerId && entry.rank <= 3) ?? null;
@@ -48,13 +65,24 @@ export function SeasonLeaderboard() {
         本周所有玩家面对同一套行情，凭决策一较高下。每周一刷新。
       </p>
 
-      {!data ? (
+      {error ? (
+        <div className="mt-3 rounded-xl border border-[var(--error-100)] bg-[var(--error-50)] px-3 py-4">
+          <p className="text-sm font-bold text-[var(--error-600)]">{error}</p>
+          <button
+            type="button"
+            onClick={() => setRetryKey((key) => key + 1)}
+            className="mt-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
+          >
+            重新加载赛季榜
+          </button>
+        </div>
+      ) : loading ? (
         <ol className="mt-3 space-y-1.5" aria-hidden="true">
           {[0, 1, 2].map((index) => (
             <li key={index} className="h-9 animate-pulse rounded-xl bg-bg-muted" />
           ))}
         </ol>
-      ) : data.leaderboard.length === 0 ? (
+      ) : !data || data.leaderboard.length === 0 ? (
         <p className="mt-3 rounded-xl bg-bg-muted px-3 py-4 text-center text-sm text-fg-muted">
           本周赛季刚开始，完成一局即可上榜 🏁
         </p>

@@ -33,11 +33,10 @@ test.describe("prelaunch smoke", () => {
     await page.getByLabel("密码").fill("Super001!!!");
     await page.getByRole("button", { name: /登录并进入工作台/ }).click();
     await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "账号、试用与订阅管理" })).toBeVisible();
-    await page.getByPlaceholder("搜索姓名、邮箱或备注").fill("student");
-    await page.getByRole("button", { name: /查询/ }).click();
+    await expect(page.getByRole("heading", { name: "商业运营与账号权限，总览在这里完成。" })).toBeVisible();
+    await expect(page.locator("body")).toContainText("账号、试用与订阅管理");
     await expect(page.locator("body")).toContainText(
-      /账号列表已刷新。|student@brownzone\.ai|林知夏/,
+      /student@brownzone\.ai|林知夏|账号席位/,
       { timeout: 30_000 },
     );
   });
@@ -55,7 +54,7 @@ test.describe("prelaunch smoke", () => {
     await page.goto("/demo");
     await page.getByRole("button", { name: /游客体验/ }).click();
     await expect(page).toHaveURL(/\/student/, { timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "学生策略台" })).toBeVisible();
+    await expect(page.locator("body")).toContainText("学生策略台");
     await expect(page.getByText("游客可立即开通完整 AI 评定")).toBeVisible();
     await expect(page.getByText(/This page couldn't load/i)).toHaveCount(0);
   });
@@ -106,6 +105,8 @@ test.describe("prelaunch smoke", () => {
     expect(prepay.ok()).toBe(true);
     const order = await prepay.json();
     expect(order.mock).toBe(true);
+    expect(order.codeUrl).toContain(order.outTradeNo);
+    expect(order.amountFen).toBe(1500);
 
     const complete = await page.request.post("/api/billing/mock-complete", {
       data: { outTradeNo: order.outTradeNo },
@@ -113,6 +114,19 @@ test.describe("prelaunch smoke", () => {
     expect(complete.ok()).toBe(true);
     await expect(complete.json()).resolves.toMatchObject({
       message: /模拟支付完成|此前已开通/,
+    });
+
+    const status = await page.request.get(
+      `/api/billing/order-status?outTradeNo=${encodeURIComponent(order.outTradeNo)}`,
+    );
+    expect(status.ok()).toBe(true);
+    await expect(status.json()).resolves.toMatchObject({
+      paid: true,
+      status: "paid",
+      targetUser: expect.objectContaining({
+        id: "student-1",
+        subscriptionTier: "standard",
+      }),
     });
   });
 

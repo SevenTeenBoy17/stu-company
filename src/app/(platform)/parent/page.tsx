@@ -21,7 +21,7 @@ export default async function ParentPage() {
       summary="家长端关注的不是短线收益，而是孩子面对不确定性时是否更理性、更有计划，也更愿意复盘。"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">绑定学生</p>
           <h2 className="mt-4 text-3xl font-semibold text-fg-default">{overview.student.name}</h2>
           <p className="mt-3 text-base leading-8 text-fg-muted">{overview.student.title}</p>
@@ -30,7 +30,7 @@ export default async function ParentPage() {
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {overview.report.competencies.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-bg-muted p-5">
+              <div key={item.label} data-motion-card className="rounded-2xl bg-bg-muted p-5">
                 <p className="text-sm text-fg-muted">{item.label}</p>
                 <p className="mt-3 text-3xl font-semibold text-fg-default">{item.value}</p>
               </div>
@@ -38,9 +38,9 @@ export default async function ParentPage() {
           </div>
         </section>
 
-        <section className="panel rounded-3xl p-6">
+        <section data-motion-reveal className="panel rounded-3xl p-6">
           <p className="bz-eyebrow">学期成长轨迹</p>
-          <div className="mt-6 rounded-3xl bg-bg-inverse p-6 text-white">
+          <div data-motion-viz className="mt-6 rounded-3xl bg-bg-inverse p-6 text-white">
             {/* QA-FIX 2026-05-26: previous markup put each bar's percentage height
                 inside a wrapper without an explicit height → percentage resolved
                 to 0 and the chart looked empty. Wrapper now stretches to h-56
@@ -48,15 +48,24 @@ export default async function ParentPage() {
             <div className="flex h-56 items-end gap-3">
               {overview.report.netWorthTrend.map((value, index, array) => {
                 const max = Math.max(...array);
-                const heightPercent = max > 0 ? (value / max) * 100 : 0;
+                const min = Math.min(...array);
+                const range = max - min;
+                // Scale to the data's actual min–max, not a 0-based axis: net-worth
+                // values sit in a narrow high band, so a 0-based axis made every bar
+                // ~full height (a solid block). Map min→12%, max→100% so the
+                // round-to-round trend is actually visible.
+                const heightPercent = range > 0 ? 12 + ((value - min) / range) * 88 : 60;
                 return (
                   <div
                     key={`${value}-${index}`}
                     className="flex h-full flex-1 flex-col items-center justify-end gap-3"
                   >
                     <div
+                      data-motion-viz-bar
+                      data-motion-origin="center bottom"
                       className="w-full rounded-t-2xl bg-brand"
                       style={{ height: `${heightPercent}%` }}
+                      title={`R${index + 1}：¥${value.toLocaleString("zh-CN")}`}
                     />
                     <span className="text-xs text-white/55">R{index + 1}</span>
                   </div>
@@ -64,11 +73,11 @@ export default async function ParentPage() {
               })}
             </div>
           </div>
-          <div className="mt-6 rounded-2xl bg-bg-muted p-5">
+          <div data-motion-card className="mt-6 rounded-2xl bg-bg-muted p-5">
             <p className="text-lg font-semibold text-fg-default">教师评语</p>
             <p className="mt-3 text-sm leading-7 text-fg-muted">{overview.report.teacherComment}</p>
           </div>
-          <div className="mt-4 rounded-2xl bg-bg-muted p-5">
+          <div data-motion-card className="mt-4 rounded-2xl bg-bg-muted p-5">
             <p className="text-lg font-semibold text-fg-default">最近回合反思</p>
             <p className="mt-3 text-sm leading-7 text-fg-muted">{overview.run.lastInsight}</p>
           </div>

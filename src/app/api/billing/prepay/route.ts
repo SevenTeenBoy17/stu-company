@@ -4,6 +4,7 @@ import { z } from "zod";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { verifyBillingIntent } from "@/lib/billing/billing-intent";
+import { getManualWechatCollectionConfig } from "@/lib/billing/manual-wechat";
 import {
   createPrepayOrder,
   isWechatMockAllowed,
@@ -20,7 +21,7 @@ import { createId } from "@/lib/utils";
 
 const prepaySchema = z.object({
   tier: z.enum(["standard", "premium"]),
-  channel: z.enum(["native", "jsapi"]).default("native"),
+  channel: z.enum(["native", "jsapi", "manual"]).default("native"),
   targetUserId: z.string().min(1).optional(),
   openId: z.string().min(8).optional(),
   billingIntentToken: z.string().min(20).optional(),
@@ -31,9 +32,9 @@ const PLANS = {
   premium: { amountFen: 3000, label: "Mr.Brown AI 经济沙盘 · 高级版月卡" },
 } as const;
 
-function buildOrderExpiry() {
+function buildOrderExpiry(minutes = 30) {
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+  expiresAt.setMinutes(expiresAt.getMinutes() + minutes);
   return expiresAt;
 }
 
@@ -48,7 +49,6 @@ export async function POST(request: Request) {
   const auth = await requireUser();
   if (auth.error) return auth.error;
 
-  // P8: cap payment-order creation to curb order spam (auth + origin already enforced).
   const rl = rateLimit(rateLimitKey("billing-prepay", auth.user.id, request), 10, 60_000);
   if (!rl.ok) return apiError("invalid_input", buildRateLimitMessage(rl), 429);
 
@@ -58,11 +58,6 @@ export async function POST(request: Request) {
       return apiError("invalid_input", "微信内支付需要 openId。", 400);
     }
 
-    // A signed billing intent names the student to be upgraded. It is issued by
-    // the guest-upgrade flow (student self-upgrade) and by /api/billing/parent-link
-    // (a shareable link a teen sends to a parent). When present and valid for the
-    // requested tier, it authorizes paying for that student — and the target is
-    // derived from it, so a parent can pay via the link without being linked.
     const intent = await verifyBillingIntent(body.billingIntentToken);
     const intentTarget =
       intent?.purpose === "guest-upgrade" && intent.tier === body.tier ? intent.userId : undefined;
@@ -80,8 +75,6 @@ export async function POST(request: Request) {
         return apiError("forbidden", "请先升级为个人账号，再开通月卡。", 403);
       }
 
-      // Students may only initiate payment for their own account via a self-issued
-      // intent; otherwise payment is completed by a parent/teacher (compliance).
       if (!intentAuthorizesTarget || intentTarget !== auth.user.id) {
         return apiError(
           "forbidden",
@@ -101,12 +94,13 @@ export async function POST(request: Request) {
     }
 
     const outTradeNo = createId("wxorder");
-    const expiresAt = buildOrderExpiry();
+    const expiresAt = buildOrderExpiry(body.channel === "manual" ? 24 * 60 : 30);
     const liveConfigured = isWechatPayConfigured();
     const mock =
-      process.env.NODE_ENV !== "production" ||
-      process.env.WECHAT_PAY_MOCK_MODE === "true" ||
-      !liveConfigured;
+      body.channel !== "manual" &&
+      (process.env.NODE_ENV !== "production" ||
+        process.env.WECHAT_PAY_MOCK_MODE === "true" ||
+        !liveConfigured);
 
     if (mock && !isWechatMockAllowed()) {
       return apiError(
@@ -121,19 +115,22 @@ export async function POST(request: Request) {
     let jsapiParams: unknown;
 
     const plan = PLANS[body.tier];
+    const manualConfig = body.channel === "manual" ? await getManualWechatCollectionConfig() : undefined;
 
     await createPaymentOrder({
       userId: auth.user.id,
       targetUserId,
       tier: body.tier,
-      channel: mock ? "mock" : body.channel,
+      channel: body.channel === "manual" ? "manual" : mock ? "mock" : body.channel,
       amountFen: plan.amountFen,
       description: plan.label,
       outTradeNo,
       expiresAt,
     });
 
-    if (mock) {
+    if (body.channel === "manual") {
+      codeUrl = manualConfig?.qrUrl;
+    } else if (mock) {
       codeUrl = `brown-zone://mock-wechat-pay/${outTradeNo}`;
     } else {
       const result = await createPrepayOrder({
@@ -157,6 +154,22 @@ export async function POST(request: Request) {
       prepayId,
       jsapiParams,
       expiresAt: updated.expiresAt,
+      amountFen: updated.amountFen,
+      description: updated.description,
+      paymentMode:
+        body.channel === "manual"
+          ? "wechat_manual"
+          : mock
+            ? "mock"
+            : body.channel === "jsapi"
+              ? "wechat_jsapi"
+              : "wechat_native",
+      manual: body.channel === "manual",
+      manualPayment: manualConfig,
+      message:
+        body.channel === "manual"
+          ? "请使用微信完成付款，并在付款备注中填写订单号。提交付款凭证后，超级管理员核验到账即可开通订阅。"
+          : undefined,
       mock,
     });
   } catch (error) {

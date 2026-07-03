@@ -149,7 +149,7 @@ export function AdminUserManager({
       params.set("subscription", nextFilters.subscription);
       const response = await fetch(`/api/admin/users?${params.toString()}`);
       const payload = await readPayload<{ users?: AdminUserSummary[] }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号列表读取失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号列表读取失败。");
       const nextUsers = payload.users ?? [];
       setItems(nextUsers);
       if (!nextUsers.some((user) => user.id === selectedUserId)) {
@@ -181,7 +181,7 @@ export function AdminUserManager({
         }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号创建失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号创建失败。");
       if (payload.user) {
         setItems((current) => [payload.user!, ...current]);
         setSelectedUserId(payload.user.id);
@@ -228,7 +228,7 @@ export function AdminUserManager({
         }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "账号配置更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "账号配置更新失败。");
       if (payload.user) {
         setItems((current) => current.map((user) => (user.id === payload.user!.id ? payload.user! : user)));
       }
@@ -260,7 +260,7 @@ export function AdminUserManager({
         body: JSON.stringify({ userId: selectedUser.id, password }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "密码更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "密码更新失败。");
       setPassword("");
       setMessage({ tone: "success", text: payload.message ?? "密码已更新，旧会话已失效。" });
       void refreshUsers();
@@ -291,7 +291,7 @@ export function AdminUserManager({
         body: JSON.stringify({ userId: selectedUser.id, email }),
       });
       const payload = await readPayload<{ user?: AdminUserSummary }>(response);
-      if (!response.ok) throw new Error(payload.message ?? payload.error ?? "邮箱更新失败。");
+      if (!response.ok) throw new Error(payload.message ?? "邮箱更新失败。");
       if (payload.user) {
         setItems((current) => current.map((user) => (user.id === payload.user!.id ? { ...user, ...payload.user! } : user)));
       }
@@ -306,7 +306,7 @@ export function AdminUserManager({
   const visibleCount = items.length;
 
   return (
-    <section className="panel rounded-[2rem] p-5 sm:p-6">
+    <section data-motion-reveal className="panel rounded-[2rem] p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="bz-eyebrow">SUPER ADMIN</p>
@@ -363,6 +363,7 @@ export function AdminUserManager({
         </select>
         <button
           type="button"
+          data-motion-button
           onClick={() => void refreshUsers()}
           disabled={Boolean(busyAction)}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
@@ -385,6 +386,7 @@ export function AdminUserManager({
                 <button
                   key={user.id}
                   type="button"
+                  data-motion-card
                   onClick={() => setSelectedUserId(user.id)}
                   className={cn(
                     "min-h-[128px] rounded-[1.5rem] border p-4 text-left transition-all hover:-translate-y-0.5",
@@ -418,7 +420,7 @@ export function AdminUserManager({
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
+          <div data-motion-card className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
             <div className="flex items-center gap-2">
               <UserRoundCog className="h-5 w-5 text-orange-500" />
               <h3 className="text-2xl font-black text-slate-950">选中账号</h3>
@@ -525,6 +527,7 @@ export function AdminUserManager({
 
                 <button
                   type="button"
+                  data-motion-button
                   onClick={() => void updateProfile()}
                   disabled={Boolean(busyAction) || !canManagePasswords}
                   className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-5 text-base font-black text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
@@ -540,7 +543,7 @@ export function AdminUserManager({
             )}
           </div>
 
-          <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
+          <div data-motion-card className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-orange-500" />
               <h3 className="text-xl font-black text-slate-950">邮箱与密码</h3>
@@ -572,6 +575,7 @@ export function AdminUserManager({
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
+                data-motion-button
                 onClick={() => void submitEmailUpdate()}
                 disabled={Boolean(busyAction) || !canManagePasswords}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-5 text-sm font-black text-orange-700 transition-transform hover:-translate-y-0.5 disabled:opacity-50"
@@ -581,6 +585,7 @@ export function AdminUserManager({
               </button>
               <button
                 type="button"
+                data-motion-button
                 onClick={() => void submitPasswordReset()}
                 disabled={Boolean(busyAction) || !canManagePasswords}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-5 text-sm font-black text-slate-800 transition-transform hover:-translate-y-0.5 disabled:opacity-50"
@@ -593,7 +598,7 @@ export function AdminUserManager({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[1.7rem] border border-slate-200 bg-white p-5">
+      <div data-motion-card className="mt-6 rounded-[1.7rem] border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-2">
           <Plus className="h-5 w-5 text-orange-500" />
           <h3 className="text-2xl font-black text-slate-950">创建账号</h3>
@@ -657,6 +662,7 @@ export function AdminUserManager({
           />
           <button
             type="button"
+            data-motion-button
             onClick={() => void createUser()}
             disabled={Boolean(busyAction) || !canManagePasswords}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-orange-400 px-5 text-sm font-black text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-50"

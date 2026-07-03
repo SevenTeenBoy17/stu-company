@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 type Member = {
   id: string;
@@ -31,28 +31,43 @@ export function FamilyManager() {
   const [selectedId, setSelectedId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     const response = await fetch("/api/billing/status", { cache: "no-store" });
-    if (response.ok) setStatus((await response.json()) as BillingStatus);
-  }
-
-  async function loadMembers() {
-    const response = await fetch("/api/family/members", { cache: "no-store" });
-    if (response.ok) {
-      const data = (await response.json()) as { members?: Member[] };
-      setMembers(data.members ?? []);
+    const data = (await response.json().catch(() => null)) as (BillingStatus & { message?: string }) | null;
+    if (!response.ok) {
+      throw new Error(data?.message ?? "家庭订阅状态加载失败，请稍后重试。");
     }
-  }
+    setStatus(data);
+  }, []);
+
+  const loadMembers = useCallback(async () => {
+    const response = await fetch("/api/family/members", { cache: "no-store" });
+    const data = (await response.json().catch(() => null)) as { members?: Member[]; message?: string } | null;
+    if (!response.ok) {
+      throw new Error(data?.message ?? "家庭成员加载失败，请稍后重试。");
+    }
+    setMembers(data?.members ?? []);
+  }, []);
+
+  const refreshFamilyData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await Promise.all([loadStatus(), loadMembers()]);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "家庭信息加载失败，请稍后重试。");
+    } finally {
+      setLoading(false);
+    }
+  }, [loadMembers, loadStatus]);
 
   useEffect(() => {
-    // Initial data fetch on mount; setState happens after await (not synchronous).
-    /* eslint-disable react-hooks/set-state-in-effect */
-    void loadStatus();
-    void loadMembers();
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
+    void refreshFamilyData();
+  }, [refreshFamilyData]);
 
   const isPremium = status?.status === "active" && status?.tier === "premium";
   const maxSeats = status?.features?.maxStudents ?? 0;
@@ -72,12 +87,14 @@ export function FamilyManager() {
       });
       const data = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) {
-        setMessage(data.message ?? data.error ?? "添加失败，请稍后再试。");
+        setMessage(data.message ?? "添加失败，请稍后重试。");
         return;
       }
       setSelectedId("");
       setMessage(data.message ?? "已加入家庭组。");
-      await loadMembers();
+      await loadMembers().catch((error) => {
+        setMessage(error instanceof Error ? error.message : "成员已提交，但列表刷新失败，请手动重试。");
+      });
     });
   }
 
@@ -88,7 +105,14 @@ export function FamilyManager() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ studentUserId }),
       });
-      if (response.ok) await loadMembers();
+      if (response.ok) {
+        await loadMembers().catch((error) => {
+          setMessage(error instanceof Error ? error.message : "成员已移出，但列表刷新失败，请手动重试。");
+        });
+      } else {
+        const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        setMessage(data?.message ?? "移出成员失败，请稍后重试。");
+      }
     });
   }
 
@@ -103,7 +127,7 @@ export function FamilyManager() {
       });
       const data = (await response.json()) as Order & { message?: string; error?: string };
       if (!response.ok) {
-        setMessage(data.message ?? data.error ?? "开通失败，请稍后再试。");
+        setMessage(data.message ?? "开通失败，请稍后重试。");
         return;
       }
       setOrder({ outTradeNo: data.outTradeNo, codeUrl: data.codeUrl, mock: data.mock });
@@ -121,31 +145,49 @@ export function FamilyManager() {
       if (response.ok) {
         setOrder(null);
         setMessage("高级版已开通，现在可以添加孩子了。");
-        await Promise.all([loadStatus(), loadMembers()]);
+        await refreshFamilyData();
       }
     });
   }
 
   return (
-    <section className="panel rounded-3xl p-6">
+    <section data-motion-reveal className="panel rounded-3xl p-6">
       <p className="bz-eyebrow">家庭高级版</p>
       <h2 className="mt-4 text-2xl font-semibold text-fg-default">家庭组管理</h2>
 
-      {!isPremium ? (
+      {loading ? (
+        <div className="mt-4 space-y-2" aria-hidden="true">
+          <div className="h-5 w-2/3 animate-pulse rounded-full bg-bg-muted" />
+          <div className="h-11 w-44 animate-pulse rounded-full bg-bg-muted" />
+        </div>
+      ) : loadError ? (
+        <div className="mt-4 rounded-2xl border border-[var(--error-100)] bg-[var(--error-50)] p-4">
+          <p className="text-sm font-bold text-[var(--error-600)]">{loadError}</p>
+          <button
+            type="button"
+            data-motion-button
+            onClick={() => void refreshFamilyData()}
+            className="mt-3 rounded-full bg-white px-4 py-2 text-sm font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
+          >
+            重新加载家庭信息
+          </button>
+        </div>
+      ) : !isPremium ? (
         <div className="mt-4">
           <p className="text-sm leading-7 text-fg-muted">
             开通家庭高级版（¥30/月），最多可让 3 个孩子继承完整 AI 评定、投资人格报告、赛季重玩，并自动收到每周成长邮件。
           </p>
           <button
             type="button"
+            data-motion-button
             onClick={buyPremium}
             disabled={pending}
-            className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
+            className="mt-4 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:opacity-90 disabled:opacity-60"
           >
             {pending ? "处理中…" : "开通家庭高级版 · ¥30/月"}
           </button>
           {order ? (
-            <div className="mt-3 rounded-2xl bg-bg-muted p-4">
+            <div data-motion-card className="mt-3 rounded-2xl bg-bg-muted p-4">
               <p className="text-xs text-fg-muted">订单号：{order.outTradeNo}</p>
               {order.codeUrl ? (
                 <textarea
@@ -157,6 +199,7 @@ export function FamilyManager() {
               {order.mock ? (
                 <button
                   type="button"
+                  data-motion-button
                   onClick={completeMock}
                   disabled={pending}
                   className="mt-2 rounded-full bg-bg-inverse px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
@@ -184,6 +227,7 @@ export function FamilyManager() {
                 </div>
                 <button
                   type="button"
+                  data-motion-button
                   onClick={() => removeMember(member.studentUserId)}
                   disabled={pending}
                   className="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-fg-muted transition-colors hover:text-fg-default disabled:opacity-60"
@@ -214,9 +258,10 @@ export function FamilyManager() {
                 </select>
                 <button
                   type="button"
+                  data-motion-button
                   onClick={addMember}
                   disabled={pending || !selectedId}
-                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60"
+                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:opacity-90 disabled:opacity-60"
                 >
                   添加孩子
                 </button>

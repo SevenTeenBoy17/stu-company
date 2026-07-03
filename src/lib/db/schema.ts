@@ -1,5 +1,6 @@
 import {
   type AnyPgColumn,
+  boolean,
   index,
   integer,
   jsonb,
@@ -10,6 +11,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { BehaviorPersona } from "@/lib/types";
 
 export const roleEnum = pgEnum("role", ["student", "teacher", "parent", "admin"]);
 
@@ -74,7 +76,19 @@ export const subscriptionGrants = pgTable("subscription_grants", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("subscription_grants_user_id_idx").on(table.userId),
-  index("subscription_grants_order_id_idx").on(table.orderId),
+  // #3: one grant per order. The unique constraint backstops fulfillPaymentOrder's
+  // row lock so a concurrent double-callback can't double-grant a subscription.
+  uniqueIndex("subscription_grants_order_id_unique").on(table.orderId),
+]);
+
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 120 }).primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedBy: varchar("updated_by", { length: 64 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("app_settings_updated_by_idx").on(table.updatedBy),
 ]);
 
 export const profiles = pgTable("profiles", {
@@ -84,6 +98,18 @@ export const profiles = pgTable("profiles", {
   headline: text("headline").notNull(),
   bio: text("bio").notNull(),
   metrics: jsonb("metrics").$type<Array<{ label: string; value: string }>>().notNull(),
+});
+
+export const riskProfiles = pgTable("risk_profiles", {
+  userId: varchar("user_id", { length: 64 }).primaryKey().references(() => users.id),
+  riskLabel: text("risk_label").notNull(),
+  answers: jsonb("answers").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // A2: AI-generated behavior persona derived from real simulation behavior.
+  behaviorPersona: jsonb("behavior_persona").$type<BehaviorPersona>(),
+  personaProvider: varchar("persona_provider", { length: 16 }),
+  analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
+  inputDigest: varchar("input_digest", { length: 64 }),
 });
 
 export const classrooms = pgTable("classrooms", {
@@ -168,6 +194,39 @@ export const scenarioRuns = pgTable("scenario_runs", {
   // Weekly season leaderboard: filter by seed, rank by net worth — composite index
   // serves the ORDER BY net_worth DESC LIMIT N top-N query.
   index("scenario_runs_seed_net_worth_idx").on(table.seed, table.netWorth),
+]);
+
+// Decorative guess-the-direction activity. Predictions are intentionally kept
+// outside leaderboard/power tables: they may unlock badges later, but never
+// change net worth or financial-power scoring.
+export const roundPredictions = pgTable("round_predictions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  runId: varchar("run_id", { length: 64 }).notNull().references(() => scenarioRuns.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  guess: varchar("guess", { length: 8 }).notNull(),
+  resolved: boolean("resolved").notNull().default(false),
+  correct: boolean("correct").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  uniqueIndex("round_predictions_user_run_round_unique").on(table.userId, table.runId, table.round),
+  index("round_predictions_run_round_idx").on(table.runId, table.round),
+  index("round_predictions_user_id_idx").on(table.userId),
+]);
+
+// Decorative card collection unlocked by quests/streaks/achievements. Cards are
+// collection-only rewards and must not affect net worth, power, or leaderboards.
+export const cardCollection = pgTable("card_collection", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: varchar("card_id", { length: 64 }).notNull(),
+  source: varchar("source", { length: 24 }).notNull(),
+  drawnAt: timestamp("drawn_at", { withTimezone: true }).defaultNow().notNull(),
+  meta: jsonb("meta"),
+}, (table) => [
+  uniqueIndex("card_collection_user_card_unique").on(table.userId, table.cardId),
+  index("card_collection_user_id_idx").on(table.userId),
 ]);
 
 // H6 — zombie tables (portfolio_snapshots, holdings, cash_ledger,
@@ -311,6 +370,7 @@ export const learningProgress = pgTable("learning_progress", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: varchar("user_id", { length: 64 }).notNull().references(() => users.id),
   moduleKey: varchar("module_key", { length: 48 }).notNull(),
+  quizPassed: boolean("quiz_passed").notNull().default(false),
   completedAt: timestamp("completed_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("learning_progress_user_module_unique").on(table.userId, table.moduleKey),

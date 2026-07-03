@@ -1,7 +1,6 @@
 import {
   buildEventTimeline,
   eventIdForRound,
-  eventMarketEffect,
   makeRng,
   resolveEventChoice,
 } from "@/lib/event-engine";
@@ -59,32 +58,92 @@ export function getEventCard(eventId: string): EventCard {
 }
 
 /**
- * Event multiplier a run's timeline applies to an asset category in a given round.
- * Returns 1 (neutral) for legacy runs with no `eventTimeline`, preserving the
- * original deterministic market for backward compatibility.
+ * Direction (+1 利好 / -1 利空) the event card a student actually sees imposes on a
+ * category, or `null` when the card doesn't impact it (or is 中性) — in which case
+ * the round's own drift direction is kept. Mirrors `eventMarketEffect`'s
+ * `impactAssets` semantics (undefined impactAssets = impacts every category).
  */
-function runEventMultiplier(
+function cardDirectionForCategory(
+  card: EventCard,
+  category: MarketAsset["category"],
+): number | null {
+  const impacted = card.impactAssets;
+  if (impacted && !impacted.includes(category)) return null;
+  if (card.signal === "利好") return 1;
+  if (card.signal === "利空") return -1;
+  return null;
+}
+
+const RISK_OFF_EVENT_CATEGORIES = new Set<EventCard["category"]>([
+  "macro",
+  "policy",
+  "sentiment",
+  "black_swan",
+]);
+
+function specialAssetMagnitude(asset: MarketAsset, round: MarketRound) {
+  if (asset.id === "asset-gold") {
+    const commodityMagnitude = Math.abs(round.assetMultipliers.commodity - 1);
+    const stockMagnitude = Math.abs(round.assetMultipliers.stock - 1);
+    return Math.max(0.02, Math.min(0.16, Math.max(commodityMagnitude, stockMagnitude * 0.7)));
+  }
+
+  if (asset.id === "asset-index") {
+    const etfMagnitude = Math.abs(round.assetMultipliers.etf - 1);
+    const stockMagnitude = Math.abs(round.assetMultipliers.stock - 1);
+    return Math.max(0.01, Math.min(0.12, etfMagnitude * 0.65 + stockMagnitude * 0.35));
+  }
+
+  return Math.abs(round.assetMultipliers[asset.category] - 1);
+}
+
+function cardDirectionForAsset(card: EventCard, asset: MarketAsset, fallbackSign: number): number {
+  if (asset.id === "asset-gold") {
+    if (card.signal === "利空" && RISK_OFF_EVENT_CATEGORIES.has(card.category)) return 1;
+    if (card.signal === "利好" && RISK_OFF_EVENT_CATEGORIES.has(card.category)) return -1;
+  }
+
+  if (asset.id === "asset-index") {
+    return cardDirectionForCategory(card, "etf") ?? cardDirectionForCategory(card, "stock") ?? fallbackSign;
+  }
+
+  return cardDirectionForCategory(card, asset.category) ?? fallbackSign;
+}
+
+/**
+ * #6 event-driven pricing — for a real run the price MOVE is driven by the event card
+ * the student actually sees (the run's seeded-timeline event), so the displayed card is
+ * the real cause of the move. The round's tuned magnitude (|assetMultiplier − 1|) is
+ * kept as the volatility envelope — preserving the R1–R4 / R5–R8 / R9–R12 difficulty
+ * ramp and per-asset richness — while the seeded card only sets the DIRECTION for the
+ * categories it impacts (`1 + sign·|base−1|`, so the size never inflates). This both
+ * follows the shown card and silently repairs rounds where the canonical `round.eventId`
+ * card disagreed with its own tuned multipliers. The public ticker and legacy runs with
+ * no `eventTimeline` keep the original market exactly.
+ */
+function roundAssetMultiplier(
   run: ScenarioRun | undefined,
   roundNumber: number,
-  category: MarketAsset["category"],
+  asset: MarketAsset,
 ): number {
-  if (!run?.eventTimeline) return 1;
-  const fallbackEventId = getRound(roundNumber).eventId;
-  const eventId = eventIdForRound(run.eventTimeline, roundNumber, fallbackEventId);
-  return eventMarketEffect(getEventCard(eventId), category);
+  const round = getRound(roundNumber);
+  const base = round.assetMultipliers[asset.category];
+  if (!run?.eventTimeline) return base;
+  const magnitude = specialAssetMagnitude(asset, round);
+  if (magnitude === 0) return base;
+  const eventId = eventIdForRound(run.eventTimeline, roundNumber, round.eventId);
+  const fallbackSign = Math.sign(base - 1) || Math.sign(round.assetMultipliers.stock - 1) || 1;
+  const sign = cardDirectionForAsset(getEventCard(eventId), asset, fallbackSign);
+  return 1 + sign * magnitude;
 }
 
 function quoteAsset(asset: MarketAsset, roundNumber: number, run?: ScenarioRun) {
-  const round = getRound(roundNumber);
   const previousRoundNumber = Math.max(1, roundNumber - 1);
-  const previousRound = getRound(previousRoundNumber);
-  const eventMultiplier = runEventMultiplier(run, roundNumber, asset.category);
-  const previousEventMultiplier = runEventMultiplier(run, previousRoundNumber, asset.category);
   const currentPrice = Math.round(
-    asset.basePrice * round.assetMultipliers[asset.category] * eventMultiplier,
+    asset.basePrice * roundAssetMultiplier(run, roundNumber, asset),
   );
   const previousPrice = Math.round(
-    asset.basePrice * previousRound.assetMultipliers[asset.category] * previousEventMultiplier,
+    asset.basePrice * roundAssetMultiplier(run, previousRoundNumber, asset),
   );
   const dayChange = ((currentPrice - previousPrice) / previousPrice) * 100;
 
@@ -117,10 +176,16 @@ function getHoldingValue(run: ScenarioRun, roundNumber: number) {
   }, 0);
 }
 
-function getPropertyValue(run: ScenarioRun, roundNumber: number) {
+// Property follows a cycle, not a monotonic ramp: it appreciates over the long run
+// but pulls back in the cooldown (R4 地产降温) and recession (R9 衰退) rounds, so
+// "buy property early and forget" is no longer a dominant, risk-free strategy and
+// the diversification lesson holds (#7 audit).
+const PROPERTY_TRAJECTORY = [1.0, 1.03, 1.06, 1.01, 1.04, 1.08, 1.11, 1.13, 1.02, 1.06, 1.1, 1.14];
+
+export function getPropertyValue(run: ScenarioRun, roundNumber: number) {
   if (!run.propertyUnits) return 0;
-  const cycleBoost = 1 + (roundNumber - 1) * 0.024;
-  return Math.round(run.propertyUnits * PROPERTY_UNIT_PRICE * cycleBoost);
+  const index = Math.max(0, Math.min(PROPERTY_TRAJECTORY.length - 1, roundNumber - 1));
+  return Math.round(run.propertyUnits * PROPERTY_UNIT_PRICE * PROPERTY_TRAJECTORY[index]);
 }
 
 function getVentureValue(run: ScenarioRun, roundNumber: number) {

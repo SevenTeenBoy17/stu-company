@@ -10,8 +10,8 @@ export default async function StudentRankPage() {
     return (
       <div className="page-shell py-10">
         <AccessGate
-          title="财商战力榜需要学生账户登录"
-          description="请先用学生样例账户登录，或使用学生邀请码注册后进入。登录后这里会展示你的财商战力、段位与校/市/省/全国排名。"
+          title="财商战力榜需要学生账号登录"
+          description="请先用学生样例账号登录，或使用学生邀请码注册后进入。登录后这里会展示你的财商战力、段位与校 / 市 / 全国排名。"
         />
       </div>
     );

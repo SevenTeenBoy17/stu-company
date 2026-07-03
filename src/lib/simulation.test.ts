@@ -10,6 +10,7 @@ import {
   createInitialRun,
   deriveInvestorPersona,
   evaluateRun,
+  getPropertyValue,
   getRoundQuotes,
   getRoundQuotesForRun,
 } from "@/lib/simulation";
@@ -37,6 +38,19 @@ describe("simulation", () => {
 
     expect(progressed.currentRound).toBe(2);
     expect(progressed.snapshots.at(-1)?.round).toBe(2);
+  });
+
+  it("property value follows a cycle with drawdowns (cooldown R4, recession R9), not a monotonic ramp", () => {
+    const run = createInitialRun("student-test", "class-test");
+    run.propertyUnits = 1;
+    const valueAt = (round: number) => getPropertyValue(run, round);
+
+    // Long-run appreciation holds...
+    expect(valueAt(12)).toBeGreaterThan(valueAt(1));
+    // ...but property pulls back in the cooldown and recession rounds, so it is not
+    // a risk-free, strictly-increasing "buy early" instrument.
+    expect(valueAt(4)).toBeLessThan(valueAt(3));
+    expect(valueAt(9)).toBeLessThan(valueAt(8));
   });
 
   it("evaluates risk and net worth deterministically", () => {

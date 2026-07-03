@@ -8,7 +8,7 @@
  * working while allowing the hosted app to use Supabase Postgres.
  */
 
-import { and, desc, eq, ilike, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 
 import { z } from "zod";
 
@@ -20,12 +20,19 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 import { learningModules } from "@/lib/content";
-import { getDb, isDatabaseConfigured } from "@/lib/db/client";
+import {
+  getDb,
+  getDirectFallbackDb,
+  getSupabaseDirectFallbackUrl,
+  isDatabaseConfigured,
+} from "@/lib/db/client";
 import { getRequestExecutor } from "@/lib/db/rls-context";
 import {
   aiMessages,
   aiSessions,
+  appSettings,
   assignments,
+  cardCollection,
   classrooms,
   familyMembers,
   growthReports,
@@ -35,6 +42,8 @@ import {
   paymentOrders,
   profiles,
   rankProfiles,
+  riskProfiles,
+  roundPredictions,
   scenarioRuns,
   schools,
   studentParentLinks,
@@ -59,13 +68,57 @@ import {
   buildSimulationState,
   createInitialRun,
   deriveInvestorPersona,
+  getRoundQuotesForRun,
 } from "@/lib/simulation";
+import {
+  applyLifeCashflowChallenge,
+  type LifeCashflowApplyInput,
+} from "@/lib/life-cashflow";
+import {
+  applyCreditLabAction,
+  type CreditLabActionInput,
+} from "@/lib/credit-lab";
+import {
+  cancelAutoInvestPlan,
+  createAutoInvestPlan,
+  executeAutoInvestForRound,
+  type AutoInvestInput,
+} from "@/lib/auto-invest";
+import { claimQuestReward } from "@/lib/quests";
+import { claimSeasonChallengeReward } from "@/lib/season-challenges";
+import {
+  createFundLabAction,
+  type FundLabActionInput,
+} from "@/lib/fund-lab";
+import {
+  createOpportunityNote,
+  type OpportunityNoteInput,
+} from "@/lib/opportunity";
+import {
+  createGoalAccountAction,
+  type GoalAccountActionInput,
+} from "@/lib/goal-accounts";
+import {
+  createProtectionUmbrellaAction,
+  type ProtectionUmbrellaActionInput,
+} from "@/lib/protection-umbrella";
+import {
+  createStudentWatchlistAction,
+  type StudentWatchlistActionInput,
+} from "@/lib/student-watchlist";
+import {
+  createWealthReview,
+  type WealthReviewInput,
+} from "@/lib/wealth-review";
+import { buildPeerHeatPayload } from "@/lib/peer-heat";
 import * as store from "@/lib/store";
 import type {
   AiChatMessage,
   AiChatMode,
   AiChatSession,
+  AppSetting,
   Assignment,
+  BehaviorPersona,
   Classroom,
   FamilyDigest,
   GrowthReport,
@@ -81,6 +134,8 @@ import type {
   RankPeriod,
   RankProfile,
   RankVisibility,
+  RoundPrediction,
+  RoundPredictionGuess,
   Role,
   ScenarioRun,
   School,
@@ -99,12 +154,38 @@ type DbClassroom = typeof classrooms.$inferSelect;
 type DbRun = typeof scenarioRuns.$inferSelect;
 type DbAssignment = typeof assignments.$inferSelect;
 type DbAiSession = typeof aiSessions.$inferSelect;
+type DbAppSetting = typeof appSettings.$inferSelect;
 type DbPaymentOrder = typeof paymentOrders.$inferSelect;
 type DbSubscriptionGrant = typeof subscriptionGrants.$inferSelect;
 type DbSchool = typeof schools.$inferSelect;
 type DbRankProfile = typeof rankProfiles.$inferSelect;
+type DbRiskProfile = typeof riskProfiles.$inferSelect;
+type DbRoundPrediction = typeof roundPredictions.$inferSelect;
+type DbCardCollection = typeof cardCollection.$inferSelect;
 type DbLeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 type FallbackReason = "no_database_url" | "connection_failed" | "query_failed";
+
+export type CardCollectionSource = "quest_claim" | "streak" | "achievement";
+
+export type CardCollectionItem = {
+  id: string;
+  userId: string;
+  cardId: string;
+  source: CardCollectionSource;
+  drawnAt: string;
+  meta?: Record<string, unknown> | null;
+};
+
+export type RiskProfileRecord = {
+  userId: string;
+  riskLabel: string;
+  answers: Record<string, unknown>;
+  updatedAt: string;
+  behaviorPersona?: BehaviorPersona | null;
+  personaProvider?: string | null;
+  analyzedAt?: string | null;
+  inputDigest?: string | null;
+};
 
 const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 
@@ -113,6 +194,10 @@ const DB_QUERY_TIMEOUT_MS = Number(process.env.DB_QUERY_TIMEOUT_MS ?? 5000);
 // keep the offline teacher-laptop demo behaviour.
 const ALLOW_MEMORY_FALLBACK =
   process.env.ALLOW_MEMORY_FALLBACK === "true" || process.env.NODE_ENV !== "production";
+
+const fallbackRiskProfiles = new Map<string, RiskProfileRecord>();
+const fallbackRoundPredictions = new Map<string, RoundPrediction>();
+const fallbackCardCollection = new Map<string, CardCollectionItem>();
 
 // P5/P6: fallback observability. The stable "[repo.fallback]" prefix is the
 // greppable SLI (wire a Vercel log-drain / Sentry alert to it). Transient failures
@@ -123,10 +208,63 @@ let fallbackCount = 0;
 let loggedNoDb = false;
 let lastFallbackLogAt = 0;
 
+function describeDatabaseTarget(raw = process.env.DATABASE_URL) {
+  if (!raw) return "DATABASE_URL=missing";
+
+  try {
+    const parsed = new URL(raw);
+    return [
+      `protocol=${parsed.protocol.replace(/:$/, "")}`,
+      `host=${parsed.hostname || "unknown"}`,
+      `port=${parsed.port || "default"}`,
+      `db=${parsed.pathname.replace(/^\//, "") || "unknown"}`,
+      `sslmode=${parsed.searchParams.get("sslmode") ?? "none"}`,
+    ].join(" ");
+  } catch {
+    return "DATABASE_URL=invalid_url";
+  }
+}
+
 /** Redact emails / long hex secrets from an error message before logging (P6). */
 export function scrubError(err: unknown): string {
   if (err === undefined || err === null) return "";
-  const msg = err instanceof Error ? err.message : String(err);
+  const details: string[] = [];
+
+  if (err instanceof Error) {
+    details.push(`name=${err.name}`);
+    const maybeDbError = err as Error & {
+      code?: string;
+      cause?: unknown;
+      errors?: Array<{ code?: string; address?: string; port?: number }>;
+    };
+    if (maybeDbError.code) details.push(`code=${maybeDbError.code}`);
+    if (err.message) {
+      details.push(err.message.startsWith("Failed query:") ? "message=Failed query" : `message=${err.message}`);
+    }
+
+    const cause = maybeDbError.cause as
+      | (Error & {
+          code?: string;
+          severity?: string;
+          routine?: string;
+          errors?: Array<{ code?: string; address?: string; port?: number }>;
+        })
+      | undefined;
+    if (cause) {
+      if (cause.name) details.push(`causeName=${cause.name}`);
+      if (cause.code) details.push(`causeCode=${cause.code}`);
+      if (cause.severity) details.push(`causeSeverity=${cause.severity}`);
+      if (cause.routine) details.push(`causeRoutine=${cause.routine}`);
+      if (cause.message) details.push(`causeMessage=${cause.message || "(empty)"}`);
+      const nested = cause.errors
+        ?.map((item) => [item.code, item.address, item.port].filter(Boolean).join("@"))
+        .filter(Boolean)
+        .join(",");
+      if (nested) details.push(`causeErrors=${nested}`);
+    }
+  }
+
+  const msg = details.length ? details.join(" ") : String(err);
   return msg
     .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "<email>")
     .replace(/\b[a-f0-9]{16,}\b/gi, "<token>")
@@ -145,9 +283,13 @@ function logFallback(fn: string, reason: FallbackReason, err?: unknown) {
   }
 
   const now = Date.now();
-  if (now - lastFallbackLogAt < 5000) return;
+  const directRetry = fn.includes(":direct_supabase");
+  if (!directRetry && now - lastFallbackLogAt < 5000) return;
   lastFallbackLogAt = now;
-  console.warn(`[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${scrubError(err)}`.trim());
+  const target = directRetry ? (getSupabaseDirectFallbackUrl() ?? process.env.DATABASE_URL) : process.env.DATABASE_URL;
+  console.warn(
+    `[repo.fallback] fn=${fn} reason=${reason} count=${fallbackCount} ${describeDatabaseTarget(target)} ${scrubError(err)}`.trim(),
+  );
 }
 
 async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
@@ -176,12 +318,18 @@ async function withQueryTimeout<T>(fn: string, promise: Promise<T>) {
 // fall back to seed/demo data when ALLOW_MEMORY_FALLBACK is on (offline demo).
 const WRITE_FNS = new Set<string>([
   "applyActionForUser", "applyEventChoiceForUser", "advanceRunForUser", "replayRunForUser",
+  "createRoundPredictionForUser", "settleRoundPredictionsForRun",
+  "drawCardForUser",
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
+  "markModuleQuizPassed",
+  "upsertRiskProfile",
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
-  "updatePaymentOrderProviderFields", "markPaymentOrderStatus", "fulfillPaymentOrder",
+  "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
+  "upsertAppSetting", "createAutoInvestPlanForUser", "cancelAutoInvestPlanForUser", "applyLifeCashflowChallengeForUser",
+  "claimQuestRewardForUser", "claimSeasonRewardForUser", "applyCreditLabActionForUser",
 ]);
 
 async function withDbExecutor<T>(
@@ -212,7 +360,7 @@ async function withDbExecutor<T>(
     logFallback(fn, "query_failed", err);
     // Writes never silently fall back (P2): a failed persist must surface as an
     // error, not pretend success in memory. Reads fall back only when allowed.
-    if (WRITE_FNS.has(fn) || !ALLOW_MEMORY_FALLBACK) {
+    if (WRITE_FNS.has(fn.replace(/:direct_supabase$/, "")) || !ALLOW_MEMORY_FALLBACK) {
       throw err;
     }
     return await fallback();
@@ -227,7 +375,24 @@ async function withDb<T>(
   fallback: () => T | Promise<T>,
 ): Promise<T> {
   // Sound: withDbExecutor only ever invokes this with getDb()'s Db.
-  return withDbExecutor(fn, getDb(), dbFn as unknown as (db: DbExecutor) => Promise<T>, fallback);
+  const primaryDb = getDb();
+  const executor = dbFn as unknown as (db: DbExecutor) => Promise<T>;
+  try {
+    return await withDbExecutor(fn, primaryDb, executor, fallback);
+  } catch (error) {
+    const directDb = getDirectFallbackDb();
+    if (!primaryDb || !directDb || directDb === primaryDb) {
+      throw error;
+    }
+
+    const fallbackUrl = getSupabaseDirectFallbackUrl();
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(
+        `[repo.fallback] fn=${fn} retry=direct_supabase ${describeDatabaseTarget(fallbackUrl ?? undefined)}`,
+      );
+    }
+    return await withDbExecutor(`${fn}:direct_supabase`, directDb, executor, fallback);
+  }
 }
 
 // Per-request user-scoped path. Uses the active request's executor: the scoped
@@ -289,6 +454,18 @@ function toAdminUserSummary(user: UserRecord) {
   };
 }
 
+/**
+ * Strip the bcrypt `passwordHash` from any user-shaped object before it can be
+ * serialized to a client. Teacher/parent overviews embed full user rows (their
+ * own + students'); without this they would ship offline-crackable credential
+ * material to the browser. Keeps all other fields so consuming UIs are unaffected.
+ */
+function withoutPasswordHash<T extends { passwordHash?: unknown }>(user: T): Omit<T, "passwordHash"> {
+  const { passwordHash: _omit, ...safe } = user;
+  void _omit;
+  return safe;
+}
+
 function toPaymentOrder(row: DbPaymentOrder): PaymentOrder {
   return {
     id: row.id,
@@ -303,6 +480,7 @@ function toPaymentOrder(row: DbPaymentOrder): PaymentOrder {
     codeUrl: maybeUndefined(row.codeUrl),
     prepayId: maybeUndefined(row.prepayId),
     transactionId: maybeUndefined(row.transactionId),
+    rawNotify: row.rawNotify ?? undefined,
     paidAt: maybeIso(row.paidAt),
     expiresAt: maybeIso(row.expiresAt) ?? new Date().toISOString(),
     createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
@@ -322,12 +500,35 @@ function toSubscriptionGrant(row: DbSubscriptionGrant): SubscriptionGrant {
   };
 }
 
+function toAppSetting<TValue = unknown>(row: DbAppSetting): AppSetting<TValue> {
+  return {
+    key: row.key,
+    value: row.value as TValue,
+    updatedBy: maybeUndefined(row.updatedBy),
+    createdAt: maybeIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+  };
+}
+
 function toProfileRecord(row: DbProfile): ProfileRecord {
   return {
     userId: row.userId,
     headline: row.headline,
     bio: row.bio,
     metrics: row.metrics as ProfileRecord["metrics"],
+  };
+}
+
+function toRiskProfileRecord(row: DbRiskProfile): RiskProfileRecord {
+  return {
+    userId: row.userId,
+    riskLabel: row.riskLabel,
+    answers: row.answers as Record<string, unknown>,
+    updatedAt: maybeIso(row.updatedAt) ?? new Date().toISOString(),
+    behaviorPersona: (row.behaviorPersona as BehaviorPersona | null) ?? null,
+    personaProvider: row.personaProvider ?? null,
+    analyzedAt: maybeIso(row.analyzedAt) ?? null,
+    inputDigest: row.inputDigest ?? null,
   };
 }
 
@@ -475,6 +676,108 @@ function toRunUpdate(run: ScenarioRun) {
   };
 }
 
+function toRoundPrediction(row: DbRoundPrediction): RoundPrediction {
+  return {
+    id: row.id,
+    userId: row.userId,
+    runId: row.runId,
+    round: row.round,
+    guess: row.guess === "down" ? "down" : "up",
+    resolved: row.resolved,
+    correct: row.correct,
+    createdAt: row.createdAt.toISOString(),
+    resolvedAt: maybeIso(row.resolvedAt),
+  };
+}
+
+function toCardCollectionItem(row: DbCardCollection): CardCollectionItem {
+  const source = ["quest_claim", "streak", "achievement"].includes(row.source)
+    ? (row.source as CardCollectionSource)
+    : "quest_claim";
+
+  return {
+    id: row.id,
+    userId: row.userId,
+    cardId: row.cardId,
+    source,
+    drawnAt: row.drawnAt.toISOString(),
+    meta: (row.meta ?? null) as CardCollectionItem["meta"],
+  };
+}
+
+function cardCollectionKey(userId: string, cardId: string) {
+  return `${userId}::${cardId}`;
+}
+
+function listFallbackCardCollectionForUser(userId: string) {
+  return [...fallbackCardCollection.values()]
+    .filter((item) => item.userId === userId)
+    .sort((left, right) => right.drawnAt.localeCompare(left.drawnAt));
+}
+
+function predictionTargetPrice(run: ScenarioRun, roundNumber: number) {
+  const quotes = getRoundQuotesForRun(run, roundNumber);
+  return quotes.find((quote) => quote.id === "asset-index")
+    ?? quotes.find((quote) => quote.id === "asset-stock")
+    ?? quotes[0];
+}
+
+function resolvePredictionCorrect(before: ScenarioRun, after: ScenarioRun, guess: RoundPredictionGuess) {
+  const beforePrice = predictionTargetPrice(before, before.currentRound)?.currentPrice ?? 0;
+  const afterPrice = predictionTargetPrice(after, after.currentRound)?.currentPrice ?? beforePrice;
+  if (afterPrice === beforePrice) return false;
+  return guess === (afterPrice > beforePrice ? "up" : "down");
+}
+
+async function settleRoundPredictionsForRun(
+  executor: DbExecutor,
+  before: ScenarioRun,
+  after: ScenarioRun,
+) {
+  const pending = await executor
+    .select()
+    .from(roundPredictions)
+    .where(
+      and(
+        eq(roundPredictions.runId, before.id),
+        eq(roundPredictions.round, before.currentRound),
+        eq(roundPredictions.resolved, false),
+      ),
+    );
+
+  const resolvedAt = new Date();
+  for (const prediction of pending) {
+    const guess: RoundPredictionGuess = prediction.guess === "down" ? "down" : "up";
+    await executor
+      .update(roundPredictions)
+      .set({
+        resolved: true,
+        correct: resolvePredictionCorrect(before, after, guess),
+        resolvedAt,
+      })
+      .where(and(eq(roundPredictions.id, prediction.id), eq(roundPredictions.resolved, false)));
+  }
+}
+
+function listFallbackRoundPredictionsForRun(runId: string) {
+  return [...fallbackRoundPredictions.values()]
+    .filter((prediction) => prediction.runId === runId)
+    .sort((left, right) => left.round - right.round || left.createdAt.localeCompare(right.createdAt));
+}
+
+function settleFallbackRoundPredictions(before: ScenarioRun, after: ScenarioRun) {
+  const resolvedAt = new Date().toISOString();
+  for (const prediction of listFallbackRoundPredictionsForRun(before.id)) {
+    if (prediction.round !== before.currentRound || prediction.resolved) continue;
+    fallbackRoundPredictions.set(prediction.id, {
+      ...prediction,
+      resolved: true,
+      correct: resolvePredictionCorrect(before, after, prediction.guess),
+      resolvedAt,
+    });
+  }
+}
+
 function toAssignment(row: DbAssignment): Assignment {
   return {
     id: row.id,
@@ -508,11 +811,12 @@ async function selectUserById(executor: DbExecutor, id: string) {
 }
 
 async function selectUserByEmail(executor: DbExecutor, email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
   const [row] = await executor
     .select({ user: users, profile: profiles })
     .from(users)
     .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(ilike(users.email, email))
+    .where(eq(users.email, normalizedEmail))
     .limit(1);
 
   return row ? toUserRecord(row.user, row.profile) : null;
@@ -597,6 +901,34 @@ async function selectAllRuns(executor: DbExecutor) {
   return rows.map(toRun);
 }
 
+async function selectUsersByClassroom(executor: DbExecutor, classroomId: string) {
+  const rows = await executor
+    .select({ user: users, profile: profiles })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(eq(users.classroomId, classroomId));
+
+  return rows.map((row) => toUserRecord(row.user, row.profile));
+}
+
+async function selectRunsByClassroom(executor: DbExecutor, classroomId: string) {
+  const rows = await executor
+    .select()
+    .from(scenarioRuns)
+    .where(eq(scenarioRuns.classroomId, classroomId));
+  return rows.map(toRun);
+}
+
+async function selectUsersByIds(executor: DbExecutor, ids: string[]) {
+  if (ids.length === 0) return [];
+  const rows = await executor
+    .select({ user: users, profile: profiles })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(inArray(users.id, ids));
+  return rows.map((row) => toUserRecord(row.user, row.profile));
+}
+
 async function syncGrowthReportForStudent(executor: DbExecutor, studentUserId: string) {
   const [linkRow] = await executor
     .select()
@@ -652,12 +984,16 @@ async function loadSessionMessages(executor: DbExecutor, sessionId: string) {
   return rows.reverse().map(toAiMessage);
 }
 
-async function listAiSessionRows(executor: DbExecutor, userId: string) {
-  const rows = await executor
+async function listAiSessionRows(executor: DbExecutor, userId: string, limit?: number) {
+  // DB-6: bound the (frequent) list path to `limit` rows in SQL so only that many
+  // JSONB payloads leave the DB, instead of fetching every row then slicing in JS.
+  // Callers that need the full set (e.g. the prune in createAiSession) omit `limit`.
+  const query = executor
     .select()
     .from(aiSessions)
     .where(eq(aiSessions.userId, userId))
     .orderBy(desc(aiSessions.updatedAt));
+  const rows = await (limit === undefined ? query : query.limit(limit));
 
   // H7: session list excludes message bodies; callers load on demand via
   // getAiSessionById. Keep the legacy AiChatSession shape (messages: []) so
@@ -673,6 +1009,9 @@ async function listAiSessionRows(executor: DbExecutor, userId: string) {
 // ---------------------------------------------------------------------------
 
 export async function resetStoreForTests() {
+  fallbackRiskProfiles.clear();
+  fallbackRoundPredictions.clear();
+  fallbackCardCollection.clear();
   return store.resetStoreForTests();
 }
 
@@ -699,26 +1038,126 @@ export async function findProfileByUserId(userId: string) {
   );
 }
 
+export async function getRiskProfile(userId: string): Promise<RiskProfileRecord | null> {
+  return withScopedDb(
+    "getRiskProfile",
+    async (db) => {
+      const [row] = await db
+        .select()
+        .from(riskProfiles)
+        .where(eq(riskProfiles.userId, userId))
+        .limit(1);
+      return row ? toRiskProfileRecord(row) : null;
+    },
+    () => fallbackRiskProfiles.get(userId) ?? null,
+  );
+}
+
+export async function upsertRiskProfile(
+  userId: string,
+  input: {
+    riskLabel: string;
+    answers: Record<string, unknown>;
+    behaviorPersona?: BehaviorPersona | null;
+    personaProvider?: string | null;
+    analyzedAt?: string | Date | null;
+    inputDigest?: string | null;
+  },
+): Promise<RiskProfileRecord> {
+  const hasPersona = "behaviorPersona" in input;
+  const hasProvider = "personaProvider" in input;
+  const hasAnalyzedAt = "analyzedAt" in input;
+  const hasDigest = "inputDigest" in input;
+  const analyzedAtValue =
+    input.analyzedAt === null || input.analyzedAt === undefined
+      ? null
+      : input.analyzedAt instanceof Date
+        ? input.analyzedAt
+        : new Date(input.analyzedAt);
+  return withDb(
+    "upsertRiskProfile",
+    async (db) => {
+      const now = new Date();
+      const [row] = await db
+        .insert(riskProfiles)
+        .values({
+          userId,
+          riskLabel: input.riskLabel,
+          answers: input.answers,
+          updatedAt: now,
+          // new row has no prior persona to preserve; omit-when-absent keeps INSERT/UPDATE policy symmetric
+          behaviorPersona: hasPersona ? (input.behaviorPersona ?? null) : undefined,
+          personaProvider: hasProvider ? (input.personaProvider ?? null) : undefined,
+          analyzedAt: hasAnalyzedAt ? analyzedAtValue : undefined,
+          inputDigest: hasDigest ? (input.inputDigest ?? null) : undefined,
+        })
+        .onConflictDoUpdate({
+          target: riskProfiles.userId,
+          set: {
+            riskLabel: input.riskLabel,
+            answers: input.answers,
+            updatedAt: now,
+            // Only overwrite persona fields when the caller supplied them, so a
+            // plain questionnaire re-save does not wipe an existing AI persona.
+            ...(hasPersona ? { behaviorPersona: input.behaviorPersona ?? null } : {}),
+            ...(hasProvider ? { personaProvider: input.personaProvider ?? null } : {}),
+            ...(hasAnalyzedAt ? { analyzedAt: analyzedAtValue } : {}),
+            ...(hasDigest ? { inputDigest: input.inputDigest ?? null } : {}),
+          },
+        })
+        .returning();
+      return toRiskProfileRecord(row);
+    },
+    () => {
+      const existing = fallbackRiskProfiles.get(userId);
+      const record: RiskProfileRecord = {
+        userId,
+        riskLabel: input.riskLabel,
+        answers: input.answers,
+        updatedAt: new Date().toISOString(),
+        behaviorPersona: hasPersona
+          ? input.behaviorPersona ?? null
+          : existing?.behaviorPersona ?? null,
+        personaProvider: hasProvider
+          ? input.personaProvider ?? null
+          : existing?.personaProvider ?? null,
+        analyzedAt: hasAnalyzedAt
+          ? maybeIso(analyzedAtValue) ?? null
+          : existing?.analyzedAt ?? null,
+        inputDigest: hasDigest ? input.inputDigest ?? null : existing?.inputDigest ?? null,
+      };
+      fallbackRiskProfiles.set(userId, record);
+      return record;
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Auth & invite
 // ---------------------------------------------------------------------------
 
+function normalizeInviteCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
 export async function findInviteByCode(code: string) {
+  const normalizedCode = normalizeInviteCode(code);
   return withDb(
     "findInviteByCode",
     async (db) => {
-      const [row] = await db.select().from(inviteCodes).where(ilike(inviteCodes.code, code)).limit(1);
+      const [row] = await db.select().from(inviteCodes).where(eq(inviteCodes.code, normalizedCode)).limit(1);
       return row ? toInvite(row) : null;
     },
-    () => store.findInviteByCode(code),
+    () => store.findInviteByCode(normalizedCode),
   );
 }
 
 export async function validateInviteCode(code: string) {
+  const normalizedCode = normalizeInviteCode(code);
   return withDb(
     "validateInviteCode",
     async (db) => {
-      const invite = await findInviteByCodeWithExecutor(db, code);
+      const invite = await findInviteByCodeWithExecutor(db, normalizedCode);
       if (!invite) return { valid: false, reason: "邀请码不存在。" };
       if (invite.usesRemaining <= 0) return { valid: false, reason: "邀请码已达到使用上限。" };
       if (new Date(invite.expiresAt).getTime() < Date.now()) {
@@ -726,12 +1165,12 @@ export async function validateInviteCode(code: string) {
       }
       return { valid: true, invite };
     },
-    () => store.validateInviteCode(code),
+    () => store.validateInviteCode(normalizedCode),
   );
 }
 
 async function findInviteByCodeWithExecutor(executor: DbExecutor, code: string) {
-  const [row] = await executor.select().from(inviteCodes).where(ilike(inviteCodes.code, code)).limit(1);
+  const [row] = await executor.select().from(inviteCodes).where(eq(inviteCodes.code, normalizeInviteCode(code))).limit(1);
   return row ? toInvite(row) : null;
 }
 
@@ -765,6 +1204,7 @@ export async function registerUserByInvite(input: {
   password: string;
 }) {
   const normalizedEmail = input.email.trim().toLowerCase();
+  const normalizedInviteCode = normalizeInviteCode(input.inviteCode);
   return withDb(
     "registerUserByInvite",
     async (db) =>
@@ -778,7 +1218,7 @@ export async function registerUserByInvite(input: {
           .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
           .where(
             and(
-              ilike(inviteCodes.code, input.inviteCode),
+              eq(inviteCodes.code, normalizedInviteCode),
               sql`${inviteCodes.usesRemaining} > 0`,
               sql`${inviteCodes.expiresAt} > now()`,
             ),
@@ -786,7 +1226,7 @@ export async function registerUserByInvite(input: {
           .returning();
 
         if (reservedRows.length === 0) {
-          const probe = await findInviteByCodeWithExecutor(tx, input.inviteCode);
+          const probe = await findInviteByCodeWithExecutor(tx, normalizedInviteCode);
           if (!probe) throw new Error("邀请码不存在。");
           if (new Date(probe.expiresAt).getTime() < Date.now()) {
             throw new Error("邀请码已过期。");
@@ -852,12 +1292,25 @@ export async function registerUserByInvite(input: {
 
           if (link && linkedRun) {
             const report = buildGrowthReport(linkedRun, link.studentUserId, newUser.id);
-            await tx.insert(growthReports).values({
-              id: createId("growth-report"),
-              studentUserId: link.studentUserId,
-              parentUserId: newUser.id,
-              payload: report,
-            });
+            // H8: a student has exactly one current growth report (unique index on
+            // student_user_id). A returning/seeded student already has one, so a plain
+            // insert here threw a unique violation and rolled back the whole parent
+            // registration. Upsert, mirroring syncGrowthReportForStudent.
+            await tx
+              .insert(growthReports)
+              .values({
+                id: createId("growth-report"),
+                studentUserId: link.studentUserId,
+                parentUserId: newUser.id,
+                payload: report,
+              })
+              .onConflictDoUpdate({
+                target: growthReports.studentUserId,
+                set: {
+                  parentUserId: newUser.id,
+                  payload: report,
+                },
+              });
           }
         }
 
@@ -865,7 +1318,7 @@ export async function registerUserByInvite(input: {
 
         return newUser;
       }),
-    () => store.registerUserByInvite({ ...input, email: normalizedEmail }),
+    () => store.registerUserByInvite({ ...input, email: normalizedEmail, inviteCode: normalizedInviteCode }),
   );
 }
 
@@ -876,6 +1329,7 @@ export async function registerUserByEmail(input: {
   inviteCode?: string;
 }) {
   const normalizedEmail = input.email.trim().toLowerCase();
+  const normalizedInviteCode = input.inviteCode ? normalizeInviteCode(input.inviteCode) : undefined;
   return withDb(
     "registerUserByEmail",
     async (db) =>
@@ -887,13 +1341,13 @@ export async function registerUserByEmail(input: {
         let classroomId: string | undefined;
         let studentLinkId: string | undefined;
 
-        if (input.inviteCode) {
+        if (normalizedInviteCode) {
           const reservedRows = await tx
             .update(inviteCodes)
             .set({ usesRemaining: sql`${inviteCodes.usesRemaining} - 1` })
             .where(
               and(
-                ilike(inviteCodes.code, input.inviteCode),
+                eq(inviteCodes.code, normalizedInviteCode),
                 sql`${inviteCodes.usesRemaining} > 0`,
                 sql`${inviteCodes.expiresAt} > now()`,
               ),
@@ -975,7 +1429,7 @@ export async function registerUserByEmail(input: {
 
         return newUser;
       }),
-    () => store.registerUserByEmail({ ...input, email: normalizedEmail }),
+    () => store.registerUserByEmail({ ...input, email: normalizedEmail, inviteCode: normalizedInviteCode }),
   );
 }
 
@@ -1004,6 +1458,160 @@ export async function getRunForUser(userId: string) {
   return withDb("getRunForUser", (db) => selectRunForUser(db, userId), () => store.getRunForUser(userId));
 }
 
+export async function listRoundPredictionsForRun(runId: string) {
+  return withDb(
+    "listRoundPredictionsForRun",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(roundPredictions)
+        .where(eq(roundPredictions.runId, runId))
+        .orderBy(roundPredictions.round, roundPredictions.createdAt);
+      return rows.map(toRoundPrediction);
+    },
+    () => listFallbackRoundPredictionsForRun(runId),
+  );
+}
+
+export async function createRoundPredictionForUser(
+  userId: string,
+  input: { guess: RoundPredictionGuess },
+): Promise<RoundPrediction> {
+  return withDb(
+    "createRoundPredictionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (run.currentRound >= run.totalRounds) {
+          throw new Error("本局已经结束，不能继续提交涨跌预测。");
+        }
+
+        const [existing] = await tx
+          .select()
+          .from(roundPredictions)
+          .where(
+            and(
+              eq(roundPredictions.userId, userId),
+              eq(roundPredictions.runId, run.id),
+              eq(roundPredictions.round, run.currentRound),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          throw new Error("本回合已经提交过预测。");
+        }
+
+        const [row] = await tx
+          .insert(roundPredictions)
+          .values({
+            id: createId("pred"),
+            userId,
+            runId: run.id,
+            round: run.currentRound,
+            guess: input.guess,
+          })
+          .returning();
+        return toRoundPrediction(row);
+      }),
+    () => {
+      const run = store.getRunForUser(userId);
+      if (!run) throw new Error("未找到对应的学生沙盘。");
+      if (run.currentRound >= run.totalRounds) {
+        throw new Error("本局已经结束，不能继续提交涨跌预测。");
+      }
+
+      const existing = listFallbackRoundPredictionsForRun(run.id).find(
+        (prediction) => prediction.userId === userId && prediction.round === run.currentRound,
+      );
+      if (existing) {
+        throw new Error("本回合已经提交过预测。");
+      }
+
+      const record: RoundPrediction = {
+        id: createId("pred"),
+        userId,
+        runId: run.id,
+        round: run.currentRound,
+        guess: input.guess,
+        resolved: false,
+        correct: false,
+        createdAt: new Date().toISOString(),
+      };
+      fallbackRoundPredictions.set(record.id, record);
+      return record;
+    },
+  );
+}
+
+export async function listCardCollectionForUser(userId: string): Promise<CardCollectionItem[]> {
+  return withDb(
+    "listCardCollectionForUser",
+    async (db) => {
+      const rows = await db
+        .select()
+        .from(cardCollection)
+        .where(eq(cardCollection.userId, userId))
+        .orderBy(desc(cardCollection.drawnAt));
+      return rows.map(toCardCollectionItem);
+    },
+    () => listFallbackCardCollectionForUser(userId),
+  );
+}
+
+export async function drawCardForUser(
+  userId: string,
+  input: { cardId: string; source: CardCollectionSource; meta?: Record<string, unknown> | null },
+): Promise<CardCollectionItem> {
+  return withDb(
+    "drawCardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const [existing] = await tx
+          .select()
+          .from(cardCollection)
+          .where(and(eq(cardCollection.userId, userId), eq(cardCollection.cardId, input.cardId)))
+          .limit(1);
+        if (existing) return toCardCollectionItem(existing);
+
+        await tx
+          .insert(cardCollection)
+          .values({
+            id: createId("card"),
+            userId,
+            cardId: input.cardId,
+            source: input.source,
+            meta: input.meta ?? null,
+          })
+          .onConflictDoNothing();
+
+        const [row] = await tx
+          .select()
+          .from(cardCollection)
+          .where(and(eq(cardCollection.userId, userId), eq(cardCollection.cardId, input.cardId)))
+          .limit(1);
+        if (!row) throw new Error("卡牌收藏写入失败，请稍后再试。");
+        return toCardCollectionItem(row);
+      }),
+    () => {
+      const key = cardCollectionKey(userId, input.cardId);
+      const existing = fallbackCardCollection.get(key);
+      if (existing) return existing;
+
+      const record: CardCollectionItem = {
+        id: createId("card"),
+        userId,
+        cardId: input.cardId,
+        source: input.source,
+        drawnAt: new Date().toISOString(),
+        meta: input.meta ?? null,
+      };
+      fallbackCardCollection.set(key, record);
+      return record;
+    },
+  );
+}
+
 export async function getSimulationStateForUser(userId: string) {
   return withDb(
     "getSimulationStateForUser",
@@ -1015,16 +1623,44 @@ export async function getSimulationStateForUser(userId: string) {
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
 
-      const [allUsers, allRuns] = await Promise.all([selectAllUsers(db), selectAllRuns(db)]);
+      // DB-1: scope to the student's classroom in SQL instead of loading every
+      // run/user and filtering in app code. ready.run.classroomId is the same
+      // classroom the old app-filter used and is guaranteed non-null (matches the
+      // proven getPeerHeatForStudent pattern below).
+      const [classroomUsers, classroomRuns] = await Promise.all([
+        selectUsersByClassroom(db, ready.run.classroomId),
+        selectRunsByClassroom(db, ready.run.classroomId),
+      ]);
       return buildSimulationState(
         ready.user,
         ready.classroom,
         ready.run,
-        allRuns.filter((item) => item.classroomId === ready.user.classroomId),
-        allUsers.filter((item) => item.classroomId === ready.user.classroomId),
+        classroomRuns,
+        classroomUsers,
       );
     },
     () => store.getSimulationStateForUser(userId),
+  );
+}
+
+export async function getPeerHeatForStudent(userId: string) {
+  return withDb(
+    "getPeerHeatForStudent",
+    async (db) => {
+      const user = await selectUserById(db, userId);
+      if (!user || user.role !== "student") {
+        throw new Error("当前账号没有可用的学生沙盘。");
+      }
+
+      const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
+      const rows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(eq(scenarioRuns.classroomId, ready.run.classroomId));
+
+      return buildPeerHeatPayload(rows.map(toRun), ready.run, ready.classroom.name);
+    },
+    () => store.getPeerHeatForStudent(userId),
   );
 }
 
@@ -1249,25 +1885,43 @@ export async function listPremiumFamilyDigests(): Promise<FamilyDigest[]> {
   return withDb(
     "listPremiumFamilyDigests",
     async (db) => {
+      // DB-3: batch the per-member lookups (was 1 + 3*M serial round-trips) into
+      // set-based queries — owners, students, and one run per student via inArray.
       const members = await db.select().from(familyMembers);
-      const digests: FamilyDigest[] = [];
-      for (const member of members) {
-        const owner = await selectUserById(db, member.ownerUserId);
-        if (!owner) continue;
+      if (members.length === 0) return [];
+
+      const owners = await selectUsersByIds(db, [...new Set(members.map((m) => m.ownerUserId))]);
+      const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
+      const eligible = members.filter((member) => {
+        const owner = ownerById.get(member.ownerUserId);
+        if (!owner) return false;
         const state = resolveSubscriptionState(
           owner.subscriptionTier,
           owner.trialExpiresAt,
           owner.subscriptionExpiresAt,
         );
-        if (!(state.status === "active" && owner.subscriptionTier === "premium")) continue;
+        return state.status === "active" && owner.subscriptionTier === "premium";
+      });
+      if (eligible.length === 0) return [];
 
-        const student = await selectUserById(db, member.studentUserId);
-        const [runRow] = await db
-          .select()
-          .from(scenarioRuns)
-          .where(eq(scenarioRuns.userId, member.studentUserId))
-          .limit(1);
-        if (!student || !runRow) continue;
+      const studentIds = [...new Set(eligible.map((member) => member.studentUserId))];
+      const students = await selectUsersByIds(db, studentIds);
+      const studentById = new Map(students.map((student) => [student.id, student]));
+      const runRows = await db
+        .select()
+        .from(scenarioRuns)
+        .where(inArray(scenarioRuns.userId, studentIds));
+      const runByUserId = new Map<string, (typeof runRows)[number]>();
+      for (const row of runRows) {
+        if (!runByUserId.has(row.userId)) runByUserId.set(row.userId, row);
+      }
+
+      const digests: FamilyDigest[] = [];
+      for (const member of eligible) {
+        const owner = ownerById.get(member.ownerUserId);
+        const student = studentById.get(member.studentUserId);
+        const runRow = runByUserId.get(member.studentUserId);
+        if (!owner || !student || !runRow) continue;
         const run = toRun(runRow);
         digests.push({
           ownerEmail: owner.email,
@@ -1318,12 +1972,230 @@ export async function advanceRunForUser(userId: string) {
         const run = await selectRunForUser(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
-        const updated = advanceSimulationRun(run);
+        const updated = executeAutoInvestForRound(advanceSimulationRun(run));
+        await settleRoundPredictionsForRun(tx, run, updated);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
         await syncGrowthReportForStudent(tx, userId);
         return updated;
       }),
-    () => store.advanceRunForUser(userId),
+    () => {
+      const before = store.getRunForUser(userId);
+      const updated = store.advanceRunForUser(userId);
+      if (before) settleFallbackRoundPredictions(before, updated);
+      return updated;
+    },
+  );
+}
+
+export async function createAutoInvestPlanForUser(userId: string, input: Partial<AutoInvestInput>) {
+  return withDb(
+    "createAutoInvestPlanForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = createAutoInvestPlan(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.createAutoInvestPlanForUser(userId, input),
+  );
+}
+
+export async function cancelAutoInvestPlanForUser(userId: string) {
+  return withDb(
+    "cancelAutoInvestPlanForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const updated = cancelAutoInvestPlan(run);
+        await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return updated;
+      }),
+    () => store.cancelAutoInvestPlanForUser(userId),
+  );
+}
+
+export async function applyLifeCashflowChallengeForUser(userId: string, input: LifeCashflowApplyInput = {}) {
+  return withDb(
+    "applyLifeCashflowChallengeForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = applyLifeCashflowChallenge(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.applyLifeCashflowChallengeForUser(userId, input),
+  );
+}
+
+export async function applyCreditLabActionForUser(userId: string, input: CreditLabActionInput = {}) {
+  return withDb(
+    "applyCreditLabActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = applyCreditLabAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.applyCreditLabActionForUser(userId, input),
+  );
+}
+
+export async function claimQuestRewardForUser(userId: string, questId: string) {
+  return withDb(
+    "claimQuestRewardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const rows = await tx
+          .select({ moduleKey: learningProgress.moduleKey })
+          .from(learningProgress)
+          .where(and(eq(learningProgress.userId, userId), eq(learningProgress.quizPassed, true)));
+        const valid = new Set<string>(learningModules.map((module) => module.key));
+        const completedKeys = rows.map((row) => row.moduleKey).filter((key) => valid.has(key));
+        const learning = { completed: completedKeys.length, total: valid.size, completedKeys };
+
+        const outcome = claimQuestReward(run, learning, questId);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.claimQuestRewardForUser(userId, questId),
+  );
+}
+
+export async function claimSeasonRewardForUser(userId: string, challengeId: string) {
+  return withDb(
+    "claimSeasonRewardForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = claimSeasonChallengeReward(run, challengeId);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.claimSeasonRewardForUser(userId, challengeId),
+  );
+}
+
+export async function createOpportunityNoteForUser(userId: string, input: OpportunityNoteInput) {
+  return withDb(
+    "createOpportunityNoteForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createOpportunityNote(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createOpportunityNoteForUser(userId, input),
+  );
+}
+
+export async function createFundLabActionForUser(userId: string, input: FundLabActionInput) {
+  return withDb(
+    "createFundLabActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createFundLabAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createFundLabActionForUser(userId, input),
+  );
+}
+
+export async function createGoalAccountActionForUser(userId: string, input: GoalAccountActionInput) {
+  return withDb(
+    "createGoalAccountActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createGoalAccountAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createGoalAccountActionForUser(userId, input),
+  );
+}
+
+export async function createProtectionUmbrellaActionForUser(userId: string, input: ProtectionUmbrellaActionInput) {
+  return withDb(
+    "createProtectionUmbrellaActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createProtectionUmbrellaAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createProtectionUmbrellaActionForUser(userId, input),
+  );
+}
+
+export async function createStudentWatchlistActionForUser(userId: string, input: StudentWatchlistActionInput) {
+  return withDb(
+    "createStudentWatchlistActionForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createStudentWatchlistAction(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createStudentWatchlistActionForUser(userId, input),
+  );
+}
+
+export async function createWealthReviewForUser(userId: string, input: WealthReviewInput) {
+  return withDb(
+    "createWealthReviewForUser",
+    async (db) =>
+      db.transaction(async (tx) => {
+        const run = await selectRunForUser(tx, userId);
+        if (!run) throw new Error("未找到对应的学生沙盘。");
+
+        const outcome = createWealthReview(run, input);
+        await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
+        await syncGrowthReportForStudent(tx, userId);
+        return outcome;
+      }),
+    () => store.createWealthReviewForUser(userId, input),
   );
 }
 
@@ -1366,7 +2238,7 @@ export async function createAssignmentForTeacher(
 }
 
 export async function getTeacherOverview(userId: string) {
-  return withDb(
+  const overview = await withDb(
     "getTeacherOverview",
     async (db) => {
       const teacher = await selectUserById(db, userId);
@@ -1377,25 +2249,28 @@ export async function getTeacherOverview(userId: string) {
       const classroom = await selectClassroomById(db, teacher.classroomId);
       if (!classroom) throw new Error("班级不存在。");
 
-      const [allUsers, allRuns, assignmentRows, inviteRows] = await Promise.all([
-        selectAllUsers(db),
-        selectAllRuns(db),
+      // DB-2: scope every query to this classroom in SQL (the assignments query
+      // already did). buildLeaderboard only looks users up by run.userId, and all
+      // scoped runs belong to this classroom, so classroom-scoped users suffice.
+      const [classroomUsers, runs, assignmentRows, inviteRows] = await Promise.all([
+        selectUsersByClassroom(db, classroom.id),
+        selectRunsByClassroom(db, classroom.id),
         db.select().from(assignments).where(eq(assignments.classroomId, classroom.id)),
-        db.select().from(inviteCodes),
+        db
+          .select()
+          .from(inviteCodes)
+          .where(or(eq(inviteCodes.classroomId, classroom.id), eq(inviteCodes.createdBy, teacher.id))),
       ]);
-      const studentUsers = allUsers.filter(
-        (user) => user.role === "student" && user.classroomId === classroom.id,
+      const studentUsers = classroomUsers.filter((user) => user.role === "student");
+      const leaderboard = buildLeaderboard(runs, classroomUsers).filter(
+        (entry) => entry.classroomId === classroom.id,
       );
-      const runs = allRuns.filter((run) => run.classroomId === classroom.id);
-      const leaderboard = buildLeaderboard(runs, allUsers).filter((entry) => entry.classroomId === classroom.id);
 
       return {
         teacher,
         classroom,
         assignments: assignmentRows.map(toAssignment),
-        invites: inviteRows
-          .map(toInvite)
-          .filter((invite) => invite.classroomId === classroom.id || invite.createdBy === teacher.id),
+        invites: inviteRows.map(toInvite),
         leaderboard,
         students: studentUsers.map((student) => {
           const run = runs.find((item) => item.userId === student.id);
@@ -1410,10 +2285,17 @@ export async function getTeacherOverview(userId: string) {
     },
     () => store.getTeacherOverview(userId),
   );
+  // Defence-in-depth: never serialize passwordHash to the client, regardless of
+  // whether the data came from the DB or the in-memory fallback.
+  return {
+    ...overview,
+    teacher: withoutPasswordHash(overview.teacher),
+    students: overview.students.map(withoutPasswordHash),
+  };
 }
 
 export async function getParentOverview(userId: string) {
-  return withDb(
+  const overview = await withDb(
     "getParentOverview",
     async (db) => {
       const parent = await selectUserById(db, userId);
@@ -1446,6 +2328,13 @@ export async function getParentOverview(userId: string) {
     },
     () => store.getParentOverview(userId),
   );
+  // Defence-in-depth: strip passwordHash from the parent's own row and the
+  // linked student's row before this reaches the browser.
+  return {
+    ...overview,
+    parent: withoutPasswordHash(overview.parent),
+    student: withoutPasswordHash(overview.student),
+  };
 }
 
 function isSuperAdminUser(user?: UserRecord | null) {
@@ -1540,15 +2429,25 @@ export async function getAdminOverview() {
     return await withDb(
       "getAdminOverview",
       async (db) => {
-        const [allUsers, allRuns, classroomRows, inviteRows, assignmentRows, orderRows] = await Promise.all([
+        // DB-5: the admin board only needs the top few runs by net worth. Rank by
+        // the materialized scenario_runs.netWorth column (kept == the latest
+        // snapshot's netWorth via run.netWorth/toRunUpdate, which is buildLeaderboard's
+        // sort key) and fetch just those, instead of every run's full JSONB. No
+        // migration needed — netWorth is already materialized; disciplineScore for the
+        // few comes from their snapshots. NULLS LAST so an unset netWorth can't rank top.
+        const [allUsers, topRuns, classroomRows, inviteRows, assignmentRows, orderRows] = await Promise.all([
           selectAllUsers(db),
-          selectAllRuns(db),
+          db
+            .select()
+            .from(scenarioRuns)
+            .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
+            .limit(5),
           db.select().from(classrooms),
           db.select().from(inviteCodes),
           db.select().from(assignments).orderBy(desc(assignments.createdAt)),
           db.select().from(paymentOrders),
         ]);
-        const leaderboard = buildLeaderboard(allRuns, allUsers);
+        const leaderboard = buildLeaderboard(topRuns.map(toRun), allUsers);
         const now = Date.now();
         const standardUsers = allUsers.filter((user) => user.subscriptionTier === "standard" || user.subscriptionTier === "premium");
         const trialUsers = allUsers.filter(
@@ -1558,6 +2457,21 @@ export async function getAdminOverview() {
             new Date(user.trialExpiresAt).getTime() > now,
         );
         const paidOrders = orderRows.filter((order) => order.status === "paid");
+        const userById = new Map(allUsers.map((user) => [user.id, user]));
+        const manualOrders = orderRows
+          .filter((order) => order.channel === "manual" && order.status === "pending")
+          .map((order) => {
+            const payer = userById.get(order.userId);
+            const target = userById.get(order.targetUserId);
+            if (!payer || !target) return null;
+            return {
+              order: toPaymentOrder(order),
+              payer: toAdminUserSummary(payer),
+              target: toAdminUserSummary(target),
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+          .sort((a, b) => Date.parse(b.order.createdAt) - Date.parse(a.order.createdAt));
 
         return {
           metrics: [
@@ -1581,6 +2495,7 @@ export async function getAdminOverview() {
           topUsers: leaderboard.slice(0, 5),
           assignments: assignmentRows.map(toAssignment).slice(0, 4),
           users: allUsers.map(toAdminUserSummary),
+          manualOrders,
         };
       },
       () => store.getAdminOverview(),
@@ -1595,14 +2510,20 @@ export async function getLeaderboardSnapshot(scope: "classroom" | "school" = "cl
   return withDb(
     "getLeaderboardSnapshot",
     async (db) => {
-      const [allRuns, allUsers] = await Promise.all([selectAllRuns(db), selectAllUsers(db)]);
-      const leaderboard = buildLeaderboard(allRuns, allUsers);
-
-      if (scope === "school") {
-        return leaderboard;
+      // DB-7: scope the classroom view in SQL; only the "school" view needs every
+      // run. (This helper is currently orphaned — kept consistent with the rest.)
+      if (scope === "classroom") {
+        const [classroomRuns, classroomUsers] = await Promise.all([
+          selectRunsByClassroom(db, "class-1"),
+          selectUsersByClassroom(db, "class-1"),
+        ]);
+        return buildLeaderboard(classroomRuns, classroomUsers).filter(
+          (item) => item.classroomId === "class-1",
+        );
       }
 
-      return leaderboard.filter((item) => item.classroomId === "class-1");
+      const [allRuns, allUsers] = await Promise.all([selectAllRuns(db), selectAllUsers(db)]);
+      return buildLeaderboard(allRuns, allUsers);
     },
     () => store.getLeaderboardSnapshot(scope),
   );
@@ -1708,8 +2629,10 @@ export async function appendAiMessage(sessionId: string, userId: string, message
 }
 
 export async function listAiSessionsForUser(userId: string) {
-  return withScopedDb("listAiSessionsForUser", (db) => listAiSessionRows(db, userId).then((items) => items.slice(0, 10)), () =>
-    store.listAiSessionsForUser(userId),
+  return withScopedDb(
+    "listAiSessionsForUser",
+    (db) => listAiSessionRows(db, userId, 10),
+    () => store.listAiSessionsForUser(userId),
   );
 }
 
@@ -2011,6 +2934,53 @@ export async function updateAdminManagedUser(
   );
 }
 
+export async function getAppSetting<TValue = unknown>(key: string) {
+  return withDb(
+    "getAppSetting",
+    async (db) => {
+      const [setting] = await db
+        .select()
+        .from(appSettings)
+        .where(eq(appSettings.key, key))
+        .limit(1);
+      return setting ? toAppSetting<TValue>(setting) : null;
+    },
+    () => store.getAppSetting<TValue>(key),
+  );
+}
+
+export async function upsertAppSetting<TValue = unknown>(
+  key: string,
+  value: TValue,
+  updatedBy?: string,
+) {
+  return withDb(
+    "upsertAppSetting",
+    async (db) => {
+      const now = new Date();
+      const [setting] = await db
+        .insert(appSettings)
+        .values({
+          key,
+          value,
+          updatedBy: updatedBy ?? null,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: appSettings.key,
+          set: {
+            value,
+            updatedBy: updatedBy ?? null,
+            updatedAt: now,
+          },
+        })
+        .returning();
+      return toAppSetting<TValue>(setting);
+    },
+    () => store.upsertAppSetting<TValue>(key, value, updatedBy),
+  );
+}
+
 export async function createPaymentOrder(input: {
   userId: string;
   targetUserId: string;
@@ -2072,6 +3042,44 @@ export async function updatePaymentOrderProviderFields(
   );
 }
 
+export async function attachManualPaymentProof(
+  outTradeNo: string,
+  input: { note: string; submittedBy: string; proofImageDataUrl?: string },
+) {
+  return withDb(
+    "attachManualPaymentProof",
+    async (db) => {
+      const [existing] = await db
+        .select()
+        .from(paymentOrders)
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .limit(1);
+      if (!existing) throw new Error("支付订单不存在。");
+      if (existing.channel !== "manual") throw new Error("该订单不是人工核验订单。");
+      if (existing.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+
+      const [order] = await db
+        .update(paymentOrders)
+        .set({
+          rawNotify: {
+            ...(existing.rawNotify && typeof existing.rawNotify === "object" ? existing.rawNotify : {}),
+            manualProof: {
+              note: input.note,
+              submittedBy: input.submittedBy,
+              proofImageDataUrl: input.proofImageDataUrl,
+              submittedAt: new Date().toISOString(),
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(paymentOrders.outTradeNo, outTradeNo))
+        .returning();
+      return toPaymentOrder(order);
+    },
+    () => store.attachManualPaymentProof(outTradeNo, input),
+  );
+}
+
 export async function getPaymentOrderByOutTradeNo(outTradeNo: string) {
   return withDb(
     "getPaymentOrderByOutTradeNo",
@@ -2098,11 +3106,15 @@ export async function fulfillPaymentOrder(input: {
     "fulfillPaymentOrder",
     async (db) =>
       db.transaction(async (tx) => {
+        // Row-lock the order so a concurrent SUCCESS callback / manual-confirm blocks
+        // here, then re-reads status="paid" and no-ops via the idempotency gate below,
+        // instead of both passing the gate under READ COMMITTED and double-granting (#3).
         const [order] = await tx
           .select()
           .from(paymentOrders)
           .where(eq(paymentOrders.outTradeNo, input.outTradeNo))
-          .limit(1);
+          .limit(1)
+          .for("update");
         if (!order) throw new Error("支付订单不存在。");
 
         // Defense-in-depth: a SUCCESS callback must report the amount we charged.
@@ -2473,11 +3485,49 @@ export async function markModuleComplete(
     async (db) => {
       await db
         .insert(learningProgress)
-        .values({ id: createId("lp"), userId, moduleKey })
-        .onConflictDoNothing({ target: [learningProgress.userId, learningProgress.moduleKey] });
-      return { userId, moduleKey, completedAt: new Date().toISOString() };
+        .values({ id: createId("lp"), userId, moduleKey, quizPassed: true })
+        .onConflictDoUpdate({
+          target: [learningProgress.userId, learningProgress.moduleKey],
+          set: { quizPassed: true, completedAt: sql`now()` },
+        });
+      return { userId, moduleKey, quizPassed: true, completedAt: new Date().toISOString() };
     },
     () => store.markModuleComplete(userId, moduleKey),
+  );
+}
+
+export async function markModuleQuizPassed(
+  userId: string,
+  moduleKey: string,
+): Promise<LearningProgressRow> {
+  return withDb(
+    "markModuleQuizPassed",
+    async (db) => {
+      await db
+        .insert(learningProgress)
+        .values({ id: createId("lp"), userId, moduleKey, quizPassed: true })
+        .onConflictDoUpdate({
+          target: [learningProgress.userId, learningProgress.moduleKey],
+          set: { quizPassed: true },
+        });
+      return { userId, moduleKey, quizPassed: true, completedAt: new Date().toISOString() };
+    },
+    () => store.markModuleQuizPassed(userId, moduleKey),
+  );
+}
+
+export async function hasModuleQuizPassed(userId: string, moduleKey: string): Promise<boolean> {
+  return withDb(
+    "hasModuleQuizPassed",
+    async (db) => {
+      const rows = await db
+        .select({ quizPassed: learningProgress.quizPassed })
+        .from(learningProgress)
+        .where(and(eq(learningProgress.userId, userId), eq(learningProgress.moduleKey, moduleKey)))
+        .limit(1);
+      return rows[0]?.quizPassed === true;
+    },
+    () => store.hasModuleQuizPassed(userId, moduleKey),
   );
 }
 
@@ -2488,7 +3538,7 @@ export async function getLearningProgress(userId: string): Promise<LearningProgr
       const rows = await db
         .select({ moduleKey: learningProgress.moduleKey })
         .from(learningProgress)
-        .where(eq(learningProgress.userId, userId));
+        .where(and(eq(learningProgress.userId, userId), eq(learningProgress.quizPassed, true)));
       const valid = new Set<string>(learningModules.map((m) => m.key));
       const completedKeys = rows.map((r) => r.moduleKey).filter((k) => valid.has(k));
       return { completed: completedKeys.length, total: valid.size, completedKeys };

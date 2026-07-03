@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
 export function SectionReveal({
@@ -8,22 +5,28 @@ export function SectionReveal({
   delay = 0,
   className,
   id,
+  reveal = true,
+  sceneItem = false,
+  motionCard = false,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
   id?: string;
+  reveal?: boolean;
+  sceneItem?: boolean;
+  motionCard?: boolean;
 }) {
   return (
-    <motion.div
+    <div
       id={id}
       className={className}
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.16 }}
-      transition={{ duration: 0.65, delay }}
+      data-motion-reveal={reveal ? true : undefined}
+      data-motion-delay={reveal ? delay : undefined}
+      data-motion-scene-item={sceneItem ? true : undefined}
+      data-motion-card={motionCard ? true : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

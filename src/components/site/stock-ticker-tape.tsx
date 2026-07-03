@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Pause, Play } from "lucide-react";
 
 import type { TickerTapePayload } from "@/lib/market-data";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
@@ -15,6 +16,7 @@ function formatPrice(value: number) {
 
 export function StockTickerTape({ initialPayload }: { initialPayload: TickerTapePayload }) {
   const [payload, setPayload] = useState(initialPayload);
+  const [paused, setPaused] = useState(false);
   const marqueeItems = [...payload.items, ...payload.items];
 
   useEffect(() => {
@@ -50,10 +52,10 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
   }, []);
 
   return (
-    <section className="border-b border-white/8 bg-[#0d1324] text-white">
+    <section className="border-b border-white/8 bg-bg-inverse text-white">
       <div className="page-shell flex items-center gap-3 py-2.5 sm:gap-4 sm:py-3">
         <div className="hidden shrink-0 xl:block">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#f08a38]">Market Pulse</p>
+          <p className="text-xs uppercase tracking-[0.28em] text-brand">Market Pulse</p>
           <p className="mt-1 text-sm font-medium text-white/72">美股 AI / 科技观察池</p>
         </div>
 
@@ -61,11 +63,14 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
           className="group relative min-w-0 flex-1 overflow-hidden rounded-full border border-white/10 bg-white/[0.04]"
           data-allow-overflow="true"
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-[#0d1324] via-[#0d1324]/85 to-transparent sm:w-12" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-8 bg-gradient-to-l from-[#0d1324] via-[#0d1324]/85 to-transparent sm:w-12" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-8 bg-gradient-to-r from-bg-inverse via-bg-inverse/85 to-transparent sm:w-12" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-8 bg-gradient-to-l from-bg-inverse via-bg-inverse/85 to-transparent sm:w-12" />
 
           <div
-            className="stock-ticker-marquee group-hover:[animation-play-state:paused]"
+            className={cn(
+              "stock-ticker-marquee group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused]",
+              paused && "[animation-play-state:paused]",
+            )}
             data-allow-overflow="true"
             style={{ ["--ticker-duration" as string]: "28s" }}
           >
@@ -78,9 +83,9 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
                   className="flex min-w-fit items-center gap-2.5 border-r border-white/8 px-3 py-2.5 last:border-r-0 sm:min-w-[176px] sm:gap-3 sm:px-4 sm:py-3 md:min-w-[210px]"
                 >
                   <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] sm:h-8 sm:w-8 sm:text-xs"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg shadow-slate-950/25 sm:h-8 sm:w-8 sm:text-xs"
                     style={{
-                      background: `linear-gradient(135deg, ${item.accentColor} 0%, rgba(255,255,255,0.12) 120%)`,
+                      background: `linear-gradient(135deg, ${item.accentColor} 0%, color-mix(in srgb, ${item.accentColor} 18%, white) 120%)`,
                     }}
                   >
                     {item.monogram}
@@ -89,7 +94,7 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-semibold text-white sm:text-sm">{item.symbol}</span>
-                      <span className="text-xs text-white/48">{item.name}</span>
+                      <span className="text-xs text-white/70">{item.name}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[13px] sm:gap-3 sm:text-sm">
                       <span className="font-medium text-white/88">{formatPrice(item.currentPrice)}</span>
@@ -105,18 +110,46 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
           </div>
         </div>
 
-        <div className="hidden shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64 lg:flex">
+        <button
+          type="button"
+          onClick={() => setPaused((value) => !value)}
+          aria-pressed={paused}
+          aria-label={paused ? "播放行情滚动" : "暂停行情滚动"}
+          title={paused ? "播放行情滚动" : "暂停行情滚动"}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-bg-inverse"
+        >
+          {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+        </button>
+
+        <div
+          className="hidden shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64 lg:flex"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span
+            aria-hidden="true"
             className={cn(
               "inline-flex h-2.5 w-2.5 rounded-full",
+              payload.provider === "tsanghi" ||
+              payload.provider === "itick" ||
               payload.provider === "alltick"
-                ? "bg-[#d43c33]"
+                ? "bg-[var(--info-400)]"
                 : payload.provider === "hybrid"
-                  ? "bg-[#f08a38]"
+                  ? "bg-brand"
                   : "bg-white/36",
             )}
           />
-          <span>{payload.provider === "fallback" ? "教学观察池模式" : "10 分钟自动刷新"}</span>
+          <span>
+            {payload.provider === "fallback"
+              ? "教学观察池模式"
+              : payload.provider === "tsanghi"
+                ? "沧海真实日线收盘 · 仅供教学（非实时）"
+                : payload.provider === "itick"
+                ? "iTick · 10 分钟自动刷新"
+                : payload.provider === "alltick"
+                ? "AllTick · 10 分钟自动刷新"
+                : "混合行情 · 10 分钟自动刷新"}
+          </span>
         </div>
       </div>
     </section>

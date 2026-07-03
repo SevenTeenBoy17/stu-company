@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { registerSchema } from "@/lib/auth-validation";
 import { persistSession } from "@/lib/auth";
 import { registerUserByEmail, roleHomePath } from "@/lib/db/repo";
 import { sendEmail, verificationEmail } from "@/lib/email";
 import { createEmailVerificationToken } from "@/lib/email-verification";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
-
-const registerSchema = z.object({
-  name: z.string().trim().min(2, "昵称至少需要 2 个字符。").max(16, "昵称最多 16 个字符。"),
-  email: z.string().trim().email("请输入有效的邮箱地址。").max(255),
-  password: z
-    .string()
-    .min(8, "密码至少 8 位。")
-    .regex(/[a-zA-Z]/, "密码需要包含至少一个字母。")
-    .regex(/\d/, "密码需要包含至少一个数字。"),
-  inviteCode: z.string().min(6).optional(),
-});
 
 export async function POST(request: Request) {
   const originBlock = checkOrigin(request);
@@ -30,7 +19,15 @@ export async function POST(request: Request) {
       return apiError("invalid_input", buildRateLimitMessage(rl), 429);
     }
 
-    const body = registerSchema.parse(await request.json());
+    const parsed = registerSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      // Surface the schema's specific Chinese message (e.g. "密码需要包含至少一个数字。")
+      // instead of the generic handleRouteError fallback, so the user knows what
+      // to fix rather than blindly retrying into the rate limiter.
+      const message = parsed.error.issues[0]?.message ?? "请求参数格式不正确，请检查后重试。";
+      return apiError("invalid_input", message, 400);
+    }
+    const body = parsed.data;
     const user = await registerUserByEmail({ ...body, email: body.email.toLowerCase() });
 
     await persistSession({

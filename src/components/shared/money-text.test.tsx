@@ -4,8 +4,9 @@ import { render, screen } from "@testing-library/react";
 import { MoneyInlineText, MoneyText } from "./money-text";
 
 // First component test in the repo (breaks the 0-`.test.tsx` gap, TEST-STRATEGY §1.5 P0).
-// Ground truth: money is ALWAYS rendered with `tabular-nums` and the up/positive red
-// palette — the Chinese-market color convention documented in CLAUDE.md.
+// Ground truth: money is ALWAYS `tabular-nums`, and follows the Chinese-market color
+// convention (CLAUDE.md): red = up/positive, GREEN = down/negative. A negative ¥
+// amount renders green; positive/neutral amounts render the brand red.
 
 describe("MoneyText", () => {
   it("renders its children verbatim", () => {
@@ -23,12 +24,24 @@ describe("MoneyText", () => {
 
   it("uses the light-surface red palette by default (red = up/positive)", () => {
     render(<MoneyText>¥1</MoneyText>);
-    expect(screen.getByText("¥1")).toHaveClass("text-[#d43c33]");
+    expect(screen.getByText("¥1")).toHaveClass("text-up");
   });
 
   it("uses the dark-surface red palette when tone='dark'", () => {
     render(<MoneyText tone="dark">¥1</MoneyText>);
-    expect(screen.getByText("¥1")).toHaveClass("text-[#ffb7af]");
+    expect(screen.getByText("¥1")).toHaveClass("text-[var(--up-200)]");
+  });
+
+  it("renders a NEGATIVE amount green (down/negative), light surface", () => {
+    render(<MoneyText>-¥1,800</MoneyText>);
+    const el = screen.getByText("-¥1,800");
+    expect(el).toHaveClass("text-down");
+    expect(el).not.toHaveClass("text-up");
+  });
+
+  it("renders a NEGATIVE amount green on a dark surface", () => {
+    render(<MoneyText tone="dark">-¥45</MoneyText>);
+    expect(screen.getByText("-¥45")).toHaveClass("text-[var(--down-200)]");
   });
 
   it("merges a caller-supplied className", () => {

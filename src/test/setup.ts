@@ -18,7 +18,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-// jsdom gaps relied on by animation-heavy components (framer-motion / scrollIntoView).
+// jsdom gaps relied on by animation-heavy components (GSAP / scrollIntoView).
 if (typeof window !== "undefined") {
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
   if (typeof window.matchMedia !== "function") {

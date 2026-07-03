@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Check, Crown, Info, Share2, TrendingUp, X } from "lucide-react";
 
 import { buildPowerShareText } from "@/lib/leaderboard/share";
+import { cn } from "@/lib/utils";
 
 import {
+  aliasInfo,
   COMPONENT_LABELS,
   SCOPE_LABELS,
   type ComponentsDTO,
@@ -31,7 +32,17 @@ function tierAccent(tier: number): string {
   );
 }
 
-export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: FormulaDTO }) {
+export function PowerCard({
+  card,
+  formula,
+  scope: selectedScope,
+  onScopeChange,
+}: {
+  card: PowerCardDTO;
+  formula: FormulaDTO;
+  scope: RankScope;
+  onScopeChange: (next: RankScope) => void;
+}) {
   const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
 
   async function share() {
@@ -63,14 +74,20 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
   });
 
   const nextTierGap = card.toNextTier;
+  // Progress through the current tier band toward the next one — a filled bar
+  // reads as "almost there" far more strongly than a bare number does.
+  const tierFloor = card.tier.min;
+  const nextTierFloor = card.power + nextTierGap;
+  const tierProgress =
+    nextTierFloor > tierFloor
+      ? Math.min(1, Math.max(0, (card.power - tierFloor) / (nextTierFloor - tierFloor)))
+      : 1;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
       {/* Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+      <section
+        data-motion-reveal
         className={`relative overflow-hidden rounded-[1.7rem] bg-gradient-to-br ${tierAccent(card.tier.tier)} p-6 text-white shadow-[0_18px_44px_rgba(15,23,42,0.16)]`}
       >
         <div className="flex items-center justify-between">
@@ -102,33 +119,72 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
             财商战力
             <span className="ml-1.5 normal-case tracking-normal text-white/60">· {card.seasonName} 本周榜</span>
           </p>
-          <p className="mt-1 font-mono text-5xl font-black tabular-nums leading-none">
+          <p className="bz-hero-stat text-hero-num mt-1 font-mono tabular-nums leading-none">
             {card.power.toLocaleString("zh-CN")}
           </p>
-          {card.alias ? <p className="mt-2 text-sm font-medium text-white/85">{card.alias}</p> : null}
+          {card.alias ? (
+            <p className="mt-2 text-sm font-medium text-white/85">{aliasInfo(card.alias).name}</p>
+          ) : null}
         </div>
 
         {nextTierGap > 0 ? (
-          <p className="mt-4 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90">
-            <TrendingUp className="h-3.5 w-3.5" /> 距下一段位还差 {nextTierGap} 战力
-          </p>
+          <div className="mt-5">
+            <div className="flex items-center justify-between text-xs font-medium text-white/90">
+              <span className="inline-flex items-center gap-1">
+                <TrendingUp className="h-3.5 w-3.5" /> 冲刺下一段位
+              </span>
+              <span className="font-mono tabular-nums">
+                还差 {nextTierGap.toLocaleString("zh-CN")} 战力
+              </span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/20">
+              <div
+                data-motion-bar
+                data-motion-delay="0.25"
+                className="h-full rounded-full bg-white/90"
+                style={{ width: `${Math.round(tierProgress * 100)}%` }}
+              />
+            </div>
+          </div>
         ) : (
-          <p className="mt-4 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90">
+          <p className="mt-5 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/90">
             <TrendingUp className="h-3.5 w-3.5" /> 已达最高段位，保持住！
           </p>
         )}
 
-        {/* 4-scope ranks */}
+        {/* 4-scope ranks — each tile selects that region for the board below. */}
         <div className="mt-5 grid grid-cols-4 gap-2">
-          {SCOPE_ORDER.map((scope) => {
-            const rank = card.ranks[scope];
+          {SCOPE_ORDER.map((scopeKey) => {
+            const rank = card.ranks[scopeKey];
+            const isTop = rank === 1;
+            const isSelected = selectedScope === scopeKey;
             return (
-              <div key={scope} className="rounded-xl bg-white/15 px-2 py-2.5 text-center backdrop-blur">
-                <p className="text-[0.68rem] font-medium text-white/75">{SCOPE_LABELS[scope]}</p>
+              <button
+                key={scopeKey}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => {
+                  onScopeChange(scopeKey);
+                  document
+                    .getElementById("rank-board")
+                    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }}
+                className={cn(
+                  "relative cursor-pointer rounded-xl px-2 py-2.5 text-center backdrop-blur transition",
+                  // Darker underlay so the white label/number clear AA over the
+                  // gradient; #1 keeps its gold identity via ring + crown.
+                  isTop ? "bg-black/15 ring-1 ring-amber-300/80" : "bg-black/15 hover:bg-black/25",
+                  isSelected && "ring-2 ring-white/90",
+                )}
+              >
+                {isTop ? (
+                  <Crown className="absolute right-1.5 top-1.5 h-3 w-3 text-amber-200" />
+                ) : null}
+                <p className="text-[0.68rem] font-semibold text-white/90">{SCOPE_LABELS[scopeKey]}</p>
                 <p className="mt-0.5 font-mono text-base font-bold tabular-nums">
                   {rank ? `#${rank}` : "—"}
                 </p>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -150,7 +206,7 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
             你当前「仅校内」可见，校外榜单不显示你的昵称。
           </p>
         ) : null}
-      </motion.section>
+      </section>
 
       {/* Transparency panel — decision 1: show composition + weights */}
       <section className="rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
@@ -168,7 +224,7 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-fg-default">
                   {row.label}
-                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-fg-muted">
+                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-fg-default">
                     权重 {row.weightPct}%
                   </span>
                 </span>
@@ -176,7 +232,8 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-bg-muted">
                 <div
-                  className="h-full rounded-full bg-brand transition-all"
+                  data-motion-bar
+                  className="h-full rounded-full bg-brand"
                   style={{ width: `${row.valuePct}%` }}
                 />
               </div>
@@ -185,7 +242,7 @@ export function PowerCard({ card, formula }: { card: PowerCardDTO; formula: Form
         </ul>
 
         {!card.components ? (
-          <p className="mt-4 rounded-xl bg-bg-muted px-3 py-2 text-xs text-fg-muted">
+          <p className="mt-4 rounded-xl bg-bg-muted px-3 py-2 text-xs text-fg-default">
             完成一局沙盘后，这里会展开你每一项的真实得分。
           </p>
         ) : null}

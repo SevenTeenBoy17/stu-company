@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Globe,
   LaptopMinimal,
@@ -11,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/site/logo";
@@ -31,8 +30,10 @@ function isLinkActive(pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState("");
 
   useEffect(() => {
     document.body.dataset.scrollLocked = drawerOpen ? "true" : "false";
@@ -45,14 +46,14 @@ export function SiteHeader() {
     () =>
       cn(
         "inline-flex min-h-12 min-w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-5 py-3 text-[16px] font-bold leading-none tracking-[0.01em] transition-all 2xl:px-6 2xl:text-[17px]",
-        "border-transparent !text-white [text-shadow:0_1px_14px_rgba(255,255,255,0.12)] hover:border-white/20 hover:bg-white/[0.08] hover:!text-white focus-visible:border-white/30 focus-visible:bg-white/[0.1] focus-visible:!text-white",
+        "border-transparent !text-white drop-shadow-sm hover:border-white/24 hover:bg-white/[0.1] hover:!text-white focus-visible:border-white/35 focus-visible:bg-white/[0.12] focus-visible:!text-white",
       ),
     [],
   );
 
   return (
     <header
-      className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(11,16,29,0.93)] backdrop-blur-xl"
+      className="sticky top-0 z-50 border-b border-white/8 bg-bg-inverse/95 backdrop-blur-xl"
       onMouseLeave={() => setMenuOpen(false)}
     >
       <div className="mx-auto flex w-full max-w-[1440px] items-center gap-3 px-3 py-3 sm:px-4 lg:gap-4 lg:px-8 lg:py-4">
@@ -60,22 +61,40 @@ export function SiteHeader() {
           <Logo />
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-white/55 2xl:flex 2xl:max-w-[280px]">
-          <Search className="size-4" />
-          <span className="truncate whitespace-nowrap text-sm">搜索场景、课程或报告</span>
-        </div>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const q = headerQuery.trim();
+            router.push(q ? `/learn?q=${encodeURIComponent(q)}` : "/learn");
+          }}
+          data-motion-button
+          role="search"
+          aria-label="搜索课程"
+          className="hidden min-w-0 flex-1 items-center gap-3 rounded-full border border-white/24 bg-white/[0.12] px-4 py-3 !text-white shadow-inner shadow-white/[0.05] transition-colors hover:border-white/38 hover:bg-white/[0.16] hover:!text-white focus-within:border-white/42 xl:flex xl:max-w-[260px] 2xl:max-w-[340px]"
+        >
+          <Search className="size-4 shrink-0 !text-white" />
+          <input
+            value={headerQuery}
+            onChange={(event) => setHeaderQuery(event.target.value)}
+            placeholder="搜索场景、课程或报告"
+            enterKeyHint="search"
+            aria-label="搜索场景、课程或报告"
+            className="min-w-0 flex-1 bg-transparent text-base font-bold !text-white outline-none placeholder:!text-white/85"
+          />
+        </form>
 
-        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex 2xl:gap-3">
           {primaryLinks.map((item) => {
             const active = isLinkActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                data-motion-button
                 className={cn(
                   menuButtonClasses,
                   active &&
-                    "border-white/24 bg-white/[0.14] !text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_10px_28px_rgba(12,18,32,0.18)]",
+                    "border-white/24 bg-white/[0.14] !text-white shadow-lg shadow-slate-950/20 ring-1 ring-inset ring-white/10",
                 )}
               >
                 {item.label}
@@ -85,13 +104,14 @@ export function SiteHeader() {
 
           <button
             type="button"
+            data-motion-button
             onMouseEnter={() => setMenuOpen(true)}
             onFocus={() => setMenuOpen(true)}
             onClick={() => setMenuOpen((current) => !current)}
             className={cn(
               menuButtonClasses,
               menuOpen &&
-                "border-white/24 bg-white/[0.14] !text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_10px_28px_rgba(12,18,32,0.18)]",
+                "border-white/24 bg-white/[0.14] !text-white shadow-lg shadow-slate-950/20 ring-1 ring-inset ring-white/10",
             )}
           >
             产品矩阵
@@ -105,6 +125,7 @@ export function SiteHeader() {
             <Globe className="size-4" aria-hidden />
             <Link
               href="/demo?auth=login"
+              data-motion-button
               className="inline-flex min-h-11 items-center rounded-full px-2 text-sm font-bold !text-white transition-colors hover:!text-white"
             >
               登录
@@ -113,7 +134,8 @@ export function SiteHeader() {
 
           <Link
             href="/demo?auth=register"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f08a38] px-4 text-sm font-bold text-slate-950 shadow-[0_16px_34px_rgba(240,138,56,0.35)] transition-transform hover:-translate-y-0.5 sm:px-5"
+            data-motion-button
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-4 text-sm font-bold !text-slate-950 shadow-xl shadow-brand/30 transition-transform hover:-translate-y-0.5 hover:bg-brand-hover sm:px-5"
           >
             <Sparkles className="hidden size-4 sm:block" />
             立即体验
@@ -121,6 +143,7 @@ export function SiteHeader() {
 
           <button
             type="button"
+            data-motion-button
             onClick={() => setDrawerOpen(true)}
             className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white transition-colors hover:bg-white/[0.08] xl:hidden"
             aria-label="打开导航菜单"
@@ -130,18 +153,15 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.24 }}
-            className="hidden border-t border-white/8 bg-[rgba(13,19,34,0.97)] xl:block"
+      {menuOpen ? (
+          <div
+            data-motion-drawer
+            data-motion-side="none"
+            className="hidden border-t border-white/8 bg-bg-inverse/95 xl:block"
           >
             <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 lg:grid-cols-[280px_1fr] lg:px-8">
               <div className="max-w-sm">
-                <p className="text-sm uppercase tracking-[0.24em] text-[#f08a38]">Product Matrix</p>
+                <p className="text-sm uppercase tracking-[0.24em] text-brand">Product Matrix</p>
                 <p className="mt-3 text-2xl font-semibold text-white">
                   登录后按账号权限进入对应工作台，公共站点只保留课程、试玩和产品能力说明。
                 </p>
@@ -156,17 +176,18 @@ export function SiteHeader() {
                     key={group.title}
                     className="rounded-[1.8rem] border border-white/8 bg-white/[0.04] p-5"
                   >
-                    <p className="text-sm uppercase tracking-[0.24em] text-[#f08a38]">{group.title}</p>
+                    <p className="text-sm uppercase tracking-[0.24em] text-brand">{group.title}</p>
                     <p className="mt-3 text-sm leading-7 text-white/60">{group.summary}</p>
                     <div className="mt-4 space-y-3">
                       {group.items.map((item) => (
                         <Link
                           key={`${item.href}-${item.label}`}
                           href={item.href}
+                          data-motion-card
                           className="group block rounded-2xl bg-white/[0.04] px-4 py-3 transition-colors hover:bg-white/[0.08]"
                         >
                           <p className="font-semibold text-white">{item.label}</p>
-                          <p className="mt-1 text-sm leading-6 text-white/54">{item.description}</p>
+                          <p className="mt-1 text-sm leading-6 text-white/70">{item.description}</p>
                         </Link>
                       ))}
                     </div>
@@ -174,34 +195,29 @@ export function SiteHeader() {
                 ))}
               </div>
             </div>
-          </motion.div>
+          </div>
         ) : null}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {drawerOpen ? (
+      {drawerOpen ? (
           <>
-            <motion.button
+            <button
               type="button"
               aria-label="关闭导航菜单"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              data-motion-overlay
               onClick={() => setDrawerOpen(false)}
               className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-[2px] xl:hidden"
             />
 
-            <motion.aside
-              initial={{ opacity: 0, x: 28 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-[#0d1324] px-5 pb-5 pt-4 text-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] xl:hidden"
+            <aside
+              data-motion-drawer
+              data-motion-side="right"
+              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-bg-inverse px-5 pb-5 pt-4 text-white shadow-2xl shadow-slate-950/25 xl:hidden"
             >
               <div className="flex items-center justify-between gap-3">
                 <Logo />
                 <button
                   type="button"
+                  data-motion-button
                   onClick={() => setDrawerOpen(false)}
                   className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-white"
                   aria-label="关闭菜单"
@@ -210,13 +226,25 @@ export function SiteHeader() {
                 </button>
               </div>
 
-              <label className="mt-5 flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-white/60">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const q = headerQuery.trim();
+                  setDrawerOpen(false);
+                  router.push(q ? `/learn?q=${encodeURIComponent(q)}` : "/learn");
+                }}
+                className="mt-5 flex items-center gap-3 rounded-full border border-white/18 bg-white/[0.09] px-4 py-3 text-white/88 focus-within:border-white/32"
+              >
                 <Search className="size-4" />
                 <input
+                  value={headerQuery}
+                  onChange={(event) => setHeaderQuery(event.target.value)}
                   placeholder="搜索场景、课程或报告"
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/42"
+                  enterKeyHint="search"
+                  aria-label="搜索场景、课程或报告"
+                  className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/85"
                 />
-              </label>
+              </form>
 
               <div className="mt-6 space-y-2">
                 {primaryLinks.map((item) => {
@@ -225,6 +253,7 @@ export function SiteHeader() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      data-motion-card
                       onClick={() => setDrawerOpen(false)}
                       className={cn(
                         "flex min-h-12 items-center justify-between rounded-[1.35rem] border px-4 py-3 text-sm font-semibold transition-colors",
@@ -234,14 +263,14 @@ export function SiteHeader() {
                       )}
                     >
                       <span>{item.label}</span>
-                      <span className="text-xs text-white/38">入口</span>
+                      <span className="text-xs text-white/70">入口</span>
                     </Link>
                   );
                 })}
               </div>
 
               <div className="mt-7 rounded-[1.7rem] border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-[#f08a38]">产品矩阵</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-brand">产品矩阵</p>
                 <div className="mt-4 space-y-4">
                   {siteNavGroups.map((group) => (
                     <div key={group.title} className="rounded-[1.3rem] bg-white/[0.04] p-4">
@@ -252,6 +281,7 @@ export function SiteHeader() {
                           <Link
                             key={`${item.href}-${item.label}`}
                             href={item.href}
+                            data-motion-button
                             onClick={() => setDrawerOpen(false)}
                             className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-white/76"
                           >
@@ -278,10 +308,9 @@ export function SiteHeader() {
                   浏览器即开即用
                 </div>
               </div>
-            </motion.aside>
+            </aside>
           </>
         ) : null}
-      </AnimatePresence>
     </header>
   );
 }

@@ -4,6 +4,7 @@ import { apiError, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestAllocationInsight } from "@/lib/ai";
 import { fetchAlltickMarketPulse } from "@/lib/alltick";
+import { fetchItickMarketPulse } from "@/lib/itick";
 import { evaluatePersonalAiAccess, resolveSubscriptionState } from "@/lib/billing/subscription";
 import { getSimulationStateForUser } from "@/lib/db/repo";
 import { isEmailVerificationRequired } from "@/lib/email-verification";
@@ -43,7 +44,9 @@ export async function GET(request: Request) {
     }
 
     const state = await getSimulationStateForUser(auth.user.id);
-    const pulse = await fetchAlltickMarketPulse();
+    const itickPulse = await fetchItickMarketPulse();
+    const pulse =
+      itickPulse.signals.length > 0 ? itickPulse : await fetchAlltickMarketPulse();
 
     const baseIntel = buildPortfolioIntel(state, {
       asOf: pulse.asOf,

@@ -21,7 +21,73 @@ describe("payload schemas (R8 — malformed JSONB surfaces as a boundary error)"
     expect((parsed as Record<string, unknown>).extra).toBe("kept");
   });
 
-  it("rejects an action type outside the 6-value enum", () => {
+  it("accepts auto-invest action metadata", () => {
+    const parsed = ActionLogSchema.parse({
+      ...validAction,
+      type: "auto_invest",
+      meta: { kind: "auto_invest_execution", planId: "aip_1" },
+    });
+    expect(parsed.type).toBe("auto_invest");
+    expect(parsed.meta?.kind).toBe("auto_invest_execution");
+  });
+
+  it("accepts decorative quest reward claim metadata", () => {
+    const parsed = ActionLogSchema.parse({
+      ...validAction,
+      type: "quest",
+      amount: 0,
+      meta: { kind: "quest_reward_claim", questId: "cash-management" },
+    });
+    expect(parsed.type).toBe("quest");
+    expect(parsed.meta?.questId).toBe("cash-management");
+  });
+
+  it("accepts opportunity, fund-lab, goal, protection, and watchlist teaching metadata", () => {
+    const opportunity = ActionLogSchema.parse({
+      ...validAction,
+      type: "opportunity",
+      amount: 0,
+      meta: { kind: "opportunity_note", cardId: "ai-infra", score: 82 },
+    });
+    const fundLab = ActionLogSchema.parse({
+      ...validAction,
+      type: "fund_lab",
+      amount: 0,
+      meta: { kind: "fund_lab_action", plan: "balanced", amount: 6000 },
+    });
+    const goal = ActionLogSchema.parse({
+      ...validAction,
+      type: "goal_account",
+      amount: 1200,
+      meta: { kind: "goal_account_action", goalId: "laptop", progressAfter: 40 },
+    });
+    const protection = ActionLogSchema.parse({
+      ...validAction,
+      type: "protection",
+      amount: 90,
+      meta: { kind: "protection_review", planId: "basic", score: 73 },
+    });
+    const watchlist = ActionLogSchema.parse({
+      ...validAction,
+      type: "watchlist",
+      amount: 0,
+      meta: { kind: "watchlist_action", action: "add", symbol: "NVDA" },
+    });
+    const wealthReview = ActionLogSchema.parse({
+      ...validAction,
+      type: "wealth_review",
+      amount: 0,
+      meta: { kind: "wealth_review", focus: "diversification", action: "rebalance" },
+    });
+    expect(opportunity.type).toBe("opportunity");
+    expect(fundLab.type).toBe("fund_lab");
+    expect(goal.type).toBe("goal_account");
+    expect(protection.type).toBe("protection");
+    expect(watchlist.type).toBe("watchlist");
+    expect(wealthReview.type).toBe("wealth_review");
+  });
+
+  it("rejects an action type outside the supported enum", () => {
     const res = ActionLogSchema.safeParse({ ...validAction, type: "hack" });
     expect(res.success).toBe(false);
     if (!res.success) {

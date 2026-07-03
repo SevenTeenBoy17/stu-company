@@ -65,6 +65,9 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  --glass-scroll-track: rgba(255, 255, 255, 0.08);
+  --glass-scroll-thumb: rgba(255, 255, 255, 0.42);
+  --glass-scroll-thumb-strong: rgba(240, 138, 56, 0.78);
 }
 
 @theme inline {
@@ -77,7 +80,11 @@
 
   --color-fg-default: var(--ink-900);
   --color-fg-strong: var(--ink-800);
-  --color-fg-muted: var(--ink-500);
+  /* A11Y-02: ink-500 muted text is ~4.43:1 on the ink-100 `bg-bg-muted` chip
+     (rank pills, badges) — a hair under AA 4.5:1. ink-600 (~6.7:1 there, ~7.5:1
+     on white) keeps the muted-gray look while clearing AA. Muted labels only
+     ever sit on light surfaces; dark panels use `text-white/NN`. */
+  --color-fg-muted: var(--ink-600);
   --color-fg-subtle: var(--ink-400);
   --color-fg-inverse: #ffffff;
   --color-fg-link: var(--info-600);
@@ -87,55 +94,67 @@
   --color-brand-soft: var(--amber-100);
   --color-brand-subtle: var(--amber-50);
   --color-brand-warm: var(--amber-300);
-  --color-brand-ink: var(--amber-700);
+  --color-brand-ink: var(--amber-800); /* a11y: amber-700 on brand-soft is ~4.0:1 (fails AA); amber-800 ~5.8:1 */
   --color-brand-on: #ffffff;
 
-  --color-up: var(--up-500);
+  /* A11Y-02: the semantic *text* tokens drive `text-up/.../bg-up` utilities. The
+     vivid 500 primitives fail WCAG AA as small text on light surfaces (up-500
+     ~4.0:1, down-500 ~3.2:1, warning-500 ~1.7:1, info-500 borderline). We point
+     the semantic token one step darker so `text-*` reaches >=4.5:1 on white /
+     tinted cards, while `bg-*` solid fills (always paired with white text) only
+     get *more* contrast. Chart/legend fills use the raw `--up-500` primitives
+     directly (allocation ring, sparklines) and are intentionally untouched. */
+  --color-up: var(--up-600); /* #c52e1c — small red text on white ~5.5:1 */
   --color-up-soft: var(--up-50);
-  --color-down: var(--down-500);
+  --color-down: #107a3e; /* darker than down-600; green text on white ~5.4:1 */
   --color-down-soft: var(--down-50);
   --color-neutral: var(--ink-500);
 
-  --color-success: var(--down-500);
-  --color-warning: var(--warning-500);
+  --color-success: #107a3e;
+  --color-warning: #854d0e; /* deep-amber text; ~5.7:1 even on the warm `bg-warning/10` chip (was eab308 ~1.9:1) */
   --color-error: var(--error-500);
-  --color-info: var(--info-500);
+  --color-info: var(--info-600); /* #1d4ed8 — blue text on white ~6.7:1 */
 
   --color-border: rgba(16, 23, 38, 0.10);
   --color-border-strong: rgba(16, 23, 38, 0.18);
   --color-border-brand: var(--amber-300);
   --color-ring: rgba(240, 138, 56, 0.45);
 
-  /* === Fonts === */
-  --font-sans: "Noto Sans SC", "Inter", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
-  --font-display: "Noto Serif SC", "Inter", "Source Han Serif SC", "Songti SC", serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Mono", "Consolas", monospace;
+  /* === Fonts ===
+     The next/font/local faces (`--font-inter` / `--font-noto-sans-sc` /
+     `--font-jetbrains-mono`) are injected on <html> by layout.tsx and lead each
+     stack; the named families and system fonts remain as graceful fallbacks. */
+  --font-sans: var(--font-inter), var(--font-noto-sans-sc), "Noto Sans SC", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-display: var(--font-inter), var(--font-noto-sans-sc), "Noto Serif SC", "Source Han Serif SC", "PingFang SC", "Songti SC", serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", "Fira Code", "Cascadia Mono", "Consolas", monospace;
 
-  /* === Type Scale === */
+  /* === Type Scale ===
+     Weight tiers: body=400 (readable, never heavy), headings=600/700, display/hero=800.
+     700 is used where a font may not have a true 800 face. */
   --text-display-2xl: 4rem;
   --text-display-2xl--line-height: 4.5rem;
   --text-display-2xl--letter-spacing: -0.02em;
-  --text-display-2xl--font-weight: 700;
+  --text-display-2xl--font-weight: 800;
 
   --text-display-xl: 3rem;
   --text-display-xl--line-height: 3.5rem;
   --text-display-xl--letter-spacing: -0.02em;
-  --text-display-xl--font-weight: 700;
+  --text-display-xl--font-weight: 800;
 
   --text-display-lg: 2.5rem;
   --text-display-lg--line-height: 3rem;
   --text-display-lg--letter-spacing: -0.015em;
-  --text-display-lg--font-weight: 600;
+  --text-display-lg--font-weight: 700;
 
   --text-h1: 2rem;
   --text-h1--line-height: 2.5rem;
   --text-h1--letter-spacing: -0.01em;
-  --text-h1--font-weight: 600;
+  --text-h1--font-weight: 700;
 
   --text-h2: 1.5rem;
   --text-h2--line-height: 2rem;
   --text-h2--letter-spacing: -0.005em;
-  --text-h2--font-weight: 600;
+  --text-h2--font-weight: 700;
 
   --text-h3: 1.25rem;
   --text-h3--line-height: 1.75rem;
@@ -143,17 +162,27 @@
 
   --text-body-lg: 1.0625rem;
   --text-body-lg--line-height: 1.625rem;
+  --text-body-lg--font-weight: 400;
 
   --text-body: 0.9375rem;
   --text-body--line-height: 1.5rem;
+  --text-body--font-weight: 400;
 
   --text-body-sm: 0.8125rem;
   --text-body-sm--line-height: 1.25rem;
+  --text-body-sm--font-weight: 400;
 
   --text-caption: 0.75rem;
   --text-caption--line-height: 1rem;
   --text-caption--letter-spacing: 0.01em;
-  --text-caption--font-weight: 500;
+  --text-caption--font-weight: 600;
+
+  /* Hero number: the single most-important numeric stat on a screen.
+     Pair with font-variant-numeric: tabular-nums on the element. */
+  --text-hero-num: 2.5rem;
+  --text-hero-num--line-height: 2.75rem;
+  --text-hero-num--letter-spacing: -0.01em;
+  --text-hero-num--font-weight: 800;
 
   /* === Radius === */
   --radius-none: 0px;
@@ -263,7 +292,7 @@ select {
 }
 
 .bz-eyebrow {
-  color: var(--color-brand);
+  color: var(--color-brand-ink);
   font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -293,7 +322,30 @@ select {
 
 .bz-brand-chip {
   background: var(--color-brand-soft);
-  color: var(--color-brand-ink);
+  /* ANIM-A11Y: amber-700 on amber-100 is ~4.0:1 (fails WCAG AA); amber-800 is ~5.8:1. */
+  color: var(--amber-800);
+}
+
+/* Hero stat chip: frames the single most-important number on a screen.
+   Pair the inner number with font-variant-numeric: tabular-nums and
+   --text-hero-num / --text-hero-num--font-weight. */
+.bz-hero-stat {
+  background: var(--color-brand-subtle);
+  border: 1px solid var(--color-border-brand);
+  border-radius: var(--radius-xl);
+  padding: 0.75rem 1.25rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+/* A11Y-02: on-light brand text. `text-brand` (= amber-500 #f08a38) is only ~2.5:1
+   on white/tinted cards and fails WCAG AA. Brand eyebrows + stat numbers that sit
+   on a *light* surface use this darker amber-800 token (~6.5:1 on white) instead.
+   Dark-panel brand text keeps using `text-brand` / `text-brand-warm` unchanged. */
+.bz-brand-text-on-light {
+  color: var(--amber-800);
 }
 
 .bz-brand-note {
@@ -314,6 +366,31 @@ select {
   border-color: var(--color-brand);
 }
 
+.bz-field[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+/* A11y: a guaranteed-visible focus ring on every keyboard-focused control — the
+   UA default can be near-invisible on white/amber surfaces (WCAG 2.4.7). */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* A11y: honor the OS "reduce motion" preference for CSS transitions/animations
+   and programmatic smooth scrolling (WCAG 2.3.3). GSAP entrances are gated in JS
+   where they matter. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .bz-primary-action {
   border-radius: var(--radius-full);
   background: var(--color-brand);
@@ -329,6 +406,14 @@ select {
   background-position: center center;
   background-size: 64px 64px;
 }
+
+/*
+ * ANIM-JANK-2: no blanket `will-change` on motion markers. One-shot reveals and
+ * hover-transient lifts don't need a permanent compositor layer (the documented
+ * anti-pattern — GPU memory held for the whole page lifetime across 100+ nodes).
+ * The provider sets `will-change` per-tween only on the genuinely-continuous
+ * loops (float/shine); .stock-ticker-marquee keeps its own hint below.
+ */
 
 @keyframes stock-ticker-marquee {
   0% {
@@ -369,6 +454,68 @@ select {
 [data-history-ai-review="true"] {
   opacity: 1 !important;
   transform: none !important;
+}
+
+* {
+  scrollbar-color: var(--glass-scroll-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, transparent, var(--glass-scroll-track), transparent);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), var(--glass-scroll-thumb-strong)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(240, 138, 56, 0.22)) border-box;
+  background-clip: padding-box, border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 138, 56, 0.92)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(240, 138, 56, 0.36)) border-box;
+}
+
+.quest-glass-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.6) rgba(255, 255, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.quest-glass-scroll::-webkit-scrollbar {
+  width: 9px;
+}
+
+.quest-glass-scroll::-webkit-scrollbar-track {
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.quest-glass-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(15, 23, 42, 0.72);
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(240, 138, 56, 0.68));
+}
+
+.quest-glass-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 138, 56, 0.86));
+}
+
+footer img[src*="footer-pattern.svg"] {
+  display: none !important;
 }
 
 @media (min-width: 768px) {

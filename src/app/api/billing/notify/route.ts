@@ -44,7 +44,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ code: "SUCCESS", message: "已记录非成功支付状态" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "支付回调处理失败";
-    return wechatFail(message);
+    // Log the raw cause server-side; never echo it back to the caller. (Only
+    // reachable after a valid WeChat signature, but keep the response generic.)
+    console.error("[billing/notify] callback processing failed:", error);
+    return wechatFail("支付回调处理失败");
   }
 }

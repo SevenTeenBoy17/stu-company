@@ -16,10 +16,14 @@ import { MoneyText } from "@/components/shared/money-text";
 import { SeasonLeaderboard } from "@/components/student/season-leaderboard";
 import { PowerRankTeaser } from "@/components/student/rank/power-rank-teaser";
 import { StudentAllocationPanel } from "@/components/student/student-allocation-panel";
+import { StudentHomeHub } from "@/components/student/student-home-hub";
+import { StudentPetRewardStudio } from "@/components/student/student-pet-reward-studio";
 import { StudentTutorRadar } from "@/components/student/student-tutor-radar";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
+import { buildStudentPetPayload } from "@/lib/pet-rewards";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
+import { buildStudentHomeHubPayload } from "@/lib/student-service-map";
 import type { AdaptiveEvent } from "@/lib/adaptive-events";
 import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
@@ -55,13 +59,30 @@ const actionTabs: Array<{ id: ActionTab; label: string; hint: string }> = [
   { id: "venture", label: "创业", hint: "投入或退出项目" },
 ];
 
-const actionTypeLabel: Record<ActionLog["type"], string> = {
+const actionTypeLabel: Partial<Record<ActionLog["type"], string>> = {
   trade: "交易",
   bank: "现金流",
   property: "房产",
   venture: "创业",
   advance: "回合推进",
   event: "事件决策",
+};
+
+const readableActionTypeLabel: Record<ActionLog["type"], string> = {
+  trade: actionTypeLabel.trade ?? "交易",
+  bank: actionTypeLabel.bank ?? "现金流",
+  property: actionTypeLabel.property ?? "房产",
+  venture: actionTypeLabel.venture ?? "创业",
+  advance: actionTypeLabel.advance ?? "回合推进",
+  event: actionTypeLabel.event ?? "事件决策",
+  auto_invest: "定投机器人",
+  quest: "任务奖励",
+  opportunity: "机会观察",
+  fund_lab: "基金实验",
+  goal_account: "目标账户",
+  protection: "风险保护",
+  watchlist: "自选观察",
+  wealth_review: "财富复盘",
 };
 
 function actionDirection(amount: number) {
@@ -85,6 +106,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   // Premium surfacing: investor-personality card (deepAiReport) + season replay.
   const [persona, setPersona] = useState<InvestorPersona | null>(null);
   const [canReplay, setCanReplay] = useState(false);
+  const [canUsePersonalAi, setCanUsePersonalAi] = useState<boolean | null>(null);
   // Behavior-bias overlay cards (adaptive-events) surfaced after each action.
   const [adaptiveEvents, setAdaptiveEvents] = useState<AdaptiveEvent[]>([]);
   const [activeTab, setActiveTab] = useState<ActionTab>("trade");
@@ -107,7 +129,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       adaptiveEvents?: AdaptiveEvent[];
     };
     if (!response.ok || !payload.state) {
-      throw new Error(payload.message ?? payload.error ?? "无法读取当前沙盘。");
+      throw new Error(payload.message ?? "无法读取当前沙盘。");
     }
     setState(payload.state);
     setAdaptiveEvents(payload.adaptiveEvents ?? []);
@@ -135,7 +157,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       adaptiveEvents?: AdaptiveEvent[];
     };
     if (!response.ok) {
-      throw new Error(payload.message ?? payload.error ?? "提交失败。");
+      throw new Error(payload.message ?? "提交失败。");
     }
     if (payload.state) {
       setState(payload.state);
@@ -151,6 +173,11 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const refreshPortfolioIntelRef = useRef<() => Promise<void>>(async () => {});
   refreshPortfolioIntelRef.current = async () => {
     if (!state) return;
+    if (canUsePersonalAi !== true) {
+      setPortfolioIntel(buildPortfolioIntel(state));
+      setIntelPending(false);
+      return;
+    }
 
     refreshControllerRef.current?.abort();
     const controller = new AbortController();
@@ -175,7 +202,20 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   };
   const refreshPortfolioIntel = useCallback(() => refreshPortfolioIntelRef.current(), []);
 
-  async function loadTutorRadarForState(currentState: SimulationState) {
+  async function loadTutorRadarForState(
+    currentState: SimulationState,
+    options: { silent?: boolean } = {},
+  ) {
+    if (canUsePersonalAi !== true) {
+      setTutorRadar(buildTutorRadarPayload(currentState));
+      setPersona(null);
+      setRadarPending(false);
+      if (!options.silent) {
+        setMessage("当前账号暂未开通完整 AI 评定，已先显示本地教学雷达。");
+      }
+      return;
+    }
+
     setRadarPending(true);
     try {
       const response = await fetch("/api/ai/radar-chart", { method: "POST", cache: "no-store" });
@@ -201,7 +241,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   const refreshTutorRadarOnMountRef = useRef<() => Promise<void>>(async () => {});
   refreshTutorRadarOnMountRef.current = async () => {
     if (state) {
-      await loadTutorRadarForState(state);
+      await loadTutorRadarForState(state, { silent: true });
     }
   };
   const refreshTutorRadarOnMount = useCallback(
@@ -213,18 +253,26 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     if (!state) return;
     setPortfolioIntel(buildPortfolioIntel(state));
     setTutorRadar(buildTutorRadarPayload(state));
-    void refreshPortfolioIntel();
-  }, [state, refreshPortfolioIntel]);
+    if (canUsePersonalAi === true) {
+      void refreshPortfolioIntel();
+    }
+  }, [state, canUsePersonalAi, refreshPortfolioIntel]);
 
   useEffect(() => {
     let alive = true;
     void fetch("/api/billing/status", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: { features?: { seasonReplay?: boolean } } | null) => {
-        if (alive && data?.features) setCanReplay(Boolean(data.features.seasonReplay));
+      .then((data: { canUsePersonalAiAssessment?: boolean; features?: { seasonReplay?: boolean } } | null) => {
+        if (!alive) return;
+        setCanReplay(Boolean(data?.features?.seasonReplay));
+        setCanUsePersonalAi(Boolean(data?.canUsePersonalAiAssessment));
       })
       .catch(() => {
         // Replay is a premium extra; absence just hides the button.
+        if (alive) {
+          setCanReplay(false);
+          setCanUsePersonalAi(false);
+        }
       });
     return () => {
       alive = false;
@@ -232,25 +280,28 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   }, []);
 
   useEffect(() => {
-    if (studentId) {
+    if (studentId && canUsePersonalAi !== null) {
       void refreshTutorRadarOnMount();
     }
-  }, [studentId, refreshTutorRadarOnMount]);
+  }, [studentId, canUsePersonalAi, refreshTutorRadarOnMount]);
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!studentId || canUsePersonalAi !== true) return;
     const timer = window.setInterval(() => void refreshPortfolioIntel(), MARKET_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [studentId, refreshPortfolioIntel]);
+  }, [studentId, canUsePersonalAi, refreshPortfolioIntel]);
 
   useEffect(() => {
     return () => refreshControllerRef.current?.abort();
   }, []);
 
-  if (!state) {
+  const homeHubPayload = useMemo(() => (state ? buildStudentHomeHubPayload(state.run) : null), [state]);
+  const petRewardPayload = useMemo(() => (state ? buildStudentPetPayload(state.run) : null), [state]);
+
+  if (!state || !homeHubPayload || !petRewardPayload) {
     return (
       <div className="panel rounded-[2rem] p-8">
-        <p className="text-base font-semibold text-slate-500">正在加载学生沙盘...</p>
+        <p className="text-body font-semibold text-fg-muted">正在加载学生沙盘...</p>
       </div>
     );
   }
@@ -278,57 +329,121 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     {
       label: "当前净值",
       value: formatCurrency(netWorth),
+      motionValue: netWorth,
+      motionPrefix: "¥",
+      motionFormat: "currency",
       meta: netWorthDelta === 0 ? "本回合保持观察" : `较上回合 ${formatCurrency(netWorthDelta)}`,
       icon: WalletCards,
       money: true,
+      isHero: true,
     },
-    { label: "可用现金", value: formatCurrency(state.run.cash), meta: "行动前先留安全垫", icon: Landmark, money: true },
+    {
+      label: "可用现金",
+      value: formatCurrency(state.run.cash),
+      motionValue: state.run.cash,
+      motionPrefix: "¥",
+      motionFormat: "currency",
+      meta: "行动前先留安全垫",
+      icon: Landmark,
+      money: true,
+      isHero: false,
+    },
     {
       label: "持仓市值",
       value: formatCurrency(holdingsValue),
+      motionValue: holdingsValue,
+      motionPrefix: "¥",
+      motionFormat: "currency",
       meta: `${holdingsRows.length} 个资产正在观察`,
       icon: LineChart,
       money: true,
+      isHero: false,
     },
-    { label: "班级排名", value: `#${rank}`, meta: state.classroom.name, icon: Trophy, money: false },
+    {
+      label: "班级排名",
+      value: `#${rank}`,
+      motionValue: rank,
+      motionPrefix: "#",
+      motionFormat: "integer",
+      meta: state.classroom.name,
+      icon: Trophy,
+      money: false,
+      isHero: false,
+    },
     {
       label: "风险评分",
       value: `${latestSnapshot?.riskScore ?? "--"}`,
+      motionValue: latestSnapshot?.riskScore ?? 0,
+      motionPrefix: "",
+      motionFormat: "integer",
       meta: `纪律分 ${latestSnapshot?.disciplineScore ?? "--"}`,
       icon: ShieldCheck,
       money: false,
+      isHero: false,
     },
   ];
 
+  // Double-submit guard: startTransition wraps all action submissions.
   const submitAction = (body?: object, url = "/api/sim/actions") => {
-    startTransition(() => {
-      void mutate(url, body).catch((error) => {
-        setMessage(error instanceof Error ? error.message : "操作失败，请稍后再试。");
-      });
+    startTransition(async () => {
+      try {
+        await mutate(url, body);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "操作失败，请重试。");
+      }
     });
   };
 
   return (
     <div className="space-y-6 pb-24">
+      {/* ── Page header ── */}
+      <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6" data-motion-reveal>
+        {/* Eyebrow on light panel → bz-eyebrow (replaces hardcoded text-orange-500 tracking class) */}
+        <p className="bz-eyebrow bz-brand-text-on-light">Brown Zone</p>
+        <h1 className="mt-2 text-display-sm font-semibold tracking-tight text-fg-strong sm:text-display-md">学生策略台</h1>
+      </header>
+
+      {/* ── KPI bar: ONE hero (net worth) + 4 secondary metrics ── */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {heroMetrics.map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 transition-transform hover:-translate-y-1 sm:p-5">
+            <div
+              key={item.label}
+              className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 sm:p-5"
+              data-motion-card
+              data-motion-reveal
+            >
               <div className="flex items-start justify-between gap-4">
-                <p className="min-w-0 text-base font-bold text-slate-500">{item.label}</p>
-                <span className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-orange-500">
+                <p className="min-w-0 text-body-sm font-semibold text-fg-muted">{item.label}</p>
+                <span className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-brand">
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              <p className="mt-3 max-w-full text-[clamp(2rem,2vw,2.65rem)] font-black leading-none tracking-tight text-slate-950">
+              {/* Net worth card → ONE hero number; others → text-h2 */}
+              <p
+                className={cn(
+                  "mt-3 max-w-full leading-none tracking-tight tabular-nums",
+                  item.isHero
+                    ? "bz-hero-stat text-hero-num text-fg-strong"
+                    : "text-h2 text-fg-strong",
+                )}
+                data-motion-number
+                data-motion-value={item.motionValue}
+                data-motion-prefix={item.motionPrefix}
+                data-motion-format={item.motionFormat}
+              >
                 {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
               </p>
-              <p className="mt-3 line-clamp-2 min-w-0 text-sm font-semibold leading-6 text-slate-500">{item.meta}</p>
+              <p className="mt-3 line-clamp-2 min-w-0 text-body-sm leading-6 text-fg-muted">{item.meta}</p>
             </div>
           );
         })}
       </section>
+
+      <StudentHomeHub payload={homeHubPayload} />
+
+      <StudentPetRewardStudio initialPayload={petRewardPayload} />
 
       <StudentAllocationPanel
         intel={portfolioIntel}
@@ -342,41 +457,44 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.26fr)_minmax(340px,0.74fr)]">
+        {/* ── Action panel ── */}
         <section id="student-action-panel" className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 xl:sticky xl:top-6 xl:self-start">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Round {state.run.currentRound}</p>
+                {/* Round eyebrow → bz-eyebrow pattern */}
+                <p className="bz-eyebrow bz-brand-text-on-light">Round {state.run.currentRound}</p>
                 {streak.current > 0 ? (
-                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-caption font-semibold text-orange-700">
                     🔥 连胜 {streak.current} 回合
                   </span>
                 ) : null}
               </div>
-              <h2 className="mt-3 text-3xl font-black leading-tight text-slate-950 md:text-4xl">
+              {/* Section title → font-semibold (was font-black) */}
+              <h2 className="mt-3 text-display-sm font-semibold leading-tight text-fg-strong md:text-display-md">
                 {state.market.round.headline}
               </h2>
-              <p className="mt-3 text-base leading-8 text-slate-600">{state.market.event.description}</p>
+              <p className="mt-3 text-body leading-8 text-fg-muted">{state.market.event.description}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                  className={`rounded-full px-2.5 py-1 text-caption font-semibold ${
                     state.market.event.signal === "利好"
                       ? "bg-rose-100 text-rose-700"
                       : state.market.event.signal === "利空"
                         ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-600"
+                        : "bg-slate-100 text-fg-muted"
                   }`}
                 >
                   {state.market.event.signal}
                 </span>
-                <span className="text-sm font-bold text-slate-900">{state.market.event.title}</span>
+                <span className="text-body-sm font-semibold text-fg-strong">{state.market.event.title}</span>
                 {state.market.event.teachingConcept && (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-caption text-amber-700">
                     本回合知识点 · {state.market.event.teachingConcept}
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-sm leading-7 text-slate-500">{state.market.event.coachingCue}</p>
+              <p className="mt-2 text-body-sm leading-7 text-fg-muted">{state.market.event.coachingCue}</p>
               {state.market.event.choices?.length ? (
                 (() => {
                   const decided = state.run.actionLog.find(
@@ -386,14 +504,14 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     // red=up positive, green=down negative (Chinese market convention).
                     const tone =
                       decided.amount > 0
-                        ? "bg-up-soft text-up"
+                        ? "bg-up-soft text-[var(--up-700)]"
                         : decided.amount < 0
-                          ? "bg-down-soft text-down"
-                          : "bg-slate-100 text-slate-800";
+                          ? "bg-down-soft text-[var(--down-700)]"
+                          : "bg-slate-100 text-fg-default";
                     return (
                       <div className={`mt-4 rounded-2xl px-4 py-3 ${tone}`}>
-                        <p className="text-sm font-semibold">{decided.label}</p>
-                        <p className="mt-1 text-xs opacity-80">
+                        <p className="text-body-sm font-semibold">{decided.label}</p>
+                        <p className="mt-1 text-caption opacity-80">
                           现金变化 {decided.amount >= 0 ? "+" : ""}
                           {decided.amount.toLocaleString("zh-CN")} · 推进回合后会进入新的局面。
                         </p>
@@ -402,7 +520,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   }
                   return (
                     <div className="mt-4 rounded-2xl border-2 border-amber-200 bg-amber-50/70 p-4">
-                      <p className="text-sm font-bold text-amber-800">这是一个决策时刻 — 你会怎么选？</p>
+                      <p className="text-body-sm font-semibold text-amber-800">这是一个决策时刻 — 你会怎么选？</p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {state.market.event.choices.map((choice) => (
                           <button
@@ -412,8 +530,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                             onClick={() => submitAction({ choiceId: choice.id }, "/api/sim/event-choice")}
                             className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-left transition hover:border-amber-400 disabled:opacity-60"
                           >
-                            <span className="block text-sm font-bold text-slate-900">{choice.label}</span>
-                            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{choice.detail}</span>
+                            <span className="block text-body-sm font-semibold text-fg-strong">{choice.label}</span>
+                            <span className="mt-0.5 block text-caption leading-5 text-fg-muted">{choice.detail}</span>
                           </button>
                         ))}
                       </div>
@@ -423,15 +541,29 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               ) : null}
             </div>
             <div className="flex flex-col items-stretch gap-2">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => submitAction(undefined, "/api/sim/advance-round")}
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-base font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-              >
-                推进下一回合
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </button>
+              {state.run.currentRound >= state.run.totalRounds ? (
+                <a
+                  href="/student/history"
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 !text-white transition-transform hover:-translate-y-0.5 hover:!text-white"
+                >
+                  {/* Game over: the 12-round sandbox has a terminus now. White label on a
+                      span so the global a{color:inherit} reset doesn't grey it out (#4 audit). */}
+                  <span className="inline-flex items-center text-body font-semibold text-white">
+                    本局已结束 · 查看复盘结算
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => submitAction(undefined, "/api/sim/advance-round")}
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-body font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  推进下一回合
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </button>
+              )}
               {canReplay ? (
                 <button
                   type="button"
@@ -443,7 +575,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       submitAction(undefined, "/api/sim/replay");
                     }
                   }}
-                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-sm font-bold text-[#b96621] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-body-sm font-semibold text-[#b96621] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
                 >
                   🔄 新赛季（高级版）
                 </button>
@@ -462,15 +594,16 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       : "border-sky-300 bg-sky-50";
                 return (
                   <div key={adaptive.id} className={`rounded-2xl border px-4 py-3 ${tone}`}>
-                    <p className="text-sm font-bold text-slate-900">{adaptive.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{adaptive.message}</p>
-                    <p className="mt-1.5 text-xs leading-5 text-slate-500">💡 {adaptive.teachingPoint}</p>
+                    <p className="text-body-sm font-semibold text-fg-strong">{adaptive.title}</p>
+                    <p className="mt-1 text-body-sm leading-6 text-fg-muted">{adaptive.message}</p>
+                    <p className="mt-1.5 text-caption leading-5 text-fg-muted">💡 {adaptive.teachingPoint}</p>
                   </div>
                 );
               })}
             </div>
           ) : null}
 
+          {/* Asset cards */}
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {state.market.assets.map((asset) => {
               const move = getMarketMoveClasses(asset.dayChange);
@@ -490,19 +623,24 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     onClick={() => setTradeForm((current) => ({ ...current, assetId: asset.id }))}
                     className="block w-full rounded-[1.2rem] text-left focus:outline-none focus:ring-2 focus:ring-orange-300"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 break-words text-lg font-black text-slate-950">{asset.name}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{asset.symbol}</p>
+                    <div className="min-w-0">
+                      {/* Title on its own full-width line so it stays on ONE line
+                          (no competing with the change badge, no mid-word "ETF" break). */}
+                      <p className="truncate text-body font-semibold text-fg-strong">{asset.name}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="truncate text-caption uppercase tracking-[0.18em] text-fg-muted">
+                          {asset.symbol}
+                        </p>
+                        {/* text-up / text-down tokens preserved — Chinese convention */}
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-caption font-semibold", move.badge)}>
+                          {formatPercent(asset.dayChange)}
+                        </span>
                       </div>
-                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-black", move.badge)}>
-                        {formatPercent(asset.dayChange)}
-                      </span>
                     </div>
-                    <p className="mt-3 text-2xl font-black text-slate-950">
+                    <p className="mt-3 text-h2 tabular-nums text-fg-strong">
                       <MoneyText>{formatCurrency(asset.currentPrice)}</MoneyText>
                     </p>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{asset.description}</p>
+                    <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-fg-muted">{asset.description}</p>
                   </button>
                   <button
                     type="button"
@@ -512,7 +650,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                         assetId: asset.id,
                       });
                     }}
-                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+                    className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-body-sm font-semibold text-fg-muted transition-colors hover:border-orange-400 hover:text-orange-700"
                   >
                     <MessageSquareQuote className="h-4 w-4" />
                     询问 AI
@@ -522,6 +660,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
             })}
           </div>
 
+          {/* Action tabs */}
           <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
             <div className="grid gap-2 sm:grid-cols-4">
               {actionTabs.map((tab) => (
@@ -534,45 +673,46 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     activeTab === tab.id ? "bg-white shadow-sm" : "hover:bg-white/70",
                   )}
                 >
-                  <span className="block text-base font-black text-slate-950">{tab.label}</span>
-                  <span className="mt-1 block text-xs font-semibold text-slate-400">{tab.hint}</span>
+                  <span className="block text-body font-semibold text-fg-strong">{tab.label}</span>
+                  <span className="mt-1 block text-caption text-fg-muted">{tab.hint}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Action form area */}
           <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-5">
             {activeTab === "trade" ? (
               <div className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="block">
-                    <span className="mb-2 block text-sm font-bold text-slate-600">方向</span>
+                    <span className="mb-2 block text-body-sm font-semibold text-fg-muted">方向</span>
                     <select
                       value={tradeForm.side}
                       onChange={(event) =>
                         setTradeForm((current) => ({ ...current, side: event.target.value as TradeForm["side"] }))
                       }
-                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-body font-semibold outline-none focus:border-orange-400"
                     >
                       <option value="buy">买入</option>
                       <option value="sell">卖出</option>
                     </select>
                   </label>
                   <label className="block">
-                    <span className="mb-2 block text-sm font-bold text-slate-600">订单模式</span>
+                    <span className="mb-2 block text-body-sm font-semibold text-fg-muted">订单模式</span>
                     <select
                       value={tradeForm.orderMode}
                       onChange={(event) =>
                         setTradeForm((current) => ({ ...current, orderMode: event.target.value as TradeForm["orderMode"] }))
                       }
-                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-body font-semibold outline-none focus:border-orange-400"
                     >
                       <option value="market">市价</option>
                       <option value="limit">限价</option>
                     </select>
                   </label>
                   <label className="block">
-                    <span className="mb-2 block text-sm font-bold text-slate-600">数量</span>
+                    <span className="mb-2 block text-body-sm font-semibold text-fg-muted">数量</span>
                     <input
                       type="number"
                       min={1}
@@ -580,7 +720,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       onChange={(event) =>
                         setTradeForm((current) => ({ ...current, quantity: Number(event.target.value) }))
                       }
-                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                      className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-body font-semibold outline-none focus:border-orange-400"
                     />
                   </label>
                 </div>
@@ -596,7 +736,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       orderMode: tradeForm.orderMode,
                     })
                   }
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-orange-400 px-5 text-base font-black text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-orange-400 px-5 text-body font-semibold text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                 >
                   提交{tradeForm.side === "buy" ? "买入" : "卖出"}指令
                 </button>
@@ -606,13 +746,13 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
             {activeTab === "bank" ? (
               <div className="space-y-5">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-bold text-slate-600">金额</span>
+                  <span className="mb-2 block text-body-sm font-semibold text-fg-muted">金额</span>
                   <input
                     type="number"
                     min={1000}
                     value={bankAmount}
                     onChange={(event) => setBankAmount(Number(event.target.value))}
-                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-body font-semibold outline-none focus:border-orange-400"
                   />
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -627,7 +767,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       type="button"
                       disabled={pending}
                       onClick={() => submitAction(payload)}
-                      className="min-h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                      className="min-h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-body font-semibold text-fg-strong transition-colors hover:border-orange-300 disabled:opacity-60"
                     >
                       {label}
                     </button>
@@ -647,7 +787,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                     type="button"
                     disabled={pending}
                     onClick={() => submitAction(payload)}
-                    className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                    className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-body font-semibold text-fg-strong transition-colors hover:border-orange-300 disabled:opacity-60"
                   >
                     {label}
                   </button>
@@ -658,13 +798,13 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
             {activeTab === "venture" ? (
               <div className="space-y-5">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-bold text-slate-600">创业投入金额</span>
+                  <span className="mb-2 block text-body-sm font-semibold text-fg-muted">创业投入金额</span>
                   <input
                     type="number"
                     min={2000}
                     value={ventureAmount}
                     onChange={(event) => setVentureAmount(Number(event.target.value))}
-                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-semibold outline-none focus:border-orange-400"
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 px-4 text-body font-semibold outline-none focus:border-orange-400"
                   />
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -677,7 +817,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                       type="button"
                       disabled={pending}
                       onClick={() => submitAction(payload)}
-                      className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-950 transition-colors hover:border-orange-300 disabled:opacity-60"
+                      className="min-h-14 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-body font-semibold text-fg-strong transition-colors hover:border-orange-300 disabled:opacity-60"
                     >
                       {label}
                     </button>
@@ -688,20 +828,22 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           </div>
 
           {message ? (
-            <div className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">
+            <div className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-3 text-body-sm font-semibold text-orange-700">
               {message}
             </div>
           ) : null}
         </section>
 
+        {/* ── Side panels: holdings + action log ── */}
         <aside className="min-w-0 space-y-6">
           <section className="panel rounded-[2rem] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Holdings</p>
-                <h3 className="mt-2 text-2xl font-black text-slate-950">持仓与现金温度</h3>
+                {/* Eyebrow on light panel → bz-eyebrow */}
+                <p className="bz-eyebrow bz-brand-text-on-light">Holdings</p>
+                <h3 className="mt-2 text-h1 font-semibold text-fg-strong">持仓与现金温度</h3>
               </div>
-              <Sparkles className="h-5 w-5 text-orange-500" />
+              <Sparkles className="h-5 w-5 text-brand" />
             </div>
             <div className="mt-5 space-y-3">
               {holdingsRows.length > 0 ? (
@@ -709,23 +851,24 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   <div key={row.asset.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="line-clamp-2 break-words text-lg font-black text-slate-950">{row.asset.name}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                        <p className="line-clamp-2 break-words text-body font-semibold text-fg-strong">{row.asset.name}</p>
+                        <p className="mt-1 text-caption uppercase tracking-[0.18em] text-fg-muted">
                           {row.asset.symbol} · {row.quantity} 份
                         </p>
                       </div>
-                      <p className={cn("shrink-0 whitespace-nowrap text-sm font-black", getMarketMoveClasses(row.pnl).text)}>
+                      {/* text-up/text-down preserved — Chinese convention red=up, green=down */}
+                      <p className={cn("shrink-0 whitespace-nowrap text-body-sm font-semibold", getMarketMoveClasses(row.pnl).text)}>
                         {formatCurrency(row.pnl)}
                       </p>
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-sm font-bold text-slate-500">
+                    <div className="mt-3 flex items-center justify-between text-body-sm text-fg-muted">
                       <span>市值</span>
                       <MoneyText>{formatCurrency(row.value)}</MoneyText>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500">
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted">
                   暂无持仓。可以先观察资产卡，再用交易面板提交模拟指令。
                 </div>
               )}
@@ -733,17 +876,18 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           </section>
 
           <section className="panel rounded-[2rem] p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Timeline</p>
-            <h3 className="mt-2 text-2xl font-black text-slate-950">最近操作流</h3>
+            {/* Eyebrow on light panel → bz-eyebrow */}
+            <p className="bz-eyebrow bz-brand-text-on-light">Timeline</p>
+            <h3 className="mt-2 text-h1 font-semibold text-fg-strong">最近操作流</h3>
             <div className="mt-5 space-y-3">
               {recentActions.length > 0 ? (
                 recentActions.map((entry) => (
                   <div key={entry.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="line-clamp-2 break-words text-base font-black text-slate-950">{entry.label}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">
-                          第 {entry.round} 回合 · {actionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
+                        <p className="line-clamp-2 break-words text-body font-semibold text-fg-strong">{entry.label}</p>
+                        <p className="mt-1 text-body-sm text-fg-muted">
+                          第 {entry.round} 回合 · {readableActionTypeLabel[entry.type]} · {actionDirection(entry.amount)}
                         </p>
                       </div>
                       <button
@@ -754,20 +898,20 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                             actionLogId: entry.id,
                           })
                         }
-                        className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+                        className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-body-sm font-semibold text-fg-muted transition-colors hover:border-orange-400 hover:text-orange-700"
                       >
                         问 AI
                       </button>
                     </div>
                     {entry.amount !== 0 ? (
-                      <p className="mt-3 text-base font-black text-orange-700">
+                      <p className="mt-3 text-body font-semibold text-orange-700">
                         <MoneyText>{formatCurrency(entry.amount)}</MoneyText>
                       </p>
                     ) : null}
                   </div>
                 ))
               ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-base font-semibold text-slate-500">
+                <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted">
                   推进或提交操作后，这里会形成可复盘的行动链。
                 </div>
               )}
@@ -776,12 +920,14 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         </aside>
       </div>
 
+      {/* ── AI tutor + leaderboard ── */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.82fr)]">
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">KeyAI / Mr.Brown</p>
-              <h2 className="mt-3 text-3xl font-black text-slate-950 md:text-4xl">实时导师点评</h2>
+              {/* Eyebrow on light panel → bz-eyebrow */}
+              <p className="bz-eyebrow bz-brand-text-on-light">KeyAI / Mr.Brown</p>
+              <h2 className="mt-3 text-display-sm font-semibold text-fg-strong md:text-display-md">实时导师点评</h2>
             </div>
             <button
               type="button"
@@ -791,13 +937,13 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                   autoSend: true,
                 })
               }
-              className="inline-flex min-h-12 items-center rounded-full border border-slate-200 bg-white px-4 text-base font-bold text-slate-600 transition-colors hover:border-orange-400 hover:text-orange-700"
+              className="inline-flex min-h-12 items-center rounded-full border border-slate-200 bg-white px-4 text-body font-semibold text-fg-muted transition-colors hover:border-orange-400 hover:text-orange-700"
             >
               获取 AI 复盘
             </button>
           </div>
           <div className="mt-6 rounded-[2rem] bg-slate-950 p-6 text-white">
-            <p className="text-base leading-8 text-white/76">
+            <p className="text-body leading-8 text-white/76">
               {state.run.lastInsight ?? "等待新的回合总结。当前建议先看风险、现金垫和单一资产集中度，再决定是否行动。"}
             </p>
           </div>
@@ -817,8 +963,9 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
         </section>
 
         <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-500">Leaderboard</p>
-          <h2 className="mt-3 text-3xl font-black text-slate-950">排行榜与当前位置</h2>
+          {/* Eyebrow on light panel → bz-eyebrow */}
+          <p className="bz-eyebrow bz-brand-text-on-light">Leaderboard</p>
+          <h2 className="mt-3 text-display-sm font-semibold text-fg-strong">排行榜与当前位置</h2>
           <div className="mt-5 space-y-3">
             {topLeaderboard.map((entry) => {
               const isCurrentUser = entry.userId === state.user.id;
@@ -832,12 +979,12 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-lg font-black text-slate-950">
+                      <p className="text-body font-semibold text-fg-strong">
                         #{entry.rank} {entry.name}
                       </p>
-                      <p className="mt-1 text-sm font-bold text-slate-500">纪律分 {entry.disciplineScore}</p>
+                      <p className="mt-1 text-body-sm text-fg-muted">纪律分 {entry.disciplineScore}</p>
                     </div>
-                    <p className="text-lg font-black text-orange-700">
+                    <p className="text-body font-semibold text-orange-700">
                       <MoneyText>{formatCurrency(entry.netWorth)}</MoneyText>
                     </p>
                   </div>
@@ -847,8 +994,8 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
           </div>
           {topLeaderboard.every((entry) => entry.userId !== state.user.id) ? (
             <div className="mt-4 rounded-[1.5rem] border border-orange-400 bg-orange-50 p-4">
-              <p className="text-base font-black text-slate-950">我的当前位置：#{rank}</p>
-              <p className="mt-1 text-sm font-bold text-slate-500">继续提高纪律分和现金垫，排名会更稳。</p>
+              <p className="text-body font-semibold text-fg-strong">我的当前位置：#{rank}</p>
+              <p className="mt-1 text-body-sm text-fg-muted">继续提高纪律分和现金垫，排名会更稳。</p>
             </div>
           ) : null}
         </section>

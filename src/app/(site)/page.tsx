@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 import { HeroStageArt } from "@/components/site/hero-stage-art";
 import { ModuleIllustration } from "@/components/site/module-illustration";
@@ -30,18 +31,22 @@ export default async function HomePage() {
             Brown Zone 以 Mr.Brown AI 经济沙盘为核心，把经济学考点、资产配置、家校共育和排行榜挑战做成一体化网页端体验。
           </p>
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
-            <Link href="/demo" className="bz-primary-action px-6 py-3 text-sm">
+            <Link href="/demo" data-motion-button className="bz-primary-action px-6 py-3 text-sm">
               进入试玩入口
             </Link>
-            <Link href="/learn" className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white">
+            <Link
+              href="/learn"
+              data-motion-button
+              className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white"
+            >
               查看 8 大模块
             </Link>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
             {showcaseStats.map((stat) => (
-              <div key={stat.label} className="bz-inverse-tile p-5">
-                <p className="text-caption uppercase tracking-wide text-white/40">{stat.label}</p>
+              <div key={stat.label} data-motion-card className="bz-inverse-tile p-5">
+                <p className="text-caption uppercase tracking-wide text-white/70">{stat.label}</p>
                 <p className="mt-3 text-2xl font-semibold text-white">{stat.value}</p>
                 <p className="mt-2 text-sm leading-6 text-white/60">{stat.detail}</p>
               </div>
@@ -54,7 +59,10 @@ export default async function HomePage() {
           className="bz-ink-panel relative min-h-[440px] overflow-hidden rounded-3xl sm:min-h-[560px] lg:min-h-[620px]"
         >
           <HeroStageArt className="absolute inset-0" />
-          <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5">
+          <div
+            data-motion-card
+            className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5"
+          >
             <p className="bz-eyebrow-inverse">Product Promise</p>
             <p className="mt-3 text-lg font-semibold text-white">展示优先版首发聚焦</p>
             <p className="mt-2 text-sm leading-7 text-white/62">
@@ -64,13 +72,17 @@ export default async function HomePage() {
         </SectionReveal>
       </section>
 
-      <section id="method" className="page-shell mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <section
+        id="method"
+        data-motion-scene
+        className="page-shell mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      >
         {[
           ["学", "把 AP / 国标经济学拆成剧情式微任务，降低理解门槛。"],
           ["用", "在 12 回合市场中交易、储蓄、买房和创业，低成本试错。"],
           ["评", "AI 导师与成长报告同步给出行为偏差与下一回合建议。"],
         ].map(([title, text], index) => (
-          <SectionReveal key={title} delay={index * 0.06} className="panel rounded-3xl p-6">
+          <SectionReveal key={title} reveal={false} sceneItem className="panel rounded-3xl p-6">
             <p className="bz-eyebrow">0{index + 1}</p>
             <h2 className="mt-4 text-3xl font-semibold text-slate-950">{title}</h2>
             <p className="mt-3 text-base leading-8 text-slate-600">{text}</p>
@@ -94,28 +106,43 @@ export default async function HomePage() {
             <SectionReveal
               key={module.key}
               delay={(index % 4) * 0.04}
-              className="panel overflow-hidden rounded-3xl"
+              className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow duration-200 hover:shadow-[0_22px_56px_rgba(15,23,42,0.12)]"
             >
-              <div className="bg-bg-muted p-4">
-                <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
-              </div>
-              <div className="p-6">
-                <div className="bz-brand-chip inline-flex rounded-full px-3 py-1 text-xs font-semibold">
-                  {module.level}
+              <a
+                href={module.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-motion-card
+                aria-label={`深入学习「${module.title}」— 前往${module.hrefLabel}（在新标签页打开）`}
+                className="group flex flex-1 flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                <div className="bg-bg-muted p-4">
+                  <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
                 </div>
-                <h3 className="mt-4 text-2xl font-semibold text-slate-950">{module.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{module.description}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {module.highlights.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600"
-                    >
-                      {item}
-                    </span>
-                  ))}
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="bz-brand-chip inline-flex self-start rounded-full px-3 py-1 text-xs font-semibold">
+                    {module.level}
+                  </div>
+                  <h3 className="mt-4 text-2xl font-semibold text-slate-950 transition-colors group-hover:text-brand-ink">
+                    {module.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{module.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {module.highlights.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="mt-auto inline-flex items-center gap-1.5 self-start pt-5 text-sm font-bold text-brand-ink transition-all group-hover:gap-2.5">
+                    前往 {module.hrefLabel}
+                    <ArrowUpRight className="h-4 w-4" />
+                  </span>
                 </div>
-              </div>
+              </a>
             </SectionReveal>
           ))}
         </div>
@@ -129,7 +156,7 @@ export default async function HomePage() {
           </h2>
           <div className="mt-8 space-y-4">
             {comparisonRows.map((row) => (
-              <div key={row.label} className="bz-inverse-tile p-5">
+              <div key={row.label} data-motion-card className="bz-inverse-tile p-5">
                 <p className="text-lg font-semibold text-white">{row.label}</p>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   <p className="rounded-2xl bg-white/[0.04] p-4 text-sm leading-7 text-white/55">{row.traditional}</p>
@@ -148,7 +175,7 @@ export default async function HomePage() {
             </h3>
             <div className="mt-6 space-y-4">
               {roadmapPhases.map((phase, index) => (
-                <div key={phase.title} className="bz-muted-tile p-5">
+                <div key={phase.title} data-motion-card className="bz-muted-tile p-5">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex size-9 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
                       {index + 1}
@@ -172,7 +199,7 @@ export default async function HomePage() {
                 ["学校授权", "按班级或学期授权，包含教师后台、批量账号和课堂数据。"],
                 ["赛事服务", "校际挑战、主题赛与阶段证书形成额外服务收入。"],
               ].map(([title, text]) => (
-                <div key={title} className="bz-muted-tile p-5">
+                <div key={title} data-motion-card className="bz-muted-tile p-5">
                   <p className="text-lg font-semibold text-slate-950">{title}</p>
                   <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
                 </div>
@@ -190,7 +217,7 @@ export default async function HomePage() {
           </h2>
           <div className="mt-6 space-y-4">
             {teamProfiles.map((member) => (
-              <div key={member.name} className="bz-muted-tile p-5">
+              <div key={member.name} data-motion-card className="bz-muted-tile p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-lg font-semibold text-slate-950">{member.name}</p>
                   <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
@@ -215,16 +242,20 @@ export default async function HomePage() {
               "邀请码与班级关系可控，适合校园试点与展示环境。",
               "联赛先做异步排行榜，不做鼓励冲动行为的实时对战房间。",
             ].map((item) => (
-              <div key={item} className="bz-inverse-tile p-5 text-sm leading-7 text-white/72">
+              <div key={item} data-motion-card className="bz-inverse-tile p-5 text-sm leading-7 text-white/72">
                 {item}
               </div>
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/demo" className="bz-primary-action px-6 py-3 text-sm">
+            <Link href="/demo" data-motion-button className="bz-primary-action px-6 py-3 text-sm">
               打开 Demo 闭环
             </Link>
-            <Link href="/pricing" className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white">
+            <Link
+              href="/pricing"
+              data-motion-button
+              className="rounded-full border border-white/12 px-6 py-3 text-sm font-semibold text-white"
+            >
               查看商业方案
             </Link>
           </div>

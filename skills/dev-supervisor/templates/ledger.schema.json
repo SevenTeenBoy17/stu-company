@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://brownzone.ai/schemas/dev-supervisor/ledger.schema.json",
+  "title": "Dev Supervisor Ledger",
+  "description": "Durable per-round state ledger for the dev-supervisor. Describes the shape of ledger.template.json. INVARIANT (cross-field, enforced by the validator script, not by JSON Schema): a task whose status is \"done\" MUST have verified === true AND a non-empty evidence array. JSON Schema draft-07 cannot express this conditional across the status/verified/evidence triplet reliably for all validators, so the validator enforces it; this schema documents and structurally constrains the rest.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "round_id",
+    "goal",
+    "updated_local",
+    "tasks",
+    "decisions",
+    "risks"
+  ],
+  "properties": {
+    "round_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this supervisor round, e.g. round-<slug>-<yyyymmdd>."
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line statement of the round goal (the reinterpreted latest user request)."
+    },
+    "updated_local": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Local timestamp of the last ledger write, e.g. '2026-06-17 10:51:00 local'. Free-form local time string; not required to be RFC 3339."
+    },
+    "tasks": {
+      "type": "array",
+      "description": "The round task list (one level deep, no epics). Each task carries its own status and verification proof.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "title",
+          "status",
+          "verified"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable task key, e.g. T001."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Short imperative description of the task."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "doing",
+              "blocked",
+              "done"
+            ],
+            "description": "Explicit task state enum. INVARIANT: status 'done' requires verified === true and a non-empty evidence array (enforced in the validator script)."
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "True only when the task outcome has been proven against its acceptance criteria. Must be true when status is 'done'."
+          },
+          "evidence": {
+            "type": "array",
+            "description": "Proof artifacts for completion (command output, test names, file paths, links). Must be non-empty when status is 'done'.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "description": "Testable conditions the task must satisfy to be marked done.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "description": "Exact file paths this task owns, used for safe parallel worker fan-out (no two tasks write the same path).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Ids of tasks that must complete before this one.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional free-form notes, blockers, or correction trail for this task."
+          }
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "description": "Append-only record of decisions taken this round (rationale preserved for audit).",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "summary"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What was decided."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why the decision was made."
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "description": "Open risks and their mitigations for this round.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "summary"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The risk."
+          },
+          "mitigation": {
+            "type": "string",
+            "description": "How the risk is reduced or contained."
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,8 +15,11 @@ const marketBoardQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await readSession();
-    if (!session || session.role !== "student") {
+    if (!session) {
       return apiError("unauthorized", "需要学生账号登录。", 401);
+    }
+    if (session.role !== "student") {
+      return apiError("forbidden", "仅学生账号可访问市场看板。", 403);
     }
 
     const query = marketBoardQuerySchema.parse({

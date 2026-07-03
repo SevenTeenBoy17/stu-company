@@ -1,7 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+
+import { useFocusTrap } from "@/lib/use-focus-trap";
+
+gsap.registerPlugin(useGSAP);
 
 type StepId =
   | "welcome"
@@ -100,10 +105,13 @@ const MARKET_REVEAL = { direction: "down" as const, netWorth: 119_460, changePct
 
 interface OnboardingFlowProps {
   userName: string;
+  showUpgradeShortcut?: boolean;
   onComplete: () => void;
 }
 
-export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComplete }: OnboardingFlowProps) {
+  const onboardingRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [tradeExecuted, setTradeExecuted] = useState(false);
   const [targetGuess, setTargetGuess] = useState(150_000);
@@ -111,11 +119,47 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
   const [marketRevealed, setMarketRevealed] = useState(false);
   const [aiTextByStep, setAiTextByStep] = useState<Record<string, string>>({});
   const [aiProviderByStep, setAiProviderByStep] = useState<Record<string, "remote" | "fallback">>({});
+  const [canUsePersonalAi, setCanUsePersonalAi] = useState<boolean | null>(null);
   const current = STEPS[step];
+  const personalizeFallback = useCallback(
+    (text: string) => text.replace(String.fromCodePoint(0x65b0, 0x540c, 0x5b66), userName),
+    [userName],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/billing/status", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { canUsePersonalAiAssessment?: boolean } | null) => {
+        if (!cancelled) setCanUsePersonalAi(Boolean(data?.canUsePersonalAiAssessment));
+      })
+      .catch(() => {
+        if (!cancelled) setCanUsePersonalAi(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     if (aiTextByStep[current.id]) return;
+    if (canUsePersonalAi === null) return;
+
+    if (canUsePersonalAi !== true) {
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setAiTextByStep((value) => ({
+          ...value,
+          [current.id]: personalizeFallback(current.mrBrown),
+        }));
+        setAiProviderByStep((value) => ({ ...value, [current.id]: "fallback" }));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     fetch("/api/ai/onboarding", {
       method: "POST",
@@ -152,7 +196,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
     return () => {
       cancelled = true;
     };
-  }, [aiTextByStep, current, step, userName]);
+  }, [aiTextByStep, canUsePersonalAi, current, personalizeFallback, step, userName]);
 
   const completeOnboarding = useCallback(async () => {
     try {
@@ -162,6 +206,49 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
     }
     onComplete();
   }, [onComplete]);
+
+  useFocusTrap(true, panelRef, () => {
+    void completeOnboarding();
+  });
+
+  useEffect(() => {
+    const root = onboardingRef.current;
+    const parent = root?.parentElement;
+    if (!root || !parent) return;
+
+    const siblings = Array.from(parent.children).filter((element): element is HTMLElement => element instanceof HTMLElement && element !== root);
+    const previous = siblings.map((element) => ({
+      element,
+      ariaHidden: element.getAttribute("aria-hidden"),
+      inert: element.inert,
+    }));
+
+    siblings.forEach((element) => {
+      element.setAttribute("aria-hidden", "true");
+      element.inert = true;
+    });
+
+    return () => {
+      previous.forEach(({ element, ariaHidden, inert }) => {
+        if (ariaHidden === null) {
+          element.removeAttribute("aria-hidden");
+        } else {
+          element.setAttribute("aria-hidden", ariaHidden);
+        }
+        element.inert = inert;
+      });
+    };
+  }, []);
+
+  const jumpToUpgrade = useCallback(async () => {
+    await completeOnboarding();
+    window.setTimeout(() => {
+      document.getElementById("guest-upgrade-checkout")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }, [completeOnboarding]);
 
   const handleNext = useCallback(async () => {
     if (current.id === "first-trade" && !tradeExecuted) {
@@ -186,19 +273,75 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
   const aiText = aiTextByStep[current.id] ?? current.mrBrown.replace("新同学", userName);
   const aiProvider = aiProviderByStep[current.id];
 
+  useGSAP(
+    () => {
+      const reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const panel = onboardingRef.current?.querySelector("[data-onboarding-panel]");
+      const stepPanel = onboardingRef.current?.querySelector("[data-onboarding-step]");
+      const progressBar = onboardingRef.current?.querySelector("[data-onboarding-progress]");
+      const eventPanels = gsap.utils.toArray<HTMLElement>("[data-onboarding-event]");
+
+      if (reducedMotion) {
+        gsap.set([panel, stepPanel, progressBar, ...eventPanels].filter(Boolean), {
+          autoAlpha: 1,
+          clearProps: "transform,opacity,visibility",
+        });
+        return;
+      }
+
+      if (panel) {
+        gsap.fromTo(
+          panel,
+          { autoAlpha: 0, scale: 0.96, y: 14 },
+          { autoAlpha: 1, scale: 1, y: 0, duration: 0.34, ease: "power3.out", overwrite: "auto" },
+        );
+      }
+
+      if (stepPanel) {
+        gsap.fromTo(
+          stepPanel,
+          { autoAlpha: 0, x: 18 },
+          { autoAlpha: 1, x: 0, duration: 0.28, ease: "power3.out", overwrite: "auto" },
+        );
+      }
+
+      if (progressBar) {
+        gsap.fromTo(
+          progressBar,
+          { scaleX: 0.75 },
+          { scaleX: 1, duration: 0.36, ease: "power2.out", overwrite: "auto" },
+        );
+      }
+
+      if (eventPanels.length) {
+        gsap.fromTo(
+          eventPanels,
+          { autoAlpha: 0, y: 8 },
+          { autoAlpha: 1, y: 0, duration: 0.26, ease: "power3.out", stagger: 0.04, overwrite: "auto" },
+        );
+      }
+    },
+    { scope: onboardingRef, dependencies: [step, tradeExecuted, marketRevealed, progress], revertOnUpdate: true },
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 p-4 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+    <div ref={onboardingRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink-900)]/80 p-4 backdrop-blur-sm">
+      <div
+        ref={panelRef}
+        data-onboarding-panel
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="student-onboarding-title"
         className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl"
       >
         <div className="h-1 bg-[var(--ink-100)]">
-          <motion.div
+          <div
+            data-onboarding-progress
             className="h-full bg-[var(--brand)]"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4 }}
+            style={{ width: `${progress}%`, transformOrigin: "left center" }}
           />
         </div>
 
@@ -207,12 +350,12 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
             <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[var(--brand)]">
               Brown Zone 新手村
             </p>
-            <h2 className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
+            <h2 id="student-onboarding-title" className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
             <p className="mt-3 text-sm leading-7 text-white/68">
               每一步只学习一个概念，先做轻量选择，再进入正式沙盘。
             </p>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/8 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/45">本步概念</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/70">本步概念</p>
               <p className="mt-2 text-xl font-semibold">{current.concept}</p>
               <p className="mt-2 text-xs leading-6 text-white/58">进度 {step + 1}/{STEPS.length}</p>
             </div>
@@ -223,22 +366,29 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-400)]">
                 Mr.Brown AI 教学
               </p>
-              <button
-                type="button"
-                onClick={completeOnboarding}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
-              >
-                跳过引导
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {showUpgradeShortcut ? (
+                  <button
+                    type="button"
+                    onClick={jumpToUpgrade}
+                    className="rounded-full border border-[var(--amber-200)] bg-[var(--amber-50)] px-3 py-1.5 text-xs font-semibold text-[var(--amber-700)] transition hover:bg-[var(--amber-100)]"
+                  >
+                    先开通完整 AI
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={completeOnboarding}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
+                >
+                  跳过引导
+                </button>
+              </div>
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.section
+              <section
                 key={current.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.25 }}
+                data-onboarding-step
               >
                 <div className="mt-5 rounded-3xl border border-[var(--ink-100)] bg-[var(--ink-50)] p-5">
                   <div className="flex gap-3">
@@ -295,9 +445,8 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                 )}
 
                 {current.interactive === "trade" && tradeExecuted && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <div
+                    data-onboarding-event
                     className="mt-4 rounded-2xl border border-[var(--up-200)] bg-[var(--up-50)] px-4 py-3"
                   >
                     <p className="text-sm font-semibold text-[var(--up-700)]">
@@ -306,7 +455,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                     <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">
                       这不是投资建议，只是帮助你看懂下单后资产和现金如何变化。
                     </p>
-                  </motion.div>
+                  </div>
                 )}
 
                 {current.interactive === "quiz" && !marketRevealed && (
@@ -334,9 +483,8 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                 )}
 
                 {current.interactive === "quiz" && marketRevealed && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <div
+                    data-onboarding-event
                     className="mt-4 rounded-2xl bg-[var(--down-50)] px-5 py-4"
                   >
                     <p className="font-mono text-2xl font-bold text-[var(--down-700)]">
@@ -352,7 +500,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                           ? "这次和你猜的相反，市场下跌了。短期涨跌很难预测，猜错方向不代表你失败 —— 重要的是你有没有为「万一看错」留出应对空间。"
                           : "结果揭晓了。市场短期充满不确定性，方向谁都说不准；与其押对一次，不如练习在任何方向下都能稳住组合。"}
                     </p>
-                  </motion.div>
+                  </div>
                 )}
 
                 {current.interactive === "event" && (
@@ -370,8 +518,7 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
                     </p>
                   </div>
                 )}
-              </motion.section>
-            </AnimatePresence>
+              </section>
 
             <div className="mt-6 flex items-center justify-between gap-3">
               {step > 0 ? (
@@ -388,14 +535,14 @@ export function OnboardingFlow({ userName, onComplete }: OnboardingFlowProps) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--amber-600)]"
+                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm transition-colors hover:bg-[var(--amber-600)]"
               >
                 {current.interactive === "trade" && !tradeExecuted ? "确认买入 10 股" : current.action}
               </button>
             </div>
           </main>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

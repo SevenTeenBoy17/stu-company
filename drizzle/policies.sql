@@ -121,6 +121,7 @@ grant select, insert, update, delete on public.assignments to authenticated;
 grant select, insert, update, delete on public.invite_codes to authenticated;
 grant select, insert, update on public.payment_orders to authenticated;
 grant select on public.subscription_grants to authenticated;
+grant select, insert, update on public.app_settings to authenticated;
 -- Financial Power leaderboard (V1).
 grant select, insert on public.schools to authenticated;
 grant select, insert, update on public.rank_profiles to authenticated;
@@ -136,6 +137,7 @@ alter table public.assignments enable row level security;
 alter table public.invite_codes enable row level security;
 alter table public.payment_orders enable row level security;
 alter table public.subscription_grants enable row level security;
+alter table public.app_settings enable row level security;
 alter table public.schools enable row level security;
 alter table public.rank_profiles enable row level security;
 alter table public.leaderboard_snapshots enable row level security;
@@ -638,4 +640,19 @@ using (
     where s.id = ai_messages.session_id
       and s.user_id = (select app_private.jwt_user_id())
   )
+);
+
+-- app_settings: operator-managed non-secret runtime configuration.
+-- The service-role owner path bypasses RLS; this policy protects future
+-- authenticated/RLS execution paths.
+drop policy if exists app_settings_admin_only on public.app_settings;
+create policy app_settings_admin_only
+on public.app_settings
+for all
+to authenticated
+using (
+  (select app_private.is_admin())
+)
+with check (
+  (select app_private.is_admin())
 );

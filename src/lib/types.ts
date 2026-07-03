@@ -11,6 +11,8 @@ export type MarketWatchlistSymbol =
   | "ORCL"
   | "TSLA"
   | "TSM";
+export type MarketQuoteSource = "tsanghi" | "itick" | "alltick" | "fallback";
+export type MarketDataProvider = "tsanghi" | "itick" | "alltick" | "hybrid" | "fallback";
 
 export type ModuleKey =
   | "equities"
@@ -43,6 +45,10 @@ export interface LearningModule {
   description: string;
   level: "核心" | "进阶" | "运营" | "家校";
   highlights: string[];
+  /** External "深入学习" link — mapped to the closest 富途牛牛课堂 (futunn.com/learn) section. */
+  href: string;
+  /** Short label for that destination section, shown on the card CTA. */
+  hrefLabel: string;
 }
 
 export interface MarketAsset {
@@ -104,10 +110,25 @@ export type FinancialEventCard = EventCard;
 export interface ActionLog {
   id: string;
   round: number;
-  type: "trade" | "bank" | "property" | "venture" | "advance" | "event";
+  type:
+    | "trade"
+    | "bank"
+    | "property"
+    | "venture"
+    | "advance"
+    | "event"
+    | "auto_invest"
+    | "quest"
+    | "opportunity"
+    | "fund_lab"
+    | "goal_account"
+    | "protection"
+    | "watchlist"
+    | "wealth_review";
   label: string;
   amount: number;
   timestamp: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface PortfolioSnapshot {
@@ -154,8 +175,22 @@ export interface ScenarioRun {
   netWorth?: number;
 }
 
+export type RoundPredictionGuess = "up" | "down";
+
+export interface RoundPrediction {
+  id: string;
+  userId: string;
+  runId: string;
+  round: number;
+  guess: RoundPredictionGuess;
+  resolved: boolean;
+  correct: boolean;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export type SubscriptionTier = "free" | "standard" | "premium";
-export type PaymentChannel = "native" | "jsapi" | "mock";
+export type PaymentChannel = "native" | "jsapi" | "mock" | "manual";
 export type PaymentStatus = "pending" | "paid" | "closed" | "failed";
 
 export interface PaymentOrder {
@@ -171,6 +206,7 @@ export interface PaymentOrder {
   codeUrl?: string;
   prepayId?: string;
   transactionId?: string;
+  rawNotify?: unknown;
   paidAt?: string;
   expiresAt: string;
   createdAt: string;
@@ -185,6 +221,14 @@ export interface SubscriptionGrant {
   startsAt: string;
   expiresAt: string;
   createdAt: string;
+}
+
+export interface AppSetting<TValue = unknown> {
+  key: string;
+  value: TValue;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BillingIntent {
@@ -335,6 +379,21 @@ export interface RankProfile {
   updatedAt: string;
 }
 
+/**
+ * A2: AI-generated behavioral persona derived from a student's real simulation
+ * behavior, persisted on `risk_profiles`. Produced and consumed by later tasks
+ * (A2b/A2c/A2d/A2e); this is the shared contract.
+ */
+export interface BehaviorPersona {
+  band: "defensive" | "steady" | "balanced" | "growth";
+  label: string;        // e.g. "稳健配置者"
+  archetype: string;    // short Chinese archetype tag
+  summary: string;      // 1–3 sentence behavioral analysis
+  evidence: string[];   // behavioral evidence bullets (Chinese)
+  nextSteps: string[];  // suggested next actions (Chinese)
+  confidence: "low" | "medium" | "high";
+}
+
 export interface PowerComponentsRecord {
   riskAdjReturn: number;
   discipline: number;
@@ -346,6 +405,7 @@ export interface PowerComponentsRecord {
 export interface LearningProgressRow {
   userId: string;
   moduleKey: string;
+  quizPassed: boolean;
   completedAt: string;
 }
 
@@ -417,7 +477,7 @@ export interface ExternalMarketSignal {
   region: string;
   currentPrice: number | null;
   changePercent: number;
-  source: "alltick" | "simulation";
+  source: "tsanghi" | "itick" | "alltick" | "simulation";
   summary: string;
 }
 
@@ -450,7 +510,7 @@ export interface AllocationSuggestion {
 
 export interface PortfolioIntel {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   regimeLabel: string;
   regimeSummary: string;
   marketNote: string;
@@ -492,9 +552,18 @@ export interface TickerTapeItem {
   companyName: string;
   currentPrice: number;
   changePercent: number;
-  source: "alltick" | "fallback";
+  source: MarketQuoteSource;
   accentColor: string;
   monogram: string;
+}
+
+export interface MarketKlineCandle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
 }
 
 export interface MarketBoardMetric {
@@ -511,7 +580,7 @@ export interface MarketBoardStock {
   companyName: string;
   currentPrice: number;
   changePercent: number;
-  source: "alltick" | "fallback";
+  source: MarketQuoteSource;
   score: number;
   summary: string;
   teachingNote: string;
@@ -521,6 +590,7 @@ export interface MarketBoardStock {
   monogram: string;
   accentColor: string;
   miniSeries: number[];
+  candles: MarketKlineCandle[];
   metrics: MarketBoardMetric[];
   facts: Array<{ label: string; value: string }>;
 }
@@ -543,7 +613,7 @@ export interface MarketBoardContentCard {
 
 export interface MarketBoardPayload {
   asOf: string;
-  provider: "alltick" | "hybrid" | "fallback";
+  provider: MarketDataProvider;
   note: string;
   watchlist: TickerTapeItem[];
   selected: MarketBoardStock;
@@ -604,6 +674,15 @@ export interface HistoryHighlight {
   metricValue: string;
 }
 
+export interface HistoryLearningSignal {
+  id: string;
+  label: string;
+  count: number;
+  latestRound?: number;
+  tone: "observe" | "build" | "protect" | "review";
+  detail: string;
+}
+
 export interface HistoryReviewInsight {
   summary: string;
   analysis: string[];
@@ -624,12 +703,15 @@ export interface HistoryReviewPayload {
     sellCount: number;
     cashActions: number;
     expansionActions: number;
+    learningActions: number;
+    reviewActions: number;
     maxDrawdown: number;
     stageLabel: string;
     riskRange: [number, number];
     disciplineTrend: number;
   };
   highlights: HistoryHighlight[];
+  learningSignals: HistoryLearningSignal[];
   aiReview: HistoryReviewInsight;
 }
 

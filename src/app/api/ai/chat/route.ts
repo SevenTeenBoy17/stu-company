@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requestChatReply } from "@/lib/ai";
 import { buildAiSessionTitle } from "@/lib/assistant-config";
 import { buildAssistantContextBundle } from "@/lib/assistant-context";
@@ -68,6 +68,9 @@ function createChatMessage(
 }
 
 export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   try {
     const body = chatSchema.parse(await request.json());
     const session = await readSession();

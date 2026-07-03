@@ -19,7 +19,10 @@
 | `AI_MODEL` | 模型 ID（默认 claude-sonnet-4-6）| ⚠️ | |
 | `AI_BASE_URL_PRIMARY` | 主网关 URL（**必须由运营方显式提供，不再有内置第三方默认**）| ⚠️ | 不填则 AI 走本地兜底，不会静默把数据发到陌生域名 |
 | `AI_BASE_URL_SECONDARY` | 备网关 URL | ⚠️ | 主挂时自动 fallback |
-| `ALLTICK_API_KEY` | https://alltick.co 注册 | ⚠️ | 没有则用本地教学行情 |
+| `ITICK_API_TOKEN` | https://docs.itick.org / iTick 控制台 | ⚠️ | 股票实时报价与 K 线；没有则继续降级 |
+| `ITICK_REST_BASE_URL` | 默认 https://api0.itick.org | ⚠️ | iTick REST API |
+| `ITICK_STOCK_WS_URL` | 默认 wss://api.itick.org/stock | ⚠️ | 预留 WebSocket 实时行情入口 |
+| `ALLTICK_API_KEY` | https://alltick.co 注册 | ⚠️ | 旧行情兜底；没有则用本地教学行情 |
 | `ALLTICK_STOCK_BASE_URL` | 默认 https://quote.alltick.co/quote-stock-b-api | ⚠️ | |
 
 图例：✅ 必填阻断 · ⚠️ 没有也能跑（功能降级）
@@ -65,13 +68,16 @@ Supabase Dashboard  → 仅 DB 内部需要的（如 vault 密钥）
 
 - 选定 Anthropic 兼容网关：在该运营方控制台创建 API Key，写入 `AI_API_KEY`，并在 `AI_BASE_URL_PRIMARY` 显式填该网关地址。**不再有内置默认**——空值即视为禁用远端 AI。
 - 如果直连 Anthropic：从 https://console.anthropic.com 取 key，把 `AI_BASE_URL_PRIMARY` 改成 `https://api.anthropic.com/v1`
+- **国内低延迟入口（2026-06 起推荐）**：使用 llm-token / gpt-agent 类 Anthropic 兼容网关时，主线填 `AI_BASE_URL_PRIMARY=https://api.llm-token.cn/v1`（维护已恢复、延迟更低），备线可填旧入口 `AI_BASE_URL_SECONDARY=https://gpt-agent.cc/v1` 做跨域故障转移。两者 `endpointForBase` 都会规整为 `{base}/v1/messages`，主挂时自动 fallback。
 - **不填的后果**：所有 AI 请求降级到 `src/lib/ai.ts` 内置的本地教学回复（功能完整但不智能）
 
-### 3.4 AllTick 行情密钥（可选）
+### 3.4 iTick / AllTick 行情密钥（可选）
 
-1. https://alltick.co 注册
-2. 控制台 → API Token → 复制 → `ALLTICK_API_KEY`
-3. **不填的后果**：行情显示 `src/lib/market-data.ts` 内置的 12 回合教学数据（演示足够）
+1. 优先配置 iTick：到 iTick 控制台复制 API Token → `ITICK_API_TOKEN`
+2. REST 默认使用 `ITICK_REST_BASE_URL=https://api0.itick.org`
+3. WebSocket 股票推送入口预留为 `ITICK_STOCK_WS_URL=wss://api.itick.org/stock`，首版仍以 10 分钟 REST 快照刷新为主
+4. 如还保留 AllTick 账号，可配置 `ALLTICK_API_KEY` 作为备用 provider
+5. **不填的后果**：行情显示 `src/lib/market-data.ts` 内置的 12 回合教学数据（演示足够）
 
 ---
 
@@ -92,6 +98,9 @@ AI_MODEL=claude-sonnet-4-6
 # Leave both empty to use local AI fallback; never use a third-party default.
 AI_BASE_URL_PRIMARY=
 AI_BASE_URL_SECONDARY=
+ITICK_API_TOKEN=
+ITICK_REST_BASE_URL=https://api0.itick.org
+ITICK_STOCK_WS_URL=wss://api.itick.org/stock
 ALLTICK_API_KEY=
 ALLTICK_STOCK_BASE_URL=https://quote.alltick.co/quote-stock-b-api
 
@@ -132,5 +141,5 @@ node -e "require('dotenv').config({path:'.env.local'}); const e=process.env; ['D
 | `Error: getaddrinfo ENOTFOUND` | DATABASE_URL 复制成了 Direct 而不是 Pooler | 重新到 Supabase 选 Connection pooling |
 | `JWT malformed` | SESSION_SECRET 少于 16 字符 | 重新生成 32+ 字符的串 |
 | AI 回复总是 "本地教学兜底" | AI_API_KEY / AI_BASE_URL_PRIMARY 没填或 key 失效 | 检查运营方网关余额与 key |
-| 行情数据 12 回合循环 | ALLTICK_API_KEY 没填或限流 | 检查 AllTick 控制台 |
+| 行情数据 12 回合循环 | ITICK_API_TOKEN / ALLTICK_API_KEY 没填、限流或权限不足 | 检查 iTick 控制台；无权限时系统会自动使用教学观察池 |
 | Vercel build OK 但运行 500 | Vercel env 没设 | Settings → Env Variables 逐项核对 |

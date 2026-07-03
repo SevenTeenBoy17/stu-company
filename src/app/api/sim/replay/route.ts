@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { resolveSubscriptionState } from "@/lib/billing/subscription";
 import { getSimulationStateForUser, replayRunForUser } from "@/lib/db/repo";
@@ -9,7 +9,10 @@ import { getSimulationStateForUser, replayRunForUser } from "@/lib/db/repo";
  * Premium "season replay": reset the sandbox to a fresh seed so the 12 rounds
  * play out with a different event sequence. Gated by features.seasonReplay.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const originBlock = checkOrigin(request);
+  if (originBlock) return originBlock;
+
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
 
