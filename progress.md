@@ -3714,3 +3714,13 @@ Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 630/630 / build 61 页
   一次性切换全部 19 个写事务调用点（applyAction/事件/推进/领奖/领卡/理财写库等），只读路径不锁。
 Gates：tsc ✓ / lint 0 警告 / repo 域 39/39 / 全量 vitest 94 文件 630/630。
 问题清单终态：12 项中 10 修复/闭环，剩 rank4（理财 4 写库路由门控·产品判断题，等用户拍板）。
+
+## 2026-07-03 rank4 落地（B 决策：理财写库路由补门控）——问题清单 12/12 全清
+
+决策依据：这 4 条（risk-profile/auto-invest/life-cashflow/credit-lab POST）是实质写库功能而非装饰，
+仓库既有不变量为「实质写全部 canUserOperate」（其余 9 条无一例外；6-14 已修同类 6 条，这 4 条为漏网）；
+「装饰开放（领卡）/实质门控」的合规边界不适用于此。实现：仅门控 POST（GET 读取对过期用户保留），
+镜像 fund-lab 写法，4 条各配业务化中文 403 文案；新增 licai-write-gating.test.ts 4 例回归锁
+（过期→403 forbidden，防止未来误移除）。
+Gates：tsc ✓ / lint 0 警告 / 新测 4/4 / 全量 vitest 95 文件 634/634。
+至此三轮内测问题清单 12/12 全部修复或定性闭环。
