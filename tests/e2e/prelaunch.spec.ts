@@ -29,10 +29,19 @@ test.describe("prelaunch smoke", () => {
     await expect(page.getByText("superadmin")).toHaveCount(0);
     await page.getByRole("button", { name: /登录账号/ }).click();
     await expect(page.getByRole("heading", { name: "邮箱登录" })).toBeVisible();
-    await page.getByLabel("邮箱 / 账号").fill("superadmin");
-    await page.getByLabel("密码").fill("Super001!!!");
-    await page.getByRole("button", { name: /登录并进入工作台/ }).click();
-    await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
+    // CI 慢机实锤过一例（PR #15 二连挂，trace 取证）：受控表单 fill 成功但提交时
+    // React 状态仍为空（POST body password=""）——水合/并发渲染窗口把值打回。
+    // 修法为条件式整环重试：填写→提交→等跳转，未跳则重填重交（登录限流只计失败，
+    // 且 CI 有 E2E_RATE_LIMIT_MULTIPLIER，重试不会打爆）。
+    test.setTimeout(120_000);
+    await expect(async () => {
+      if (!/\/admin/.test(page.url())) {
+        await page.getByLabel("邮箱 / 账号").fill("superadmin");
+        await page.getByLabel("密码").fill("Super001!!!");
+        await page.getByRole("button", { name: /登录并进入工作台/ }).click();
+      }
+      await expect(page).toHaveURL(/\/admin/, { timeout: 10_000 });
+    }).toPass({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "商业运营与账号权限，总览在这里完成。" })).toBeVisible();
     await expect(page.locator("body")).toContainText("账号、试用与订阅管理");
     await expect(page.locator("body")).toContainText(
