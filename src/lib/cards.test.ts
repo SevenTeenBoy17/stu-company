@@ -4,9 +4,9 @@ import { questCardDeck } from "@/lib/content";
 import { buildCollectionProgress, drawCard, type QuestCard } from "@/lib/cards";
 
 const deck: QuestCard[] = [
-  { id: "a", name: "甲", rarity: "common", artKey: "a", teachingLine: "卡甲。" },
-  { id: "b", name: "乙", rarity: "rare", artKey: "b", teachingLine: "卡乙。" },
-  { id: "c", name: "丙", rarity: "epic", artKey: "c", teachingLine: "卡丙。" },
+  { id: "a", name: "甲", tier: "basic", artKey: "a", teachingLine: "卡甲。" },
+  { id: "b", name: "乙", tier: "advanced", artKey: "b", teachingLine: "卡乙。" },
+  { id: "c", name: "丙", tier: "system", artKey: "c", teachingLine: "卡丙。" },
 ];
 
 describe("drawCard（确定性领取 · 去射幸）", () => {
@@ -53,7 +53,7 @@ describe("buildCollectionProgress（套系进度）", () => {
   });
 
   it("集齐某套系 → complete=true 且 missingNames 为空", () => {
-    const foundations = questCardDeck.filter((card) => card.rarity === "common").map((card) => card.id);
+    const foundations = questCardDeck.filter((card) => card.tier === "basic").map((card) => card.id);
     const f = buildCollectionProgress(foundations, questCardDeck).find((s) => s.series === "foundations")!;
     expect(f.owned).toBe(5);
     expect(f.complete).toBe(true);

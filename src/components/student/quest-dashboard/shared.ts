@@ -39,11 +39,11 @@ export const statusMeta: Record<
   },
 };
 
-export const rarityMeta: Record<QuestCard["rarity"], { label: string; className: string }> = {
-  common: { label: "基础", className: "border-slate-200 bg-slate-50 text-slate-700" },
-  rare: { label: "进阶", className: "border-brand/25 bg-brand-subtle text-brand-ink" },
+export const tierMeta: Record<QuestCard["tier"], { label: string; className: string }> = {
+  basic: { label: "基础", className: "border-slate-200 bg-slate-50 text-slate-700" },
+  advanced: { label: "进阶", className: "border-brand/25 bg-brand-subtle text-brand-ink" },
   // 「系统」在深色卡面(bg-slate-950)上用浅靛蓝 text-sky-200(~13:1，AA 通过)，避免开奖刺激。
-  epic: { label: "系统", className: "border-sky-300/35 bg-sky-300/15 text-sky-200" },
+  system: { label: "系统", className: "border-sky-300/35 bg-sky-300/15 text-sky-200" },
 };
 
 export const questCardAssetBase = "/brand/quest-cards";

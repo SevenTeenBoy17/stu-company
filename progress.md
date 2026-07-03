@@ -3658,3 +3658,14 @@ Gates：tsc ✓ / lint 0 警告 / collection+dashboard 10/10 / gameflow e2e 6/6 
 是错误方向；根修 = 该 describe 的 beforeEach 覆写 matchMedia 命中 prefers-reduced-motion →
 toggleQuestFlip 聚焦延时 0、GSAP 即时分支，行为等价且彻底消除真实计时竞争。
 验证：coverage 模式（CI 同款）连跑 3/3「Tests 8 passed (8)」；lint ✓。
+
+## 2026-07-03 批次 10：rarity→tier 全量改名（线级诚实合规收尾）
+
+重新定性后升级优先级：批次 3 只清了 meta，但 draw 响应的 card 对象仍把原始 "epic" 传输到
+客户端（最后一处 wire 泄漏）。全量改名：QuestCardRarity→QuestCardTier、字段 rarity→tier、
+取值 common/rare/epic→basic/advanced/system、RARITY_TO_SERIES→TIER_TO_SERIES、
+rarityMeta→tierMeta、back-*.svg 三资产 git mv 同步改名；中文标签（基础/进阶/系统）不变=零视觉变化。
+宠物系统的独立 rarity 概念刻意不动（范围纪律，另行评估）。
+新增线级诚实回归锁：draw 响应序列化后不得匹配 /rarity|"epic"|"rare"|"common"/。
+grep 门禁：任务卡域内 rarity/epic 仅存于说明注释与回归锁自身。
+Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 622/622 / gameflow e2e 6/6 (24.6s)。

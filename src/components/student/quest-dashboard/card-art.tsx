@@ -14,13 +14,13 @@ import {
   missionCardBackAsset,
   questCardAssetBase,
   questWorldAssetBase,
-  rarityMeta,
+  tierMeta,
   statusMeta,
 } from "./shared";
 import { type QuestVisualProfile } from "./themes";
 
 export function QuestCardFallbackArt({ card }: { card: QuestCard }) {
-  const meta = rarityMeta[card.rarity];
+  const meta = tierMeta[card.tier];
 
   return (
     <div className="absolute inset-0 bg-slate-950">
@@ -53,7 +53,7 @@ export function QuestCardArt({
   className?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const meta = rarityMeta[card.rarity];
+  const meta = tierMeta[card.tier];
 
   return (
     <div
@@ -89,9 +89,9 @@ export function QuestCardArt({
   );
 }
 
-export function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["rarity"] }) {
+export function QuestCardBackArt({ tier = "basic" }: { tier?: QuestCard["tier"] }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const meta = rarityMeta[rarity];
+  const meta = tierMeta[tier];
 
   return (
     <div className="relative mt-4 min-h-32 overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.06]">
@@ -99,7 +99,7 @@ export function QuestCardBackArt({ rarity = "common" }: { rarity?: QuestCard["ra
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(242,162,69,0.28),transparent_42%),linear-gradient(135deg,#111827,#020617)]" />
       ) : (
         <Image
-          src={`${questCardAssetBase}/back-${rarity}.svg`}
+          src={`${questCardAssetBase}/back-${tier}.svg`}
           alt={`${meta.label} 卡背插画`}
           fill
           sizes="(min-width: 1280px) 320px, 92vw"

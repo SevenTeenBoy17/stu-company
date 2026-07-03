@@ -60,7 +60,7 @@ import {
   questCategoryLabel,
   questIdFromCard,
   questWorldAssetBase,
-  rarityMeta,
+  tierMeta,
   useModalA11y,
   type QuestCardCollectionView,
 } from "./quest-dashboard/shared";
@@ -1265,7 +1265,7 @@ export function StudentQuestDashboard({
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">
-                                {rarityMeta[collectedCard.card.rarity].label}
+                                {tierMeta[collectedCard.card.tier].label}
                               </p>
                               <h4 className="mt-1 text-lg font-bold text-white">{collectedCard.card.name}</h4>
                             </div>
@@ -1280,7 +1280,7 @@ export function StudentQuestDashboard({
                         </div>
                       ) : (
                         <div className="hidden sm:block">
-                          <QuestCardBackArt rarity="common" />
+                          <QuestCardBackArt tier="basic" />
                         </div>
                       )}
                       <p className="mt-3 text-[11px] font-semibold leading-5 text-white/55">

@@ -95,7 +95,7 @@ function makeSeasonPayload(): StudentSeasonChallengePayload {
 const drawnCard: QuestCard = {
   id: "calm-observer",
   name: "冷静观察者",
-  rarity: "rare",
+  tier: "advanced",
   artKey: "calm-observer",
   teachingLine: "先记录证据，再决定是否行动。",
 };

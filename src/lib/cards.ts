@@ -1,9 +1,11 @@
-export type QuestCardRarity = "common" | "rare" | "epic";
+// 线级诚实（合规收尾）：类型与取值彻底告别 common/rare/epic 开奖词汇——
+// draw 响应的 card 对象此前仍把原始 "epic" 传到客户端，是最后一处 wire 泄漏。
+export type QuestCardTier = "basic" | "advanced" | "system";
 
 export type QuestCard = {
   id: string;
   name: string;
-  rarity: QuestCardRarity;
+  tier: QuestCardTier;
   artKey: string;
   teachingLine: string;
 };
@@ -23,7 +25,7 @@ export function seedFromString(input: string): number {
  *
  * 不再用稀有度加权随机抽取——原实现 seed 含 user.id，导致「同一任务不同学生抽到不同稀有度」，
  * 把稀有度变成运气函数，是面向未成年人的盲盒/射幸暴露面。现在「完成多少任务 = 确定拥有哪些卡」，
- * 获得顺序对所有学生一致、可预期；卡牌仍各自保留 rarity 作为收藏分组语义（基础/进阶/典藏），
+ * 获得顺序对所有学生一致、可预期；卡牌仍各自保留 tier 作为收藏分组语义（基础/进阶/系统），
  * 但不再由抽取随机决定。集齐后回退到牌库首张（保持去重完形，便于补领时展示卡面）。
  */
 export function drawCard(deck: readonly QuestCard[], ownedCardIds: Iterable<string>): QuestCard {
@@ -37,13 +39,13 @@ export function drawCard(deck: readonly QuestCard[], ownedCardIds: Iterable<stri
 
 export type QuestCardSeries = "foundations" | "risk-control" | "systems-thinking";
 
-// 套系 = 学习单元（doc §2.1）。本牌库套系与稀有度一一对应：
-// foundations(5 common) / risk-control(5 rare) / systems-thinking(2 epic)，
-// 故由 rarity 派生，避免给 12 张卡 + 测试夹具逐一加字段；若未来套系与稀有度解耦再升级为独立字段。
-const RARITY_TO_SERIES: Record<QuestCardRarity, QuestCardSeries> = {
-  common: "foundations",
-  rare: "risk-control",
-  epic: "systems-thinking",
+// 套系 = 学习单元（doc §2.1）。本牌库套系与分组档位一一对应：
+// foundations(5 basic) / risk-control(5 advanced) / systems-thinking(2 system)，
+// 故由 tier 派生，避免给 12 张卡 + 测试夹具逐一加字段；若未来解耦再升级为独立字段。
+const TIER_TO_SERIES: Record<QuestCardTier, QuestCardSeries> = {
+  basic: "foundations",
+  advanced: "risk-control",
+  system: "systems-thinking",
 };
 
 export const QUEST_CARD_SERIES_LABEL: Record<QuestCardSeries, string> = {
@@ -52,8 +54,8 @@ export const QUEST_CARD_SERIES_LABEL: Record<QuestCardSeries, string> = {
   "systems-thinking": "系统思维",
 };
 
-export function questCardSeries(card: Pick<QuestCard, "rarity">): QuestCardSeries {
-  return RARITY_TO_SERIES[card.rarity];
+export function questCardSeries(card: Pick<QuestCard, "tier">): QuestCardSeries {
+  return TIER_TO_SERIES[card.tier];
 }
 
 export type SeriesProgress = {

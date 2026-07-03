@@ -96,7 +96,11 @@ describe("POST /api/student/quests/draw", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.card).toMatchObject({ id: expect.any(String), rarity: expect.any(String), teachingLine: expect.any(String) });
+    expect(body.card).toMatchObject({ id: expect.any(String), teachingLine: expect.any(String) });
+    // 线级诚实回归锁：响应任何角落不得再出现 rarity/epic/rare/common 开奖词汇（合规收尾）。
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toMatch(/rarity|"epic"|"rare"|"common"/);
+    expect(["basic", "advanced", "system"]).toContain(body.card.tier);
     expect(body.collectionItem).toMatchObject({
       userId: "student-1",
       cardId: body.card.id,
