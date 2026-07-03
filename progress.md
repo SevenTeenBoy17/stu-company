@@ -3650,3 +3650,11 @@ CollectionMeter 完成格新增 series-consolidation-cta-*（foundations/risk-co
 文案禁稀缺词——"奖励"就是把练过的工具串成一次巩固学习（通关感=学习闭环而非收集刺激）。
 新增 collection.test.tsx：集齐显示/未集齐隐藏 + 文案禁稀缺词回归锁。
 Gates：tsc ✓ / lint 0 警告 / collection+dashboard 10/10 / gameflow e2e 6/6 (24.0s)。
+
+## 2026-07-03 补记：焦点断言最终根修（1ff3092 后续 CI Unit 再红）
+
+同一「flips a weekly quest card」焦点断言 4706ms 仍 activeElement=body——4s 超时救不了 =
+不是慢而是 coverage 插桩下 240ms 真实延时聚焦调度在 jsdom 偶发彻底丢失。第 4 次加大超时
+是错误方向；根修 = 该 describe 的 beforeEach 覆写 matchMedia 命中 prefers-reduced-motion →
+toggleQuestFlip 聚焦延时 0、GSAP 即时分支，行为等价且彻底消除真实计时竞争。
+验证：coverage 模式（CI 同款）连跑 3/3「Tests 8 passed (8)」；lint ✓。

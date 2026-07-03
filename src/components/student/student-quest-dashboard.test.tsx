@@ -115,6 +115,19 @@ function makeCollectionItem(): QuestCardCollectionView {
 describe("StudentQuestDashboard quest flip", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // 焦点断言确定性（CI 覆盖率插桩下 240ms 真实延时的聚焦调度会偶发彻底丢失，
+    // 已两次在 CI 复现且 4s 超时也救不了）：让本组测试命中 reduced-motion 路径 →
+    // toggleQuestFlip 的聚焦延时为 0、GSAP 走即时分支，行为等价且不再与真实计时竞争。
+    vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }) as unknown as MediaQueryList);
   });
 
   afterEach(() => {
