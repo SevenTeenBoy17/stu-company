@@ -194,7 +194,8 @@ function buildMetrics(timeline: HistoryRoundSummary[], actionLog: ActionLog[]) {
   for (const point of timeline) {
     peak = Math.max(peak, point.netWorth);
     if (peak > 0) {
-      maxDrawdown = Math.max(maxDrawdown, ((peak - point.netWorth) / peak) * 100);
+      // 与 run-power 同口径：回撤封顶 100%，避免净值为负时向学生展示 141% 这类无意义读数。
+      maxDrawdown = Math.min(100, Math.max(maxDrawdown, ((peak - point.netWorth) / peak) * 100));
     }
   }
 

@@ -44,6 +44,9 @@ export function buildTutorRadarPayload(
   state: SimulationState,
   provider: TutorRadarPayload["provider"] = "fallback",
   baseUrl?: string,
+  // 水合确定性：SSR 与客户端首帧各调用一次本函数，asOf 若各自 new Date() 会在跨分钟边界时
+  // 渲染文本不一致（内测 rank2 实锤的 /student 水合告警源之一）。调用方可传服务端时刻。
+  asOf?: string,
 ): TutorRadarPayload {
   const latestSnapshot = state.run.snapshots.at(-1);
   const netWorth = latestSnapshot?.netWorth ?? state.run.cash + state.run.savings;
@@ -100,7 +103,7 @@ export function buildTutorRadarPayload(
   const strongest = [...metrics].sort((left, right) => right.score - left.score)[0];
 
   return {
-    asOf: new Date().toISOString(),
+    asOf: asOf ?? new Date().toISOString(),
     provider,
     baseUrl,
     summary: `当前最强项是「${strongest.label}」，最需要补课的是「${weakest.label}」。下一步适合先稳定现金与风险边界，再决定是否扩大仓位。`,

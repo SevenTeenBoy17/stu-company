@@ -3690,3 +3690,17 @@ Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 623/623 / build 61 页
 剩余问题清单(未修，见 .tmp/itest3 与下方交付)：rank2/3 水合硬化(M，asOf 线程化+跨5路由排查)、
 rank4 理财4写库路由 canUserOperate(门控判断题)、rank5 loan 无上限致回撤>100%(财务设计)、
 rank6 领取失败提示就近化、rank7 claim 事务 FOR UPDATE、rank11/12 P3 空态/命名/测试覆盖。
+
+## 2026-07-03 三轮内测修复第二批（rank2/5/6/11/12）
+
+- rank2 水合根治：page.tsx 服务端产 renderedAt → StudentSandbox stableNow → 三个首帧 payload
+  （portfolio-intel 走 input.asOf / tutor-radar 新增 asOf 参数 / pet 用 new Date(stableNow)）；
+  实证：跨 2 个分钟边界连续 6 次加载 /student，pageErrors 总计 0（修复前同探针必现 1 例水合文本不匹配）。
+- rank5 财务诚实：教学贷款上限（总债务 ≤ 120,000 = 起始资金 1 倍，超限教育性中文报错）；
+  回撤在 run-power 与 history-review 双站点按定义封顶 100%（净值为负不再显示 141% 类读数）。
+- rank6 错误可见化：领取/抽卡/赛季领奖失败后 scrollIntoView 错误块（此前移动端失败静默不可见）。
+- rank11 空态诚实：主卡区空态按筛选分流（done→行动引导 / watch→正向肯定 / 其它去「解锁」误导）。
+- rank12 测试补盲：computeLearningStreak 4 例直测（连续/断档归零/进行中宽限/advance 不计）+
+  loan 上限 2 例 + 回撤钳制 1 例。
+Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 630/630 / build 61 页 ✓ / 水合 6 载 0 错实证。
+剩余：rank3 跨 5 路由 attributes 级水合(独立调查) / rank4 门控判断题(用户拍板) / rank7 FOR UPDATE(下批)。

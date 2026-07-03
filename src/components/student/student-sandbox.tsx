@@ -95,13 +95,22 @@ function currentRank(state: SimulationState) {
   return state.leaderboard.find((entry) => entry.userId === state.user.id)?.rank ?? state.leaderboard.length;
 }
 
-export function StudentSandbox({ initialState }: { initialState: SimulationState }) {
+export function StudentSandbox({
+  initialState,
+  renderedAt,
+}: {
+  initialState: SimulationState;
+  /** 服务端渲染时刻（page.tsx 传入）。水合确定性：首帧派生 payload 的 asOf 必须 SSR/CSR 一致，
+   *  否则跨分钟边界时“server rendered text didn't match the client”（内测 rank2 根因）。 */
+  renderedAt?: string;
+}) {
+  const [stableNow] = useState(() => renderedAt ?? new Date().toISOString());
   const [state, setState] = useState<SimulationState | null>(initialState);
   const [portfolioIntel, setPortfolioIntel] = useState<PortfolioIntel>(() =>
-    buildPortfolioIntel(initialState),
+    buildPortfolioIntel(initialState, { asOf: stableNow }),
   );
   const [tutorRadar, setTutorRadar] = useState<TutorRadarPayload>(() =>
-    buildTutorRadarPayload(initialState),
+    buildTutorRadarPayload(initialState, "fallback", undefined, stableNow),
   );
   // Premium surfacing: investor-personality card (deepAiReport) + season replay.
   const [persona, setPersona] = useState<InvestorPersona | null>(null);
@@ -296,7 +305,12 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
   }, []);
 
   const homeHubPayload = useMemo(() => (state ? buildStudentHomeHubPayload(state.run) : null), [state]);
-  const petRewardPayload = useMemo(() => (state ? buildStudentPetPayload(state.run) : null), [state]);
+  // 水合确定性：宠物 payload 的 now 用服务端 stableNow（日/心情级语义，冻结在页面加载时刻即可），
+  // 否则 SSR/CSR 各自 new Date() 跨分钟边界产生文本不一致（内测 rank2）。
+  const petRewardPayload = useMemo(
+    () => (state ? buildStudentPetPayload(state.run, undefined, new Date(stableNow)) : null),
+    [state, stableNow],
+  );
 
   if (!state || !homeHubPayload || !petRewardPayload) {
     return (

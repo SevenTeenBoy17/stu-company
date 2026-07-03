@@ -82,3 +82,10 @@ describe("computeRunPower", () => {
     );
   });
 });
+
+describe("max drawdown clamp（内测 rank5）", () => {
+  it("净值跌为负数时回撤按定义封顶 100%，不产生 141% 这类读数", () => {
+    const r = run({ snapshots: [snap(1, 120_000), snap(2, -50_000)] });
+    expect(runToPowerInput(r).maxDrawdownPct).toBe(100);
+  });
+});

@@ -7,6 +7,7 @@ import {
   buildPersonaShareText,
   buildSeasonLeaderboard,
   computeStreak,
+  computeLearningStreak,
   computeTaskCenterTelemetry,
   createInitialRun,
   deriveInvestorPersona,
@@ -278,5 +279,61 @@ describe("computeTaskCenterTelemetry（H3 学习护栏遥测）", () => {
     const run = createInitialRun("s1", "c1");
     run.actionLog = [];
     expect(computeTaskCenterTelemetry(run)).toMatchObject({ totalActions: 0, tradeShare: 0, guardrailHealthy: true });
+  });
+});
+
+describe("教学贷款上限（内测 rank5：防债务失控→净值为负）", () => {
+  it("总债务将超过 120,000 的贷款被拒绝，并给出教育性中文提示", () => {
+    const run = createInitialRun("s", "c", "试点", 1);
+    run.debt = 100_000;
+    expect(() => applySimulationAction(run, { type: "bank", action: "loan", amount: 30_000 })).toThrow(
+      /教学贷款有上限/,
+    );
+  });
+
+  it("上限内贷款正常记账：cash 与 debt 同增", () => {
+    const run = createInitialRun("s", "c", "试点", 1);
+    const beforeCash = run.cash;
+    const next = applySimulationAction(run, { type: "bank", action: "loan", amount: 20_000 });
+    expect(next.debt).toBe(20_000);
+    expect(next.cash).toBe(beforeCash + 20_000);
+  });
+});
+
+describe("computeLearningStreak（合规学习连续·直测，内测 rank12）", () => {
+  function runWithLearningRounds(rounds: number[], currentRound: number) {
+    const run = createInitialRun("s", "c", "试点", 1);
+    run.currentRound = currentRound;
+    run.actionLog = rounds.map((round, index) => ({
+      id: `lr-${index}`,
+      round,
+      type: "wealth_review" as const,
+      label: "复盘",
+      amount: 0,
+      timestamp: new Date(2026, 5, index + 1).toISOString(),
+    }));
+    return run;
+  }
+
+  it("连续段抵达当前回合：current=best=段长", () => {
+    expect(computeLearningStreak(runWithLearningRounds([1, 2, 3], 3))).toEqual({ current: 3, best: 3 });
+  });
+
+  it("断档后 current 归零、best 保留（防 UI 虚高）", () => {
+    expect(computeLearningStreak(runWithLearningRounds([1, 2], 5))).toEqual({ current: 0, best: 2 });
+  });
+
+  it("进行中回合宽限：末段到 currentRound-1 仍算 current", () => {
+    expect(computeLearningStreak(runWithLearningRounds([2, 3], 4))).toEqual({ current: 2, best: 2 });
+  });
+
+  it("advance/trade 不计入学习（口径与治本②一致）", () => {
+    const run = createInitialRun("s", "c", "试点", 1);
+    run.currentRound = 3;
+    run.actionLog = [
+      { id: "a1", round: 1, type: "advance" as const, label: "推进", amount: 0, timestamp: new Date(2026, 5, 1).toISOString() },
+      { id: "t1", round: 2, type: "trade" as const, label: "交易", amount: -100, timestamp: new Date(2026, 5, 2).toISOString() },
+    ];
+    expect(computeLearningStreak(run)).toEqual({ current: 0, best: 0 });
   });
 });
