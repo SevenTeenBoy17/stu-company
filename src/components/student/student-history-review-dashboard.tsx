@@ -394,9 +394,10 @@ export function StudentHistoryReviewDashboard({
           hint={`当前处在${payload.metrics.stageLabel}，适合先看曲线，再回头看动作。`}
         />
         {/* Hero number: 当前净值 is the key metric for this screen */}
-        <div className="rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
+        <div className="min-w-0 rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
           <p className="text-body-sm text-fg-muted">当前净值</p>
-          <p className="mt-3 text-hero-num tabular-nums text-fg-strong">
+          {/* 该卡处在 xl 四列窄格，长币种值用可收缩字号 + truncate，避免溢出叠到相邻卡。 */}
+          <p className="mt-3 truncate text-[1.75rem] font-extrabold leading-tight tracking-tight tabular-nums text-fg-strong">
             <MoneyText>{formatCurrency(payload.metrics.currentNetWorth)}</MoneyText>
           </p>
           <p className="mt-3 text-body-sm leading-6 text-fg-muted">

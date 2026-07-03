@@ -154,7 +154,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                   <Link
                     key={domain.key}
                     href={domain.href}
-                    className="group min-h-[188px] rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-4 transition hover:-translate-y-1 hover:bg-white/[0.1]"
+                    className="group min-h-[188px] min-w-0 rounded-[1.4rem] border border-white/10 bg-white/[0.06] p-4 transition hover:-translate-y-1 hover:bg-white/[0.1]"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="rounded-2xl bg-white/10 p-3 text-orange-200">
@@ -164,10 +164,12 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     </div>
                     <p className="mt-4 text-h3 text-white">{domain.label}</p>
                     <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-white/82">{domain.summary}</p>
-                    <div className="mt-4 rounded-2xl bg-slate-900/80 px-3 py-2">
+                    <div className="mt-4 min-w-0 rounded-2xl bg-slate-900/80 px-3 py-2">
                       <p className="text-caption text-white/78">{domain.metricLabel}</p>
-                      {/* Hero-level metric value per domain card */}
-                      <p className="mt-1 text-hero-num tabular-nums text-orange-200">{domain.metricValue}</p>
+                      {/* 域卡较窄（xl 四列）：用可收缩字号 + truncate，长币种值(¥120,100)不再溢出到相邻卡片。 */}
+                      <p className="mt-1 truncate text-[1.75rem] font-extrabold leading-tight tracking-tight tabular-nums text-orange-200">
+                        {domain.metricValue}
+                      </p>
                     </div>
                   </Link>
                 );

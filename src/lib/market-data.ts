@@ -7,7 +7,15 @@ import type {
   MarketWatchlistSymbol,
   TickerTapeItem,
 } from "@/lib/types";
-import { buildMarketBoardPayload, buildTickerTapeItems } from "@/lib/market-watchlist";
+import {
+  buildCategoryBoardPayload,
+  buildMarketBoardPayload,
+  buildTickerTapeItems,
+  getCategoryInstruments,
+  resolveCategoryInstrumentId,
+  resolveMarketCategory,
+  resolveMarketWatchlistSymbol,
+} from "@/lib/market-watchlist";
 
 export const marketAssets: MarketAsset[] = [
   {
@@ -850,6 +858,43 @@ export async function getMarketBoardPayload(
     // 当 AllTick 实时在线时传 undefined，让 normalizeCandles 用 AllTick 自己的序列合成蜡烛，
     // 保证蜡烛实体与折线同源；只有真正回退到 iTick 时才借用 iTick 的蜡烛（此时折线也来自 iTick）。
     klineCandles: liveAlltick ? undefined : itickSnapshot.selectedCandles,
+    staticInfo: snapshot.staticInfo,
+  });
+}
+
+// 多市场分类看板：美股沿用原多 provider 路径；A股/港股/基金走沧海日线，失败优雅回退教学池。
+export async function getCategoryBoardPayload(
+  category?: string | null,
+  symbol?: string | null,
+): Promise<MarketBoardPayload> {
+  const resolvedCategory = resolveMarketCategory(category);
+  const selectedId = resolveCategoryInstrumentId(resolvedCategory, symbol);
+
+  if (resolvedCategory === "us") {
+    return getMarketBoardPayload(resolveMarketWatchlistSymbol(selectedId));
+  }
+
+  const instruments = getCategoryInstruments(resolvedCategory).map((instrument) => ({
+    id: instrument.id,
+    kind: instrument.kind,
+    exchange: instrument.exchange,
+    ticker: instrument.ticker,
+    exchangeName: instrument.exchangeName,
+    currency: instrument.currency,
+  }));
+
+  const { fetchTsanghiCategorySnapshot } = await import("@/lib/tsanghi");
+  const snapshot = await fetchTsanghiCategorySnapshot(resolvedCategory, instruments, selectedId);
+
+  return buildCategoryBoardPayload(resolvedCategory, {
+    selectedSymbol: selectedId,
+    asOf: snapshot.asOf,
+    provider: snapshot.provider,
+    note: snapshot.note,
+    quotes: snapshot.quotes,
+    seriesBySymbol: snapshot.seriesBySymbol,
+    klineSeries: snapshot.selectedKline,
+    klineCandles: snapshot.selectedCandles,
     staticInfo: snapshot.staticInfo,
   });
 }

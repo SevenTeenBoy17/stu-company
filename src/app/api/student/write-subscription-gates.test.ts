@@ -12,7 +12,10 @@ vi.mock("@/lib/db/repo", () => ({
   getSimulationStateForUser: vi.fn(),
 }));
 vi.mock("@/lib/market-data", () => ({ getMarketBoardPayload: vi.fn() }));
-vi.mock("@/lib/market-watchlist", () => ({ resolveMarketWatchlistSymbol: vi.fn((symbol?: string | null) => symbol ?? "MU") }));
+vi.mock("@/lib/market-watchlist", () => ({
+  resolveMarketWatchlistSymbol: vi.fn((symbol?: string | null) => symbol ?? "MU"),
+  isMarketWatchlistSymbol: vi.fn(() => true),
+}));
 vi.mock("@/lib/student-watchlist", () => ({ buildStudentWatchlistPayload: vi.fn(() => ({ kind: "watchlist" })) }));
 vi.mock("@/lib/fund-lab", () => ({ buildFundLabPayload: vi.fn(() => ({ kind: "fund-lab" })) }));
 vi.mock("@/lib/opportunity", () => ({ buildOpportunityPayload: vi.fn(() => ({ kind: "opportunity" })) }));

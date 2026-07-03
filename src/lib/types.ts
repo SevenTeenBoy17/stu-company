@@ -13,6 +13,8 @@ export type MarketWatchlistSymbol =
   | "TSM";
 export type MarketQuoteSource = "tsanghi" | "itick" | "alltick" | "fallback";
 export type MarketDataProvider = "tsanghi" | "itick" | "alltick" | "hybrid" | "fallback";
+// 市场雷达分类：美股 / A股 / 港股 / 基金(ETF)。详见 src/lib/market-catalog.ts。
+export type MarketCategoryId = "us" | "cn" | "hk" | "fund";
 
 export type ModuleKey =
   | "equities"
@@ -546,7 +548,8 @@ export interface TutorRadarPayload {
 }
 
 export interface TickerTapeItem {
-  symbol: MarketWatchlistSymbol;
+  // 放宽到 string：美股仍是固定 union 值，新分类(A股/港股/基金)用裸 ticker 作 id。
+  symbol: string;
   code: string;
   name: string;
   companyName: string;
@@ -555,6 +558,7 @@ export interface TickerTapeItem {
   source: MarketQuoteSource;
   accentColor: string;
   monogram: string;
+  imageUrl?: string;
 }
 
 export interface MarketKlineCandle {
@@ -574,7 +578,7 @@ export interface MarketBoardMetric {
 }
 
 export interface MarketBoardStock {
-  symbol: MarketWatchlistSymbol;
+  symbol: string;
   code: string;
   name: string;
   companyName: string;
@@ -593,13 +597,15 @@ export interface MarketBoardStock {
   candles: MarketKlineCandle[];
   metrics: MarketBoardMetric[];
   facts: Array<{ label: string; value: string }>;
+  imageUrl?: string;
+  currency?: string;
 }
 
 export interface MarketBoardSector {
   id: string;
   label: string;
   changePercent: number;
-  leadSymbol: MarketWatchlistSymbol;
+  leadSymbol: string;
 }
 
 export interface MarketBoardContentCard {
@@ -611,14 +617,26 @@ export interface MarketBoardContentCard {
   accentColor: string;
 }
 
+export interface MarketCategoryTab {
+  id: MarketCategoryId;
+  label: string;
+  en: string;
+  blurb: string;
+  // 该分类默认选中标的 id —— 让前端切 Tab 时一次取数、无需先探测。
+  defaultSymbol: string;
+}
+
 export interface MarketBoardPayload {
   asOf: string;
   provider: MarketDataProvider;
   note: string;
+  // 当前分类 + 可切换的分类清单（驱动顶部 Tab）。默认 us 时与历史行为一致。
+  category: MarketCategoryId;
+  categories: MarketCategoryTab[];
   watchlist: TickerTapeItem[];
   selected: MarketBoardStock;
   marketSummary: Array<{
-    symbol: MarketWatchlistSymbol;
+    symbol: string;
     name: string;
     currentPrice: number;
     changePercent: number;

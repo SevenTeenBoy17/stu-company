@@ -24,12 +24,13 @@ import {
   X,
 } from "lucide-react";
 
+import Image from "next/image";
+
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
-import { resolveMarketWatchlistSymbol } from "@/lib/market-watchlist";
 import type { PeerHeatPayload } from "@/lib/peer-heat";
 import type { StudentWatchlistPayload } from "@/lib/student-watchlist";
-import type { MarketBoardPayload, MarketKlineCandle, MarketWatchlistSymbol } from "@/lib/types";
+import type { MarketBoardPayload, MarketCategoryId, MarketKlineCandle } from "@/lib/types";
 import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
@@ -147,9 +148,10 @@ export function StudentMarketBoard({
   const marketBoardRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
   const [payloadCache, setPayloadCache] = useState<Record<string, MarketBoardPayload>>({
-    [initialPayload.selected.symbol]: initialPayload,
+    [`${initialPayload.category}:${initialPayload.selected.symbol}`]: initialPayload,
   });
-  const [selectedSymbol, setSelectedSymbol] = useState<MarketWatchlistSymbol>(initialPayload.selected.symbol);
+  const [category, setCategory] = useState<MarketCategoryId>(initialPayload.category);
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialPayload.selected.symbol);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [studentWatchlist, setStudentWatchlist] = useState<StudentWatchlistPayload | null>(initialWatchlistPayload);
@@ -161,9 +163,17 @@ export function StudentMarketBoard({
   const [isPending, startTransition] = useTransition();
   const deferredSearch = useDeferredValue(search);
 
-  async function loadBoard(symbol: MarketWatchlistSymbol) {
+  // 自选观察 / 同伴热度是美股沙盘专属能力（与 12 轮经济沙盘的美股观察池绑定）。
+  const isUsCategory = category === "us";
+  // 切分类/标的后、新数据到达前，当前 payload 仍是旧分类的数据 → 用于过渡态降透明 + aria-busy。
+  const boardLoading = isPending || payload.category !== category;
+
+  const loadBoard = useCallback(async (cat: MarketCategoryId, symbol: string) => {
     try {
-      const response = await fetch(`/api/market/board?symbol=${symbol}`, { cache: "no-store" });
+      const response = await fetch(
+        `/api/market/board?category=${cat}&symbol=${encodeURIComponent(symbol)}`,
+        { cache: "no-store" },
+      );
       const nextPayload = (await response.json()) as MarketBoardPayload & { error?: string };
 
       if (!response.ok || nextPayload.error) {
@@ -171,16 +181,19 @@ export function StudentMarketBoard({
       }
 
       setPayload(nextPayload);
-      setPayloadCache((current) => ({ ...current, [symbol]: nextPayload }));
+      setPayloadCache((current) => ({
+        ...current,
+        [`${nextPayload.category}:${nextPayload.selected.symbol}`]: nextPayload,
+      }));
       setError(null);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "市场信息刷新失败。");
     }
-  }
+  }, []);
 
-  const loadStudentWatchlist = useCallback(async (symbol: MarketWatchlistSymbol) => {
+  const loadStudentWatchlist = useCallback(async (symbol: string) => {
     try {
-      const response = await fetch(`/api/student/watchlist?symbol=${symbol}`, { cache: "no-store" });
+      const response = await fetch(`/api/student/watchlist?symbol=${encodeURIComponent(symbol)}`, { cache: "no-store" });
       const nextPayload = (await response.json()) as { payload?: StudentWatchlistPayload; error?: string; message?: string };
       if (!response.ok || !nextPayload.payload) {
         throw new Error(nextPayload.message ?? "自选观察刷新失败，请稍后重试。");
@@ -206,7 +219,7 @@ export function StudentMarketBoard({
     }
   }, []);
 
-  async function updateWatchlist(action: "add" | "remove", symbol: MarketWatchlistSymbol = selectedSymbol) {
+  async function updateWatchlist(action: "add" | "remove", symbol: string = selectedSymbol) {
     setWatchlistPending(true);
     setWatchlistMessage(null);
     try {
@@ -237,13 +250,39 @@ export function StudentMarketBoard({
     }
   }
 
-  useEffect(() => {
-    void loadBoard(selectedSymbol);
-  }, [selectedSymbol]);
+  // 切到某个分类标的：先用本地缓存秒切（若有），再由 effect 拉取真实日线。
+  const selectSymbol = useCallback(
+    (symbol: string) => {
+      const cached = payloadCache[`${category}:${symbol}`];
+      if (cached) setPayload(cached);
+      startTransition(() => setSelectedSymbol(symbol));
+    },
+    [category, payloadCache, startTransition],
+  );
+
+  // 切分类：用 Tab 自带 defaultSymbol，一次取数无需先探测。
+  const selectCategory = useCallback(
+    (tab: { id: MarketCategoryId; defaultSymbol: string }) => {
+      if (tab.id === category && selectedSymbol === tab.defaultSymbol) return;
+      setSearch("");
+      // 切分类时清掉上一分类残留的自选/同伴热度报错，避免在非美股分类误显。
+      setWatchlistMessage(null);
+      setPeerHeatError(null);
+      const cached = payloadCache[`${tab.id}:${tab.defaultSymbol}`];
+      if (cached) setPayload(cached);
+      setCategory(tab.id);
+      startTransition(() => setSelectedSymbol(tab.defaultSymbol));
+    },
+    [category, selectedSymbol, payloadCache, startTransition],
+  );
 
   useEffect(() => {
-    void loadStudentWatchlist(selectedSymbol);
-  }, [loadStudentWatchlist, selectedSymbol]);
+    void loadBoard(category, selectedSymbol);
+  }, [category, selectedSymbol, loadBoard]);
+
+  useEffect(() => {
+    if (isUsCategory) void loadStudentWatchlist(selectedSymbol);
+  }, [isUsCategory, loadStudentWatchlist, selectedSymbol]);
 
   useEffect(() => {
     void loadPeerHeat();
@@ -251,11 +290,11 @@ export function StudentMarketBoard({
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void loadBoard(selectedSymbol);
+      void loadBoard(category, selectedSymbol);
       void loadPeerHeat();
     }, MARKET_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [loadPeerHeat, selectedSymbol]);
+  }, [loadBoard, loadPeerHeat, category, selectedSymbol]);
 
   const filteredWatchlist = useMemo(() => {
     const keyword = deferredSearch.trim().toLowerCase();
@@ -381,6 +420,40 @@ export function StudentMarketBoard({
   return (
     <div ref={marketBoardRef} className="space-y-6 pb-24">
       <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+        <div className="mb-5">
+          <div role="group" aria-label="选择市场分类" className="flex flex-wrap items-center gap-2">
+            <span className="bz-eyebrow mr-1 self-center">Markets</span>
+            {payload.categories.map((tab) => {
+              const activeTab = tab.id === category;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onPointerEnter={handleMotionEnter}
+                  onPointerLeave={handleMotionLeave}
+                  onClick={() => selectCategory(tab)}
+                  aria-pressed={activeTab}
+                  data-motion-button
+                  className={cn(
+                    "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-body-sm font-semibold transition-colors will-change-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500",
+                    activeTab
+                      ? "border-orange-400 bg-orange-100 text-orange-900 shadow-[0_12px_30px_rgba(240,138,56,0.22)]"
+                      : "border-slate-200 bg-white text-fg-muted hover:border-orange-300 hover:text-orange-700",
+                  )}
+                >
+                  {tab.label}
+                  <span className={cn("text-caption font-semibold", activeTab ? "text-orange-800" : "text-fg-muted")}>
+                    {tab.en}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-body-sm text-fg-muted">
+            {payload.categories.find((tab) => tab.id === category)?.blurb}
+            {isUsCategory ? "" : " · 真实日线收盘数据；自选记录与同伴热度仅美股开放。"}
+          </p>
+        </div>
         <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
           <div>
             <p className="bz-eyebrow">Market Radar</p>
@@ -400,7 +473,13 @@ export function StudentMarketBoard({
           </div>
 
           {filteredWatchlist.length > 0 ? (
-            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <div
+              aria-busy={boardLoading}
+              className={cn(
+                "grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 transition-opacity",
+                boardLoading && "opacity-60",
+              )}
+            >
             {filteredWatchlist.map((item) => {
               const active = item.symbol === selectedSymbol;
               return (
@@ -409,11 +488,7 @@ export function StudentMarketBoard({
                   type="button"
                   onPointerEnter={handleMotionEnter}
                   onPointerLeave={handleMotionLeave}
-                  onClick={() => {
-                    const cached = payloadCache[item.symbol];
-                    if (cached) setPayload(cached);
-                    startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
-                  }}
+                  onClick={() => selectSymbol(item.symbol)}
                   data-motion-card
                   className={cn(
                     "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200 will-change-transform",
@@ -536,9 +611,7 @@ export function StudentMarketBoard({
                         key={item.symbol}
                         type="button"
                         onClick={() => {
-                          const cached = payloadCache[item.symbol];
-                          if (cached) setPayload(cached);
-                          startTransition(() => setSelectedSymbol(resolveMarketWatchlistSymbol(item.symbol)));
+                          selectSymbol(item.symbol);
                           setWatchReason(`${item.name}：${item.concept}值得观察，我想比较它的热度和风险是否同步。`);
                         }}
                         className="rounded-full border border-white bg-white px-4 py-2 text-body-sm font-semibold text-fg-muted shadow-sm transition-colors hover:border-orange-300 hover:text-orange-700"
@@ -558,19 +631,25 @@ export function StudentMarketBoard({
               </div>
               <p className="mt-3 text-body-sm leading-7 text-white/70">
                 当前：{payload.selected.name}（{payload.selected.symbol}）
+                {isUsCategory ? "" : " · 自选记录仅美股开放，切到「美股」即可保存观察理由。"}
               </p>
               <textarea
                 value={watchReason}
                 onChange={(event) => setWatchReason(event.target.value)}
                 maxLength={120}
+                aria-label="观察理由"
                 placeholder="写一句观察理由，例如：AI 服务器需求强，但短期涨幅较快，需要比较板块是否共振。"
                 className="mt-4 min-h-28 w-full resize-none rounded-[1.25rem] border border-white/10 bg-white/8 p-4 text-body-sm leading-7 text-white outline-none placeholder:text-white/70 focus:border-orange-300/70"
               />
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  disabled={watchlistPending}
-                  onClick={() => void updateWatchlist(selectedInStudentWatchlist ? "remove" : "add")}
+                  disabled={watchlistPending || !isUsCategory}
+                  aria-label={isUsCategory ? undefined : "自选观察仅在美股分类开放"}
+                  onClick={() => {
+                    if (!isUsCategory) return;
+                    void updateWatchlist(selectedInStudentWatchlist ? "remove" : "add");
+                  }}
                   className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand px-4 text-body-sm font-semibold text-fg-default shadow-[0_16px_34px_rgba(240,138,56,0.28)] transition-colors hover:bg-brand-hover disabled:opacity-55"
                 >
                   {watchlistPending ? (
@@ -580,7 +659,7 @@ export function StudentMarketBoard({
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
-                  {selectedInStudentWatchlist ? "移除自选" : "加入自选"}
+                  {!isUsCategory ? "仅美股支持" : selectedInStudentWatchlist ? "移除自选" : "加入自选"}
                 </button>
                 <button
                   type="button"
@@ -661,6 +740,21 @@ export function StudentMarketBoard({
                 style={{ backgroundColor: `${payload.selected.accentColor}28` }}
               />
               <div className="relative z-10">
+                {payload.selected.imageUrl ? (
+                  <div className="relative mb-5 h-32 w-full overflow-hidden rounded-[1.5rem] border border-white/10 sm:h-40">
+                    <Image
+                      src={payload.selected.imageUrl}
+                      alt={`${payload.selected.sectorGroup}行业示意图`}
+                      fill
+                      sizes="(max-width: 640px) calc(100vw - 2.5rem), (max-width: 1280px) calc(100vw - 3.5rem), 680px"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/15 to-transparent" />
+                    <span className="absolute bottom-3 left-4 rounded-full border border-white/15 bg-slate-950/55 px-3 py-1 text-caption font-semibold text-white/85 backdrop-blur">
+                      {payload.selected.sectorGroup} · 行业示意
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="bz-eyebrow-inverse">AI / Tech Watchlist</p>
