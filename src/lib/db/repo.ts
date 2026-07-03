@@ -827,6 +827,19 @@ async function selectRunForUser(executor: DbExecutor, userId: string) {
   return row ? toRun(row) : null;
 }
 
+// 行锁变体（内测 rank7）：写事务内读 run 必须 FOR UPDATE 锁行，否则两个并发写
+// （如快速连点交易 + 领奖）读到同一旧行、后写覆盖前写（丢失更新 TOCTOU）。
+// 镜像 familyMembers 名额检查 / 支付履约已有的 .for("update") 模式。
+async function selectRunForUserForUpdate(tx: DbExecutor, userId: string) {
+  const [row] = await tx
+    .select()
+    .from(scenarioRuns)
+    .where(eq(scenarioRuns.userId, userId))
+    .limit(1)
+    .for("update");
+  return row ? toRun(row) : null;
+}
+
 async function selectClassroomById(executor: DbExecutor, classroomId?: string) {
   if (!classroomId) return null;
   const [row] = await executor.select().from(classrooms).where(eq(classrooms.id, classroomId)).limit(1);
@@ -1288,7 +1301,7 @@ export async function registerUserByInvite(input: {
             .set({ parentUserId: newUser.id })
             .where(eq(studentParentLinks.id, invite.studentLinkId))
             .returning();
-          const linkedRun = link ? await selectRunForUser(tx, link.studentUserId) : null;
+          const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
 
           if (link && linkedRun) {
             const report = buildGrowthReport(linkedRun, link.studentUserId, newUser.id);
@@ -1481,7 +1494,7 @@ export async function createRoundPredictionForUser(
     "createRoundPredictionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
         if (run.currentRound >= run.totalRounds) {
           throw new Error("本局已经结束，不能继续提交涨跌预测。");
@@ -1672,7 +1685,7 @@ export async function applyActionForUser(
     "applyActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = applySimulationAction(run, input);
@@ -1689,7 +1702,7 @@ export async function applyEventChoiceForUser(userId: string, choiceId: string) 
     "applyEventChoiceForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = applyEventChoice(run, choiceId);
@@ -1944,7 +1957,7 @@ export async function replayRunForUser(userId: string) {
     "replayRunForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         // Off-season practice seed (random) so a replay gives fresh variety and
@@ -1969,7 +1982,7 @@ export async function advanceRunForUser(userId: string) {
     "advanceRunForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = executeAutoInvestForRound(advanceSimulationRun(run));
@@ -1992,7 +2005,7 @@ export async function createAutoInvestPlanForUser(userId: string, input: Partial
     "createAutoInvestPlanForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = createAutoInvestPlan(run, input);
@@ -2009,7 +2022,7 @@ export async function cancelAutoInvestPlanForUser(userId: string) {
     "cancelAutoInvestPlanForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const updated = cancelAutoInvestPlan(run);
@@ -2026,7 +2039,7 @@ export async function applyLifeCashflowChallengeForUser(userId: string, input: L
     "applyLifeCashflowChallengeForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = applyLifeCashflowChallenge(run, input);
@@ -2043,7 +2056,7 @@ export async function applyCreditLabActionForUser(userId: string, input: CreditL
     "applyCreditLabActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = applyCreditLabAction(run, input);
@@ -2060,7 +2073,7 @@ export async function claimQuestRewardForUser(userId: string, questId: string) {
     "claimQuestRewardForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const rows = await tx
@@ -2085,7 +2098,7 @@ export async function claimSeasonRewardForUser(userId: string, challengeId: stri
     "claimSeasonRewardForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = claimSeasonChallengeReward(run, challengeId);
@@ -2102,7 +2115,7 @@ export async function createOpportunityNoteForUser(userId: string, input: Opport
     "createOpportunityNoteForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createOpportunityNote(run, input);
@@ -2119,7 +2132,7 @@ export async function createFundLabActionForUser(userId: string, input: FundLabA
     "createFundLabActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createFundLabAction(run, input);
@@ -2136,7 +2149,7 @@ export async function createGoalAccountActionForUser(userId: string, input: Goal
     "createGoalAccountActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createGoalAccountAction(run, input);
@@ -2153,7 +2166,7 @@ export async function createProtectionUmbrellaActionForUser(userId: string, inpu
     "createProtectionUmbrellaActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createProtectionUmbrellaAction(run, input);
@@ -2170,7 +2183,7 @@ export async function createStudentWatchlistActionForUser(userId: string, input:
     "createStudentWatchlistActionForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createStudentWatchlistAction(run, input);
@@ -2187,7 +2200,7 @@ export async function createWealthReviewForUser(userId: string, input: WealthRev
     "createWealthReviewForUser",
     async (db) =>
       db.transaction(async (tx) => {
-        const run = await selectRunForUser(tx, userId);
+        const run = await selectRunForUserForUpdate(tx, userId);
         if (!run) throw new Error("未找到对应的学生沙盘。");
 
         const outcome = createWealthReview(run, input);
@@ -2921,7 +2934,7 @@ export async function updateAdminManagedUser(
         }
 
         if (nextRole === "student" && classroomId) {
-          const existingRun = await selectRunForUser(tx, userId);
+          const existingRun = await selectRunForUserForUpdate(tx, userId);
           if (!existingRun) {
             await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(userId, classroomId)));
           }

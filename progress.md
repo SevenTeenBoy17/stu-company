@@ -3704,3 +3704,13 @@ rank6 领取失败提示就近化、rank7 claim 事务 FOR UPDATE、rank11/12 P3
   loan 上限 2 例 + 回撤钳制 1 例。
 Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 630/630 / build 61 页 ✓ / 水合 6 载 0 错实证。
 剩余：rank3 跨 5 路由 attributes 级水合(独立调查) / rank4 门控判断题(用户拍板) / rank7 FOR UPDATE(下批)。
+
+## 2026-07-03 三轮内测收尾批（rank3 闭环 + rank7 行锁）
+
+- rank3 跨路由 attributes 水合·关闭为 dev-only 伪缺陷：热态 dev 复测 / = 0 错；决定性实验
+  `next build`+`next start :8910` 冷载全部 6 条受影响路由（含角色登录）= hydration issues 0。
+  根因定性：dev 按需编译竞态（并发 e2e 时 SSR html 与客户端 bundle 不同构建代），生产不存在该机制。
+- rank7 丢失更新防护：新增 selectRunForUserForUpdate（FOR UPDATE，镜像仓库既有 3 处锁模式），
+  一次性切换全部 19 个写事务调用点（applyAction/事件/推进/领奖/领卡/理财写库等），只读路径不锁。
+Gates：tsc ✓ / lint 0 警告 / repo 域 39/39 / 全量 vitest 94 文件 630/630。
+问题清单终态：12 项中 10 修复/闭环，剩 rank4（理财 4 写库路由门控·产品判断题，等用户拍板）。
