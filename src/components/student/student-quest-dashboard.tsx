@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
@@ -427,6 +427,18 @@ export function StudentQuestDashboard({
   const [flippedQuestIds, setFlippedQuestIds] = useState<ReadonlySet<string>>(() => new Set());
   const questFlipButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const questBackActionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // 成功横幅 8s 自动消退（评审 nudge-3）：live region 容器常驻，仅内容清空；新结果重置计时。
+  useEffect(() => {
+    if (!claimResult) return;
+    const timer = window.setTimeout(() => setClaimResult(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [claimResult]);
+  useEffect(() => {
+    if (!drawResult) return;
+    const timer = window.setTimeout(() => setDrawResult(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [drawResult]);
 
   const { contextSafe } = useGSAP(
     () => {
@@ -856,6 +868,7 @@ export function StudentQuestDashboard({
             <div
               role="status"
               aria-live="polite"
+              aria-atomic="true"
               data-testid="quest-claim-result"
               className={cn(claimResult && "mt-5 rounded-[1.35rem] border border-brand/25 bg-brand/12 p-4")}
             >
@@ -871,6 +884,7 @@ export function StudentQuestDashboard({
             <div
               role="status"
               aria-live="polite"
+              aria-atomic="true"
               data-testid="quest-draw-result"
               className={cn(drawResult && "mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.08] p-4")}
             >
@@ -1340,15 +1354,22 @@ export function StudentQuestDashboard({
                     })
                   ) : (
                     <p className="rounded-[1.2rem] border border-white/10 bg-white/[0.07] p-4 text-sm font-semibold leading-6 text-white/62">
-                      当前筛选下只有这个任务。切换上方分类可以查看其他锦囊。
+                      {filter === "done"
+                        ? "这里还没有已完成的任务——翻开一张任务锦囊，完成后就会出现在这里。"
+                        : filter === "watch"
+                          ? "当前没有需要观察的任务，保持这个节奏就很好。"
+                          : "当前筛选下只有这个任务。切换上方分类可以查看其他锦囊。"}
                     </p>
                   )}
                 </div>
+                {/* 任务少于 4 个时列表不可滚，滚动提示反成误导（评审 ux-retention-5）。 */}
+                {visibleQuests.length > 3 ? (
                 <div className="mt-2 flex justify-center">
                   <span data-testid="quest-queue-scroll-hint" className="rounded-full border border-white/12 bg-white/12 px-3 py-1 text-[11px] font-semibold text-white/72 shadow-sm backdrop-blur-md">
                     向下滑动查看更多
                   </span>
                 </div>
+                ) : null}
               </div>
             </aside>
           </div>
@@ -1461,11 +1482,16 @@ export function StudentQuestDashboard({
           onClose={() => setRewardModalItem(null)}
           onViewCollection={() => {
             setRewardModalItem(null);
-            if (typeof document !== "undefined") {
-              document
-                .querySelector('[data-testid="quest-card-collection"]')
-                ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
-            }
+            if (typeof window === "undefined") return;
+            // iOS Safari：body 滚动锁未释放时 scrollIntoView 会被静默吞掉（评审 mobile-2），
+            // 双 rAF 等关闭后的布局帧再滚。
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                document
+                  .querySelector('[data-testid="quest-card-collection"]')
+                  ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
+              });
+            });
           }}
         />
       ) : null}

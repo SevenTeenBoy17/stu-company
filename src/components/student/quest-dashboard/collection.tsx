@@ -24,6 +24,12 @@ import { questBoxThemeFor, questBoxThemes, stableQuestThemeIndex, themeForCollec
 
 gsap.registerPlugin(useGSAP);
 
+// 收藏编号 = 牌库固定位次（01-12 唯一）；旧的 id 哈希取模会让 12 张卡出现 5 对撞号（评审 visual-2）。
+function cardDeckNumber(cardId: string) {
+  const index = questCardDeck.findIndex((card) => card.id === cardId);
+  return String((index >= 0 ? index : questCardDeck.length) + 1).padStart(2, "0");
+}
+
 // 学习工具组进度（doc §2.2）：把「N 张已收藏」升级为有完成度的三套系进度，
 // 只表达学习路径，不使用数量缺口、完成套系等收集压力词；禁倒计时词。
 export function CollectionMeter({ items }: { items: QuestCardCollectionView[] }) {
@@ -101,7 +107,7 @@ export function QuestCardCollection({ items }: { items: QuestCardCollectionView[
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {items.map((item) => {
             const cardTheme = questBoxThemes[stableQuestThemeIndex(item.card.id)];
-            const cardNo = String((stableQuestThemeIndex(item.card.id) % 99) + 1).padStart(2, "0");
+            const cardNo = cardDeckNumber(item.card.id);
             const questTitle = typeof item.meta?.questTitle === "string" ? item.meta.questTitle : "任务奖励";
             return (
               <article
@@ -171,7 +177,7 @@ export function MascotRewardModal({
   const cardRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const theme = themeForCollectionItem(item, quests);
-  const number = String((stableQuestThemeIndex(item.card.id) % 99) + 1).padStart(2, "0");
+  const number = cardDeckNumber(item.card.id);
   const characterSrc = `${questWorldAssetBase}/characters/${theme.asset}.webp`;
 
   useModalA11y(cardRef, onClose, closeRef);

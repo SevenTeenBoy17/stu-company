@@ -3620,3 +3620,14 @@ shared←themes←card-art←{mission-cards,collection}←main，无环；对外
 （32 个未用导入全剪）。
 Gates：tsc ✓ / lint 0 警告 ✓ / 组件+quests 20/20 / 全量 vitest 92 文件 617/617（零 flake）/
 build 61 页 ✓ / gameflow e2e 6/6 (29.4s)。f42e811（焦点 4s 加固）CI 六项全绿在先。
+
+## 2026-07-03 批次 7：评审已验证 quick-win 清尾（5 项）
+
+① visual-2 收藏编号撞号：id 哈希%99（12 卡 5 对共号）→ 牌库固定位次 01-12 唯一（cardDeckNumber）。
+② nudge-3 成功横幅永久滞留：claimResult/drawResult 8s 自动消退（live region 容器常驻仅清内容），
+   两个 live region 补 aria-atomic="true" 整段播报。
+③ ux-retention-4 空态失真：「只有这个任务」在 done/watch 零结果筛选下改为筛选感知文案
+   （done→"完成后就会出现在这里"，watch→正向肯定）。
+④ mobile-2 iOS 查看卡库滚动被吞：双 rAF 等 body 滚动锁释放后再 scrollIntoView。
+⑤ ux-retention-5 滚动提示误导：任务 ≤3 个时不再显示「向下滑动查看更多」。
+Gates：tsc ✓ / lint 0 警告 / 组件+quests 20/20 / gameflow e2e 6/6 (24.0s)。
