@@ -206,7 +206,7 @@ export function RankBoard({
             const champion = entry.rank === 1;
             return (
               <li
-                key={entry.userId}
+                key={entry.rank}
                 data-motion-reveal
                 data-motion-card
                 data-motion-delay={Math.min(index * 0.04, 0.4)}

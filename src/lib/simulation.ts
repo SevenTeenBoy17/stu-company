@@ -47,6 +47,9 @@ type SimulationActionInput =
     };
 
 export const STARTING_CASH = 120_000;
+// 教学债务上限 = 起始资金 1 倍。贷款闸门与回合复利都封顶到它，
+// 使「总债务不超过 12 万」的承诺在利息滚动后依旧成立（itest4 R3 P3）。
+const TEACHING_DEBT_CAP = 120_000;
 const PROPERTY_UNIT_PRICE = 24_000;
 
 function getRound(round: number): MarketRound {
@@ -431,7 +434,6 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     if (action.action === "loan") {
       // 内测 rank5：贷款无上限会让债务复利滚到净值为负、回撤显示 >100%，误导学生。
       // 教学上限 = 总债务不超过起始资金 1 倍（120,000）——杠杆本身是教学点，失控不是。
-      const TEACHING_DEBT_CAP = 120_000;
       if (nextRun.debt + amount > TEACHING_DEBT_CAP) {
         throw new Error(
           `教学贷款有上限：总债务不能超过 ￥${TEACHING_DEBT_CAP.toLocaleString("zh-CN")}（起始资金的 1 倍）。先偿还部分债务，再考虑新的杠杆。`,
@@ -587,7 +589,8 @@ export function advanceSimulationRun(run: ScenarioRun) {
 
   const currentRound = getRound(nextRun.currentRound);
   nextRun.savings = Math.round(nextRun.savings * (1.012 + currentRound.liquidityBoost / 100));
-  nextRun.debt = Math.round(nextRun.debt * 1.018);
+  // 利息滚动后仍封顶教学上限——否则复利会把债务推过 12 万，回撤显示 >100% 误导学生。
+  nextRun.debt = Math.min(TEACHING_DEBT_CAP, Math.round(nextRun.debt * 1.018));
   nextRun.currentRound += 1;
   nextRun.eventHistory.unshift(
     eventIdForRound(nextRun.eventTimeline, nextRun.currentRound, getRound(nextRun.currentRound).eventId),

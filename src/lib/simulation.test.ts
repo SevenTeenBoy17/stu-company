@@ -216,6 +216,22 @@ describe("buildSeasonLeaderboard (global weekly season)", () => {
     run = advanceSimulationRun(run);
     expect(run.netWorth).toBe(run.snapshots.at(-1)?.netWorth);
   });
+
+  // itest4 R3 P3 回归锁：贷款闸门封顶 12 万，但回合复利(×1.018)此前不再封顶 →
+  // 债务可越过上限，回撤显示 >100% 误导学生。max loan 后连推所有回合，债务始终 ≤ 上限。
+  it("keeps total debt at/under the teaching cap even after round-over-round interest compounding", () => {
+    let run = createInitialRun("u-debt", "c", "x", 1);
+    const TEACHING_DEBT_CAP = 120_000;
+    // Borrow to the cap.
+    run = applySimulationAction(run, { type: "bank", action: "loan", amount: TEACHING_DEBT_CAP });
+    expect(run.debt).toBeLessThanOrEqual(TEACHING_DEBT_CAP);
+    expect(run.debt).toBeGreaterThan(0);
+    // Advance through the rest of the game; interest must never push debt past the cap.
+    for (let i = run.currentRound; i < 12; i += 1) {
+      run = advanceSimulationRun(run);
+      expect(run.debt).toBeLessThanOrEqual(TEACHING_DEBT_CAP);
+    }
+  });
 });
 
 describe("investor persona (premium deep report)", () => {

@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "next-env.d.ts",
+    // 会话/内测临时产物（同 .gitignore /.tmp/）——本地 scratch 脚本不应触发 lint。
+    ".tmp/**",
   ]),
   // C2 guard: app routes and the shared assistant context must go through the
   // DB adapter (@/lib/db/repo), never the in-memory store directly. The store

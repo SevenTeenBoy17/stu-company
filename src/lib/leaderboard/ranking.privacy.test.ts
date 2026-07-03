@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { rankLeaderboard, type RankScope, type RankSnapshot, type Viewer } from "./ranking";
+import {
+  rankLeaderboard,
+  viewerPrivateRanks,
+  type RankScope,
+  type RankSnapshot,
+  type Viewer,
+} from "./ranking";
 
 // TEST-STRATEGY §4 R7: adversarial privacy. Complements ranking.test.ts with the
 // two leak modes AI implementations most often get wrong:
@@ -90,5 +96,39 @@ describe("ranking privacy — adversarial no-leak (R7)", () => {
     });
     expect(total).toBe(10); // hidden excluded from the count
     expect(entries.map((e) => e.rank)).toEqual([5, 6, 7, 8]);
+  });
+
+  // itest4 R3 P1 回归锁：个人卡「私有名次」必须与榜单「可见名次」在同一可见集上一致，
+  // 否则 卡名次 − 榜名次 = 上方隐身玩家数，反推去匿名。此前 viewerPrivateRanks 把隐身
+  // 玩家计入分母，导致公开玩家两值不等而泄露。
+  it("public viewer's private card rank == board rank even when hidden players rank above (no hidden-count leak)", () => {
+    const data = [
+      snap({ userId: "ghostA", power: 1800, visibility: "hidden" }),
+      snap({ userId: "ghostB", power: 1700, visibility: "hidden" }),
+      snap({ userId: "top", power: 1600 }),
+      snap({ userId: "me", power: 1400 }), // public viewer, 2 hidden players above
+      snap({ userId: "low", power: 900 }),
+    ];
+    const boardRank = rankLeaderboard(data, "nation", viewer, { pageSize: 1 }).viewerRank;
+    const cardRanks = viewerPrivateRanks(data, viewer);
+    // Board sees only {top, me, low} → me is #2. Card must agree → difference is 0, nothing leaks.
+    expect(boardRank).toBe(2);
+    expect(cardRanks.nation).toBe(2);
+    expect(cardRanks.nation).toBe(boardRank);
+  });
+
+  it("a hidden viewer still gets a board-consistent card rank (self counted, other hidden excluded)", () => {
+    const data = [
+      snap({ userId: "top", power: 1600 }),
+      snap({ userId: "ghost", power: 1500, visibility: "hidden" }),
+      snap({ userId: "me", power: 1400, visibility: "hidden" }), // hidden viewer
+      snap({ userId: "low", power: 900 }),
+    ];
+    const meViewer: Viewer = { userId: "me", schoolId: "s1", cityCode: "5101", provinceCode: "51" };
+    // Hidden viewer is absent from the board (viewerRank undefined) — nothing to compare against.
+    expect(rankLeaderboard(data, "nation", meViewer, { pageSize: 1 }).viewerRank).toBeUndefined();
+    // Card ranks the hidden viewer among visible players + self only (ghost excluded):
+    // {top(1600), me(1400), low(900)} → me is #2, NOT #3 (which would count ghost).
+    expect(viewerPrivateRanks(data, meViewer).nation).toBe(2);
   });
 });

@@ -323,13 +323,19 @@ const WRITE_FNS = new Set<string>([
   "upsertLeaderboardSnapshot", "upsertRankProfile", "findOrCreateSchool", "markModuleComplete",
   "markModuleQuizPassed",
   "upsertRiskProfile",
-  "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessage",
+  // AI history persists via appendAiMessages (plural); appendAiMessage is a thin
+  // wrapper that never enters withDb itself, so the DB-write key is the plural.
+  "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessages",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
   "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
   "upsertAppSetting", "createAutoInvestPlanForUser", "cancelAutoInvestPlanForUser", "applyLifeCashflowChallengeForUser",
   "claimQuestRewardForUser", "claimSeasonRewardForUser", "applyCreditLabActionForUser",
+  // 理财 2.0 写库函数（每个都 tx.update(scenarioRuns)）：DB 故障必须冒泡，不得静默落内存
+  // （itest4 R3 P1：这 6 个此前漏登记，ALLOW_MEMORY_FALLBACK 开启时会假成功+丢数据）。
+  "createOpportunityNoteForUser", "createFundLabActionForUser", "createGoalAccountActionForUser",
+  "createProtectionUmbrellaActionForUser", "createStudentWatchlistActionForUser", "createWealthReviewForUser",
 ]);
 
 async function withDbExecutor<T>(

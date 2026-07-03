@@ -365,8 +365,15 @@ export function CompanionAlbum({
           已点亮 {unlockedCount} 位伙伴
         </span>
       </div>
-      {/* §19.7 移动端：图鉴改双行横向流（44% 宽≈2.3 列露出），滑动距离减半；sm 起还原网格。 */}
-      <div className="mt-6 grid snap-x snap-mandatory grid-flow-col grid-rows-2 auto-cols-[44%] gap-3 overflow-x-auto pb-3 [&>*]:snap-start sm:snap-none sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-3 sm:grid-rows-none sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-6">
+      {/* §19.7 移动端：图鉴改双行横向流（44% 宽≈2.3 列露出），滑动距离减半；sm 起还原网格。
+          itest4 R3 P2：横滑容器内的 article 无可聚焦子元素 → 键盘用户无法滚动查看。给容器
+          tabIndex=0 + role/aria-label，使其可聚焦（原生滚动容器聚焦后方向键即可左右滚动）。 */}
+      <div
+        tabIndex={0}
+        role="group"
+        aria-label="伙伴图鉴，聚焦后可用方向键左右滚动查看"
+        className="mt-6 grid snap-x snap-mandatory grid-flow-col grid-rows-2 auto-cols-[44%] gap-3 overflow-x-auto pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand [&>*]:snap-start sm:snap-none sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-3 sm:grid-rows-none sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-6"
+      >
         {questBoxThemes.map((theme, index) => {
           const isUnlocked = unlocked.has(theme.id);
           const isRoadmap = !isUnlocked && !reachableIds.has(theme.id);

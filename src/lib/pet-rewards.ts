@@ -6,7 +6,8 @@ import { clamp } from "@/lib/utils";
 export type StudentPetMood = "curious" | "focused" | "celebrating" | "steady" | "alert";
 export type StudentPetStage = "seedling" | "scout" | "strategist";
 export type StudentPetRewardType = "badge" | "hat" | "aura" | "skin" | "trophy";
-export type StudentPetRewardRarity = "common" | "rare" | "epic";
+// 成就难度层级（非盲盒稀有度）——防射幸：不使用 common/rare/epic 抽卡词汇。
+export type StudentPetRewardTier = "basic" | "advanced" | "honor";
 
 export interface StudentPetVisual {
   shape: "coin" | "cap" | "shield" | "spark" | "leaf" | "crown" | "map";
@@ -19,7 +20,7 @@ export interface StudentPetReward {
   title: string;
   description: string;
   type: StudentPetRewardType;
-  rarity: StudentPetRewardRarity;
+  tier: StudentPetRewardTier;
   unlocked: boolean;
   source: string;
   unlockHint: string;
@@ -112,7 +113,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
   const opportunityCount = countActions(run, "opportunity") + countActions(run, "watchlist");
   const fundCount = countActions(run, "fund_lab") + countActions(run, "auto_invest");
   const lifeCount = countActions(run, "goal_account") + countActions(run, "protection");
-  const reviewCount = countActions(run, "wealth_review") + countActions(run, "advance");
+  const reviewCount = countActions(run, "wealth_review");
   const wealth = buildWealthSummary(run);
 
   return [
@@ -121,7 +122,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "布朗伙伴证",
       description: "第一次进入沙盘时点亮，代表你已经拥有自己的学习伙伴。",
       type: "badge",
-      rarity: "common",
+      tier: "basic",
       unlocked: true,
       source: "初始伙伴",
       unlockHint: "进入学生策略台即可点亮。",
@@ -132,7 +133,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "首单小帽",
       description: "完成第一笔模拟交易后解锁，用来提醒你每笔交易都要能解释。",
       type: "hat",
-      rarity: "common",
+      tier: "basic",
       unlocked: tradeCount > 0,
       source: "完成 1 笔模拟交易",
       unlockHint: "在策略台完成一笔买入或卖出。",
@@ -143,7 +144,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "现金流护盾",
       description: "完成现金流管理后解锁，提醒你先保留选择权，再追求成长。",
       type: "badge",
-      rarity: "rare",
+      tier: "advanced",
       unlocked: bankCount >= 2 || questClaims.some((entry) => entry.meta?.questId === "cash-management"),
       source: "现金流任务",
       unlockHint: "完成 2 次储蓄、提款、贷款或还款动作。",
@@ -154,7 +155,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "市场侦察地图",
       description: "记录观察池或机会单后解锁，让冲动交易先变成可复盘证据。",
       type: "aura",
-      rarity: "rare",
+      tier: "advanced",
       unlocked: opportunityCount > 0,
       source: "市场观察",
       unlockHint: "在市场信息或机会训练中写下 1 条观察。",
@@ -165,7 +166,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "组合研究叶",
       description: "完成基金/ETF 或定投训练后解锁，强化分散配置意识。",
       type: "skin",
-      rarity: "rare",
+      tier: "advanced",
       unlocked: fundCount > 0 || wealth.diversificationScore >= 72,
       source: "组合实验",
       unlockHint: "完成 1 次基金/ETF 实验，或让分散度达到 72。",
@@ -176,7 +177,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "生活规划星",
       description: "目标账户和保护伞训练会让宠物更稳，不只盯着短期涨跌。",
       type: "aura",
-      rarity: "rare",
+      tier: "advanced",
       unlocked: lifeCount >= 2,
       source: "生活理财",
       unlockHint: "完成目标账户与风险保护相关训练。",
@@ -187,7 +188,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "复盘小冠",
       description: "坚持回合复盘后解锁，代表你开始把输赢转化为经验。",
       type: "trophy",
-      rarity: "epic",
+      tier: "honor",
       unlocked: reviewCount >= 4 || seasonClaims.length > 0,
       source: "历史复盘 / 赛季挑战",
       unlockHint: "推进并复盘多个回合，或领取一次赛季奖励。",
@@ -198,7 +199,7 @@ function buildRewards(run: ScenarioRun, learning: LearningProgressSummary): Stud
       title: "知识火种",
       description: "完成投教模块后点亮，让宠物的提示更偏向概念理解。",
       type: "aura",
-      rarity: "epic",
+      tier: "honor",
       unlocked: learning.completed >= 2,
       source: "投教课程",
       unlockHint: "完成至少 2 个课程模块。",

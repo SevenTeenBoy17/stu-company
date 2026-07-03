@@ -143,7 +143,7 @@ export function RankDashboard() {
           type="button"
           onClick={openEdit}
           disabled={openingEdit}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40 disabled:opacity-60"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40 disabled:opacity-60"
         >
           {openingEdit ? "正在打开…" : "编辑档案 / 隐私设置"}
         </button>

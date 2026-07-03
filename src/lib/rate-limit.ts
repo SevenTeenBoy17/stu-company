@@ -70,10 +70,32 @@ export function peekRateLimit(key: string, rawLimit: number): boolean {
   return bucket.count < limit;
 }
 
+/**
+ * Best-effort trusted client IP for anonymous rate-limit keys.
+ *
+ * SECURITY: the *leftmost* `X-Forwarded-For` segment is CLIENT-CONTROLLED — an
+ * attacker can rotate it every request to mint a fresh bucket, defeating the
+ * anonymous spray/flood limits (login-ip-fail, register, forgot/reset password,
+ * demo-login). Prefer the platform-injected `x-real-ip` (Vercel overwrites this
+ * with the true TCP peer and it cannot be forged through the proxy); fall back
+ * to the RIGHTMOST XFF segment (the hop appended by our trusted proxy), never the
+ * leftmost. Last resort `"anon"` (local/no-proxy) is a single shared bucket —
+ * still bounded, just coarse.
+ */
+export function clientIpFrom(request: Request): string {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((segment) => segment.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return "anon";
+}
+
 export function rateLimitKey(scope: string, sessionUserId: string | undefined, request: Request) {
   if (sessionUserId) return `${scope}:user:${sessionUserId}`;
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
-  return `${scope}:ip:${ip}`;
+  return `${scope}:ip:${clientIpFrom(request)}`;
 }
 
 /** Convenience: run rateLimit and produce a Chinese 429 message. */

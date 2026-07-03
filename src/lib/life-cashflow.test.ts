@@ -66,6 +66,22 @@ describe("life cashflow", () => {
     expect(outcome.payload.overview.emergencyFund).toBe(outcome.result.emergencyFundAfter);
   });
 
+  // itest4 R3 P1 回归锁：同回合重复执行会无限刷现金/净值→喂 power-score 刷战力榜。
+  // 第二次同回合 apply 必须抛错；推进回合后才允许再次执行。
+  it("rejects a second apply in the same round (anti net-worth farming), allows it after advancing", () => {
+    const run = createInitialRun("student-life-idem", "classroom-1");
+    const first = applyLifeCashflowChallenge(run, { planId: "balanced", insuranceId: "basic" });
+    expect(() =>
+      applyLifeCashflowChallenge(first.run, { planId: "balanced", insuranceId: "basic" }),
+    ).toThrow(/本回合已执行过生活账本/);
+
+    // A different round has no prior life_cashflow_challenge entry → allowed again.
+    const nextRoundRun = { ...first.run, currentRound: first.run.currentRound + 1 };
+    expect(() =>
+      applyLifeCashflowChallenge(nextRoundRun, { planId: "balanced", insuranceId: "basic" }),
+    ).not.toThrow();
+  });
+
   it("a fresh sandbox run is not trivially over-funded (#5 scale fix)", () => {
     const run = createInitialRun("student-life-5", "classroom-1");
     const payload = buildLifeCashflowPayload(run, "balanced", "basic", new Date("2026-06-01T00:00:00.000Z"));
