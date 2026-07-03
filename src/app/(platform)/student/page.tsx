@@ -15,6 +15,8 @@ export default async function StudentPage() {
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const initialState = await getSimulationStateForUser(user.id);
+  // 水合确定性：服务端一次性产生渲染时刻，供客户端首帧派生 payload 复用（rank2 根治）。
+  const renderedAt = new Date().toISOString();
   const needsOnboarding = !user.onboardingCompleted;
   const isSharedGuest = user.id === "guest-student" || user.email.toLowerCase() === "guest@brownzone.ai";
   const subState = resolveSubscriptionState(
@@ -36,7 +38,7 @@ export default async function StudentPage() {
         needsOnboarding={needsOnboarding}
         showUpgradeShortcut={isSharedGuest}
       >
-        <StudentSandbox initialState={initialState} />
+        <StudentSandbox initialState={initialState} renderedAt={renderedAt} />
       </StudentOnboardingGate>
     </PlatformLayout>
   );

@@ -672,6 +672,17 @@ export function StudentQuestDashboard({
     });
   }
 
+  // 内测 rank6：领取/抽卡按钮位于 mission-main 区，而错误 role=alert 在页顶 hero 侧栏，
+  // 移动端失败时用户看不到任何反馈。失败后把错误块滚入视野（复用 preferredScrollBehavior 惯例）。
+  function revealErrorBanner() {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector("[data-quest-error-anchor]")
+        ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
+    });
+  }
+
   async function drawQuestCard(questId: string) {
     const existing = collectionByQuestId.get(questId);
     if (existing) {
@@ -703,6 +714,7 @@ export function StudentQuestDashboard({
       return item;
     } catch (error) {
       setDrawError(error instanceof Error ? error.message : "学习卡领取失败，请稍后再试。");
+      revealErrorBanner();
       return null;
     } finally {
       setDrawingQuestId(null);
@@ -732,6 +744,7 @@ export function StudentQuestDashboard({
       await drawQuestCard(questId);
     } catch (error) {
       setClaimError(error instanceof Error ? error.message : "任务奖励领取失败，请稍后再试。");
+      revealErrorBanner();
     } finally {
       setClaimingQuestId(null);
     }
@@ -759,6 +772,7 @@ export function StudentQuestDashboard({
       setSeasonClaimResult(data.claimed);
     } catch (error) {
       setClaimError(error instanceof Error ? error.message : "赛季奖励领取失败，请稍后再试。");
+      revealErrorBanner();
     } finally {
       setClaimingSeason(false);
     }
@@ -909,12 +923,12 @@ export function StudentQuestDashboard({
               ) : null}
             </div>
             {claimError && (
-              <p role="alert" className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
+              <p role="alert" data-quest-error-anchor className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
                 {claimError}
               </p>
             )}
             {drawError && (
-              <p role="alert" className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
+              <p role="alert" data-quest-error-anchor className="mt-4 rounded-2xl bg-error-soft p-4 text-sm font-bold text-error">
                 {drawError}
               </p>
             )}
@@ -1386,7 +1400,12 @@ export function StudentQuestDashboard({
           </div>
         ) : (
           <p className="mt-6 rounded-[1.7rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-fg-muted">
-            该分类暂时没有任务，去完成更多沙盘动作来解锁吧。
+            {/* 内测 rank11：按筛选分流诚实空态——「解锁」暗示功能限制，对 done/watch 属误导。 */}
+            {filter === "done"
+              ? "这里还没有已完成的任务——翻开一张任务锦囊，完成后就会出现在这里。"
+              : filter === "watch"
+                ? "当前没有需要观察的任务，保持这个节奏就很好。"
+                : "该分类暂时没有任务，先去完成一次沙盘动作，任务会随行为出现。"}
           </p>
         )}
       </section>

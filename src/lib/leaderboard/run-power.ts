@@ -45,7 +45,8 @@ export function runToPowerInput(
   let maxDrawdownPct = 0;
   for (const s of snaps) {
     peak = Math.max(peak, s.netWorth);
-    if (peak > 0) maxDrawdownPct = Math.max(maxDrawdownPct, ((peak - s.netWorth) / peak) * 100);
+    // 回撤按定义封顶 100%（净值为负的极端杠杆局不应产生 >100% 的无意义读数）。
+    if (peak > 0) maxDrawdownPct = Math.min(100, Math.max(maxDrawdownPct, ((peak - s.netWorth) / peak) * 100));
   }
 
   return {

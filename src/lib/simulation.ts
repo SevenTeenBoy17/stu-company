@@ -429,6 +429,14 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     }
 
     if (action.action === "loan") {
+      // 内测 rank5：贷款无上限会让债务复利滚到净值为负、回撤显示 >100%，误导学生。
+      // 教学上限 = 总债务不超过起始资金 1 倍（120,000）——杠杆本身是教学点，失控不是。
+      const TEACHING_DEBT_CAP = 120_000;
+      if (nextRun.debt + amount > TEACHING_DEBT_CAP) {
+        throw new Error(
+          `教学贷款有上限：总债务不能超过 ￥${TEACHING_DEBT_CAP.toLocaleString("zh-CN")}（起始资金的 1 倍）。先偿还部分债务，再考虑新的杠杆。`,
+        );
+      }
       nextRun.cash += amount;
       nextRun.debt += amount;
       appendAction(nextRun, {
