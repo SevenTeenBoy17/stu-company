@@ -17,8 +17,8 @@ if (!KEY) {
   process.exit(2);
 }
 const ENDPOINTS = [
-  "https://gpt-agent.cc/v1/images/generations",
-  "https://gpt-agent.cc/v1/images/generations", // retry same host
+  "https://api.llm-token.cn/v1/images/generations", // 国内低延迟主线（2026-07 起推荐）
+  "https://gpt-agent.cc/v1/images/generations", // 旧入口作跨域备线
 ];
 const SIZES = ["1536x1024", "1024x1024"]; // prefer 3:2 banner, fall back to square
 
