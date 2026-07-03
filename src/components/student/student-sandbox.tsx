@@ -25,7 +25,7 @@ import { buildStudentPetPayload } from "@/lib/pet-rewards";
 import { buildPortfolioIntel } from "@/lib/portfolio-intel";
 import { buildStudentHomeHubPayload } from "@/lib/student-service-map";
 import type { AdaptiveEvent } from "@/lib/adaptive-events";
-import { buildPersonaShareText, computeStreak } from "@/lib/simulation";
+import { buildPersonaShareText, computeLearningStreak } from "@/lib/simulation";
 import { buildTutorRadarPayload } from "@/lib/tutor-radar";
 import type {
   ActionLog,
@@ -140,7 +140,7 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
     [state, tradeForm.assetId],
   );
   const streak = useMemo(
-    () => (state ? computeStreak(state.run) : { current: 0, best: 0 }),
+    () => (state ? computeLearningStreak(state.run) : { current: 0, best: 0 }),
     [state],
   );
 
@@ -464,9 +464,11 @@ export function StudentSandbox({ initialState }: { initialState: SimulationState
               <div className="flex flex-wrap items-center gap-2">
                 {/* Round eyebrow → bz-eyebrow pattern */}
                 <p className="bz-eyebrow bz-brand-text-on-light">Round {state.run.currentRound}</p>
+                {/* 合规（去运气钩子）：连续学习回合数，替代『净值连胜』的追涨诱导（治本②口径，
+                    与 quests.ts/pet-rewards.ts 一致）；文案与图标去竞技化。 */}
                 {streak.current > 0 ? (
-                  <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-caption font-semibold text-orange-700">
-                    🔥 连胜 {streak.current} 回合
+                  <span className="rounded-full bg-brand-subtle px-2.5 py-0.5 text-caption font-semibold text-brand-ink">
+                    📚 连续学习 {streak.current} 回合
                   </span>
                 ) : null}
               </div>

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
+import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { attachManualPaymentProof, getPaymentOrderByOutTradeNo } from "@/lib/db/repo";
 
 function optionalImageDataUrl(value: string | undefined) {
@@ -28,6 +29,13 @@ export async function POST(request: Request) {
 
   const auth = await requireUser();
   if (auth.error) return auth.error;
+
+  // 计费路径限流（对齐 prepay/parent-link）：付款凭证可携带约 1.2MB base64，且允许覆盖
+  // pending 订单——补限流防止重复轰炸/存储放大（AGENTS.md 要求 payment-intent 路由挂限流）。
+  const rl = rateLimit(rateLimitKey("manual-proof", auth.user.id, request), 8, 60_000);
+  if (!rl.ok) {
+    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+  }
 
   try {
     const body = manualProofSchema.parse(await request.json());

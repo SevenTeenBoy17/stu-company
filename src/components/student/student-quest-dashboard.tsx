@@ -165,7 +165,7 @@ function QuestCommanderPanel({
               <p className="bz-eyebrow-inverse">指挥官简报</p>
               <h2 className="mt-3 max-w-lg text-display-md font-semibold md:text-display-lg">先和指挥官对话，再打开任务锦囊</h2>
               <p className="mt-4 max-w-xl text-body leading-8 text-white/74">
-                任务不会一股脑摊开。先选择一条训练航线，打开锦囊后再查看任务目标、复盘提示和专属学习卡片。
+                任务不会一股脑摊开。先选择一条训练航线，打开锦囊后再查看任务目标、复盘提示和学习卡片。
               </p>
             </div>
             <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.08] p-4 backdrop-blur">

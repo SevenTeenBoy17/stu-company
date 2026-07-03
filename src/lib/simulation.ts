@@ -746,11 +746,12 @@ export function buildPersonaShareText(
   run: ScenarioRun,
 ): string {
   const netWorth = run.snapshots.at(-1)?.netWorth ?? 0;
-  const streak = computeStreak(run).current;
+  // 合规：可外部分享的文案改用「连续学习」而非「净值连胜」，不把市场涨跌运气写成炫耀点。
+  const streak = computeLearningStreak(run).current;
   return [
     `我在 Mr.Brown 经济沙盘的投资人格是「${persona.label}」！`,
     persona.summary,
-    `第 ${run.currentRound} 回合 · 模拟净值 ￥${netWorth.toLocaleString()} · 连胜 ${streak} 回合`,
+    `第 ${run.currentRound} 回合 · 模拟净值 ￥${netWorth.toLocaleString()} · 连续学习 ${streak} 回合`,
     "来挑战你的财商，看看你是哪种投资人格 👉",
   ].join("\n");
 }

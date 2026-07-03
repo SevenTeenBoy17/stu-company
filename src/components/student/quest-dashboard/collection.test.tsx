@@ -38,7 +38,7 @@ describe("CollectionMeter 套系集齐学习巩固 CTA", () => {
     render(<CollectionMeter items={collectionFor("risk-control")} />);
 
     const cta = screen.getByTestId("series-consolidation-cta-risk-control");
-    expect(cta.textContent ?? "").not.toMatch(/新卡|独占|限定|稀有|抽|解锁卡/);
+    expect(cta.textContent ?? "").not.toMatch(/新卡|独占|限定|限量|独家|专属|稀有|抽|解锁卡/);
     expect(cta.textContent ?? "").toMatch(/小测/);
   });
 });

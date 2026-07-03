@@ -31,6 +31,12 @@ export function handleRouteError(error: unknown, fallbackMessage: string) {
     return apiError("db_unavailable", "数据库暂时不可用，请稍后再试。", 503);
   }
 
+  // 重复领取（任务奖励/赛季奖励）是幂等冲突而非入参错误：返回 409 + 真实中文消息，
+  // 与注册重复的 409 语义对齐（此前落到 400 invalid_input）。
+  if (/已经领取|已经被领取|已被领取/i.test(message)) {
+    return apiError("conflict", message, 409);
+  }
+
   if (/已经被注册|已经注册|already registered|duplicate|unique|邮箱/i.test(message)) {
     return apiError("conflict", "这个邮箱已经注册过了。", 409);
   }

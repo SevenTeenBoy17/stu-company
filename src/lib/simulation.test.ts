@@ -186,7 +186,9 @@ describe("buildPersonaShareText (shareable card)", () => {
     const text = buildPersonaShareText(deriveInvestorPersona(run), run);
     expect(text).toContain(deriveInvestorPersona(run).label);
     expect(text).toContain("140,000");
-    expect(text).toContain("连胜");
+    // 合规回归锁：分享文案用「连续学习」而非「净值连胜」运气钩子。
+    expect(text).toContain("连续学习");
+    expect(text).not.toContain("连胜 ");
   });
 });
 

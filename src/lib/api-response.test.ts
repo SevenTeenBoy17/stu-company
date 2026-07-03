@@ -37,6 +37,14 @@ describe("handleRouteError", () => {
     expect(((await res.json()) as { error: string }).error).toBe("conflict");
   });
 
+  it("重复领取映射为 409 conflict 并回传真实中文消息（非 400）", async () => {
+    const res = handleRouteError(new Error("这个装饰奖励已经领取过了。"), "兜底");
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("conflict");
+    expect(body.message).toContain("已经领取");
+  });
+
   it("falls back to 400 invalid_input for unrelated errors", async () => {
     const res = handleRouteError(new Error("某业务校验未通过"), "兜底提示");
     expect(res.status).toBe(400);
