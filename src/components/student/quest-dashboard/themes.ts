@@ -198,9 +198,32 @@ export function stableQuestThemeIndex(id: string) {
   return hash % questBoxThemes.length;
 }
 
+// 任务 ↔ 伙伴显式配对表（评审 content-3/4：冻结自既有"数组序号"映射，零视觉变化）：
+// 序号耦合的脆弱性在于——在中间插入一个任务会静默重排其后所有伙伴的归属。
+// 新增/重排任务时在此登记配对即可；表内 12 项与 questBoxThemes 一一双射（有回归锁）。
+export const questThemeIdByQuestId: Record<string, string> = {
+  "diversification-72": "fox-sunrise",
+  "cash-buffer-20": "turtle-shield",
+  "learn-two-modules": "rabbit-bank",
+  "cash-management": "owl-lab",
+  "review-rhythm": "robot-radar",
+  "opportunity-first-note": "whale-harbor",
+  "fund-lab-first-plan": "cat-scout",
+  "goal-protection-pair": "deer-bond",
+  "wealth-review-plan": "panda-etf",
+  "cooldown-after-trade": "squirrel-budget",
+  "toolkit-composer": "lion-rank",
+  "black-swan-drill": "penguin-review",
+};
+
 export function questBoxThemeFor(quest: QuestItem, index = 0) {
-  // 按稳定位置/哈希分配主题，保证 12 个伙伴在图鉴里都可点亮（概念匹配只有 7 个 profile，
-  // 会让另外 5 个孤儿动物无法解锁，故角色名已统一即可，不强制卡面=概念动物）。
+  // 显式配对优先；未登记 id（如测试夹具）回退 序号→稳定哈希，保证 12 伙伴始终可点亮
+  // （概念匹配只有 7 个 profile，会产生孤儿动物，故不做概念强绑定）。
+  const mappedId = questThemeIdByQuestId[quest.id];
+  if (mappedId) {
+    const mapped = questBoxThemes.find((theme) => theme.id === mappedId);
+    if (mapped) return mapped;
+  }
   const preferredIndex = Number.isFinite(index) ? index : stableQuestThemeIndex(quest.id);
   return questBoxThemes[preferredIndex % questBoxThemes.length] ?? questBoxThemes[stableQuestThemeIndex(quest.id)];
 }

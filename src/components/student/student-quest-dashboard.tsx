@@ -226,6 +226,15 @@ function QuestCommanderPanel({
   );
 }
 
+// 本赛季地图节点的展示类别（仅影响头像/概念标签的 profile 选择）。
+const seasonObjectiveCategoryById: Record<string, string> = {
+  "market-observe": "learning",
+  "opportunity-note": "learning",
+  "portfolio-lab": "finance",
+  "safety-base": "learning",
+  "holding-review": "learning",
+};
+
 function QuestMapGallery({
   quests,
   selectedQuestId,
@@ -301,7 +310,9 @@ function QuestMapGallery({
           {seasonNodes.map((objective, index) => {
             const pseudoQuest = {
               id: objective.id,
-              category: objective.id.includes("portfolio") ? "finance" : "learning",
+              // 显式类别表替代字符串嗅探（评审 culture-2）；映射冻结现状（零视觉变化），
+              // 语义再归类（safety-base→risk 等）留给内容组专项。未登记 id 回退 learning。
+              category: seasonObjectiveCategoryById[objective.id] ?? "learning",
               status: objective.done ? "done" : "active",
               progress: objective.progress,
             } as QuestItem;
