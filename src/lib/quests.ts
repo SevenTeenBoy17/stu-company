@@ -479,7 +479,7 @@ export function buildStudentQuestPayload(
       title: "机会侦察员",
       unlocked: opportunityCount >= 1,
       detail: "你已经把一个市场主题写成可复盘的观察单。",
-      decorativeReward: "机会卡片专属角标",
+      decorativeReward: "机会卡片角标",
     },
     {
       id: "portfolio-researcher",
