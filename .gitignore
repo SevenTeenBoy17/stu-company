@@ -53,3 +53,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# 会话/内测临时产物（Tailwind v4 自动内容扫描会读未忽略文件——曾因 CI 覆盖率报告的 &#x27; 转义类名打挂 dev 编译）
+/.tmp/

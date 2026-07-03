@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { createPortal } from "react-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -11,13 +13,16 @@ import {
   Lock,
   PawPrint,
   RefreshCcw,
+  Shuffle,
   Sparkles,
   WandSparkles,
+  X,
 } from "lucide-react";
 
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import type { StudentPetPayload, StudentPetReward } from "@/lib/pet-rewards";
 import { cn } from "@/lib/utils";
+import { useModalA11y } from "./quest-dashboard/shared";
 
 gsap.registerPlugin(useGSAP);
 
@@ -32,6 +37,38 @@ const rarityClass: Record<StudentPetReward["rarity"], string> = {
   rare: "border-brand/35 bg-brand/12 text-brand-warm",
   epic: "border-rose-300/35 bg-rose-300/12 text-rose-100",
 };
+
+// 可切换 3D 卡通形象库（用户需求：20+ 可爱形象随机/自选切换）。
+// "default" = 手绘布朗小栗；其余为 quest-world 12 只任务角色 + pet-avatars 10 只新宠，共 23 选。
+type PetAvatarChoice = { id: string; label: string; src?: string };
+
+const AVATAR_GALLERY: PetAvatarChoice[] = [
+  { id: "default", label: "布朗小栗" },
+  { id: "fox", label: "市场小狐", src: "/brand/quest-world/characters/fox-market-scout.webp" },
+  { id: "cat", label: "机会侦探猫", src: "/brand/quest-world/characters/cat-opportunity-detective.webp" },
+  { id: "whale", label: "现金鲸队长", src: "/brand/quest-world/characters/whale-cash-captain.webp" },
+  { id: "panda", label: "研究熊猫", src: "/brand/quest-world/characters/panda-etf-researcher.webp" },
+  { id: "robot", label: "雷达机器人", src: "/brand/quest-world/characters/robot-radar-helper.webp" },
+  { id: "squirrel", label: "记账松鼠", src: "/brand/quest-world/characters/squirrel-budget-accountant.webp" },
+  { id: "rabbit", label: "储蓄小兔", src: "/brand/quest-world/characters/rabbit-savings-banker.webp" },
+  { id: "turtle", label: "安全小龟", src: "/brand/quest-world/characters/turtle-safety-guard.webp" },
+  { id: "deer", label: "债券小鹿", src: "/brand/quest-world/characters/deer-bond-messenger.webp" },
+  { id: "owl", label: "证据猫头鹰", src: "/brand/quest-world/characters/owl-evidence-analyst.webp" },
+  { id: "lion", label: "裁判小狮", src: "/brand/quest-world/characters/lion-leaderboard-referee.webp" },
+  { id: "penguin", label: "复盘企鹅", src: "/brand/quest-world/characters/penguin-history-archivist.webp" },
+  { id: "dino", label: "理财小恐龙", src: "/brand/pet-avatars/pet-dino.webp" },
+  { id: "shiba", label: "柴犬金金", src: "/brand/pet-avatars/pet-shiba.webp" },
+  { id: "tiger", label: "虎宝存存", src: "/brand/pet-avatars/pet-tiger.webp" },
+  { id: "hamster", label: "仓鼠豆豆", src: "/brand/pet-avatars/pet-hamster.webp" },
+  { id: "elephant", label: "记账象宝", src: "/brand/pet-avatars/pet-elephant.webp" },
+  { id: "frog", label: "青蛙芽芽", src: "/brand/pet-avatars/pet-frog.webp" },
+  { id: "unicorn", label: "独角兽星星", src: "/brand/pet-avatars/pet-unicorn.webp" },
+  { id: "bear", label: "熊宝藏藏", src: "/brand/pet-avatars/pet-bear.webp" },
+  { id: "koi", label: "锦鲤旺旺", src: "/brand/pet-avatars/pet-koi.webp" },
+  { id: "chick", label: "小鸡多多", src: "/brand/pet-avatars/pet-chick.webp" },
+];
+
+const AVATAR_BY_ID = new Map(AVATAR_GALLERY.map((choice) => [choice.id, choice]));
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
@@ -114,9 +151,11 @@ function RewardGlyph({ reward, small = false }: { reward: StudentPetReward; smal
 function PetMascot({
   payload,
   selectedReward,
+  avatar,
 }: {
   payload: StudentPetPayload;
   selectedReward?: StudentPetReward;
+  avatar?: PetAvatarChoice;
 }) {
   const mood = payload.pet.mood;
   const earTilt = mood === "alert" ? -8 : mood === "celebrating" ? 8 : 0;
@@ -127,12 +166,23 @@ function PetMascot({
     <div
       data-pet-avatar
       data-motion-float
-      className="relative mx-auto flex aspect-square max-h-[260px] min-h-[210px] w-full max-w-[260px] items-center justify-center rounded-[2.4rem] border border-white/10 bg-white/[0.06]"
+      className="relative mx-auto flex aspect-square max-h-[260px] min-h-[210px] w-full max-w-[260px] items-center justify-center overflow-hidden rounded-[2.4rem] border border-white/10 bg-white/[0.06]"
       style={{ boxShadow: selectedReward ? `0 24px 80px ${selectedReward.visual.glow}` : undefined }}
     >
-      <div data-reward-orbit className="absolute right-5 top-5 rounded-3xl border border-white/12 bg-white/[0.08] p-2">
+      {avatar?.src ? (
+        <Image
+          src={avatar.src}
+          alt={`${avatar.label}，${payload.pet.moodLabel}`}
+          fill
+          sizes="260px"
+          className="object-cover"
+          priority={false}
+        />
+      ) : null}
+      <div data-reward-orbit className="absolute right-5 top-5 z-10 rounded-3xl border border-white/12 bg-white/[0.08] p-2 backdrop-blur-sm">
         {selectedReward ? <RewardGlyph reward={selectedReward} small /> : <PawPrint className="h-8 w-8 text-brand-warm" />}
       </div>
+      {avatar?.src ? null : (
       <svg viewBox="0 0 260 260" className="h-[230px] w-[230px]" role="img" aria-label={`${payload.pet.name}，${payload.pet.moodLabel}`}>
         <defs>
           <radialGradient id="petBody" cx="42%" cy="30%" r="70%">
@@ -167,8 +217,102 @@ function PetMascot({
           </g>
         ) : null}
       </svg>
+      )}
       <span data-reward-burst className="pointer-events-none absolute left-7 top-8 h-3 w-3 rounded-full bg-brand-warm shadow-[0_0_32px_rgba(240,138,56,0.85)]" />
       <span className="pointer-events-none absolute bottom-8 right-10 h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_26px_rgba(120,216,173,0.8)]" />
+    </div>
+  );
+}
+
+function AvatarPickerModal({
+  currentId,
+  onSelect,
+  onClose,
+}: {
+  currentId: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useModalA11y(containerRef, onClose, closeButtonRef);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="选择伙伴形象"
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+        className="max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-slate-950 p-5 text-white shadow-2xl sm:rounded-[1.8rem] sm:p-6"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-h2 font-semibold">选择伙伴形象</h3>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            aria-label="关闭"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.07] transition hover:border-brand/40"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="mt-1 text-body-sm text-white/60">{AVATAR_GALLERY.length} 位 3D 伙伴，随时可换，仅影响展示。</p>
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+          {AVATAR_GALLERY.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              aria-pressed={choice.id === currentId}
+              onClick={() => {
+                onSelect(choice.id);
+                onClose();
+              }}
+              className={cn(
+                "bz-press group flex flex-col items-center gap-2 rounded-[1.2rem] border p-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                choice.id === currentId
+                  ? "border-brand/60 bg-brand/15"
+                  : "border-white/10 bg-white/[0.05] hover:border-brand/35 hover:bg-white/[0.09]",
+              )}
+            >
+              <span className="relative h-16 w-16 overflow-hidden rounded-[0.9rem] border border-white/10 bg-white/[0.06] sm:h-[4.5rem] sm:w-[4.5rem]">
+                {choice.src ? (
+                  <Image src={choice.src} alt="" fill sizes="72px" className="object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center">
+                    <PawPrint className="h-7 w-7 text-brand-warm" />
+                  </span>
+                )}
+              </span>
+              <span className="text-caption font-semibold text-white/85">{choice.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrailItem({ item }: { item: StudentPetPayload["timeline"][number] }) {
+  return (
+    <div className="flex gap-3">
+      <span
+        className={cn(
+          "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-caption font-semibold",
+          item.unlocked
+            ? "border-brand/40 bg-brand text-slate-950"
+            : "border-white/10 bg-white/[0.05] text-white/70",
+        )}
+      >
+        {item.unlocked ? <BadgeCheck className="h-4 w-4" /> : item.round}
+      </span>
+      <div>
+        <p className={cn("text-body-sm font-semibold", item.unlocked ? "text-white" : "text-white/70")}>{item.label}</p>
+        <p className="mt-1 text-caption leading-5 text-white/70">{item.detail}</p>
+      </div>
     </div>
   );
 }
@@ -181,6 +325,27 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
   const [status, setStatus] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const storageKey = `brown-zone-pet-equipped-${payload.pet.id}`;
+
+  // 3D 形象切换：SSR 一律先渲染默认形象，挂载后再读 localStorage 换装（水合安全）。
+  const [avatarId, setAvatarId] = useState("default");
+  const [isAvatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const avatarStorageKey = `brown-zone-pet-avatar-${payload.pet.id}`;
+  const avatar = AVATAR_BY_ID.get(avatarId) ?? AVATAR_BY_ID.get("default");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(avatarStorageKey);
+    if (saved && AVATAR_BY_ID.has(saved)) setAvatarId(saved);
+  }, [avatarStorageKey]);
+
+  function selectAvatar(id: string) {
+    setAvatarId(id);
+    window.localStorage.setItem(avatarStorageKey, id);
+  }
+
+  function randomAvatar() {
+    const others = AVATAR_GALLERY.filter((choice) => choice.id !== avatarId);
+    selectAvatar(others[Math.floor(Math.random() * others.length)].id);
+  }
 
   const selectedReward = useMemo(
     () => payload.rewards.find((item) => item.id === selectedRewardId) ?? firstUnlockedReward,
@@ -288,21 +453,32 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
     { label: "专注", value: payload.pet.focus, detail: "纪律与学习" },
   ];
 
+  // 成长轨迹减字：常显最近 2 个已解锁 + 下一个待解锁目标，其余收进「查看全部」。
+  const unlockedTrail = payload.timeline.filter((item) => item.unlocked);
+  const nextLockedTrail = payload.timeline.find((item) => !item.unlocked);
+  const focusIds = new Set(
+    [...unlockedTrail.slice(-2), ...(nextLockedTrail ? [nextLockedTrail] : [])].map((item) => item.id),
+  );
+  const trailFocus = payload.timeline.filter((item) => focusIds.has(item.id));
+  const trailRest = payload.timeline.filter((item) => !focusIds.has(item.id));
+
   return (
     <section
       ref={rootRef}
       data-pet-panel
       data-motion-reveal
       data-testid="student-pet-reward-studio"
-      className="overflow-hidden rounded-[2.2rem] bg-slate-950 text-white shadow-[0_32px_90px_rgba(15,23,42,0.2)]"
+      className="@container/petstudio overflow-hidden rounded-[2.2rem] bg-slate-950 text-white shadow-[0_32px_90px_rgba(15,23,42,0.2)]"
     >
-      <div className="relative grid gap-0 xl:grid-cols-[330px_minmax(0,1fr)_390px]">
+      {/* 布局按面板自身宽度分级（此前固定 xl 三栏在 1440 视口把中列压到 258px → 一行一字）：
+          <50rem 全部纵排；≥50rem 左形象+中内容双栏、奖励区横跨底部；≥70rem 三栏（平台 max-w-screen-2xl 下面板最宽 1215px，70rem=1120px 保证该档真实可达）。 */}
+      <div className="relative grid gap-0 @[50rem]/petstudio:grid-cols-[320px_minmax(0,1fr)] @[70rem]/petstudio:grid-cols-[330px_minmax(0,1fr)_390px]">
         <div className="grid-strokes pointer-events-none absolute inset-0 opacity-20" />
         <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand/25 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-24 h-64 w-64 rounded-full bg-emerald-300/10 blur-3xl" />
 
         {/* ── Left: mascot column ── */}
-        <div className="relative z-10 border-b border-white/10 p-5 sm:p-6 xl:border-b-0 xl:border-r">
+        <div className="relative z-10 border-b border-white/10 p-5 sm:p-6 @[50rem]/petstudio:border-b-0 @[50rem]/petstudio:border-r">
           <div className="flex items-center justify-between gap-3">
             <div>
               {/* Eyebrow on dark panel → bz-eyebrow-inverse */}
@@ -317,7 +493,37 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
               Lv.{payload.pet.level}
             </span>
           </div>
-          <PetMascot payload={payload} selectedReward={selectedReward} />
+          <PetMascot payload={payload} selectedReward={selectedReward} avatar={avatar} />
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <button
+              data-motion-button
+              type="button"
+              onClick={() => setAvatarPickerOpen(true)}
+              className="bz-press inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20"
+            >
+              <WandSparkles className="h-4 w-4 text-brand-warm" />
+              切换形象
+            </button>
+            <button
+              data-motion-button
+              type="button"
+              aria-label="随机换一位伙伴形象"
+              onClick={randomAvatar}
+              className="bz-press inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20"
+            >
+              <Shuffle className="h-4 w-4 text-brand-warm" />
+              随机
+            </button>
+          </div>
+          {/* 评审 P1：面板根的 @container(container-type) 与 GSAP 残留 transform 都会把 fixed
+              后代的包含块改成面板自身（遮罩只盖面板且被 overflow-hidden 裁剪）——必须 portal 到 body。
+              仅在客户端点击后挂载，无 SSR/水合风险。 */}
+          {isAvatarPickerOpen
+            ? createPortal(
+                <AvatarPickerModal currentId={avatarId} onSelect={selectAvatar} onClose={() => setAvatarPickerOpen(false)} />,
+                document.body,
+              )
+            : null}
           <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
             <div className="flex items-center justify-between gap-3">
               <span className="text-body-sm font-semibold text-white">成长经验</span>
@@ -336,8 +542,10 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
           </div>
         </div>
 
-        {/* ── Centre: stats + actions ── */}
-        <div className="relative z-10 p-5 sm:p-6">
+        {/* ── Centre: stats + actions ──
+            @container：下方 Next Quest/成长轨迹 双栏只在本列自身 ≥44rem 时开启，
+            防止 xl 外层三栏把中列压窄后再对半分（曾出现一行一字的竖条）。 */}
+        <div className="@container relative z-10 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-body-sm font-semibold text-brand-warm">
@@ -347,7 +555,14 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
               {/* ONE hero: the streak/reward count rendered via text-hero-num below on the
                   stat cards. The headline here is the mascot's title → display size, font-semibold */}
               <h3 className="mt-4 text-display-sm font-semibold leading-tight md:text-display-md">{payload.pet.headline}</h3>
-              <p className="mt-4 max-w-3xl text-body leading-8 text-white/64">{payload.pet.coachNote}</p>
+              {/* 减字：教练详评默认收起，点击展开（用户反馈：界面文字过多，细节转点击查看） */}
+              <details className="group/coach mt-3 max-w-3xl">
+                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 text-body-sm font-semibold text-white/80 transition hover:border-brand/40 hover:text-white [&::-webkit-details-marker]:hidden">
+                  教练详评
+                  <ArrowRight className="h-3.5 w-3.5 transition group-open/coach:rotate-90" />
+                </summary>
+                <p className="mt-3 text-body leading-8 text-white/64">{payload.pet.coachNote}</p>
+              </details>
             </div>
             <button
               data-motion-button
@@ -389,7 +604,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             ))}
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]">
+          <div className="mt-6 grid gap-4 @[44rem]:grid-cols-2">
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -423,26 +638,25 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
               {/* Eyebrow on dark → bz-eyebrow-inverse */}
               <p className="bz-eyebrow-inverse">Memory Trail</p>
               <h4 className="mt-2 text-h2 font-semibold">成长轨迹</h4>
+              {/* 减字：常显=最近 2 个已解锁 + 下一个目标；其余里程碑收进「查看全部」。 */}
               <div className="mt-4 space-y-3">
-                {payload.timeline.map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <span
-                      className={cn(
-                        "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-caption font-semibold",
-                        item.unlocked
-                          ? "border-brand/40 bg-brand text-slate-950"
-                          : "border-white/10 bg-white/[0.05] text-white/70",
-                      )}
-                    >
-                      {item.unlocked ? <BadgeCheck className="h-4 w-4" /> : item.round}
-                    </span>
-                    <div>
-                      <p className={cn("text-body-sm font-semibold", item.unlocked ? "text-white" : "text-white/70")}>{item.label}</p>
-                      <p className="mt-1 text-caption leading-5 text-white/70">{item.detail}</p>
-                    </div>
-                  </div>
+                {trailFocus.map((item) => (
+                  <TrailItem key={item.id} item={item} />
                 ))}
               </div>
+              {trailRest.length > 0 ? (
+                <details className="group/trail mt-3">
+                  <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 text-body-sm font-semibold text-white/80 transition hover:border-brand/40 hover:text-white [&::-webkit-details-marker]:hidden">
+                    查看全部 {payload.timeline.length} 个里程碑
+                    <ArrowRight className="h-3.5 w-3.5 transition group-open/trail:rotate-90" />
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {trailRest.map((item) => (
+                      <TrailItem key={item.id} item={item} />
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
           </div>
 
@@ -454,7 +668,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
         </div>
 
         {/* ── Right: reward codex ── */}
-        <aside className="relative z-10 border-t border-white/10 bg-white/[0.04] p-5 sm:p-6 xl:border-l xl:border-t-0">
+        <aside className="relative z-10 border-t border-white/10 bg-white/[0.04] p-5 sm:p-6 @[50rem]/petstudio:col-span-2 @[70rem]/petstudio:col-span-1 @[70rem]/petstudio:border-l @[70rem]/petstudio:border-t-0">
           <div className="flex items-start justify-between gap-3">
             <div>
               {/* Eyebrow on dark → bz-eyebrow-inverse */}
@@ -467,7 +681,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             <Gift className="h-6 w-6 text-brand-warm" />
           </div>
 
-          <div className="mt-5 max-h-[560px] space-y-3 overflow-y-auto pr-1">
+          <div className="mt-5 grid max-h-[560px] gap-3 overflow-y-auto pr-1 @[50rem]/petstudio:grid-cols-2 @[70rem]/petstudio:grid-cols-1">
             {payload.rewards.map((reward) => {
               const active = selectedReward?.id === reward.id;
               return (

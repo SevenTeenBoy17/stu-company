@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -34,6 +35,38 @@ import { cn } from "@/lib/utils";
 import { MarketThermometer } from "@/components/student/market-thermometer";
 
 gsap.registerPlugin(useGSAP);
+
+// 服务九宫格图标化（用户反馈：文字过多）——12 服务与 quest-world 12 只 3D 角色语义配对，
+// 卡片只留 图标+标题+关键词；summary/learn 与状态完整保留在 aria-label（读屏单次完整播报；不用 title 避免 name+description 双播报）。
+const serviceCharacter: Record<string, string> = {
+  market: "fox-market-scout",
+  opportunity: "cat-opportunity-detective",
+  wealth: "whale-cash-captain",
+  "fund-lab": "panda-etf-researcher",
+  "auto-invest": "robot-radar-helper",
+  life: "squirrel-budget-accountant",
+  "goal-accounts": "rabbit-savings-banker",
+  protection: "turtle-safety-guard",
+  credit: "deer-bond-messenger",
+  risk: "owl-evidence-analyst",
+  quests: "lion-leaderboard-referee",
+  history: "penguin-history-archivist",
+};
+
+const serviceTagline: Record<string, string> = {
+  market: "行情 · 板块 · 观察池",
+  opportunity: "先练观察，再谈买卖",
+  wealth: "资产一张图",
+  "fund-lab": "组合与长期配置",
+  "auto-invest": "定投与节奏",
+  life: "预算 · 应急金 · 保险",
+  "goal-accounts": "目标储蓄与延迟满足",
+  protection: "突发事件压力测试",
+  credit: "利息与还款能力",
+  risk: "认识自己的风险边界",
+  quests: "任务 · 收藏 · 复盘",
+  history: "把操作串成复盘故事",
+};
 
 const domainIcons = {
   home: Grid3X3,
@@ -449,7 +482,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             <BookOpenCheck className="h-5 w-5 text-brand" />
             <h3 className="text-h2 text-fg-strong">服务九宫格</h3>
           </div>
-          <p className="text-body-sm text-fg-muted">把真实生活里的投资、预算、风险和复盘拆成可玩的训练入口。</p>
+          <p className="text-body-sm text-fg-muted">12 个训练入口，点击即进。</p>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {payload.services.map((service) => (
@@ -457,21 +490,31 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               key={service.id}
               href={service.href}
               data-motion-card
-              className="group flex min-h-0 flex-col rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-md"
+              aria-label={`${service.title}（${studentServiceGroups[service.group]}${
+                service.status === "new" ? "·新增" : service.status === "premium" ? "·订阅" : ""
+              }）：${service.summary} 你会学到：${service.learn}`}
+              className="bz-press group flex min-h-[4.5rem] items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-h3 text-fg-strong">{service.title}</p>
-                  <p className="mt-1 text-caption text-fg-muted">{studentServiceGroups[service.group]}</p>
+              <Image
+                src={`/brand/quest-world/characters/${serviceCharacter[service.id] ?? "fox-market-scout"}.webp`}
+                alt=""
+                width={56}
+                height={56}
+                className="h-14 w-14 shrink-0 rounded-[1.05rem] object-cover shadow-sm transition group-hover:scale-105"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-body font-semibold text-fg-strong">{service.title}</p>
+                  {service.status !== "ready" ? (
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-caption", statusTone[service.status])}>
+                      {service.status === "new" ? "新增" : "订阅"}
+                    </span>
+                  ) : null}
                 </div>
-                <span className={cn("shrink-0 rounded-full px-2 py-1 text-caption", statusTone[service.status])}>
-                  {service.status === "new" ? "新增" : service.status === "premium" ? "订阅" : "可用"}
-                </span>
+                <p className="mt-0.5 truncate text-caption text-fg-muted">
+                  {serviceTagline[service.id] ?? studentServiceGroups[service.group]}
+                </p>
               </div>
-              <p className="mt-3 line-clamp-2 text-body-sm leading-6 text-fg-muted">{service.summary}</p>
-              <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-caption leading-5 text-fg-muted">
-                你会学到：{service.learn}
-              </p>
             </Link>
           ))}
         </div>

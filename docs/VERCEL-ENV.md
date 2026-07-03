@@ -73,6 +73,7 @@ style and keep it consistent across Production and Preview.
 - `SESSION_SECRET`: a long random string, at least 32 characters
 - `DATABASE_URL`: Supabase Postgres pooled connection string
 - `AI_BASE_URL_PRIMARY`: your operator-supplied Anthropic-compatible endpoint. Leave empty to disable remote AI (local fallback narratives still work).
+  国内用户推荐 `https://api.llm-token.cn/v1`（延迟更低）；旧 `https://gpt-agent.cc/v1` 可配为 SECONDARY 作 failover。
 - `AI_BASE_URL_SECONDARY`: optional second endpoint for failover.
 - `ITICK_REST_BASE_URL`: `https://api0.itick.org`
 - `ITICK_STOCK_WS_URL`: `wss://api.itick.org/stock`

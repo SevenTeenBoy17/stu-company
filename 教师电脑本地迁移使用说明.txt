@@ -107,8 +107,8 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 AI_API_KEY=
 AI_MODEL=claude-sonnet-4-6
-AI_BASE_URL_PRIMARY=https://gpt-agent.cc/v1
-AI_BASE_URL_SECONDARY=https://gpt-agent.cc
+AI_BASE_URL_PRIMARY=https://api.llm-token.cn/v1
+AI_BASE_URL_SECONDARY=https://gpt-agent.cc/v1
 ALLTICK_API_KEY=
 ALLTICK_STOCK_BASE_URL=https://quote.alltick.co/quote-stock-b-api
 

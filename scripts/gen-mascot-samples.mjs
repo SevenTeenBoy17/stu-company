@@ -1,7 +1,7 @@
 // One-off: generate SAMPLE designer-toy mascot / reward visuals for the 任务中心 UI dev doc.
 // Reference aesthetic = POP-MART blind-box / designer-toy collectible (the 4 参考图):
 // 3D claymation render, vibrant solid backgrounds, big expressive eyes, finance-education themed.
-// gpt-image-2 (gpt-agent.cc gateway) -> PNG (b64) -> WebP via sharp. Key from env only.
+// gpt-image-2 (api.llm-token.cn gateway, 国内低延迟；旧 gpt-agent.cc 已由其接替) -> PNG (b64) -> WebP via sharp. Key from env only.
 // Run: AI_API_KEY=$(grep '^AI_API_KEY=' .env.local | cut -d= -f2) node scripts/gen-mascot-samples.mjs
 import { writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(__dirname, "..", "docs", "ui-spec", "task-center", "assets");
 const KEY = process.env.AI_API_KEY;
 if (!KEY) { console.error("缺少 AI_API_KEY（从 .env.local 传入）。"); process.exit(2); }
-const ENDPOINT = "https://gpt-agent.cc/v1/images/generations";
+const ENDPOINT = "https://api.llm-token.cn/v1/images/generations";
 const SIZES = ["1024x1024", "1024x1024"];
 
 const STYLE =
