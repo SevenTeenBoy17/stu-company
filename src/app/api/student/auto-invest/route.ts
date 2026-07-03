@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { canUserOperate } from "@/lib/billing/subscription";
 import { requireUser } from "@/lib/api-guard";
 import { buildAutoInvestPayload } from "@/lib/auto-invest";
 import {
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
 
   const auth = await requireUser("student");
   if (auth.error) return auth.error;
+
+  // 内测 rank4（B 决策）：实质写库功能与其余 9 条学生路由同口径门控；GET 读取保留。
+  if (!canUserOperate(auth.user.subscriptionTier, auth.user.trialExpiresAt, auth.user.subscriptionExpiresAt)) {
+    return apiError("forbidden", "试用已结束，请升级后继续管理定投计划。", 403);
+  }
+
 
   try {
     const parsed = requestSchema.safeParse(await request.json());
