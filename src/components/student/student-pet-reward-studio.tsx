@@ -26,16 +26,18 @@ import { useModalA11y } from "./quest-dashboard/shared";
 
 gsap.registerPlugin(useGSAP);
 
-const rarityLabel: Record<StudentPetReward["rarity"], string> = {
-  common: "基础",
-  rare: "进阶",
-  epic: "荣誉",
+// 成就难度层级标签（非盲盒稀有度）——防射幸：中性化配色，去掉 rose「大奖」晋级色阶，
+// 三档都用同族低饱和暖色，只表达「达成难度」而非「抽到稀有」。
+const tierLabel: Record<StudentPetReward["tier"], string> = {
+  basic: "基础",
+  advanced: "进阶",
+  honor: "荣誉",
 };
 
-const rarityClass: Record<StudentPetReward["rarity"], string> = {
-  common: "border-white/14 bg-white/[0.07] text-white/72",
-  rare: "border-brand/35 bg-brand/12 text-brand-warm",
-  epic: "border-rose-300/35 bg-rose-300/12 text-rose-100",
+const tierClass: Record<StudentPetReward["tier"], string> = {
+  basic: "border-white/14 bg-white/[0.07] text-white/72",
+  advanced: "border-white/18 bg-white/[0.08] text-white/80",
+  honor: "border-brand/30 bg-brand/10 text-brand-warm",
 };
 
 // 可切换 3D 卡通形象库（用户需求：20+ 可爱形象随机/自选切换）。
@@ -714,8 +716,8 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-body-sm font-semibold text-white">{reward.title}</p>
-                        <span className={cn("rounded-full border px-2 py-0.5 text-caption font-semibold", rarityClass[reward.rarity])}>
-                          {rarityLabel[reward.rarity]}
+                        <span className={cn("rounded-full border px-2 py-0.5 text-caption font-semibold", tierClass[reward.tier])}>
+                          {tierLabel[reward.tier]}
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-2 text-caption leading-5 text-white/70">

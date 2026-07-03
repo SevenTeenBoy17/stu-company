@@ -1242,7 +1242,7 @@ export function StudentQuestDashboard({
                           data-testid={`quest-return-back-${quest.id}`}
                           aria-label={`翻回任务卡背面：${quest.title}`}
                           onClick={() => toggleQuestFlip(quest.id)}
-                          className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                          className="inline-flex min-h-10 items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
                           翻回卡背
                         </button>

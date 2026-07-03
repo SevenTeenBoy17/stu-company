@@ -111,11 +111,18 @@ export function viewerScopeRanks(
 }
 
 /**
- * The viewer's *private* rank in all four scopes — their true competitive
- * position among every consented player in scope, ignoring visibility (and
- * including the viewer even when hidden). Used for the player's own card so a
- * 隐身 player still sees where they stand, while never appearing on others'
- * boards. Undefined when the viewer has no snapshot (not in the field).
+ * The viewer's own-card rank in all four scopes — their standing among the
+ * *visible* field plus themselves. A 隐身 / unconsented player still sees where
+ * they stand (self is always counted), but hidden OTHERS are excluded from the
+ * denominator.
+ *
+ * PRIVACY (itest4 R3 P1): the field must match the board's visible population,
+ * otherwise `cardRank − boardRank` leaks the number of hidden players ranked
+ * above the viewer — de-anonymising them in a small school cohort. Counting only
+ * `visibleIn(s, scope) || s === self` makes a public viewer's card rank identical
+ * to their board rank (zero difference → nothing to leak), while a hidden viewer
+ * gets a board-consistent "where I'd stand if visible" without exposing anyone.
+ * Undefined when the viewer has no snapshot (not in the field).
  */
 export function viewerPrivateRanks(
   snapshots: RankSnapshot[],
@@ -128,7 +135,11 @@ export function viewerPrivateRanks(
 
   const result = { ...empty } as Record<RankScope, number | undefined>;
   for (const scope of scopes) {
-    const field = snapshots.filter((s) => inScope(s, scope, viewer));
+    // Only the board-visible field + self — never other hidden players, whose
+    // presence in the denominator is exactly what leaks the hidden count.
+    const field = snapshots.filter(
+      (s) => inScope(s, scope, viewer) && (visibleIn(s, scope) || s.userId === self.userId),
+    );
     // Same ordering as the board: power desc, userId asc as the tie-break.
     const higher = field.filter(
       (s) => s.power > self.power || (s.power === self.power && s.userId < self.userId),

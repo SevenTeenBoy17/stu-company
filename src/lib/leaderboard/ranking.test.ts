@@ -126,8 +126,8 @@ describe("pagination", () => {
   });
 });
 
-describe("viewerPrivateRanks (own card, visibility-independent)", () => {
-  it("gives a hidden viewer their true position while the board hides them", () => {
+describe("viewerPrivateRanks (own card, board-consistent, leak-proof)", () => {
+  it("gives a hidden viewer their position among the visible field + self", () => {
     const data = [
       snap({ userId: "top", power: 1800 }),
       snap({ userId: "me", power: 1200, visibility: "hidden" }),
@@ -135,18 +135,22 @@ describe("viewerPrivateRanks (own card, visibility-independent)", () => {
     ];
     // Board (visibility-filtered): hidden me is absent.
     expect(rankLeaderboard(data, "nation", viewer).entries.some((e) => e.userId === "me")).toBe(false);
-    // But the private card rank counts the full consented field: top(1800) > me -> #2.
+    // Card counts the visible field + self: top(1800, visible) > me -> #2.
     expect(viewerPrivateRanks(data, viewer).nation).toBe(2);
     // And the visibility-honouring variant returns undefined for hidden.
     expect(viewerScopeRanks(data, viewer).nation).toBeUndefined();
   });
 
-  it("counts other hidden players in the field too", () => {
+  // itest4 R3 P1: a hidden player ABOVE the viewer must NOT be counted in the
+  // card rank, else cardRank − boardRank leaks the hidden count (de-anon risk).
+  it("excludes OTHER hidden players from the card rank (no hidden-count leak)", () => {
     const data = [
       snap({ userId: "secretLeader", power: 1900, visibility: "hidden" }),
       snap({ userId: "me", power: 1200 }),
     ];
-    expect(viewerPrivateRanks(data, viewer).nation).toBe(2);
+    // Board sees only {me} → #1. Card must also be #1 (secretLeader not counted).
+    expect(rankLeaderboard(data, "nation", viewer).viewerRank).toBe(1);
+    expect(viewerPrivateRanks(data, viewer).nation).toBe(1);
   });
 
   it("returns undefined when the viewer has no snapshot", () => {

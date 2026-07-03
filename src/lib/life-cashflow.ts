@@ -442,6 +442,15 @@ export function applyLifeCashflowChallenge(
   input: LifeCashflowApplyInput = {},
 ): { run: ScenarioRun; payload: LifeCashflowPayload; result: LifeCashflowApplicationResult } {
   const now = input.now ?? new Date();
+  // 回合级幂等（itest4 R3 P1）：每次 apply 都把当月收入加进现金，若同回合可重复执行
+  // 即可脚本无限刷现金/净值→喂 power-score 刷战力榜。对齐 auto-invest 的同回合守卫，
+  // 本回合已执行过则拒绝，要求先推进回合。
+  const alreadyAppliedThisRound = run.actionLog.some(
+    (entry) => entry.round === run.currentRound && entry.meta?.kind === "life_cashflow_challenge",
+  );
+  if (alreadyAppliedThisRound) {
+    throw new Error("本回合已执行过生活账本，请先推进回合再执行下一次。");
+  }
   const selectedPlanId = input.planId ?? "balanced";
   const selectedInsuranceId = input.insuranceId ?? "basic";
   const beforePayload = buildLifeCashflowPayload(run, selectedPlanId, selectedInsuranceId, now);

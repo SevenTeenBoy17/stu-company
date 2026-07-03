@@ -112,7 +112,7 @@ export function PowerRankTeaser() {
               ) : null}
             </p>
           </div>
-          <span className="shrink-0 text-xs font-medium text-brand">查看学习榜</span>
+          <span className="bz-brand-text-on-light shrink-0 text-xs font-semibold">查看学习榜</span>
         </div>
       )}
     </Link>

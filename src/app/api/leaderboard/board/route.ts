@@ -37,5 +37,13 @@ export async function GET(request: Request) {
     // No rank profile yet — the UI should route to onboarding.
     return NextResponse.json({ board: null, needsOnboarding: true });
   }
-  return NextResponse.json({ board, viewerId: auth.user.id });
+  // itest4 R3 P2：不向客户端透传每位玩家的内部 userId（可被拿去关联 别名↔身份）。
+  // 客户端只用它做 React key + 自我高亮；高亮已由服务端 isViewer 承载，key 改用全局唯一
+  // 的 rank。其余字段（别名/战力/层级/地区名）是展示数据，可正常下发。
+  const sanitizedEntries = board.entries.map((entry) => {
+    const { userId: _omitUserId, ...publicEntry } = entry;
+    void _omitUserId;
+    return publicEntry;
+  });
+  return NextResponse.json({ board: { ...board, entries: sanitizedEntries } });
 }

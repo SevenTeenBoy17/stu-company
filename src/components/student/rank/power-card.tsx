@@ -106,7 +106,7 @@ export function PowerCard({
             <button
               type="button"
               onClick={share}
-              className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
+              className="inline-flex min-h-10 items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
             >
               {shareState === "copied" ? (
                 <Check className="h-3.5 w-3.5" />
@@ -127,7 +127,10 @@ export function PowerCard({
             学习点
             <span className="ml-1.5 normal-case tracking-normal text-white/60">· {card.seasonName} 本周榜</span>
           </p>
-          <p className="bz-hero-stat text-hero-num mt-1 font-mono tabular-nums leading-none">
+          {/* itest4 R3 P1：bz-hero-stat 是 LIGHT amber 芯片，叠在深色渐变 hero 的 text-white 上
+              → 白字压浅底 1.05:1 近乎不可见。深色 hero 上保留 hero-num 字号但去掉浅芯片，
+              白字直接压深渐变（高对比）。 */}
+          <p className="text-hero-num mt-1 font-mono tabular-nums leading-none">
             {card.power.toLocaleString("zh-CN")}
           </p>
           {card.alias ? (

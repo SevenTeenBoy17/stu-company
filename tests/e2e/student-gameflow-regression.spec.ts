@@ -76,9 +76,19 @@ test.describe("student gameflow regression", () => {
     expect(Math.abs((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0))).toBeLessThan(120);
     await expect(page.locator('[data-testid^="quest-task-map-node-"]').first()).toBeVisible();
     await expect(page.locator('[data-testid^="quest-season-map-node-"]').first()).toBeVisible();
-    const mapNodeImagesLoaded = await page
-      .locator('[data-testid^="quest-task-map-node-"] img, [data-testid^="quest-season-map-node-"] img')
-      .evaluateAll((images) =>
+    // 地图节点头像走 next/image lazy（CreaturePortrait priority=false）。同步 evaluateAll
+    // 在并发负载下会撞上「懒加载未触发 / dev 按需优化未完成」的时序窗口（image.complete
+    // 短暂为 false），把加载时序误判成缺陷。先滚动触发懒加载，再用 waitForFunction 轮询
+    // 等真实加载完成 —— 与本用例下方卡背断言同口径，验证内容不变（≥2 张、naturalWidth≥40、
+    // src 命中 quest-world），只是容忍异步时序。
+    await page.getByTestId("quest-task-map").scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => {
+      const images = Array.from(
+        document.querySelectorAll(
+          '[data-testid^="quest-task-map-node-"] img, [data-testid^="quest-season-map-node-"] img',
+        ),
+      );
+      return (
         images.length >= 2 &&
         images.every(
           (image) =>
@@ -86,9 +96,9 @@ test.describe("student gameflow regression", () => {
             image.complete &&
             image.naturalWidth >= 40 &&
             image.currentSrc.includes("quest-world"),
-        ),
+        )
       );
-    expect(mapNodeImagesLoaded).toBe(true);
+    });
     await expect(page.locator('[data-testid^="quest-flip-"]')).toHaveCount(1);
 
     const imageLoaded = await page
