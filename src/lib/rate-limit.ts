@@ -12,13 +12,29 @@ type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 const MAX_TRACKED_KEYS = 5_000;
 
+/**
+ * 测试基建旋钮：E2E 全套会用同一演示账号在几分钟内登录数十次，会确定性打爆
+ * login-account 12 次/10 分钟 的限流（页面被重定向到 /demo，用例 120s 超时）。
+ * 仅当显式设置 E2E_RATE_LIMIT_MULTIPLIER（由 playwright.config webServer.env 注入）
+ * 时按倍数放宽所有 limit；生产/常规 dev 不设置该变量，行为完全不变。
+ */
+const LIMIT_MULTIPLIER = (() => {
+  const raw = Number.parseInt(process.env.E2E_RATE_LIMIT_MULTIPLIER ?? "", 10);
+  return Number.isFinite(raw) && raw >= 1 ? raw : 1;
+})();
+
+function effectiveLimit(limit: number) {
+  return limit * LIMIT_MULTIPLIER;
+}
+
 export interface RateLimitResult {
   ok: boolean;
   remaining: number;
   retryAfterMs: number;
 }
 
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+export function rateLimit(key: string, rawLimit: number, windowMs: number): RateLimitResult {
+  const limit = effectiveLimit(rawLimit);
   const now = Date.now();
   const bucket = buckets.get(key);
 
@@ -47,7 +63,8 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
  * so legitimate users sharing one NAT IP (a whole classroom) are never blocked
  * by each other's successful logins.
  */
-export function peekRateLimit(key: string, limit: number): boolean {
+export function peekRateLimit(key: string, rawLimit: number): boolean {
+  const limit = effectiveLimit(rawLimit);
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt < Date.now()) return true;
   return bucket.count < limit;

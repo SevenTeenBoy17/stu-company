@@ -122,8 +122,8 @@ export const riskProfileQuestions: RiskQuestion[] = [
   },
   {
     id: "peer-pressure",
-    title: "同学靠某只股票短期冲到榜首，你会？",
-    scenario: "排行榜会刺激行动，但好策略不能只由同伴收益驱动。",
+    title: "同学靠某只股票短期表现亮眼，你会？",
+    scenario: "同伴表现会刺激行动，但好策略不能只由别人的收益驱动。",
     options: [
       {
         id: "ignore",
@@ -197,8 +197,8 @@ export const riskProfileQuestions: RiskQuestion[] = [
       },
       {
         id: "top-rank",
-        label: "争取高排名，愿意承担波动",
-        detail: "竞争目标明确，但更需要纪律护栏。",
+        label: "追求更快反馈，愿意承担波动",
+        detail: "成长目标明确，但更需要纪律护栏。",
         score: 84,
         concept: "收益目标",
       },
@@ -290,8 +290,8 @@ export function bandFromScore(score: number): Pick<RiskProfilePayload, "band" | 
   return {
     band: "growth",
     label: "进取挑战者",
-    archetype: "敢冲榜，但必须给自己装上刹车",
-    summary: "你追求成长和排名反馈，优势是行动力强；短板是容易被短期收益强化冲动。",
+    archetype: "进取探索，但必须给自己装上刹车",
+    summary: "你追求成长和即时反馈，优势是行动力强；短板是容易被短期收益强化冲动。",
     learningConcept: "进取型策略最需要风险预算，否则一次错误就可能吞掉多回合努力。",
   };
 }
@@ -389,7 +389,7 @@ function buildRadar(score: number, summary: WealthSummary, answers: RiskProfileA
       id: "pressure",
       label: "抗从众压力",
       value: Math.round(pressure),
-      hint: "看到同学冲榜时，能否先复盘再行动。",
+      hint: "看到同学短期表现亮眼时，能否先复盘再行动。",
     },
     {
       id: "learning",

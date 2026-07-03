@@ -1,6 +1,7 @@
 /**
- * Copyable 财商战力 share card text (mirrors buildPersonaShareText). Leads with
- * the anti-YOLO message so the brag is about decision quality, not net worth.
+ * Copyable financial-learning share card text (mirrors buildPersonaShareText).
+ * Leads with the anti-YOLO message so the share is about decision quality, not
+ * net worth or ranking pressure.
  */
 export interface PowerShareInput {
   power: number;
@@ -16,8 +17,8 @@ export function buildPowerShareText(input: PowerShareInput): string {
   if (input.ranks.nation) bits.push(`全国第 ${input.ranks.nation}`);
 
   return [
-    `我在 Mr.Brown 经济沙盘的财商战力是 ${input.power}（${input.tierName}）！`,
-    bits.length > 0 ? bits.join(" · ") : "刚生成战力，目标冲段位 🚀",
-    "比的是决策质量，不是谁更敢赌。来测测你的财商战力 👉",
+    `我在 Mr.Brown 经济沙盘生成了 ${input.power} 点学习记录（${input.tierName}）！`,
+    bits.length > 0 ? bits.join(" · ") : "刚生成学习记录，继续解锁成长区间 🌱",
+    "看的是决策质量和复盘习惯，不是谁更敢赌。来生成你的财商学习画像 👉",
   ].join("\n");
 }

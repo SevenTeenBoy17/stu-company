@@ -85,9 +85,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       profile,
       school: { id: school.id, name: school.name },
-      message: consent ? "已加入财商战力排行榜。" : "信息已保存。获得家长同意后即可上榜。",
+      message: consent ? "已加入学习进度榜。" : "信息已保存。获得家长同意后即可进入学习榜。",
     });
   } catch (error) {
-    return handleRouteError(error, "保存排行榜信息失败，请稍后再试。");
+    return handleRouteError(error, "保存学习榜信息失败，请稍后再试。");
   }
 }

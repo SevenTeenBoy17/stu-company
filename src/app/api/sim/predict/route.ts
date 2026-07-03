@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       prediction,
       state,
-      message: "预测已提交。本回合结束时会自动结算，只解锁装饰徽章，不影响净值或战力。",
+      message: "预测已提交。本回合结束时会自动结算，只解锁装饰徽章，不影响净值或学习点。",
     });
   } catch (error) {
     return handleRouteError(error, "预测提交失败，请稍后再试。");

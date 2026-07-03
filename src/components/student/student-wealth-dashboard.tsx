@@ -89,6 +89,7 @@ function GatewayCard({
     <Link
       data-motion-card
       href={href}
+      aria-label={`${title}：${summary}`}
       className="group rounded-[1.45rem] border border-slate-200 bg-white p-4 transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_18px_44px_rgba(15,23,42,0.08)]"
     >
       <div className="flex items-start justify-between gap-3">
@@ -217,6 +218,7 @@ export function StudentWealthDashboard({
                 <button
                   data-motion-button
                   type="button"
+                  aria-label={hideMoney ? "显示金额" : "隐藏金额"}
                   onClick={() => setHideMoney((current) => !current)}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-body-sm font-semibold text-white transition hover:bg-white/14"
                 >
@@ -246,9 +248,9 @@ export function StudentWealthDashboard({
                 </div>
                 <div data-motion-card className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5">
                   <p className="text-caption font-semibold text-white/56">风险 / 纪律</p>
-                  <p className="mt-3 text-h2 tabular-nums text-white">
+                  <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-h3 tabular-nums text-white sm:text-h2">
                     {summary.riskScore}
-                    <span className="mx-2 text-h3 text-white/70">/</span>
+                    <span className="text-h4 text-white/70 sm:text-h3">/</span>
                     {summary.disciplineScore}
                   </p>
                   <p className="mt-3 text-body-sm text-white/58">风险不是敌人，失控才是。</p>
@@ -479,6 +481,7 @@ export function StudentWealthDashboard({
                     <button
                       key={option.id}
                       type="button"
+                      aria-label={`选择本回合关注项：${option.label}`}
                       onClick={() => setForm((current) => ({ ...current, focus: option.id }))}
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-left transition",
@@ -503,6 +506,7 @@ export function StudentWealthDashboard({
                     <button
                       key={option.id}
                       type="button"
+                      aria-label={`选择下一步动作：${option.label}`}
                       onClick={() => setForm((current) => ({ ...current, action: option.id }))}
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-left transition",
@@ -564,6 +568,7 @@ export function StudentWealthDashboard({
                   <button
                     type="submit"
                     data-testid="wealth-review-submit"
+                    aria-label="记录持有计划"
                     disabled={status.type === "loading" || form.note.trim().length < 8}
                     className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-[0_16px_36px_rgba(249,115,22,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >

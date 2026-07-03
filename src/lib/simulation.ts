@@ -657,6 +657,89 @@ export function computeStreak(run: ScenarioRun): { current: number; best: number
   return { current, best };
 }
 
+/**
+ * 学习型连续（替代 computeStreak 的「净值连升」运气钩子——后者奖励市场涨跌、诱导追涨，
+ * 是项目自陈的伦理 bug）。统计 actionLog 中「有学习/复盘动作」的回合，按回合连续计算
+ * 最长段(best) 与 当前段(current = 结束于最近学习回合的连续段)；排除纯 trade/bank 等投机操作。
+ * 纯函数：不读时钟、按 round 折叠，可测、可复盘。
+ */
+// 注意：刻意不含 "advance"（纯推进回合）——否则只点「下一回合」零理财动作也会刷出连续学习，
+// 与「奖励学习而非被动在线」的目标相悖。只计含真实学习/复盘/理财动作的回合。
+const LEARNING_ACTION_TYPES: ReadonlySet<string> = new Set([
+  "wealth_review",
+  "opportunity",
+  "fund_lab",
+  "auto_invest",
+  "quest",
+  "protection",
+  "goal_account",
+]);
+
+export function computeLearningStreak(run: ScenarioRun): { current: number; best: number } {
+  const learningRounds = new Set<number>();
+  for (const entry of run.actionLog) {
+    if (LEARNING_ACTION_TYPES.has(entry.type)) learningRounds.add(entry.round);
+  }
+  if (learningRounds.size === 0) return { current: 0, best: 0 };
+  const rounds = [...learningRounds].sort((a, b) => a - b);
+  let best = 1;
+  let segment = 1;
+  for (let i = 1; i < rounds.length; i += 1) {
+    segment = rounds[i] === rounds[i - 1] + 1 ? segment + 1 : 1;
+    best = Math.max(best, segment);
+  }
+  // current 仅在「末段延伸到当前回合（或上一回合，允许本回合进行中）」时有效；否则连续学习已断 → 0。
+  // 避免一个早断了 6 回合的学生 UI 仍显示虚高的「连续学习 N」。
+  let current = 0;
+  if (rounds[rounds.length - 1] >= run.currentRound - 1) {
+    current = 1;
+    for (let i = rounds.length - 1; i > 0; i -= 1) {
+      if (rounds[i] === rounds[i - 1] + 1) current += 1;
+      else break;
+    }
+  }
+  return { current, best };
+}
+
+export type TaskCenterTelemetry = {
+  totalActions: number;
+  tradeActions: number;
+  learningActions: number;
+  questClaims: number;
+  /** H3 学习护栏：游戏化不得使「交易占比」上升（区别于 gacha 的关键证伪条件）。 */
+  tradeShare: number;
+  learningStreakBest: number;
+  guardrailHealthy: boolean;
+};
+
+/**
+ * 任务中心学习护栏遥测（doc §288 / 留存假设 H3）：从现有 actionLog 纯派生交易占比、学习动作量、
+ * 领取数与学习连续段。无新增数据/管线，供漏斗与「trade 占比不得随游戏化上升」的护栏监测。纯函数。
+ */
+export function computeTaskCenterTelemetry(
+  run: ScenarioRun,
+  opts: { maxTradeShare?: number } = {},
+): TaskCenterTelemetry {
+  const maxTradeShare = opts.maxTradeShare ?? 0.6;
+  const log = run.actionLog;
+  const totalActions = log.length;
+  const tradeActions = log.filter((entry) => entry.type === "trade").length;
+  const learningActions = log.filter((entry) => LEARNING_ACTION_TYPES.has(entry.type)).length;
+  const questClaims = log.filter(
+    (entry) => entry.type === "quest" || entry.meta?.kind === "quest_reward_claim",
+  ).length;
+  const tradeShare = totalActions > 0 ? tradeActions / totalActions : 0;
+  return {
+    totalActions,
+    tradeActions,
+    learningActions,
+    questClaims,
+    tradeShare,
+    learningStreakBest: computeLearningStreak(run).best,
+    guardrailHealthy: tradeShare <= maxTradeShare,
+  };
+}
+
 /** P2 growth: a copyable share card built from the student's investor persona. */
 export function buildPersonaShareText(
   persona: { label: string; summary: string },

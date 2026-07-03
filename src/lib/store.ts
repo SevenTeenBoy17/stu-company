@@ -425,7 +425,7 @@ export function createSeedStore(): Store {
         label: "试点学生邀请码",
         createdBy: "teacher-1",
         usesRemaining: 18,
-        expiresAt: "2026-06-30T23:59:59.000Z",
+        expiresAt: "2027-08-31T23:59:59.000Z",
       },
       {
         id: "invite-2",
@@ -435,7 +435,7 @@ export function createSeedStore(): Store {
         label: "家长绑定邀请码",
         createdBy: "teacher-1",
         usesRemaining: 3,
-        expiresAt: "2026-06-30T23:59:59.000Z",
+        expiresAt: "2027-08-31T23:59:59.000Z",
       },
       {
         id: "invite-3",
@@ -444,7 +444,7 @@ export function createSeedStore(): Store {
         label: "校内教师演示邀请码",
         createdBy: "admin-1",
         usesRemaining: 5,
-        expiresAt: "2026-09-01T23:59:59.000Z",
+        expiresAt: "2027-08-31T23:59:59.000Z",
       },
     ],
     assignments: [

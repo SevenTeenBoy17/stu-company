@@ -58,14 +58,14 @@ export function RankBoard({
         if (!alive) return;
         if (!response.ok) {
           setBoard(null);
-          setError(data?.message ?? "战力榜暂时加载失败，请稍后重试。");
+          setError(data?.message ?? "学习榜暂时加载失败，请稍后重试。");
           return;
         }
         setBoard(data?.board ?? null);
       } catch {
         if (alive) {
           setBoard(null);
-          setError("网络连接不稳定，战力榜暂时加载失败。");
+          setError("网络连接不稳定，学习榜暂时加载失败。");
         }
       } finally {
         if (alive) setLoading(false);
@@ -107,7 +107,7 @@ export function RankBoard({
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-subtle text-brand">
           <Trophy className="h-4 w-4" />
         </span>
-        <h3 className="text-base font-bold text-fg-strong">战力排行榜</h3>
+        <h3 className="text-base font-bold text-fg-strong">学习进度榜</h3>
         {board ? (
           <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold text-fg-default">
             共 {board.total} 人
@@ -160,19 +160,19 @@ export function RankBoard({
       {board && board.viewerRank ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-brand-subtle to-amber-100/50 px-4 py-3 ring-1 ring-amber-200/70">
           <p className="text-sm font-bold text-brand-ink">
-            你在「{SCOPE_LABELS[scope]}·{PERIOD_LABELS[period]}」暂列第 {board.viewerRank} 名
+            你在「{SCOPE_LABELS[scope]}·{PERIOD_LABELS[period]}」位于学习记录区间 {board.viewerRank}
           </p>
           {gapToClimb !== null && gapToClimb > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-brand-ink">
-              <Flame className="h-3.5 w-3.5" /> 再得 {gapToClimb.toLocaleString("zh-CN")} 战力即可超越前一名
+              <Flame className="h-3.5 w-3.5" /> 再积累 {gapToClimb.toLocaleString("zh-CN")} 点学习记录即可解锁下一复盘区间
             </span>
           ) : board.viewerRank === 1 ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-brand-ink">
-              <Crown className="h-3.5 w-3.5" /> 榜首！守住你的王座
+              <Crown className="h-3.5 w-3.5" /> 当前节奏领先，继续保持稳定复盘
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-bold text-brand-ink">
-              <Flame className="h-3.5 w-3.5" /> 继续打磨决策，向上冲一名
+              <Flame className="h-3.5 w-3.5" /> 继续打磨决策，稳步进入更稳区间
             </span>
           )}
         </div>
@@ -186,7 +186,7 @@ export function RankBoard({
             onClick={() => setRetryKey((key) => key + 1)}
             className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
           >
-            重新加载战力榜
+            重新加载学习榜
           </button>
         </div>
       ) : showSkeleton ? (
@@ -197,7 +197,7 @@ export function RankBoard({
         </ol>
       ) : !board || board.entries.length === 0 ? (
         <p className="mt-4 rounded-2xl bg-bg-muted px-3 py-6 text-center text-sm text-fg-default">
-          本范围本期还没有上榜的同学，完成一局沙盘抢占头名 🏁
+          本范围本期还没有学习记录，完成一局沙盘后就能看到自己的复盘位置。
         </p>
       ) : (
         <ol className="mt-4 space-y-2">
@@ -264,7 +264,7 @@ export function RankBoard({
                     {entry.power.toLocaleString("zh-CN")}
                   </span>
                   <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-subtle">
-                    战力
+                    学习点
                   </span>
                 </span>
               </li>

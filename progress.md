@@ -3516,3 +3516,156 @@ No .env.local staged.
 No raw external AI/provider fetches added outside src/lib/ai.ts.
 No leaderboard, power-score, or scenario financial mutation path touched by B3.
 ```
+
+## 2026-07-02 任务卡翻转 + 卡面字体修复（用户复检回归）
+
+Root causes fixed (all in uncommitted working-tree batch, user-visible):
+1. Fake flip: poker-flip CSS had no rotation (`transform:none` + 120ms fade + one-face swing-in). Rebuilt as real two-face 3D flip: `.poker-flip-inner-front{rotateY(180deg)}` + backface-culled faces + pre-rotated front. Verified computed matrix3d(-1,...,-1) after flip; mid-turn frame shows perspective foreshortening.
+2. Blurry text: permanent `filter:drop-shadow` + `will-change:transform,filter` on text plate (violates ANIM-JANK-2) → removed; glyphs re-rasterize crisp at identity.
+3. Washed text: permanent `::after` white sheen (opacity .42) across text faces → replaced by `.poker-gloss` hover sweep on dark card BACKS only, under z-10 text layer.
+4. Invisible "去完成": unlayered `a{color:inherit}` in globals.css beat `@layer utilities` text-* classes app-wide (Tailwind v4 cascade layers) → moved into `@layer base`. Probe: link color rgb(16,23,38) → rgb(255,255,255).
+5. Route/season card front overlap (buttons over meta/desc) → compact 2-row middle + `mt-auto` buttons; season shell 224→272px.
+6. mission-card-back.png 1.75MB → webp 48KB (1260w q80).
+7. Seeded invites MRB-STUDENT/PARENT-2026 expired 2026-06-30 (live demo register broken since Jul 1; 3 unit tests red) → extended to 2027-08-31 (store.ts feeds scripts/seed.ts).
+8. Season focus waitFor 1s → 4s (full-suite load flake; solo-green).
+
+Gates (real output):
+- npx tsc --noEmit → clean
+- npm run lint → clean (eslint, no output)
+- npm run test → "Test Files  92 passed (92) / Tests  612 passed (612)"
+- npx playwright test (full) → "33 passed (3.1m), 1 skipped" exit 0 (incl. gameflow flip suite 6/6, reveal-a11y axe AA all student routes, internal-test 14 pages)
+- Visual: .tmp/shots re-1..re-5 — mid-turn 3D foreshortening, route/season fronts clean, 去完成 white-on-dark, crisp CJK glyphs (DPR2 zoom crop)
+
+## 2026-07-02 补记：CI E2E 红 → 测试契约修正（020e642 后续）
+
+Honest correction: 之前"全套 33 passed"含 1 did-not-run —— 恰是 gameflow "quest hub" 用例，
+其 quest-box-art 断言指向已被设计演进删除的 QuestBlindBoxArt（020e642 里仅测试残留该 testid），
+CI 如实揭穿。修正：该断言段重写为新契约（主卡卡背 mission-card-back.webp 经 next/image 加载且
+naturalWidth≥300 + src 校验）；wealth/opportunity 表单挂载等待 45s→120s（CI 双核多路由并发编译实测可 >45s）。
+复验：gameflow+reveal-a11y 两 spec 本地 8/8 passed (1.7m)，axe serious/critical=0。
+
+## 2026-07-02 补记 2：CI E2E 连挂的系统化调试终局（三层根因）
+
+Systematic debugging (trace.zip 网络流水 = 决定性证据：429 /api/auth/login → 307 /student/wealth → 200 /demo?reason=login_required)：
+1. 【主因·容量回归】login-account 限流 12 次/10 分钟：全套 e2e 同一演示账号登录数十次，晚跑的
+   reveal-a11y submit-gating 必撞 429；loginApi 未断言返回 → 静默未登录 → 平台层重定向 /demo →
+   元素 120s 不挂载。bb5ae86 新增 22 测试把登录量推过阈值 = "从那时起连挂"的真相。
+   修复：rate-limit.ts 支持显式 E2E_RATE_LIMIT_MULTIPLIER（playwright.config webServer.env 注入 20×；
+   生产/常规 dev 不设置，行为不变）；submit-gating 的 loginApi 改为断言成功、快速失败。
+2. 【叠加·会话吊销】prelaunch 两处用 logout 切身份 → bumpTokenVersion 吊销共享 student@ 的所有
+   并行 worker 会话。修复：学生侧改走隔离的 request fixture，彻底去 logout（phase4 的 logout 用
+   一次性账号，安全保留）。
+3. 【本地噪声】长命 dev server 跨多轮套件累积状态（旧 store 日期/限流桶）曾制造 11-failed 假象；
+   另 Git Bash 下 taskkill /F 被 MSYS 转成 F:/ 杀不掉进程（用 PowerShell Stop-Process）。
+
+Gates: tsc ✓ / lint ✓ / rate-limit 单测 5/5 ✓ / 全套 e2e（全新 Playwright 自管 server + workers=2 CI 同构）
+= 41 passed, 1 skipped(既有条件跳过), 0 failed, 0 did-not-run (4.1m)。
+
+## 2026-07-02 批次 3：评审会三 P1 + P2 批量落地（任务中心机制层）
+
+1. 付费↔领卡解绑（P1 合规）：draw/claim 路由移除 canUserOperate 门控与「试用已结束请升级」403
+   文案（装饰卡不门控付费；learn/complete 本就未门控，规则自相矛盾）；两个 route.test 的 403 用例
+   翻转为「过期学生仍可领取」去付费墙回归锁。
+2. 集卡死结（P1 完成度）：新增 2 个 systems-thinking 任务——toolkit-composer（≥4 种不同理财工具，
+   跨工具广度）+ black-swan-drill（同一回合 保护伞×持有复盘 配对）；判据零运气、单沙盘必可完成；
+   12 任务=12 卡全可达；CollectionMeter/图鉴「赛季限定·即将开放」占位删除/中性化为「暂未开放」；
+   新增跨模块回归锁：quests.length ≥ questCardDeck.length。
+3. review-rhythm 假成就（P1）：去 advance/event，只数 wealth_review，阈值 4→3，文案讲明
+   「推进回合不算」。
+4. P2 批量：withClaimState 已领取任务锁定 done/100%（防指标回落回退→习得性无助，附回归测试）；
+   quests claim POST 补 rateLimit 20/60s（含 429 中文文案测试）；draw meta 不再写 rarity 原始值
+   （epic 等开奖词），改中性 series；连续学习 streak=0 改「—」+重启引导文案。
+
+Gates（真实输出）：tsc ✓ / eslint ✓ / vitest 92 文件 616/617（唯一失败=已知本地高负载 flake
+「reveals season objective cards」，单跑 8/8 绿、CI Unit 四连绿从未失败）/ npm run build ✓ /
+gameflow e2e 6/6 passed (24.9s)。quests.test 12/12（含 3 个新回归锁）。
+
+## 2026-07-02 批次 4：移动端横滑卡组重构（规格 §12.3/§19.7）
+
+五大高度贡献者在 sm 以下改横滑卡组（snap-x + 85%/88%/70% 宽=保留约 1.15 张露出；图鉴用双行横向流
+auto-cols-[44%] 滑动距离减半），sm 起完全还原原网格/列表；横滑容器自身 overflow-x-auto 裁剪，
+根级 scrollWidth 不受影响。
+实测（390px）：总高 14878 → 10076px（-32%）；赛季挑战 1816→664 / 权益中心 2057→741 /
+图鉴 1498→617 / 成就墙 1225→276 / 任务地图 1084→632；根级横向溢出 390/768 均为 0；
+平板 768 网格原样（season backs 5 张、宽 678px）。
+Gates：tsc ✓ / lint ✓ / gameflow e2e 6/6（含 390px reduced-motion 翻卡）/ 组件测试 8/8 /
+视觉抽查（赛季横滑露出 1.15 张、图鉴双行流）✓。
+
+## 2026-07-02 批次 5：§19.7 移动端增强三件套
+
+① 顶部小图标锚点导航（目标/主卡/队列/图鉴，仅 <md，sticky top-2 z-30，44px 触控高）：4 个
+   目标区块加 id + scroll-mt-24；实测两锚点 smooth-scroll 落位均为 96px（精确让出导航），
+   桌面 display:none。② 长详情底部抽屉：QuestDetailDialog 手机 items-end + rounded-t +
+   max-h-[88dvh] 内滚 + 抓手 + 260ms bz-sheet-in 滑入（sm 起居中弹窗不变；reduced-motion
+   被全局规则压 0.01ms）；实测 drawerBottomGap=0 贴底。③ bz-press 触控按压（pointer:coarse
+   限定 120ms scale 0.98，注释明确禁用于 3D 翻卡面）：挂于翻卡/领卡/选航线/去完成/锚点chips。
+Gates：tsc ✓ / lint ✓ / 组件 8/8 / gameflow e2e 6/6 (22.6s) / 实机探针（navY=8 sticky、
+albumTop/seasonTop=96、drawerBottomGap=0、desktopNavDisplay=none）+ 抽屉截图目检 ✓。
+
+## 2026-07-02 补记 3：CI Unit 焦点断言 flake 加固（f5538d1 后续）
+
+CI Unit 首败：「flips a weekly quest card」的 activeElement 断言 1645ms > waitFor 默认 1s
+（主卡翻面焦点经 240ms 真实 setTimeout + 覆盖率插桩放大时序）。与 season 用例同一 flake 家族，
+本轮改动仅 className 不触焦点逻辑，此前 4 连绿属边缘时序。
+修复：该文件全部 6 处 activeElement waitFor 统一加 timeout:4000（CI 实测失败点 1.6s 有 2.4x 余量）。
+验证：coverage 模式（CI 同款）连跑 3/3 全过「Tests 8 passed (8)」。
+
+## 2026-07-03 批次 6：quest-dashboard 组件拆分（评审 deferred 项，P1/P2 清零后启动）
+
+2953 行单文件 → 主编排 1449 行 + 5 个内聚子模块（shared.ts 168 / themes.ts 336 /
+card-art.tsx 219 / mission-cards.tsx 434 / collection.tsx 424）；依赖单向
+shared←themes←card-art←{mission-cards,collection}←main，无环；对外 API 不变
+（main 继续导出 StudentQuestDashboard + 再导出 QuestCardCollectionView，页面/测试零改动）。
+方法：python 锚点断言行区间机械搬运（4 处边界被断言逮住并修正）+ tsc/lint 循环收敛导入
+（32 个未用导入全剪）。
+Gates：tsc ✓ / lint 0 警告 ✓ / 组件+quests 20/20 / 全量 vitest 92 文件 617/617（零 flake）/
+build 61 页 ✓ / gameflow e2e 6/6 (29.4s)。f42e811（焦点 4s 加固）CI 六项全绿在先。
+
+## 2026-07-03 批次 7：评审已验证 quick-win 清尾（5 项）
+
+① visual-2 收藏编号撞号：id 哈希%99（12 卡 5 对共号）→ 牌库固定位次 01-12 唯一（cardDeckNumber）。
+② nudge-3 成功横幅永久滞留：claimResult/drawResult 8s 自动消退（live region 容器常驻仅清内容），
+   两个 live region 补 aria-atomic="true" 整段播报。
+③ ux-retention-4 空态失真：「只有这个任务」在 done/watch 零结果筛选下改为筛选感知文案
+   （done→"完成后就会出现在这里"，watch→正向肯定）。
+④ mobile-2 iOS 查看卡库滚动被吞：双 rAF 等 body 滚动锁释放后再 scrollIntoView。
+⑤ ux-retention-5 滚动提示误导：任务 ≤3 个时不再显示「向下滑动查看更多」。
+Gates：tsc ✓ / lint 0 警告 / 组件+quests 20/20 / gameflow e2e 6/6 (24.0s)。
+
+## 2026-07-03 批次 8：themeId 语义映射重构（评审 content-3/4 + culture-2）
+
+① 任务↔伙伴显式配对表 questThemeIdByQuestId（12 项，冻结自既有序号映射=零视觉变化）：
+   消除"数组序号耦合"脆弱性——过去在中间插入任务会静默重排其后所有伙伴归属；
+   questBoxThemeFor 改 显式表→序号→稳定哈希 三级回退（夹具/过渡态仍可点亮）。
+② QuestMapGallery 季目标类别去字符串嗅探（id.includes("portfolio")）→ 显式表
+   seasonObjectiveCategoryById（冻结现状；语义再归类留内容组专项）。
+③ 新增 themes.test.ts 三重回归锁：真实 12 任务全登记（新增任务未补表即红）、
+   配对值与 12 主题严格双射、显式配对无视调用序号 + 未登记 id 序号回退。
+Gates：tsc ✓ / lint 0 警告 / themes+组件+quests 23/23 / gameflow e2e 6/6 (24.2s)。
+
+## 2026-07-03 批次 9：套系集齐学习巩固 CTA（最后一个可自主执行的评审可选项）
+
+CollectionMeter 完成格新增 series-consolidation-cta-*（foundations/risk-control/systems-thinking
+→ /learn 小测巩固入口，44px 触控 + bz-press）；严守苏格拉底约束：不发新卡、不加学习点、
+文案禁稀缺词——"奖励"就是把练过的工具串成一次巩固学习（通关感=学习闭环而非收集刺激）。
+新增 collection.test.tsx：集齐显示/未集齐隐藏 + 文案禁稀缺词回归锁。
+Gates：tsc ✓ / lint 0 警告 / collection+dashboard 10/10 / gameflow e2e 6/6 (24.0s)。
+
+## 2026-07-03 补记：焦点断言最终根修（1ff3092 后续 CI Unit 再红）
+
+同一「flips a weekly quest card」焦点断言 4706ms 仍 activeElement=body——4s 超时救不了 =
+不是慢而是 coverage 插桩下 240ms 真实延时聚焦调度在 jsdom 偶发彻底丢失。第 4 次加大超时
+是错误方向；根修 = 该 describe 的 beforeEach 覆写 matchMedia 命中 prefers-reduced-motion →
+toggleQuestFlip 聚焦延时 0、GSAP 即时分支，行为等价且彻底消除真实计时竞争。
+验证：coverage 模式（CI 同款）连跑 3/3「Tests 8 passed (8)」；lint ✓。
+
+## 2026-07-03 批次 10：rarity→tier 全量改名（线级诚实合规收尾）
+
+重新定性后升级优先级：批次 3 只清了 meta，但 draw 响应的 card 对象仍把原始 "epic" 传输到
+客户端（最后一处 wire 泄漏）。全量改名：QuestCardRarity→QuestCardTier、字段 rarity→tier、
+取值 common/rare/epic→basic/advanced/system、RARITY_TO_SERIES→TIER_TO_SERIES、
+rarityMeta→tierMeta、back-*.svg 三资产 git mv 同步改名；中文标签（基础/进阶/系统）不变=零视觉变化。
+宠物系统的独立 rarity 概念刻意不动（范围纪律，另行评估）。
+新增线级诚实回归锁：draw 响应序列化后不得匹配 /rarity|"epic"|"rare"|"common"/。
+grep 门禁：任务卡域内 rarity/epic 仅存于说明注释与回归锁自身。
+Gates：tsc ✓ / lint 0 警告 / 全量 vitest 94 文件 622/622 / gameflow e2e 6/6 (24.6s)。

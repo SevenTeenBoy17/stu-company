@@ -113,6 +113,10 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
   const values = timeline.map((item) => item.netWorth);
   const linePath = buildLinePath(values);
   const areaPath = buildAreaPath(values);
+  const first = timeline[0];
+  const last = timeline[timeline.length - 1];
+  const peak = Math.max(...values);
+  const chartSummary = `净值趋势图：从第 ${first?.round ?? 1} 回合 ${formatCurrency(first?.netWorth ?? 0)} 变化到第 ${last?.round ?? 1} 回合 ${formatCurrency(last?.netWorth ?? 0)}，阶段峰值 ${formatCurrency(peak)}。`;
 
   return (
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-[#0f1729] p-4 text-white">
@@ -126,7 +130,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
         <TrendingUp className="h-4 w-4 text-[#ffb36d]" />
       </div>
       <div className="mt-4">
-        <svg aria-hidden="true" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
+        <svg role="img" aria-label={chartSummary} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
           <defs>
             <linearGradient id="history-net-worth-fill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="#f08a38" stopOpacity="0.42" />
@@ -190,6 +194,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
       return `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
     })
     .join(" ");
+  const chartSummary = `风险与纪律趋势图：风险分从 ${riskValues[0] ?? 0} 到 ${riskValues[riskValues.length - 1] ?? 0}，纪律分从 ${disciplineValues[0] ?? 0} 到 ${disciplineValues[disciplineValues.length - 1] ?? 0}。`;
 
   return (
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-slate-950/[0.03] p-4">
@@ -203,7 +208,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
         <ShieldAlert className="h-4 w-4 text-[#f08a38]" />
       </div>
       <div className="mt-4">
-        <svg aria-hidden="true" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
+        <svg role="img" aria-label={chartSummary} viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="h-56 w-full">
           {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
             <line
               key={ratio}
@@ -476,7 +481,7 @@ export function StudentHistoryReviewDashboard({
                           <p className="mt-2 line-clamp-3 text-caption leading-6 text-white/64">
                             {highlight.detail}
                           </p>
-                          <p className="mt-auto pt-3 text-h3 font-semibold text-white">
+                          <p className="mt-auto break-words pt-3 text-body-lg font-semibold text-white sm:text-h4">
                             <HighlightMetricValue value={highlight.metricValue} />
                           </p>
                         </div>
@@ -646,6 +651,7 @@ export function StudentHistoryReviewDashboard({
                               </p>
                               <button
                                 type="button"
+                                aria-label={`让 AI 继续解释历史动作：${item.label}`}
                                 onClick={() =>
                                   dispatchAssistantOpen({
                                     prompt: `请结合我的历史复盘页，继续解释这一步"${item.label}"为什么重要，以及我下一回合应该怎么验证。`,
@@ -745,6 +751,7 @@ export function StudentHistoryReviewDashboard({
             {/* Primary CTA — ghost style (secondary action, not the page's one primary CTA) */}
             <button
               type="button"
+              aria-label="再次让 AI 解释历史复盘建议"
               onClick={() =>
                 dispatchAssistantOpen({
                   prompt: "请结合我的历史操作继续解释下一步建议，并告诉我下一回合最值得优先验证的一个动作。",

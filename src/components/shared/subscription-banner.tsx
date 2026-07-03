@@ -11,10 +11,10 @@ interface Props {
 function studentSafeBannerMessage(state: SubscriptionState): string | null {
   if (!state.bannerMessage) return null;
   if (state.status === "expired") {
-    return "试用已结束。点下面的按钮生成一个付款链接发给家长，家长用微信支付即可帮你解锁完整功能。";
+    return "试用已结束。你仍可查看历史记录；如需继续使用完整 AI 评定，请让家长或老师查看开通说明。";
   }
   if (state.status === "trial_degraded") {
-    return `试用最后一天啦（AI 诊断已切换为通用版）。生成家长付款链接，解锁完整个性化评定。`;
+    return "试用进入基础模式。你仍可继续学习；如需完整个性化评定，请让家长或老师查看开通说明。";
   }
   return state.bannerMessage;
 }

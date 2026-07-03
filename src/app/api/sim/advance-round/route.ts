@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const state = await getSimulationStateForUser(auth.user.id);
     const finished = state.run.currentRound >= state.run.totalRounds;
     const adaptiveEvents = detectAdaptiveEvents(state.run);
-    // Best-effort: refresh the player's 财商战力 for the weekly board. Never let
+    // Best-effort: refresh the player's learning progress for the weekly board. Never let
     // a leaderboard hiccup block round advance.
     try {
       await recomputePowerForUser(auth.user.id);

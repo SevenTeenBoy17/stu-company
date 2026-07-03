@@ -26,6 +26,11 @@ export default defineConfig({
       DATABASE_URL: process.env.PLAYWRIGHT_DATABASE_URL ?? "",
       ALLOW_MEMORY_FALLBACK: process.env.ALLOW_MEMORY_FALLBACK ?? "true",
       DB_QUERY_TIMEOUT_MS: process.env.DB_QUERY_TIMEOUT_MS ?? "350",
+      // 全套 e2e 用同一演示账号在几分钟内登录数十次，会打爆 login-account
+      // 12 次/10 分钟 限流（429 → 平台层重定向 /demo → 用例 120s 超时）。
+      // 仅测试 server 放宽 20 倍；生产不设此变量，安全姿态不变。
+      // 注意：reuseExistingServer=true 时若你手动预启了 server，需要自带该变量。
+      E2E_RATE_LIMIT_MULTIPLIER: process.env.E2E_RATE_LIMIT_MULTIPLIER ?? "20",
     },
   },
   projects: [

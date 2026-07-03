@@ -96,7 +96,11 @@ describe("POST /api/student/quests/draw", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.card).toMatchObject({ id: expect.any(String), rarity: expect.any(String), teachingLine: expect.any(String) });
+    expect(body.card).toMatchObject({ id: expect.any(String), teachingLine: expect.any(String) });
+    // 线级诚实回归锁：响应任何角落不得再出现 rarity/epic/rare/common 开奖词汇（合规收尾）。
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toMatch(/rarity|"epic"|"rare"|"common"/);
+    expect(["basic", "advanced", "system"]).toContain(body.card.tier);
     expect(body.collectionItem).toMatchObject({
       userId: "student-1",
       cardId: body.card.id,
@@ -147,6 +151,28 @@ describe("POST /api/student/quests/draw", () => {
     expect(vi.mocked(drawCardForUser)).not.toHaveBeenCalled();
   });
 
+  it("去付费墙回归锁：试用已过期的学生仍可领取学习收藏卡（不得 403 推送升级）", async () => {
+    // 合规（未成年人）：学习卡纯装饰，领卡不做订阅门控——若本用例失败，
+    // 说明有人把 canUserOperate 加回了领卡路径，请先阅读评审会 P1 结论。
+    vi.mocked(requireUser).mockResolvedValue(
+      asRequireUser({
+        user: {
+          ...STUDENT,
+          id: "student-expired-draw-test",
+          subscriptionTier: "free",
+          trialExpiresAt: "2020-01-01T00:00:00.000Z",
+          subscriptionExpiresAt: null,
+        },
+      }),
+    );
+
+    const res = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).alreadyDrawn).toBe(false);
+    expect(vi.mocked(drawCardForUser)).toHaveBeenCalledTimes(1);
+  });
+
   it("returns 429 with Chinese message after 20 draws from one user within the window", async () => {
     // Use a unique user id so this test has its own isolated rate-limit bucket.
     const RL_USER = { ...STUDENT, id: "student-rl-draw-test" };
@@ -169,7 +195,7 @@ describe("POST /api/student/quests/draw", () => {
 
   it("propagates auth blocks and maps DB failures to db_unavailable", async () => {
     vi.mocked(requireUser).mockResolvedValueOnce(
-      asRequireUser({ error: apiError("unauthorized", "请先登录后再抽取任务卡。", 401) }),
+      asRequireUser({ error: apiError("unauthorized", "请先登录后再领取任务学习卡。", 401) }),
     );
     const unauthorized = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
     expect(unauthorized.status).toBe(401);

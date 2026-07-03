@@ -11,9 +11,9 @@ interface Option {
 }
 
 const VISIBILITY_OPTIONS: { value: RankVisibility; label: string; hint: string }[] = [
-  { value: "public", label: "公开", hint: "全国/省/市/校都可见你的昵称与战力" },
+  { value: "public", label: "公开", hint: "全国/省/市/校都可见你的昵称与学习点" },
   { value: "school_only", label: "仅校内", hint: "只在本校榜单出现，对外不显示" },
-  { value: "hidden", label: "隐身", hint: "只自己可见战力，不进入任何榜单" },
+  { value: "hidden", label: "隐身", hint: "只自己可见学习点，不进入任何榜单" },
 ];
 
 export interface RankOnboardingInitial {
@@ -118,10 +118,10 @@ export function RankOnboarding({
     <section className="overflow-hidden rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
       <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-brand" />
-        <h2 className="text-base font-semibold text-fg-default">{editing ? "编辑档案与隐私设置" : "加入财商战力榜"}</h2>
+        <h2 className="text-base font-semibold text-fg-default">{editing ? "编辑档案与隐私设置" : "建立学习榜档案"}</h2>
       </div>
       <p className="mt-2 text-sm leading-6 text-fg-muted">
-        填写你的学校与所在地区，即可和同校、同城、同省乃至全国的同学比拼财商战力。信息为必填，仅用于排名分组。
+        填写你的学校与所在地区，用来把学习记录放进合适的校内、同城或全国复盘区间。信息为必填，仅用于学习榜分组。
       </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -166,6 +166,7 @@ export function RankOnboarding({
             value={schoolName}
             onChange={(e) => setSchoolName(e.target.value)}
             list="rank-school-suggestions"
+            aria-label="学校全称"
             placeholder="例如：成都市第七中学"
             maxLength={40}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -187,6 +188,7 @@ export function RankOnboarding({
           <input
             value={alias}
             onChange={(e) => setAlias(e.target.value)}
+            aria-label="榜单昵称"
             placeholder="例如：稳健小能手"
             maxLength={20}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -220,11 +222,12 @@ export function RankOnboarding({
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
+          aria-label="同意公开昵称与学习点进入学习榜"
           className="mt-0.5 h-4 w-4 accent-brand"
         />
         <span className="flex items-center gap-1 text-xs leading-5 text-fg-muted">
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-brand" />
-          我已获得家长 / 监护人同意，公开我的昵称与战力参与排名。未勾选也可保存信息，但暂不进入榜单。
+          我已获得家长 / 监护人同意，公开我的昵称与学习点进入学习榜。未勾选也可保存信息，但暂不进入公开榜单。
         </span>
       </label>
 
@@ -238,7 +241,7 @@ export function RankOnboarding({
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {editing ? "保存修改" : consent ? "加入排行榜" : "保存信息"}
+          {editing ? "保存修改" : consent ? "保存学习榜设置" : "保存信息"}
         </button>
         {onCancel ? (
           <button

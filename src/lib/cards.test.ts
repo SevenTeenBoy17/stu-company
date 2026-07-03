@@ -1,52 +1,69 @@
 import { describe, expect, it } from "vitest";
 
 import { questCardDeck } from "@/lib/content";
-import { QUEST_CARD_RARITY_WEIGHTS, drawCard, type QuestCard } from "@/lib/cards";
+import { buildCollectionProgress, drawCard, type QuestCard } from "@/lib/cards";
 
-const distributionDeck: QuestCard[] = [
-  { id: "common-a", name: "普通 A", rarity: "common", artKey: "common-a", teachingLine: "普通卡。" },
-  { id: "common-b", name: "普通 B", rarity: "common", artKey: "common-b", teachingLine: "普通卡。" },
-  { id: "rare-a", name: "稀有 A", rarity: "rare", artKey: "rare-a", teachingLine: "稀有卡。" },
-  { id: "rare-b", name: "稀有 B", rarity: "rare", artKey: "rare-b", teachingLine: "稀有卡。" },
-  { id: "epic-a", name: "史诗 A", rarity: "epic", artKey: "epic-a", teachingLine: "史诗卡。" },
-  { id: "epic-b", name: "史诗 B", rarity: "epic", artKey: "epic-b", teachingLine: "史诗卡。" },
+const deck: QuestCard[] = [
+  { id: "a", name: "甲", tier: "basic", artKey: "a", teachingLine: "卡甲。" },
+  { id: "b", name: "乙", tier: "advanced", artKey: "b", teachingLine: "卡乙。" },
+  { id: "c", name: "丙", tier: "system", artKey: "c", teachingLine: "卡丙。" },
 ];
 
-describe("drawCard", () => {
-  it("returns the same card for the same deck, owned set, and seed", () => {
-    const first = drawCard(questCardDeck, ["calm-observer"], 20260618);
-    const second = drawCard(questCardDeck, ["calm-observer"], 20260618);
-
+describe("drawCard（确定性领取 · 去射幸）", () => {
+  it("同一牌库与已拥有集合永远返回同一张卡（不依赖任何随机种子/用户身份）", () => {
+    const first = drawCard(questCardDeck, ["calm-observer"]);
+    const second = drawCard(questCardDeck, ["calm-observer"]);
     expect(second).toEqual(first);
   });
 
-  it("biases away from already-owned cards when an unowned card exists in the selected rarity", () => {
-    const deck: QuestCard[] = [
-      { id: "owned", name: "已拥有", rarity: "common", artKey: "owned", teachingLine: "旧卡。" },
-      { id: "fresh", name: "新卡", rarity: "common", artKey: "fresh", teachingLine: "新卡。" },
-    ];
-
-    expect(drawCard(deck, ["owned"], 7).id).toBe("fresh");
+  it("按牌库顺序领取「下一张未拥有」的卡", () => {
+    expect(drawCard(deck, []).id).toBe("a");
+    expect(drawCard(deck, ["a"]).id).toBe("b");
+    expect(drawCard(deck, ["a", "b"]).id).toBe("c");
   });
 
-  it("roughly follows the configured rarity weights over many deterministic seeds", () => {
-    const counts = { common: 0, rare: 0, epic: 0 };
-
-    for (let seed = 1; seed <= 2000; seed += 1) {
-      counts[drawCard(distributionDeck, [], seed).rarity] += 1;
+  it("完成多少任务 = 拥有多少卡：逐张领取覆盖整个牌库且不重复", () => {
+    const owned: string[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < deck.length; i += 1) {
+      const card = drawCard(deck, owned);
+      expect(seen.has(card.id)).toBe(false);
+      seen.add(card.id);
+      owned.push(card.id);
     }
+    expect(seen.size).toBe(deck.length);
+  });
 
-    const commonShare = counts.common / 2000;
-    const rareShare = counts.rare / 2000;
-    const epicShare = counts.epic / 2000;
+  it("集齐后回退到牌库首张（去重完形，便于补领展示）", () => {
+    const allOwned = deck.map((card) => card.id);
+    expect(drawCard(deck, allOwned).id).toBe("a");
+  });
 
-    expect(QUEST_CARD_RARITY_WEIGHTS.common).toBeGreaterThan(QUEST_CARD_RARITY_WEIGHTS.rare);
-    expect(QUEST_CARD_RARITY_WEIGHTS.rare).toBeGreaterThan(QUEST_CARD_RARITY_WEIGHTS.epic);
-    expect(commonShare).toBeGreaterThan(0.6);
-    expect(commonShare).toBeLessThan(0.8);
-    expect(rareShare).toBeGreaterThan(0.15);
-    expect(rareShare).toBeLessThan(0.35);
-    expect(epicShare).toBeGreaterThan(0.02);
-    expect(epicShare).toBeLessThan(0.12);
+  it("空牌库抛出中文错误", () => {
+    expect(() => drawCard([], [])).toThrow(/牌库为空/);
+  });
+});
+
+describe("buildCollectionProgress（套系进度）", () => {
+  it("按套系分组并对照已拥有卡（doc §2.1 的 5/5/2 拆分）", () => {
+    const progress = buildCollectionProgress([], questCardDeck);
+    expect(progress.map((s) => s.series)).toEqual(["foundations", "risk-control", "systems-thinking"]);
+    expect(progress.map((s) => s.total)).toEqual([5, 5, 2]);
+    expect(progress.every((s) => s.owned === 0 && !s.complete)).toBe(true);
+  });
+
+  it("集齐某套系 → complete=true 且 missingNames 为空", () => {
+    const foundations = questCardDeck.filter((card) => card.tier === "basic").map((card) => card.id);
+    const f = buildCollectionProgress(foundations, questCardDeck).find((s) => s.series === "foundations")!;
+    expect(f.owned).toBe(5);
+    expect(f.complete).toBe(true);
+    expect(f.missingNames).toEqual([]);
+  });
+
+  it("差 N 张时给出缺失卡名（用于定向助推「去完成对应任务」，非诱导再抽）", () => {
+    const allButOne = questCardDeck.map((card) => card.id).slice(1);
+    const progress = buildCollectionProgress(allButOne, questCardDeck);
+    const missingTotal = progress.reduce((sum, s) => sum + s.missingNames.length, 0);
+    expect(missingTotal).toBe(1);
   });
 });

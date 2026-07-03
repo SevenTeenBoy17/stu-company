@@ -42,3 +42,6 @@ Stage 1.1 cannot run until the four Supabase values are filled:
 - Current app repo traffic still uses the configured server-side `DATABASE_URL`; it does not yet inject request JWT claims or `set local role authenticated` into every Drizzle query.
 - Therefore, Stage 3 establishes and tests database policies, but full request-by-request RLS enforcement for server repo calls should be treated as a follow-up architecture task if required.
 - The policy set intentionally follows the requested `ai_sessions` scope of `SELECT + UPDATE own only`; inserts/deletes remain service-side responsibilities unless a later stage broadens authenticated write policies.
+
+## Reflection - Quest flip aria-label test mismatch
+Vitest/JSDOM returned an empty accessible name for flip controls that also carry changing aria-hidden state. The product issue is whether the back-side label leaks task titles, so the focused test should assert the aria-label attribute directly instead of relying on the environment-specific computed accessible name. Fix: replace the three toHaveAccessibleName checks with toHaveAttribute('aria-label', ...), then rerun focused tests.

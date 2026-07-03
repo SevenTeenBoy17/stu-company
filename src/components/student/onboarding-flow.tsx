@@ -103,6 +103,14 @@ const STEPS: OnboardingStep[] = [
 // the learner's own guess so the predict→reveal loop actually closes.
 const MARKET_REVEAL = { direction: "down" as const, netWorth: 119_460, changePct: -0.45 };
 
+function preferredScrollBehavior(): ScrollBehavior {
+  if (typeof window === "undefined") return "auto";
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
 interface OnboardingFlowProps {
   userName: string;
   showUpgradeShortcut?: boolean;
@@ -244,7 +252,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
     await completeOnboarding();
     window.setTimeout(() => {
       document.getElementById("guest-upgrade-checkout")?.scrollIntoView({
-        behavior: "smooth",
+        behavior: preferredScrollBehavior(),
         block: "start",
       });
     }, 80);

@@ -1,5 +1,5 @@
 import { buildWealthSummary, type WealthSummary } from "@/lib/allocation";
-import { computeStreak } from "@/lib/simulation";
+import { computeLearningStreak } from "@/lib/simulation";
 import type { LearningProgressSummary, ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
 
@@ -99,6 +99,12 @@ function isQuestClaimed(run: ScenarioRun, questId: string) {
 
 function withClaimState(run: ScenarioRun, quest: Omit<StudentQuestItem, "claimable" | "claimed">): StudentQuestItem {
   const claimed = isQuestClaimed(run, quest.id);
+  // 已领取即锁定为完成（评审会 P2·习得性无助）：cooldown/安全垫/分散度等实时指标驱动的任务，
+  // 领取后若指标回落会静默回退成「进行中」——学生无法解释「为什么做过了还不算」。
+  // 领取是终态：状态/进度永不回退，与图鉴「已点亮永久不变灰」承诺一致。
+  if (claimed) {
+    return { ...quest, status: "done", progress: 1, claimed: true, claimable: false };
+  }
   return {
     ...quest,
     claimed,
@@ -177,7 +183,7 @@ function buildCoach(summary: WealthSummary, run: ScenarioRun, learning: Learning
           ? "先把风险温度降下来"
           : "把好习惯变成连续任务",
     summary:
-      "任务中心不会直接增加战力，它只把真实行为转成可见目标。这样既保留榜单公平，也让你知道自己下一步该练哪一种能力。",
+      "任务中心不会直接增加学习点，它只把真实行为转成可见目标。这样既保留学习榜公平，也让你知道自己下一步该练哪一种能力。",
     nextActions: nextActions.slice(0, 3),
   };
 }
@@ -206,14 +212,14 @@ function buildBenefits(
       id: "guess-direction",
       kind: "practice",
       title: "猜涨跌微练习",
-      label: "波动红包",
+      label: "波动观察",
       summary: "先写下你对下一回合冷热方向的判断，再用结果复盘“预测为什么会失误”。",
       href: "/student/market",
       actionLabel: "去市场雷达练习",
       reward: "装饰贴纸：波动侦探",
       progress: clamp(opportunityCount / 1, 0, 1),
       status: benefitStatus(opportunityCount / 1),
-      guardrail: "猜测只用于训练概率感，不改变净值、战力和排行榜。",
+      guardrail: "猜测只用于训练概率感，不改变净值、学习点和学习榜。",
     },
     {
       id: "season-mini-league",
@@ -226,26 +232,26 @@ function buildBenefits(
       reward: "称号：稳健挑战者",
       progress: clamp((reviewCount + fundLabCount) / 3, 0, 1),
       status: benefitStatus((reviewCount + fundLabCount) / 3),
-      guardrail: "赛事奖励只做展示，不额外发放战力。",
+      guardrail: "赛事奖励只做展示，不额外发放学习点。",
     },
     {
       id: "trial-cash-lab",
       kind: "perk",
-      title: "体验金首单训练",
-      label: "体验金",
+      title: "模拟资金首单训练",
+      label: "练习资金",
       summary: "完成第一笔模拟交易后，系统会引导你复盘“为什么买、亏了怎么办、什么时候退出”。",
       href: "/student",
       actionLabel: tradeCount > 0 ? "回到策略台复盘" : "去策略台完成首单",
       reward: "头像角标：第一笔模拟单",
       progress: clamp(tradeCount / 1, 0, 1),
       status: benefitStatus(tradeCount / 1),
-      guardrail: "体验金是课堂练习概念，不是真实资金，也不进入真实交易。",
+      guardrail: "练习资金只用于课堂模拟，不是真实资金，也不进入真实交易。",
     },
     {
       id: "learn-to-earn",
       kind: "perk",
       title: "学投资课程领皮肤",
-      label: "学习红包",
+      label: "学习皮肤",
       summary: "完成课程与小测后解锁界面皮肤，让“先学再做”变成可见的成长仪式。",
       href: "/learn",
       actionLabel: "去投教课程",
@@ -271,8 +277,8 @@ function buildBenefits(
 
   return {
     title: "活动权益中心",
-    summary: "把参考图里的波动红包、模拟炒股、学习红包和大盘晴雨，改造成未成年人友好的课堂练习货架。",
-    guardrail: "所有活动权益都只用于学习、装饰和复盘，不直接改变净值、战力或真实收益。",
+    summary: "把参考图里的波动观察、模拟资金练习、学习皮肤和大盘晴雨，改造成未成年人友好的课堂练习货架。",
+    guardrail: "所有活动权益都只用于学习、装饰和复盘，不直接改变净值、学习点或真实收益。",
     items,
   };
 }
@@ -283,7 +289,8 @@ export function buildStudentQuestPayload(
   now = new Date(),
 ): StudentQuestPayload {
   const wealth = buildWealthSummary(run);
-  const streak = computeStreak(run);
+  // 学习型连续（替代净值连升运气钩子）：streakCurrent/Best 现表示连续学习回合数。
+  const streak = computeLearningStreak(run);
   const tradeCount = countActions(run, "trade");
   const bankCount = countActions(run, "bank");
   const opportunityCount = countActions(run, "opportunity");
@@ -291,12 +298,33 @@ export function buildStudentQuestPayload(
   const goalAccountCount = countActions(run, "goal_account");
   const protectionCount = countActions(run, "protection");
   const wealthReviewCount = countActions(run, "wealth_review");
-  const reviewActions = run.actionLog.filter(
-    (entry) => entry.type === "advance" || entry.type === "event" || entry.type === "wealth_review",
-  ).length;
   const lastTradeRound = latestActionRound(run, "trade");
   const cashBufferWeight =
     wealth.grossAssets > 0 ? ((run.cash + run.savings) / wealth.grossAssets) * 100 : 0;
+
+  // systems-thinking 触发器（评审会 P1·集卡死结）：12 张卡此前只有 10 个任务触发器，
+  // market-composer / black-swan-navigator 两张卡与图鉴末两格永不可达。以下两个判据
+  // 只依赖学生自主动作（无市场行情/事件卡运气），单个 12 回合沙盘内必然可完成。
+  const toolkitActionTypes = ["bank", "opportunity", "fund_lab", "goal_account", "protection", "wealth_review"] as const;
+  const distinctToolCount = new Set(
+    run.actionLog
+      .map((entry) => entry.type)
+      .filter((type): type is (typeof toolkitActionTypes)[number] =>
+        (toolkitActionTypes as readonly string[]).includes(type),
+      ),
+  ).size;
+  // 黑天鹅演练：同一回合内既做了保护伞压力测试、又提交了持有计划复盘（防御×复盘配对）。
+  const blackSwanDrillProgress = (() => {
+    const roundMasks = new Map<number, number>();
+    for (const entry of run.actionLog) {
+      if (entry.type !== "protection" && entry.type !== "wealth_review") continue;
+      const mask = roundMasks.get(entry.round) ?? 0;
+      roundMasks.set(entry.round, mask | (entry.type === "protection" ? 1 : 2));
+    }
+    let best = 0;
+    for (const mask of roundMasks.values()) best = Math.max(best, mask === 3 ? 2 : 1);
+    return best / 2;
+  })();
 
   const quests: StudentQuestItem[] = [
     withClaimState(run, {
@@ -307,7 +335,7 @@ export function buildStudentQuestPayload(
       progress: clamp(wealth.diversificationScore / 72, 0, 1),
       target: "学会不把鸡蛋放在同一个篮子里",
       reward: "装饰称号：均衡侦探",
-      coachNote: `当前分散度 ${wealth.diversificationScore}，奖励只做展示，不影响战力。`,
+      coachNote: `当前分散度 ${wealth.diversificationScore}，奖励只做展示，不影响学习点。`,
     }),
     withClaimState(run, {
       id: "cash-buffer-20",
@@ -341,13 +369,16 @@ export function buildStudentQuestPayload(
     }),
     withClaimState(run, {
       id: "review-rhythm",
-      title: "完成 4 次回合复盘",
+      // 假成就修复（评审会 P1）：原先 advance/event 也计入「复盘」，纯点击推进回合即可刷满；
+      // 现只统计学生主动提交的持有计划复盘（与 computeLearningStreak 排除 advance 的口径一致），
+      // 阈值 4→3（12 回合内主动复盘 3 次=节奏养成；wealth-review-plan 是第 1 次的入门任务）。
+      title: "养成 3 次复盘节奏",
       category: "review",
-      status: statusFrom(reviewActions / 4),
-      progress: clamp(reviewActions / 4, 0, 1),
-      target: "每推进回合都留下一条复盘线索",
+      status: statusFrom(wealthReviewCount / 3),
+      progress: clamp(wealthReviewCount / 3, 0, 1),
+      target: "主动提交 3 次持有计划复盘（推进回合不算）",
       reward: "装饰徽章：复盘记录员",
-      coachNote: "复盘会把一次输赢变成可迁移的经验。",
+      coachNote: "复盘会把一次输赢变成可迁移的经验；只有你主动写下的复盘才算数。",
     }),
     withClaimState(run, {
       id: "opportunity-first-note",
@@ -399,6 +430,26 @@ export function buildStudentQuestPayload(
       reward: "装饰称号：耐心玩家",
       coachNote: tradeCount > 0 ? "不是每回合都要下单，等待也是策略。" : "先完成第一笔交易后再解锁这个任务。",
     }),
+    withClaimState(run, {
+      id: "toolkit-composer",
+      title: "解锁 4 种理财工具",
+      category: "finance",
+      status: statusFrom(distinctToolCount / 4),
+      progress: clamp(distinctToolCount / 4, 0, 1),
+      target: "在储蓄、机会观察、基金实验、目标账户、保护伞、持有复盘中用过至少 4 种",
+      reward: "装饰称号：市场作曲家",
+      coachNote: `已解锁 ${distinctToolCount}/4 种工具。系统思维不是精通单一工具，而是让多种工具彼此配合。`,
+    }),
+    withClaimState(run, {
+      id: "black-swan-drill",
+      title: "完成 1 次黑天鹅演练",
+      category: "risk",
+      status: statusFrom(blackSwanDrillProgress),
+      progress: clamp(blackSwanDrillProgress, 0, 1),
+      target: "同一回合内：先做 1 次保护伞压力测试，再提交 1 次持有计划复盘",
+      reward: "装饰称号：黑天鹅导航员",
+      coachNote: "极端行情来临前的演练：防御动作和冷静复盘要在同一回合内完成才算数。",
+    }),
   ];
 
   const achievements: StudentAchievement[] = [
@@ -448,7 +499,7 @@ export function buildStudentQuestPayload(
       id: "streak-maker",
       title: "连续成长记录",
       unlocked: streak.best >= 2,
-      detail: `历史最佳净值连升 ${streak.best} 回合。`,
+      detail: `历史最佳连续学习 ${streak.best} 回合。`,
       decorativeReward: "收益日历贴纸",
     },
   ];
@@ -519,7 +570,7 @@ export function claimQuestReward(
       title: quest.title,
       reward: quest.reward,
       claimedAt,
-      summary: "奖励已加入你的成长轨迹。它只作为装饰和记录，不会直接改变战力或净值。",
+      summary: "奖励已加入你的成长轨迹。它只作为装饰和记录，不会直接改变学习点或净值。",
     },
   };
 }

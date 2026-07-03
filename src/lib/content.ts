@@ -23,88 +23,91 @@ export type LearningModuleQuizGrade = {
   correct: number;
 };
 
+// 套系(series)由 cards.ts 的 TIER_TO_SERIES 从 tier 派生：本牌库须保持
+// 5 common(基础工具箱) + 5 rare(风险管理) + 2 epic(系统思维)；改动配比需同步 cards.ts
+// 的派生表（cards.test.ts 的 5/5/2 断言会在 CI 拦住失配）。
 export const questCardDeck = [
   {
     id: "calm-observer",
     name: "冷静观察者",
-    rarity: "common",
+    tier: "basic",
     artKey: "calm-observer",
     teachingLine: "市场很热时，先写下证据，再决定要不要行动。",
   },
   {
     id: "cash-buffer",
     name: "现金缓冲垫",
-    rarity: "common",
+    tier: "basic",
     artKey: "cash-buffer",
     teachingLine: "留出现金不是胆小，而是保留下一回合的选择权。",
   },
   {
     id: "review-anchor",
     name: "复盘锚点",
-    rarity: "common",
+    tier: "basic",
     artKey: "review-anchor",
     teachingLine: "每次交易后写一句理由，错误才会变成可学习的材料。",
   },
   {
     id: "diversification-scout",
     name: "分散侦察员",
-    rarity: "common",
+    tier: "basic",
     artKey: "diversification-scout",
     teachingLine: "组合不是把所有东西都买一点，而是让风险来源更分散。",
   },
   {
     id: "evidence-builder",
     name: "证据搭建者",
-    rarity: "common",
+    tier: "basic",
     artKey: "evidence-builder",
     teachingLine: "先区分事实、观点和猜测，再把判断写成可验证清单。",
   },
   {
     id: "risk-shield",
     name: "风险护盾",
-    rarity: "rare",
+    tier: "advanced",
     artKey: "risk-shield",
     teachingLine: "好决策不只看收益，也要问：如果判断错了会怎样？",
   },
   {
     id: "sector-cartographer",
     name: "板块制图师",
-    rarity: "rare",
+    tier: "advanced",
     artKey: "sector-cartographer",
     teachingLine: "板块轮动不是魔法，它往往来自政策、需求和资金偏好的变化。",
   },
   {
     id: "drawdown-detective",
     name: "回撤侦探",
-    rarity: "rare",
+    tier: "advanced",
     artKey: "drawdown-detective",
     teachingLine: "回撤时先找原因：是市场变了，还是仓位和纪律出了问题？",
   },
   {
     id: "balanced-allocator",
     name: "均衡配置师",
-    rarity: "rare",
+    tier: "advanced",
     artKey: "balanced-allocator",
     teachingLine: "长期配置靠节奏，不靠一次猜中所有方向。",
   },
   {
     id: "behavior-mirror",
     name: "行为镜像",
-    rarity: "rare",
+    tier: "advanced",
     artKey: "behavior-mirror",
     teachingLine: "看见自己的冲动、拖延和从众，才有机会改进下一次选择。",
   },
   {
     id: "market-composer",
     name: "市场作曲家",
-    rarity: "epic",
+    tier: "system",
     artKey: "market-composer",
     teachingLine: "真正成熟的策略像乐谱：现金、风险和机会都有自己的位置。",
   },
   {
     id: "black-swan-navigator",
     name: "黑天鹅导航员",
-    rarity: "epic",
+    tier: "system",
     artKey: "black-swan-navigator",
     teachingLine: "极端事件无法精准预测，但可以提前设计不被一次击穿的结构。",
   },
@@ -367,7 +370,7 @@ const learningModuleDefinitions: LearningModuleDefinition[] = [
       },
       {
         question: "每周挑战赛应该鼓励学生提交什么？",
-        options: ["策略理由和风险复盘", "只提交最终净值", "只截图最高排名", "完全不解释操作"],
+        options: ["策略理由和风险复盘", "只提交最终净值", "只截图最好结果", "完全不解释操作"],
         answerIndex: 0,
         explanation: "有理由、有证据、有复盘的挑战才有教学价值。",
       },

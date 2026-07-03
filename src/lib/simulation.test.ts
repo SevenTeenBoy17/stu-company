@@ -7,6 +7,7 @@ import {
   buildPersonaShareText,
   buildSeasonLeaderboard,
   computeStreak,
+  computeTaskCenterTelemetry,
   createInitialRun,
   deriveInvestorPersona,
   evaluateRun,
@@ -238,5 +239,42 @@ describe("investor persona (premium deep report)", () => {
       });
     }
     expect(deriveInvestorPersona(run).label).not.toBe("谨慎观望者");
+  });
+});
+
+describe("computeTaskCenterTelemetry（H3 学习护栏遥测）", () => {
+  const ts = new Date("2026-06-01T00:00:00.000Z").toISOString();
+  const make = (id: string, round: number, type: "trade" | "wealth_review" | "opportunity" | "fund_lab") => ({
+    id,
+    round,
+    type,
+    label: type,
+    amount: 0,
+    timestamp: ts,
+  });
+
+  it("从 actionLog 纯派生交易占比 / 学习量 / 护栏健康", () => {
+    const run = createInitialRun("s1", "c1");
+    run.actionLog = [make("1", 1, "trade"), make("2", 1, "wealth_review"), make("3", 2, "opportunity"), make("4", 2, "fund_lab")];
+    const t = computeTaskCenterTelemetry(run);
+    expect(t.totalActions).toBe(4);
+    expect(t.tradeActions).toBe(1);
+    expect(t.learningActions).toBe(3);
+    expect(t.tradeShare).toBeCloseTo(0.25);
+    expect(t.guardrailHealthy).toBe(true);
+  });
+
+  it("交易占比超阈值 → guardrail alert（H3 证伪条件）", () => {
+    const run = createInitialRun("s1", "c1");
+    run.actionLog = [make("1", 1, "trade"), make("2", 1, "trade"), make("3", 1, "trade"), make("4", 2, "wealth_review")];
+    const t = computeTaskCenterTelemetry(run, { maxTradeShare: 0.5 });
+    expect(t.tradeShare).toBeCloseTo(0.75);
+    expect(t.guardrailHealthy).toBe(false);
+  });
+
+  it("空 actionLog → 全 0、护栏健康", () => {
+    const run = createInitialRun("s1", "c1");
+    run.actionLog = [];
+    expect(computeTaskCenterTelemetry(run)).toMatchObject({ totalActions: 0, tradeShare: 0, guardrailHealthy: true });
   });
 });

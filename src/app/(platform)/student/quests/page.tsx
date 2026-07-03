@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { PlatformLayout } from "@/components/platform/platform-layout";
+import { SubscriptionBanner } from "@/components/shared/subscription-banner";
 import { StudentQuestDashboard, type QuestCardCollectionView } from "@/components/student/student-quest-dashboard";
+import { resolveSubscriptionState } from "@/lib/billing/subscription";
 import type { QuestCard } from "@/lib/cards";
 import { questCardDeck } from "@/lib/content";
 import { getLearningProgress, getSimulationStateForUser, listCardCollectionForUser, roleHomePath } from "@/lib/db/repo";
@@ -26,6 +28,11 @@ export default async function StudentQuestsPage() {
   ]);
   const payload = buildStudentQuestPayload(state.run, learning);
   const seasonPayload = buildStudentSeasonChallengePayload(state.run);
+  const subState = resolveSubscriptionState(
+    user.subscriptionTier,
+    user.trialExpiresAt,
+    user.subscriptionExpiresAt,
+  );
   const cardCollection = collection.reduce<QuestCardCollectionView[]>((items, item) => {
     const card = questCardDeck.find((deckCard) => deckCard.id === item.cardId);
     if (card) items.push({ ...item, card: card as QuestCard });
@@ -38,6 +45,7 @@ export default async function StudentQuestsPage() {
       heading="学生策略台"
       summary="围绕一名学生的整学期沙盘体验展开：下单、储蓄、房产、创业、回合推进与 AI 导师复盘。"
     >
+      <SubscriptionBanner state={subState} role={user.role} />
       <StudentQuestDashboard payload={payload} seasonPayload={seasonPayload} initialCollection={cardCollection} />
     </PlatformLayout>
   );

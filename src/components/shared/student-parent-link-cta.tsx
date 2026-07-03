@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 /**
  * B1 (conversion): students can't pay directly (minors-payment compliance), but
  * the dead-end "ask a parent" copy converted nobody. This CTA lets a teen generate
- * a shareable link a parent opens to pay — turning a wish into a one-tap action.
+ * a shareable family confirmation link without framing payment as the student's job.
  *
  * Extracted into its own client island so {@link SubscriptionBanner} can stay a
  * Server Component (only this CTA — shown to expired/degraded students — ships JS).
@@ -53,7 +53,7 @@ export function StudentParentLinkCTA() {
           disabled={isPending}
           className="self-start rounded-full bg-[var(--brand)] px-4 py-1.5 text-xs font-semibold text-slate-950 transition-colors hover:bg-[var(--amber-600)] disabled:opacity-60"
         >
-          {isPending ? "正在生成…" : "生成家长付款链接"}
+          {isPending ? "正在生成…" : "生成家长确认链接"}
         </button>
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-[var(--ink-200)] bg-white p-2.5">
@@ -68,7 +68,7 @@ export function StudentParentLinkCTA() {
             onClick={copy}
             className="self-start rounded-full bg-[var(--ink-900)] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--ink-700)]"
           >
-            {copied ? "已复制，发给家长吧" : "复制链接"}
+            {copied ? "已复制，可交给家长查看" : "复制链接"}
           </button>
         </div>
       )}

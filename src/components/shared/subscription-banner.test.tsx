@@ -62,8 +62,8 @@ describe("SubscriptionBanner", () => {
     );
     // The raw message is replaced by the compliance-safe 'ask a parent' copy.
     expect(screen.queryByText("原始文案")).toBeNull();
-    expect(screen.getByText(/微信支付/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /生成家长付款链接/ })).toBeInTheDocument();
+    expect(screen.getByText(/家长或老师查看开通说明/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成家长确认链接/ })).toBeInTheDocument();
     // Compliance: a minor must NOT be shown the direct /pricing pay link.
     expect(screen.queryByRole("link", { name: /了解/ })).toBeNull();
   });
@@ -75,7 +75,7 @@ describe("SubscriptionBanner", () => {
         role="student"
       />,
     );
-    expect(screen.getByRole("button", { name: /生成家长付款链接/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /生成家长确认链接/ })).toBeInTheDocument();
   });
 
   it("uses error styling when expired and warning styling otherwise", () => {

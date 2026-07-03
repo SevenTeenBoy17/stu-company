@@ -10,8 +10,8 @@ function isSharedGuest(user: { id: string; email: string }) {
 }
 
 /**
- * B1 (conversion): lets a teen generate a shareable link a parent can open to pay
- * the ¥15/月 for them. The student never handles payment (minors-payment
+ * B1 (conversion): lets a teen generate a shareable family confirmation link.
+ * The student never handles payment (minors-payment
  * compliance) — the link carries a short-lived signed intent that authorizes the
  * parent's prepay for this student. See /api/billing/prepay.
  */
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   if (isSharedGuest(auth.user)) {
-    return apiError("forbidden", "请先升级为个人账号，再生成家长付款链接。", 403);
+    return apiError("forbidden", "请先升级为个人账号，再生成家长确认链接。", 403);
   }
 
   try {
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     }
 
     const { token, intent } = await createBillingIntent({
+      purpose: "parent-link-prepay",
       userId: auth.user.id,
       tier: "standard",
     });
@@ -42,9 +43,9 @@ export async function POST(request: Request) {
       token,
       expiresAt: intent.expiresAt,
       studentName: auth.user.name,
-      message: "把这个链接发给家长，家长打开后用微信支付即可为你解锁完整功能。",
+      message: "可把这个链接交给家长查看，家长确认后即可为你开通完整功能。",
     });
   } catch (error) {
-    return handleRouteError(error, "生成家长付款链接失败，请稍后重试。");
+    return handleRouteError(error, "生成家长确认链接失败，请稍后重试。");
   }
 }

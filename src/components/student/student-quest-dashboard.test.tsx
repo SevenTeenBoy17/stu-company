@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { StudentQuestDashboard, type QuestCardCollectionView } from "@/components/student/student-quest-dashboard";
@@ -46,7 +46,7 @@ function makeQuestPayload(): StudentQuestPayload {
     benefits: {
       title: "学习留存",
       summary: "把复盘变成连续任务。",
-      guardrail: "奖励只做装饰，不改变净值和排行榜。",
+      guardrail: "奖励只做装饰，不改变净值和学习榜。",
       items: [],
     },
     calendar: [
@@ -95,7 +95,7 @@ function makeSeasonPayload(): StudentSeasonChallengePayload {
 const drawnCard: QuestCard = {
   id: "calm-observer",
   name: "冷静观察者",
-  rarity: "rare",
+  tier: "advanced",
   artKey: "calm-observer",
   teachingLine: "先记录证据，再决定是否行动。",
 };
@@ -115,36 +115,251 @@ function makeCollectionItem(): QuestCardCollectionView {
 describe("StudentQuestDashboard quest flip", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // 焦点断言确定性（CI 覆盖率插桩下 240ms 真实延时的聚焦调度会偶发彻底丢失，
+    // 已两次在 CI 复现且 4s 超时也救不了）：让本组测试命中 reduced-motion 路径 →
+    // toggleQuestFlip 的聚焦延时为 0、GSAP 走即时分支，行为等价且不再与真实计时竞争。
+    vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }) as unknown as MediaQueryList);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
+  it("reveals season objective cards from the playful card back", async () => {
+    render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
+
+    const user = userEvent.setup();
+    const shell = screen.getByTestId("season-objective-flip-shell-market-observe");
+    const cardBack = screen.getByTestId("season-objective-card-back-market-observe");
+    const cardFront = screen.getByTestId("season-objective-card-front-market-observe");
+    const flipInner = shell.querySelector("[data-objective-flip-inner]");
+
+    expect(shell).toHaveClass("poker-flip-shell");
+    expect(shell).toHaveAttribute("data-flip-state", "back");
+    expect(flipInner).toHaveClass("poker-flip-inner");
+    expect(flipInner).not.toHaveClass("poker-flip-inner-front");
+    expect(cardBack).toHaveClass("poker-flip-face");
+    expect(cardFront).toHaveClass("poker-flip-face");
+    expect(cardFront).toHaveClass("poker-flip-front-face");
+    expect(screen.getByTestId("season-objective-flip-hint-market-observe")).toBeInTheDocument();
+    expect(cardBack).toHaveAttribute("aria-hidden", "false");
+    expect(cardBack).toHaveAttribute("aria-expanded", "false");
+    expect(cardBack).toHaveAttribute("aria-controls", "season-objective-card-front-market-observe");
+    expect(cardBack).toHaveTextContent("卡背");
+    expect(cardBack).toHaveTextContent("翻开任务");
+    expect(cardBack).toHaveAttribute("aria-label", "翻开赛季任务卡 1");
+    expect(cardBack).not.toHaveTextContent("市场观察");
+    expect(cardBack).not.toHaveTextContent("0/1");
+    expect(cardFront).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(cardBack);
+
+    expect(cardBack).toHaveAttribute("aria-hidden", "true");
+    expect(cardBack).toHaveAttribute("aria-expanded", "true");
+    expect(shell).toHaveAttribute("data-flip-state", "front");
+    expect(flipInner).toHaveClass("poker-flip-inner-front");
+    expect(cardFront).toHaveAttribute("aria-hidden", "false");
+    expect(cardFront).toHaveTextContent("市场观察");
+    expect(cardFront).toHaveTextContent("加入 1 个自选观察");
+    expect(cardFront).toHaveTextContent("任务正面");
+    expect(cardFront).not.toHaveAttribute("inert");
+    const primaryLink = screen.getByRole("link", { name: "去完成赛季任务：市场观察" });
+    expect(primaryLink).toBeVisible();
+    // 焦点迁移经 focusAfterFlip 的下一 tick 重试；全量套件高负载下 1s 默认超时会偶发翻车，放宽到 4s。
+    await waitFor(() => {
+      expect(document.activeElement).toBe(primaryLink);
+    }, { timeout: 4000 });
+
+    await user.click(screen.getByRole("button", { name: "翻回赛季任务卡背：市场观察" }));
+    await waitFor(() => {
+      expect(cardBack).toHaveAttribute("aria-hidden", "false");
+      expect(cardBack).not.toHaveAttribute("inert");
+      expect(cardFront).toHaveAttribute("inert");
+      expect(document.activeElement).toBe(cardBack);
+    }, { timeout: 4000 });
+  });
+
+  it("reveals mission route cards before selecting the route", async () => {
+    const payload = makeQuestPayload();
+    const secondQuest = {
+      ...payload.quests[0],
+      id: "portfolio-quest",
+      title: "做组合实验",
+      category: "finance" as const,
+      status: "active" as const,
+      progress: 0.2,
+      claimable: false,
+      claimed: false,
+      target: "做 1 次基金/ETF 实验或定投计划。",
+      reward: "组合研究员卡背",
+      coachNote: "先比较分散后的波动，再决定下一步。",
+    };
+
+    render(
+      <StudentQuestDashboard
+        payload={{ ...payload, quests: [payload.quests[0], secondQuest] }}
+        seasonPayload={makeSeasonPayload()}
+      />,
+    );
+
+    const user = userEvent.setup();
+    const routeBack = screen.getByTestId("mission-route-card-back-portfolio-quest");
+    const routeFront = screen.getByTestId("mission-route-card-front-portfolio-quest");
+    const routeShell = routeBack.closest("[data-route-node]");
+    const routeInner = routeBack.closest("[data-route-flip-inner]");
+
+    expect(routeShell).toHaveClass("poker-flip-shell");
+    expect(routeShell).toHaveAttribute("data-flip-state", "back");
+    expect(routeInner).toHaveClass("poker-flip-inner");
+    expect(routeInner).not.toHaveClass("poker-flip-inner-front");
+    expect(routeBack).toHaveClass("poker-flip-face");
+    expect(routeFront).toHaveClass("poker-flip-face");
+    expect(routeFront).toHaveClass("poker-flip-front-face");
+    expect(routeBack).toHaveAttribute("aria-hidden", "false");
+    expect(routeBack).toHaveAttribute("aria-expanded", "false");
+    expect(routeBack).toHaveAttribute("aria-controls", "mission-route-card-front-portfolio-quest");
+    expect(routeBack).toHaveAttribute("aria-label", "翻开航线 2 的任务卡");
+    expect(routeFront).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(routeBack);
+
+    expect(routeBack).toHaveAttribute("aria-hidden", "true");
+    expect(routeBack).toHaveAttribute("aria-expanded", "true");
+    expect(routeShell).toHaveAttribute("data-flip-state", "front");
+    expect(routeInner).toHaveClass("poker-flip-inner-front");
+    expect(routeFront).toHaveAttribute("aria-hidden", "false");
+    expect(routeFront).toHaveTextContent("组合实验");
+    const selectButton = screen.getByTestId("mission-route-select-portfolio-quest");
+    const returnButton = screen.getByTestId("mission-route-return-portfolio-quest");
+    await waitFor(() => {
+      expect(routeBack).toHaveAttribute("inert");
+      expect(routeFront).not.toHaveAttribute("inert");
+      expect(selectButton).toHaveAttribute("aria-pressed", "false");
+      expect(document.activeElement).toBe(selectButton);
+    }, { timeout: 4000 });
+
+    await user.click(selectButton);
+    await waitFor(() => {
+      expect(selectButton).toHaveAttribute("aria-pressed", "true");
+    });
+
+    await user.click(returnButton);
+
+    await waitFor(() => {
+      expect(routeBack).toHaveAttribute("aria-hidden", "false");
+      expect(routeBack).not.toHaveAttribute("inert");
+      expect(routeFront).toHaveAttribute("inert");
+      expect(document.activeElement).toBe(routeBack);
+    }, { timeout: 4000 });
+  });
+
+  it("shows a friendly empty state when no season objectives are available", () => {
+    render(
+      <StudentQuestDashboard
+        payload={makeQuestPayload()}
+        seasonPayload={{
+          ...makeSeasonPayload(),
+          completedObjectives: 0,
+          totalObjectives: 0,
+          progress: 0,
+          objectives: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("season-objectives-empty")).toHaveTextContent("本周任务正在整理");
+  });
+
+  it("renders task and season maps with interactive route nodes", async () => {
+    const payload = makeQuestPayload();
+    const secondQuest = {
+      ...payload.quests[0],
+      id: "portfolio-quest",
+      title: "做组合实验",
+      category: "finance" as const,
+      status: "active" as const,
+      progress: 0.25,
+      claimable: false,
+      claimed: false,
+      target: "做 1 次基金/ETF 实验或定投计划。",
+      reward: "组合研究员卡背",
+      coachNote: "先比较分散后的波动，再决定下一步。",
+    };
+
+    render(
+      <StudentQuestDashboard
+        payload={{ ...payload, quests: [payload.quests[0], secondQuest] }}
+        seasonPayload={makeSeasonPayload()}
+      />,
+    );
+
+    const user = userEvent.setup();
+    expect(screen.getByTestId("quest-map-gallery")).toBeInTheDocument();
+    expect(screen.getByTestId("quest-task-map")).toHaveTextContent("任务地图");
+    expect(screen.getByTestId("quest-season-map")).toHaveTextContent("本赛季地图");
+    expect(screen.getByTestId("quest-task-map-node-observe-quest")).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByTestId("quest-task-map-node-portfolio-quest"));
+
+    expect(screen.getByTestId("quest-task-map-node-portfolio-quest")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("quest-season-map-node-market-observe")).toHaveAttribute("href", "/student/market");
+  });
+
   it("flips a weekly quest card to reveal reward and coach note", async () => {
     render(<StudentQuestDashboard payload={makeQuestPayload()} seasonPayload={makeSeasonPayload()} />);
 
     const user = userEvent.setup();
-    expect(screen.getByTestId("quest-card-observe-quest")).toBeInTheDocument();
+    const questCard = screen.getByTestId("quest-card-observe-quest");
+    expect(questCard).toBeInTheDocument();
+    expect(questCard).toHaveClass("poker-flip-shell");
+    expect(questCard).toHaveAttribute("data-flip-state", "back");
+    expect(questCard.querySelector("[data-quest-card-inner]")).toHaveClass("poker-flip-inner");
     const flipButton = screen.getByTestId("quest-flip-observe-quest");
 
-    expect(flipButton).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("第 1 号任务盲盒");
+    // a11y：翻卡是 disclosure 模式，只用 aria-expanded + aria-controls，不再与 aria-pressed 混用（语义冲突）。
+    expect(flipButton).not.toHaveAttribute("aria-pressed");
+    expect(flipButton).toHaveAttribute("aria-expanded", "false");
+    expect(flipButton).toHaveAttribute("aria-label", "翻开第 1 号任务卡正面");
+    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("第 1 号任务卡背");
 
     await user.click(flipButton);
 
-    expect(flipButton).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("先写观察单");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("写下证据");
+    await waitFor(() => {
+      expect(flipButton).toHaveAttribute("aria-expanded", "true");
+      expect(questCard).toHaveAttribute("data-flip-state", "front");
+    });
+    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveClass("poker-flip-face");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveClass("poker-flip-face");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveClass("poker-flip-front-face");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("写下证据");
+    // 主卡翻面焦点经 240ms 真实 setTimeout 迁移；CI 覆盖率插桩下 1s 默认超时会偶发翻车（已实锤），放宽 4s。
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId("quest-detail-trigger-observe-quest"));
+    }, { timeout: 4000 });
 
     // findBy* (async) waits for the post-flip a11y tree to settle — the back-face content
     // renders immediately (testids above) but the accessibility tree can update a tick later,
     // which the synchronous getByRole loses on slower CI runners (passes locally, flaked on CI).
-    await user.click(await screen.findByRole("button", { name: "查看任务详情" }));
+    await user.click(await screen.findByRole("button", { name: /查看任务详情：先写观察单/ }));
     expect(await screen.findByRole("dialog")).toHaveTextContent("先看证据");
     await user.click(await screen.findByRole("button", { name: "关闭任务详情" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("quest-return-back-observe-quest"));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(flipButton);
+    }, { timeout: 4000 });
   });
 
   it("claims a completed quest, draws a card, reveals it, and adds it to the collection", async () => {

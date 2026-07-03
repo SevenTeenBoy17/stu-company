@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { WechatCheckoutButton } from "@/components/billing/wechat-checkout-button";
+import { StudentParentLinkCTA } from "@/components/shared/student-parent-link-cta";
 import { SectionReveal } from "@/components/site/section-reveal";
 import { getCurrentUser } from "@/lib/session-user";
 
@@ -94,11 +95,19 @@ const faqs = [
   },
 ];
 
-export default async function PricingPage() {
+type PricingPageProps = {
+  searchParams?: Promise<{ upgrade?: string | string[] }>;
+};
+
+export default async function PricingPage({ searchParams }: PricingPageProps) {
   // Knowing auth server-side lets the checkout button skip the billing-status
   // prefetch for anonymous visitors (which would log a harmless 401).
+  const params = searchParams ? await searchParams : {};
+  const upgradeToken = Array.isArray(params.upgrade) ? params.upgrade[0] : params.upgrade;
+  const hasUpgradeToken = Boolean(upgradeToken);
   const user = await getCurrentUser();
   const authed = Boolean(user);
+  const isStudent = user?.role === "student";
   return (
     <div className="pb-24">
       <section className="page-shell pt-8 sm:pt-12">
@@ -153,7 +162,22 @@ export default async function PricingPage() {
                 ))}
               </ul>
 
-              {plan.id === "standard" || plan.id === "premium" ? (
+              {hasUpgradeToken && plan.id === "premium" && !isStudent ? (
+                <div className="mt-8 rounded-2xl border border-[var(--ink-200)] bg-[var(--ink-50)] p-4 text-left">
+                  <p className="text-sm font-bold text-[var(--ink-900)]">当前确认链接用于标准版月卡</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--ink-600)]">
+                    如需家庭高级版，请登录家长账号后在家庭管理页选择孩子并单独开通，避免误把链接开给错误账号。
+                  </p>
+                </div>
+              ) : (plan.id === "standard" || plan.id === "premium") && isStudent ? (
+                <div className="mt-8 rounded-2xl border border-[var(--amber-200)] bg-[var(--amber-50)] p-4 text-left">
+                  <p className="text-sm font-bold text-[var(--ink-900)]">学生账号由家长或老师确认开通</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--ink-600)]">
+                    为了保持未成年人友好，学生端不直接发起付款。你可以生成确认链接，交给家长或老师查看开通对象与方案。
+                  </p>
+                  <StudentParentLinkCTA />
+                </div>
+              ) : plan.id === "standard" || plan.id === "premium" ? (
                 <WechatCheckoutButton tier={plan.id as "standard" | "premium"} authed={authed} />
               ) : (
                 <Link

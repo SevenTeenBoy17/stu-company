@@ -77,14 +77,14 @@ export function RankDashboard() {
         if (!alive) return;
         if (!response.ok || !payload) {
           setData(null);
-          setLoadError(payload?.message ?? "战力数据暂时加载失败，请稍后重试。");
+          setLoadError(payload?.message ?? "学习榜数据暂时加载失败，请稍后重试。");
           return;
         }
         setData(payload);
       } catch {
         if (alive) {
           setData(null);
-          setLoadError("网络连接不稳定，战力数据暂时加载失败。");
+          setLoadError("网络连接不稳定，学习榜数据暂时加载失败。");
         }
       } finally {
         if (alive) setLoading(false);
@@ -99,7 +99,7 @@ export function RankDashboard() {
     return (
       <div className="flex items-center justify-center rounded-[1.7rem] border border-border bg-white p-12 text-fg-muted">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="ml-2 text-sm">加载战力数据…</span>
+        <span className="ml-2 text-sm">加载学习榜数据…</span>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export function RankDashboard() {
           onClick={() => setRefreshKey((key) => key + 1)}
           className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-bold text-fg-default shadow-sm transition hover:-translate-y-0.5"
         >
-          重新加载战力数据
+          重新加载学习榜数据
         </button>
       </div>
     );

@@ -135,23 +135,26 @@ test.describe("学生端 P2 复测：揭示 / 无障碍 / 校验门", () => {
 
   test("submit gating mirrors server validation", async ({ page }) => {
     test.setTimeout(4 * 60_000);
-    await loginApi(page);
+    // 登录失败必须立刻失败（曾因 429 限流静默未登录 → 重定向 /demo → 120s 超时难排查）。
+    expect(await loginApi(page), "student login must succeed (429 = rate-limit, see E2E_RATE_LIMIT_MULTIPLIER)").toBe(true);
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // Wealth — note must be >= 8 chars (server: wealth-summary note.min(8)).
     await page.goto("/student/wealth", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    await scrollThrough(page);
     const wSubmit = page.getByTestId("wealth-review-submit");
+    // CI 冷启动时 Next dev 对该路由按需编译 + 重水合可能远超默认 5s 断言超时（双核 runner
+    // 多路由并发编译实测可 >45s），显式等待表单挂载（≤120s）再断言，消除 flake。
+    await wSubmit.waitFor({ state: "attached", timeout: 120_000 });
+    await scrollThrough(page);
     await expect(wSubmit, "wealth submit disabled with empty note").toBeDisabled();
     await page.getByPlaceholder(/成长资产比例偏高/).fill("先观察现金垫是否回到目标区间再决定加仓");
     await expect(wSubmit, "wealth submit enabled once note >= 8").toBeEnabled();
 
     // Opportunity — note must be >= 8 chars (server: opportunity note.min(8)).
     await page.goto("/student/opportunity", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    await scrollThrough(page);
     const oSubmit = page.getByTestId("opportunity-submit");
+    await oSubmit.waitFor({ state: "attached", timeout: 120_000 });
+    await scrollThrough(page);
     await expect(oSubmit, "opportunity submit disabled with empty note").toBeDisabled();
     await page.getByTestId("opportunity-note").fill("AI 算力需求还在增长，但要观察估值与集中度是否回撤");
     await expect(oSubmit, "opportunity submit enabled once note >= 8").toBeEnabled();
