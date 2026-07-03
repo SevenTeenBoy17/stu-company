@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef } from "react";
+import Link from "next/link";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -29,6 +30,14 @@ function cardDeckNumber(cardId: string) {
   const index = questCardDeck.findIndex((card) => card.id === cardId);
   return String((index >= 0 ? index : questCardDeck.length) + 1).padStart(2, "0");
 }
+
+// 套系集齐后的学习巩固入口（评审 game-design·通关感 + 苏格拉底约束：复用 /learn 小测，
+// 奖励必须非稀缺——不发新卡、不加学习点，"奖励"就是把练过的工具串成一次巩固学习）。
+const seriesConsolidationCta: Record<import("@/lib/cards").QuestCardSeries, { href: string; label: string }> = {
+  foundations: { href: "/learn", label: "用一组小测巩固基础工具" },
+  "risk-control": { href: "/learn", label: "做一组风险管理小测串联" },
+  "systems-thinking": { href: "/learn", label: "把系统思维讲给自己听：综合小测" },
+};
 
 // 学习工具组进度（doc §2.2）：把「N 张已收藏」升级为有完成度的三套系进度，
 // 只表达学习路径，不使用数量缺口、完成套系等收集压力词；禁倒计时词。
@@ -71,6 +80,15 @@ export function CollectionMeter({ items }: { items: QuestCardCollectionView[] })
                 ? `✓ ${s.label}工具组已点亮 · 这组工具你都练过一遍`
                 : `已收藏 ${s.owned}/${s.total} · 完成对应任务继续点亮`}
             </p>
+            {s.complete ? (
+              <Link
+                href={seriesConsolidationCta[s.series].href}
+                data-testid={`series-consolidation-cta-${s.series}`}
+                className="bz-press mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-amber-300/70 bg-amber-50 px-3 text-xs font-black text-amber-900 transition hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                {seriesConsolidationCta[s.series].label}
+              </Link>
+            ) : null}
           </div>
         );
       })}

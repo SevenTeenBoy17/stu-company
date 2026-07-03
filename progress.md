@@ -3642,3 +3642,11 @@ Gates：tsc ✓ / lint 0 警告 / 组件+quests 20/20 / gameflow e2e 6/6 (24.0s)
 ③ 新增 themes.test.ts 三重回归锁：真实 12 任务全登记（新增任务未补表即红）、
    配对值与 12 主题严格双射、显式配对无视调用序号 + 未登记 id 序号回退。
 Gates：tsc ✓ / lint 0 警告 / themes+组件+quests 23/23 / gameflow e2e 6/6 (24.2s)。
+
+## 2026-07-03 批次 9：套系集齐学习巩固 CTA（最后一个可自主执行的评审可选项）
+
+CollectionMeter 完成格新增 series-consolidation-cta-*（foundations/risk-control/systems-thinking
+→ /learn 小测巩固入口，44px 触控 + bz-press）；严守苏格拉底约束：不发新卡、不加学习点、
+文案禁稀缺词——"奖励"就是把练过的工具串成一次巩固学习（通关感=学习闭环而非收集刺激）。
+新增 collection.test.tsx：集齐显示/未集齐隐藏 + 文案禁稀缺词回归锁。
+Gates：tsc ✓ / lint 0 警告 / collection+dashboard 10/10 / gameflow e2e 6/6 (24.0s)。
