@@ -36,21 +36,21 @@ import { MarketThermometer } from "@/components/student/market-thermometer";
 
 gsap.registerPlugin(useGSAP);
 
-// 服务九宫格图标化（用户反馈：文字过多）——12 服务与 quest-world 12 只 3D 角色语义配对，
+// 服务九宫格改用工具/场景类图标，避免和任务中心的 3D 角色头像重复。
 // 卡片只留 图标+标题+关键词；summary/learn 与状态完整保留在 aria-label（读屏单次完整播报；不用 title 避免 name+description 双播报）。
-const serviceCharacter: Record<string, string> = {
-  market: "fox-market-scout",
-  opportunity: "cat-opportunity-detective",
-  wealth: "whale-cash-captain",
-  "fund-lab": "panda-etf-researcher",
-  "auto-invest": "robot-radar-helper",
-  life: "squirrel-budget-accountant",
-  "goal-accounts": "rabbit-savings-banker",
-  protection: "turtle-safety-guard",
-  credit: "deer-bond-messenger",
-  risk: "owl-evidence-analyst",
-  quests: "lion-leaderboard-referee",
-  history: "penguin-history-archivist",
+const serviceIcon: Record<string, string> = {
+  market: "market-radar",
+  opportunity: "opportunity-map",
+  wealth: "wealth-chest",
+  "fund-lab": "fund-basket",
+  "auto-invest": "auto-invest-bot",
+  life: "life-ledger",
+  "goal-accounts": "goal-piggy",
+  protection: "protection-umbrella",
+  credit: "credit-lab-scale",
+  risk: "risk-gauge",
+  quests: "quest-checklist",
+  history: "history-scroll",
 };
 
 const serviceTagline: Record<string, string> = {
@@ -199,7 +199,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-white/82">{domain.summary}</p>
                     <div className="mt-4 min-w-0 rounded-2xl bg-slate-900/80 px-3 py-2">
                       <p className="text-caption text-white/78">{domain.metricLabel}</p>
-                      <p className="mt-1 break-words text-h3 font-extrabold leading-tight tracking-tight tabular-nums text-orange-200">
+                      <p className="mt-1 whitespace-nowrap text-body-sm font-extrabold leading-tight tracking-tight tabular-nums text-orange-200 2xl:text-h3">
                         {domain.metricValue}
                       </p>
                     </div>
@@ -496,7 +496,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               className="bz-press group flex min-h-[4.5rem] items-center gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <Image
-                src={`/brand/quest-world/characters/${serviceCharacter[service.id] ?? "fox-market-scout"}.webp`}
+                src={`/brand/service-icons/${serviceIcon[service.id] ?? "market-radar"}.webp`}
                 alt=""
                 width={56}
                 height={56}
@@ -504,7 +504,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-body font-semibold text-fg-strong">{service.title}</p>
+                  <p className="line-clamp-2 text-body font-semibold leading-tight text-fg-strong">{service.title}</p>
                   {service.status !== "ready" ? (
                     <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-caption", statusTone[service.status])}>
                       {service.status === "new" ? "新增" : "订阅"}

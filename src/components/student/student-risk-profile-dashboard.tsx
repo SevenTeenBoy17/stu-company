@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import Image from "next/image";
 import {
   AlertCircle,
   ArrowRight,
@@ -25,6 +26,7 @@ gsap.registerPlugin(useGSAP);
 
 type SubmitState = "idle" | "loading" | "success" | "error";
 type BehaviorState = "idle" | "loading" | "success" | "error";
+const SCENARIO_CARD_BACK_SRC = "/brand/quest-cards/risk-scenario-card-back-v2.png";
 
 type BehaviorPersonaResponse = {
   persona?: BehaviorPersona;
@@ -92,6 +94,77 @@ function upsertAnswer(answers: RiskProfileAnswer[], next: RiskProfileAnswer) {
     : [...answers, next];
 }
 
+function ScenarioCardBack({
+  index,
+  answered,
+  revealed,
+  onReveal,
+}: {
+  index: number;
+  answered: boolean;
+  revealed: boolean;
+  onReveal: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onReveal}
+      tabIndex={revealed ? -1 : 0}
+      aria-hidden={revealed}
+      data-testid={`risk-scenario-card-back-${index + 1}`}
+      className={cn(
+        "group absolute inset-0 flex h-full min-h-[38rem] w-full flex-col overflow-hidden rounded-[1.8rem] border border-amber-200/70 bg-slate-950 p-5 text-left text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] outline-none transition focus-visible:ring-4 focus-visible:ring-orange-300",
+        revealed && "pointer-events-none",
+      )}
+      style={{ backfaceVisibility: "hidden" }}
+    >
+      <Image
+        src={SCENARIO_CARD_BACK_SRC}
+        alt=""
+        fill
+        sizes="(max-width: 768px) 86vw, 360px"
+        priority={index < 2}
+        className="pointer-events-none object-cover opacity-95 transition duration-700 group-hover:scale-[1.035]"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.12),rgba(2,6,23,0.1)_42%,rgba(2,6,23,0.78)),radial-gradient(circle_at_25%_18%,rgba(248,145,51,0.18),transparent_30%)]" />
+      <div className="pointer-events-none absolute inset-4 rounded-[1.45rem] border border-white/14 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.2)]" />
+      <div className="relative z-10 flex items-center justify-between gap-3">
+        <span className="rounded-full bg-white/10 px-3 py-1 text-caption font-bold uppercase tracking-[0.2em] text-orange-200">
+          Scenario {String(index + 1).padStart(2, "0")}
+        </span>
+        {answered ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-300/18 px-3 py-1 text-caption font-bold text-emerald-100">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            已选择
+          </span>
+        ) : (
+          <span className="rounded-full bg-white/10 px-3 py-1 text-caption font-bold text-white/70">未翻开</span>
+        )}
+      </div>
+
+      <div className="relative z-10 mt-8 flex flex-1 items-center justify-center">
+        <div
+          data-testid="risk-scenario-card-back-badge"
+          className="rounded-full border border-amber-200/30 bg-slate-950/82 px-5 py-2.5 text-body-sm font-bold tracking-[0.12em] text-amber-100 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md"
+        >
+          探索情境
+        </div>
+      </div>
+
+      <div className="relative z-10 rounded-[1.35rem] border border-white/12 bg-slate-950/55 p-4 shadow-[0_18px_42px_rgba(0,0,0,0.22)] backdrop-blur-md">
+        <p className="text-h2 text-white">点击翻开情境卡</p>
+        <p className="mt-2 text-body-sm font-semibold leading-6 text-white/74">
+          先看场景，再做选择。每一张卡只考察一个投资概念，降低认知负荷。
+        </p>
+        <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-body-sm font-bold text-slate-950 transition group-hover:translate-x-1">
+          翻开卡片
+          <ArrowRight className="h-4 w-4" />
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
   const points = radarPoints(metrics);
   const rings = [24, 42, 60, 78];
@@ -107,7 +180,9 @@ function RadarChart({ metrics }: { metrics: RiskProfilePayload["radar"] }) {
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-caption font-semibold text-white/70">教学画像</span>
       </div>
-      <svg viewBox="0 0 192 192" className="mt-4 h-56 w-full max-w-[280px] mx-auto overflow-visible">
+      {/* 六维数据已在下方「雷达维度解释」以文本完整暴露，此图为纯装饰 → aria-hidden，
+          避免屏幕阅读器读到无名 SVG（itest5 R3 P3）。 */}
+      <svg viewBox="0 0 192 192" aria-hidden="true" className="mt-4 h-56 w-full max-w-[280px] mx-auto overflow-visible">
         {rings.map((ring) => (
           <polygon
             key={ring}
@@ -169,6 +244,7 @@ export function StudentRiskProfileDashboard({
   const [answers, setAnswers] = useState<RiskProfileAnswer[]>(
     initialAnswersPersisted ? initialPayload.selectedAnswers : [],
   );
+  const [revealedQuestionIds, setRevealedQuestionIds] = useState<Set<string>>(() => new Set());
   const [submitState, setSubmitState] = useState<SubmitState>(initialAnswersPersisted ? "success" : "idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [behaviorState, setBehaviorState] = useState<BehaviorState>("idle");
@@ -223,6 +299,16 @@ export function StudentRiskProfileDashboard({
   );
   const validQuestionIds = useMemo(() => new Set(payload.questions.map((q) => q.id)), [payload.questions]);
   const completed = answers.filter((answer) => validQuestionIds.has(answer.questionId)).length;
+  const revealedCount = revealedQuestionIds.size;
+
+  function revealQuestion(questionId: string) {
+    setRevealedQuestionIds((current) => {
+      if (current.has(questionId)) return current;
+      const next = new Set(current);
+      next.add(questionId);
+      return next;
+    });
+  }
 
   async function submitProfile() {
     if (completed === 0) {
@@ -389,66 +475,106 @@ export function StudentRiskProfileDashboard({
                 每题只测一个概念，降低认知负荷。答案没有对错，关键是看见自己的决策倾向。
               </p>
             </div>
-            <span data-testid="risk-counter" className="rounded-full bg-slate-950 px-4 py-2 text-body-sm font-semibold text-white">
-              {completed}/{payload.questions.length} 已选择
-            </span>
+            <div className="flex flex-wrap gap-2">
+              <span data-testid="risk-reveal-counter" className="rounded-full bg-brand-soft px-4 py-2 text-body-sm font-semibold text-brand-ink">
+                {revealedCount}/{payload.questions.length} 已翻开
+              </span>
+              <span data-testid="risk-counter" className="rounded-full bg-slate-950 px-4 py-2 text-body-sm font-semibold text-white">
+                {completed}/{payload.questions.length} 已选择
+              </span>
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-4">
-            {payload.questions.map((question, questionIndex) => (
-              <article
-                data-motion-card
-                key={question.id}
-                className="rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-[0_14px_35px_rgba(15,23,42,0.06)] md:p-5"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="bz-eyebrow bz-brand-text-on-light">
-                      Scenario 0{questionIndex + 1}
-                    </p>
-                    <h3 className="mt-2 text-h2 text-fg-strong">{question.title}</h3>
-                    <p className="mt-2 text-body leading-7 text-fg-muted">{question.scenario}</p>
-                  </div>
-                </div>
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            {payload.questions.map((question, questionIndex) => {
+              const revealed = revealedQuestionIds.has(question.id);
+              const selectedOptionId = selectedMap.get(question.id);
 
-                <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                  {question.options.map((option) => {
-                    const selected = selectedMap.get(question.id) === option.id;
-                    return (
-                      <button
-                        data-motion-button
-                        key={option.id}
-                        type="button"
-                        onClick={() =>
-                          setAnswers((current) =>
-                            upsertAnswer(current, { questionId: question.id, optionId: option.id }),
-                          )
-                        }
-                        className={cn(
-                          "min-h-32 rounded-[1.35rem] border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft",
-                          selected
-                            ? "border-brand bg-brand-soft text-slate-950"
-                            : "border-slate-200 bg-slate-50 text-slate-700",
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-body font-semibold leading-6">{option.label}</p>
-                          {selected ? (
-                            <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
-                          ) : (
-                            <span className="h-5 w-5 shrink-0 rounded-full border border-slate-300" />
-                          )}
+              return (
+                <article
+                  data-motion-card
+                  key={question.id}
+                  data-testid={`risk-scenario-flip-card-${questionIndex + 1}`}
+                  className="relative min-h-[38rem]"
+                  style={{ perspective: "1400px" }}
+                >
+                  <div
+                    className="relative h-full min-h-[38rem] transition-transform duration-500 [transform-style:preserve-3d]"
+                    style={{ transform: revealed ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                  >
+                    <ScenarioCardBack
+                      index={questionIndex}
+                      answered={Boolean(selectedOptionId)}
+                      revealed={revealed}
+                      onReveal={() => revealQuestion(question.id)}
+                    />
+
+                    <div
+                      aria-hidden={!revealed}
+                      className="absolute inset-0 flex h-full min-h-[38rem] flex-col overflow-y-auto rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-[0_18px_44px_rgba(15,23,42,0.08)] md:p-5"
+                      style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="bz-eyebrow bz-brand-text-on-light">
+                            Scenario 0{questionIndex + 1}
+                          </p>
+                          <h3 className="mt-2 text-h2 text-fg-strong">{question.title}</h3>
+                          <p className="mt-2 text-body leading-7 text-fg-muted">{question.scenario}</p>
                         </div>
-                        <p className="mt-3 text-body-sm leading-6 text-slate-600">{option.detail}</p>
-                        <span className="mt-4 inline-flex rounded-full bg-white px-3 py-1 text-caption font-semibold text-slate-600">
-                          {option.concept}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </article>
-            ))}
+                        {selectedOptionId ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-down-soft px-3 py-1 text-caption font-bold text-[var(--down-700)]">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            已选择
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-bold text-slate-500">待选择</span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 grid flex-1 gap-3">
+                        {question.options.map((option) => {
+                          const selected = selectedOptionId === option.id;
+                          return (
+                            <button
+                              data-motion-button
+                              key={option.id}
+                              type="button"
+                              tabIndex={revealed ? 0 : -1}
+                              disabled={!revealed}
+                              onClick={() =>
+                                setAnswers((current) =>
+                                  upsertAnswer(current, { questionId: question.id, optionId: option.id }),
+                                )
+                              }
+                              className={cn(
+                                "rounded-[1.2rem] border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-soft disabled:pointer-events-none",
+                                selected
+                                  ? "border-brand bg-brand-soft text-slate-950"
+                                  : "border-slate-200 bg-slate-50 text-slate-700",
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="text-body font-semibold leading-6">{option.label}</p>
+                                {selected ? (
+                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
+                                ) : (
+                                  <span className="h-5 w-5 shrink-0 rounded-full border border-slate-300" />
+                                )}
+                              </div>
+                              <p className="mt-2 text-body-sm leading-6 text-slate-600">{option.detail}</p>
+                              <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-caption font-semibold text-slate-600">
+                                {option.concept}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">

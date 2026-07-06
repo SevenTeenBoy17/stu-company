@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
-import { readSession } from "@/lib/auth";
+import { handleRouteError } from "@/lib/api-response";
+import { requireUser } from "@/lib/api-guard";
 import { getCategoryBoardPayload } from "@/lib/market-data";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +13,12 @@ const marketBoardQuerySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await readSession();
-    if (!session) {
-      return apiError("unauthorized", "需要学生账号登录。", 401);
-    }
-    if (session.role !== "student") {
-      return apiError("forbidden", "仅学生账号可访问市场看板。", 403);
-    }
+  // itest5 R3 P2：此前用 readSession() 只验签名/过期，绕过了 H2 令牌版本吊销——登出/改密后
+  // 旧 JWT 仍能读看板。改用 requireUser（含 tokenVersion 比对），与其余学生路由同口径。
+  const auth = await requireUser("student");
+  if (auth.error) return auth.error;
 
+  try {
     const query = marketBoardQuerySchema.parse({
       category: request.nextUrl.searchParams.get("category") ?? undefined,
       symbol: request.nextUrl.searchParams.get("symbol") ?? undefined,

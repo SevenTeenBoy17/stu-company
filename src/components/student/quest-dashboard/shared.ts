@@ -111,6 +111,10 @@ export function focusAfterFlip(element: HTMLElement | null) {
   }, 0);
 }
 
+// 弹窗栈：嵌套弹窗（如全屏地图内再开任务详情）时，Esc / Tab 焦点陷阱只对【最上层】生效——
+// 否则每个 useModalA11y 都在 document 上挂 keydown，单次 Esc 会连关父子两层（itest5 R3 P3）。
+const modalStack: symbol[] = [];
+
 // 弹窗可访问性（§13）：初始焦点 + Esc 关闭 + Tab 焦点陷阱 + body 滚动锁 + 关闭归还焦点。复用于奖励弹窗与任务详情弹窗。
 export function useModalA11y(
   containerRef: RefObject<HTMLElement | null>,
@@ -122,11 +126,15 @@ export function useModalA11y(
     onCloseRef.current = onClose;
   });
   useEffect(() => {
+    const token = Symbol("modal");
+    modalStack.push(token);
+    const isTopmost = () => modalStack[modalStack.length - 1] === token;
     const opener = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
     (initialFocusRef?.current ?? containerRef.current)?.focus?.();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKey(event: KeyboardEvent) {
+      if (!isTopmost()) return; // 仅最上层弹窗响应键盘，避免嵌套时 Esc 连关两层
       if (event.key === "Escape") {
         onCloseRef.current();
         return;
@@ -151,7 +159,10 @@ export function useModalA11y(
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previousOverflow;
+      const idx = modalStack.lastIndexOf(token);
+      if (idx !== -1) modalStack.splice(idx, 1);
+      // 仍有更上层弹窗时不解滚动锁（外层弹窗还开着）。
+      if (modalStack.length === 0) document.body.style.overflow = previousOverflow;
       opener?.focus?.(); // 关闭时把焦点还给触发按钮
     };
   }, [containerRef, initialFocusRef]);

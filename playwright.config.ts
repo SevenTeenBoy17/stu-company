@@ -9,6 +9,12 @@ export default defineConfig({
   expect: {
     timeout: 10_000,
   },
+  // E2E 跑的是 dev 服务器（按需编译 + HMR + AI 轮询 + GSAP 计时器），交互密集的用例
+  // （尤其 student-gameflow-regression 的翻卡/全屏弹窗/键盘序列）在并行负载下会撞上
+  // 「点击/按键早于 React 水合挂上 handler」的时序竞态——隔离必过、CI 2-worker 必过，
+  // 但本地满载偶发。retries 是 dev-server E2E 的标准缓解：真缺陷 3 次全挂，时序抖动重试即过，
+  // 且 Playwright 会把「重试后通过」单独标记为 flaky，可见性不丢。
+  retries: 2,
   use: {
     baseURL,
     trace: "retain-on-failure",

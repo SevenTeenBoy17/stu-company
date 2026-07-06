@@ -68,14 +68,40 @@ test.describe("student gameflow regression", () => {
     await expect(page.getByTestId("quest-season-map")).toBeVisible();
     const taskMapBox = await page.getByTestId("quest-task-map").boundingBox();
     const seasonMapBox = await page.getByTestId("quest-season-map").boundingBox();
-    // 任务地图(1.15fr)与赛季地图(0.85fr)是有意的主次宽度：副面板 1440 视口实测 ~413px，下限取 380 保可用性。
-    expect(taskMapBox?.width ?? 0).toBeGreaterThan(420);
-    expect(seasonMapBox?.width ?? 0).toBeGreaterThan(380);
-    expect(Math.abs((taskMapBox?.x ?? 0) - (seasonMapBox?.x ?? 0))).toBeGreaterThan(420);
+    // 任务地图是主舞台，赛季地图是自然高度副卡：宽度与顶部对齐要稳定，但副卡不再被拉伸出大留白。
+    expect(taskMapBox?.width ?? 0).toBeGreaterThan(560);
+    expect(seasonMapBox?.width ?? 0).toBeGreaterThan(300);
+    expect(Math.abs((taskMapBox?.x ?? 0) - (seasonMapBox?.x ?? 0))).toBeGreaterThan(520);
     expect(Math.abs((taskMapBox?.y ?? 0) - (seasonMapBox?.y ?? 0))).toBeLessThan(28);
-    expect(Math.abs((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0))).toBeLessThan(120);
+    // 任务地图应显著高于赛季副卡（主舞台 vs 自然高度副卡）。真实布局稳定为 ~225px 差
+    // （itest5 R1 隔离双跑同值），阈值取 180 留 45px 余量，既守住「主卡明显更高」的意图，
+    // 又不被 15px 眼估误差与跨环境字体度量抖动打挂。
+    expect((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0)).toBeGreaterThan(180);
     await expect(page.locator('[data-testid^="quest-task-map-node-"]').first()).toBeVisible();
     await expect(page.locator('[data-testid^="quest-season-map-node-"]').first()).toBeVisible();
+    const routeNodeStates = await page.locator('[data-testid^="quest-task-map-node-"]').evaluateAll((nodes) =>
+      nodes.reduce<Record<string, number>>((acc, node) => {
+        const state = node.getAttribute("data-map-node-state") ?? "missing";
+        acc[state] = (acc[state] ?? 0) + 1;
+        const rect = node.getBoundingClientRect();
+        const layer = document.querySelector('[data-testid="quest-route-node-layer"]')?.getBoundingClientRect();
+        if (!layer) throw new Error("missing quest route node layer");
+        const centerX = ((rect.left + rect.width / 2 - layer.left) / layer.width) * 100;
+        const centerY = ((rect.top + rect.height / 2 - layer.top) / layer.height) * 100;
+        if (centerX < 0 || centerX > 100 || centerY < 0 || centerY > 100) {
+          throw new Error(`route node escaped map layer: ${centerX},${centerY}`);
+        }
+        return acc;
+      }, {}),
+    );
+    expect(routeNodeStates.completed ?? 0).toBeGreaterThanOrEqual(1);
+    expect(routeNodeStates.current ?? 0).toBeGreaterThanOrEqual(1);
+    expect(routeNodeStates.locked ?? 0).toBeGreaterThanOrEqual(1);
+    await page.getByTestId("quest-map-expand-button").click();
+    await expect(page.getByTestId("quest-map-fullscreen-dialog")).toBeVisible();
+    await expect(page.locator('button[data-testid^="quest-map-fullscreen-node-"]')).toHaveCount(6);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("quest-map-fullscreen-dialog")).toHaveCount(0);
     // 地图节点头像走 next/image lazy（CreaturePortrait priority=false）。同步 evaluateAll
     // 在并发负载下会撞上「懒加载未触发 / dev 按需优化未完成」的时序窗口（image.complete
     // 短暂为 false），把加载时序误判成缺陷。先滚动触发懒加载，再用 waitForFunction 轮询
@@ -141,7 +167,9 @@ test.describe("student gameflow regression", () => {
     expect(pokerTransform).not.toBe("none");
     await page.getByRole("button", { name: "查看任务详情" }).first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("dialog")).toContainText("任务详情");
+    // 详情弹窗内容锚点：断言展示了「任务目标」区块（证明明细已载入）。此前锚在
+    // 「任务详情」字面串，新版弹窗正文改为任务标题+任务目标+明细，字面串不再出现。
+    await expect(page.getByRole("dialog")).toContainText("任务目标");
     await page.getByRole("button", { name: "关闭任务详情" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
 

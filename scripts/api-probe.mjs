@@ -207,6 +207,17 @@ async function main() {
     record("R3修复: 榜单不透传玩家 userId", board.status === 200 && !leaksUserId, `status=${board.status} leaksUserId=${leaksUserId}`, { snippet: (board.text || "").slice(0, 140) });
   }
 
+  // ── itest5 R3 修复复验：board 路由令牌版本吊销 ──
+  {
+    const bJar = makeJar();
+    await login("student3@brownzone.ai", "BrownZone2026!", bJar);
+    const savedCookie = bJar.cookie;
+    const before = await req("GET", "/api/market/board?category=us", { jar: bJar });
+    await req("POST", "/api/auth/logout", { jar: bJar });
+    const replay = await req("GET", "/api/market/board?category=us", { headers: { cookie: savedCookie } });
+    record("R3修复: board 登出后旧 cookie 被吊销(401)", before.status === 200 && replay.status === 401, `before=${before.status} replay=${replay.status}`, { before: before.status, replay: replay.status });
+  }
+
   // ── L. Error shape consistency（抽样断言） ──
   {
     const anon = await req("GET", "/api/sim/state", {});

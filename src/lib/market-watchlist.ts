@@ -18,6 +18,7 @@ import {
   NON_US_CATEGORY_INSTRUMENTS,
   US_ROUTING,
   industryImagePath,
+  marketSymbolIconPath,
   type CatalogInstrument,
 } from "@/lib/market-catalog";
 import { MARKET_REFRESH_INTERVAL_LABEL } from "@/lib/market-refresh";
@@ -631,7 +632,10 @@ function toTickerItem(
     source: quote.source,
     accentColor: instrument.accentColor,
     monogram: instrument.monogram,
-    imageUrl: industryImagePath(instrument.industryKey),
+    sector: instrument.sector,
+    sectorGroup: instrument.sectorGroup,
+    tags: instrument.tags,
+    imageUrl: marketSymbolIconPath(instrument.id),
   } satisfies TickerTapeItem;
 }
 
@@ -742,6 +746,7 @@ export function buildCategoryBoardPayload(
     metrics,
     facts: buildFacts(selectedInstrument, input?.staticInfo),
     imageUrl: industryImagePath(selectedInstrument.industryKey),
+    symbolImageUrl: marketSymbolIconPath(selectedInstrument.id),
     currency: selectedInstrument.currency,
   };
 

@@ -328,8 +328,10 @@ describe("StudentQuestDashboard quest flip", () => {
     // a11y：翻卡是 disclosure 模式，只用 aria-expanded + aria-controls，不再与 aria-pressed 混用（语义冲突）。
     expect(flipButton).not.toHaveAttribute("aria-pressed");
     expect(flipButton).toHaveAttribute("aria-expanded", "false");
-    expect(flipButton).toHaveAttribute("aria-label", "翻开第 1 号任务卡正面");
-    expect(screen.getByTestId("quest-card-back-observe-quest")).toHaveTextContent("第 1 号任务卡背");
+    expect(flipButton).toHaveAttribute("aria-label", "翻开第 1 张任务卡正面：先写观察单");
+    const backFace = screen.getByTestId("quest-card-back-observe-quest");
+    expect(backFace).toHaveTextContent("翻转卡片");
+    expect(backFace).not.toHaveTextContent(/任务卡背|今日航线|翻开任务锦囊|翻开任务正面/);
 
     await user.click(flipButton);
 
@@ -341,6 +343,8 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveClass("poker-flip-face");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveClass("poker-flip-front-face");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("先写观察单");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("本次任务目标");
+    expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("完成后奖励");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("装饰徽章：冷静观察者");
     expect(screen.getByTestId("quest-card-front-observe-quest")).toHaveTextContent("写下证据");
     // 主卡翻面焦点经 240ms 真实 setTimeout 迁移；CI 覆盖率插桩下 1s 默认超时会偶发翻车（已实锤），放宽 4s。

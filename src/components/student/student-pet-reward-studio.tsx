@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { createPortal } from "react-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -13,16 +12,13 @@ import {
   Lock,
   PawPrint,
   RefreshCcw,
-  Shuffle,
   Sparkles,
   WandSparkles,
-  X,
 } from "lucide-react";
 
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import type { StudentPetPayload, StudentPetReward } from "@/lib/pet-rewards";
 import { cn } from "@/lib/utils";
-import { useModalA11y } from "./quest-dashboard/shared";
 
 gsap.registerPlugin(useGSAP);
 
@@ -40,37 +36,58 @@ const tierClass: Record<StudentPetReward["tier"], string> = {
   honor: "border-brand/30 bg-brand/10 text-brand-warm",
 };
 
-// 可切换 3D 卡通形象库（用户需求：20+ 可爱形象随机/自选切换）。
-// "default" = 手绘布朗小栗；其余为 quest-world 12 只任务角色 + pet-avatars 10 只新宠，共 23 选。
-type PetAvatarChoice = { id: string; label: string; src?: string };
+// 学生个人形象库：独立 3D 卡通头像，系统按 pet id 稳定分配，学生端不提供切换入口。
+type PetAvatarChoice = { id: string; label: string; src: string };
 
-const AVATAR_GALLERY: PetAvatarChoice[] = [
-  { id: "default", label: "布朗小栗" },
-  { id: "fox", label: "市场小狐", src: "/brand/quest-world/characters/fox-market-scout.webp" },
-  { id: "cat", label: "机会侦探猫", src: "/brand/quest-world/characters/cat-opportunity-detective.webp" },
-  { id: "whale", label: "现金鲸队长", src: "/brand/quest-world/characters/whale-cash-captain.webp" },
-  { id: "panda", label: "研究熊猫", src: "/brand/quest-world/characters/panda-etf-researcher.webp" },
-  { id: "robot", label: "雷达机器人", src: "/brand/quest-world/characters/robot-radar-helper.webp" },
-  { id: "squirrel", label: "记账松鼠", src: "/brand/quest-world/characters/squirrel-budget-accountant.webp" },
-  { id: "rabbit", label: "储蓄小兔", src: "/brand/quest-world/characters/rabbit-savings-banker.webp" },
-  { id: "turtle", label: "安全小龟", src: "/brand/quest-world/characters/turtle-safety-guard.webp" },
-  { id: "deer", label: "债券小鹿", src: "/brand/quest-world/characters/deer-bond-messenger.webp" },
-  { id: "owl", label: "证据猫头鹰", src: "/brand/quest-world/characters/owl-evidence-analyst.webp" },
-  { id: "lion", label: "裁判小狮", src: "/brand/quest-world/characters/lion-leaderboard-referee.webp" },
-  { id: "penguin", label: "复盘企鹅", src: "/brand/quest-world/characters/penguin-history-archivist.webp" },
-  { id: "dino", label: "理财小恐龙", src: "/brand/pet-avatars/pet-dino.webp" },
-  { id: "shiba", label: "柴犬金金", src: "/brand/pet-avatars/pet-shiba.webp" },
-  { id: "tiger", label: "虎宝存存", src: "/brand/pet-avatars/pet-tiger.webp" },
-  { id: "hamster", label: "仓鼠豆豆", src: "/brand/pet-avatars/pet-hamster.webp" },
-  { id: "elephant", label: "记账象宝", src: "/brand/pet-avatars/pet-elephant.webp" },
-  { id: "frog", label: "青蛙芽芽", src: "/brand/pet-avatars/pet-frog.webp" },
-  { id: "unicorn", label: "独角兽星星", src: "/brand/pet-avatars/pet-unicorn.webp" },
-  { id: "bear", label: "熊宝藏藏", src: "/brand/pet-avatars/pet-bear.webp" },
-  { id: "koi", label: "锦鲤旺旺", src: "/brand/pet-avatars/pet-koi.webp" },
-  { id: "chick", label: "小鸡多多", src: "/brand/pet-avatars/pet-chick.webp" },
-];
+const AVATAR_LABELS = [
+  "飞行小侦察",
+  "星光机器人",
+  "猫头鹰学者",
+  "云朵守护",
+  "星愿法师",
+  "金币小勇士",
+  "储蓄小猪",
+  "账本骑士",
+  "盾牌管家",
+  "指南针队长",
+  "计算器伙伴",
+  "望远镜侦探",
+  "保险柜管家",
+  "绿芽精灵",
+  "热气球旅人",
+  "小店掌柜",
+  "放大镜助手",
+  "水晶观察员",
+  "柱状图伙伴",
+  "转盘分析师",
+  "闪电行动派",
+  "雪峰守望者",
+  "背包探险家",
+  "火箭规划师",
+  "灯泡点子王",
+] as const;
 
-const AVATAR_BY_ID = new Map(AVATAR_GALLERY.map((choice) => [choice.id, choice]));
+const AVATAR_GALLERY: PetAvatarChoice[] = AVATAR_LABELS.map((label, index) => {
+  const id = `avatar-${String(index + 1).padStart(2, "0")}`;
+  return {
+    id,
+    label,
+    src: `/brand/student-avatars/${id}.webp`,
+  };
+});
+
+function stableAvatarIndex(seed: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % AVATAR_GALLERY.length;
+}
+
+function assignedAvatarForPet(petId: string) {
+  return AVATAR_GALLERY[stableAvatarIndex(petId || "brown-zone-student")];
+}
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
@@ -226,78 +243,6 @@ function PetMascot({
   );
 }
 
-function AvatarPickerModal({
-  currentId,
-  onSelect,
-  onClose,
-}: {
-  currentId: string;
-  onSelect: (id: string) => void;
-  onClose: () => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  useModalA11y(containerRef, onClose, closeButtonRef);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
-      <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="选择伙伴形象"
-        tabIndex={-1}
-        onClick={(event) => event.stopPropagation()}
-        className="max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-t-[1.8rem] border border-white/10 bg-slate-950 p-5 text-white shadow-2xl sm:rounded-[1.8rem] sm:p-6"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-h2 font-semibold">选择伙伴形象</h3>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            aria-label="关闭"
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.07] transition hover:border-brand/40"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <p className="mt-1 text-body-sm text-white/60">{AVATAR_GALLERY.length} 位 3D 伙伴，随时可换，仅影响展示。</p>
-        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-          {AVATAR_GALLERY.map((choice) => (
-            <button
-              key={choice.id}
-              type="button"
-              aria-pressed={choice.id === currentId}
-              onClick={() => {
-                onSelect(choice.id);
-                onClose();
-              }}
-              className={cn(
-                "bz-press group flex flex-col items-center gap-2 rounded-[1.2rem] border p-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                choice.id === currentId
-                  ? "border-brand/60 bg-brand/15"
-                  : "border-white/10 bg-white/[0.05] hover:border-brand/35 hover:bg-white/[0.09]",
-              )}
-            >
-              <span className="relative h-16 w-16 overflow-hidden rounded-[0.9rem] border border-white/10 bg-white/[0.06] sm:h-[4.5rem] sm:w-[4.5rem]">
-                {choice.src ? (
-                  <Image src={choice.src} alt="" fill sizes="72px" className="object-cover" />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center">
-                    <PawPrint className="h-7 w-7 text-brand-warm" />
-                  </span>
-                )}
-              </span>
-              <span className="text-caption font-semibold text-white/85">{choice.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TrailItem({ item }: { item: StudentPetPayload["timeline"][number] }) {
   return (
     <div className="flex gap-3">
@@ -327,27 +272,7 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
   const [status, setStatus] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const storageKey = `brown-zone-pet-equipped-${payload.pet.id}`;
-
-  // 3D 形象切换：SSR 一律先渲染默认形象，挂载后再读 localStorage 换装（水合安全）。
-  const [avatarId, setAvatarId] = useState("default");
-  const [isAvatarPickerOpen, setAvatarPickerOpen] = useState(false);
-  const avatarStorageKey = `brown-zone-pet-avatar-${payload.pet.id}`;
-  const avatar = AVATAR_BY_ID.get(avatarId) ?? AVATAR_BY_ID.get("default");
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(avatarStorageKey);
-    if (saved && AVATAR_BY_ID.has(saved)) setAvatarId(saved);
-  }, [avatarStorageKey]);
-
-  function selectAvatar(id: string) {
-    setAvatarId(id);
-    window.localStorage.setItem(avatarStorageKey, id);
-  }
-
-  function randomAvatar() {
-    const others = AVATAR_GALLERY.filter((choice) => choice.id !== avatarId);
-    selectAvatar(others[Math.floor(Math.random() * others.length)].id);
-  }
+  const avatar = useMemo(() => assignedAvatarForPet(payload.pet.id), [payload.pet.id]);
 
   const selectedReward = useMemo(
     () => payload.rewards.find((item) => item.id === selectedRewardId) ?? firstUnlockedReward,
@@ -496,36 +421,15 @@ export function StudentPetRewardStudio({ initialPayload }: { initialPayload: Stu
             </span>
           </div>
           <PetMascot payload={payload} selectedReward={selectedReward} avatar={avatar} />
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <button
-              data-motion-button
-              type="button"
-              onClick={() => setAvatarPickerOpen(true)}
-              className="bz-press inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20"
-            >
+          <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-white/[0.07] px-4 py-3 text-center">
+            <p className="inline-flex items-center justify-center gap-2 text-body-sm font-semibold text-white">
               <WandSparkles className="h-4 w-4 text-brand-warm" />
-              切换形象
-            </button>
-            <button
-              data-motion-button
-              type="button"
-              aria-label="随机换一位伙伴形象"
-              onClick={randomAvatar}
-              className="bz-press inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-4 text-body-sm font-semibold text-white transition hover:border-brand/40 hover:bg-brand/20"
-            >
-              <Shuffle className="h-4 w-4 text-brand-warm" />
-              随机
-            </button>
+              系统分配形象：{avatar.label}
+            </p>
+            <p className="mt-1 text-caption leading-5 text-white/60">
+              从 {AVATAR_GALLERY.length} 位 3D 学习伙伴中按账号自动分配，不提供手动切换。
+            </p>
           </div>
-          {/* 评审 P1：面板根的 @container(container-type) 与 GSAP 残留 transform 都会把 fixed
-              后代的包含块改成面板自身（遮罩只盖面板且被 overflow-hidden 裁剪）——必须 portal 到 body。
-              仅在客户端点击后挂载，无 SSR/水合风险。 */}
-          {isAvatarPickerOpen
-            ? createPortal(
-                <AvatarPickerModal currentId={avatarId} onSelect={selectAvatar} onClose={() => setAvatarPickerOpen(false)} />,
-                document.body,
-              )
-            : null}
           <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
             <div className="flex items-center justify-between gap-3">
               <span className="text-body-sm font-semibold text-white">成长经验</span>

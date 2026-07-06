@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -14,6 +15,7 @@ import {
   Gift,
   Gamepad2,
   Loader2,
+  Maximize2,
   MessageCircle,
   Orbit,
   PackageOpen,
@@ -235,6 +237,63 @@ const seasonObjectiveCategoryById: Record<string, string> = {
   "holding-review": "learning",
 };
 
+const questMapNodePositions = [
+  { left: "21%", top: "78%" },
+  { left: "42%", top: "66%" },
+  { left: "56%", top: "51%" },
+  { left: "72%", top: "36%" },
+  { left: "81%", top: "70%" },
+  { left: "89%", top: "23%" },
+] as const;
+
+const questStatusLabel: Record<QuestItem["status"], string> = {
+  active: "进行中",
+  done: "已完成",
+  locked: "待解锁",
+  watch: "观察中",
+};
+
+type QuestMapNodeState = "current" | "completed" | "started" | "locked";
+
+const questMapNodeStateLabel: Record<QuestMapNodeState, string> = {
+  current: "进行中",
+  completed: "已完成",
+  started: "已开启",
+  locked: "未到达",
+};
+
+function getQuestMapNodeState(quest: QuestItem, active: boolean): QuestMapNodeState {
+  if (quest.status === "done" || quest.claimed || quest.progress >= 1) return "completed";
+  if (active || quest.progress > 0) return "current";
+  return "locked";
+}
+
+function getQuestMapNodeClasses(state: QuestMapNodeState) {
+  switch (state) {
+    case "completed":
+      return {
+        beacon: "border-emerald-100 bg-gradient-to-br from-emerald-100 via-teal-200 to-cyan-200 text-slate-950 shadow-[0_0_34px_rgba(94,234,212,0.58)]",
+        ring: "bg-emerald-300/45",
+      };
+    case "current":
+      return {
+        beacon: "border-amber-100 bg-gradient-to-br from-amber-200 via-orange-300 to-yellow-200 text-slate-950 shadow-[0_0_46px_rgba(251,191,36,0.68)]",
+        ring: "bg-amber-300/55",
+      };
+    case "started":
+      return {
+        beacon: "border-cyan-100/80 bg-gradient-to-br from-sky-200 via-cyan-200 to-teal-100 text-slate-950 shadow-[0_0_32px_rgba(103,232,249,0.45)]",
+        ring: "bg-cyan-300/35",
+      };
+    case "locked":
+    default:
+      return {
+        beacon: "border-white/15 bg-slate-950/88 text-white/70 shadow-[0_0_22px_rgba(15,23,42,0.78)] grayscale",
+        ring: "bg-slate-950/55",
+      };
+  }
+}
+
 function QuestMapGallery({
   quests,
   selectedQuestId,
@@ -248,65 +307,255 @@ function QuestMapGallery({
 }) {
   const taskNodes = quests.slice(0, 6);
   const seasonNodes = season.objectives.slice(0, 4);
+  const selectedTaskIndex = Math.max(
+    0,
+    taskNodes.findIndex((quest) => quest.id === selectedQuestId),
+  );
+  const selectedTask = taskNodes[selectedTaskIndex] ?? taskNodes[0];
+  const selectedProfile = selectedTask ? questVisualProfileFor(selectedTask, selectedTaskIndex) : null;
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [routeDetailQuest, setRouteDetailQuest] = useState<QuestItem | null>(null);
+
+  function openRouteQuest(quest: QuestItem) {
+    onSelect(quest.id);
+    setRouteDetailQuest(quest);
+  }
 
   return (
     <section
       data-quest-reveal
       data-motion-reveal
       data-testid="quest-map-gallery"
-      className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]"
+      className="grid scroll-mt-24 items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.55fr)]"
     >
-      <div data-testid="quest-task-map" className="panel rounded-[1.8rem] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="bz-eyebrow bz-brand-text-on-light">Route Map</p>
-            <h2 className="mt-2 text-h2 font-semibold text-fg-strong">任务地图</h2>
+      <div data-testid="quest-task-map" className="panel overflow-hidden rounded-[2rem] p-0">
+        <div className="relative overflow-hidden bg-slate-950 text-white">
+          <div className="absolute inset-0">
+            <Image
+              src="/brand/quest-world/mission-route-map-v2.png"
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1280px) 62vw, 100vw"
+              className="object-cover opacity-90"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,8,24,0.78),rgba(4,8,24,0.18)_43%,rgba(4,8,24,0.58))]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,185,96,0.24),transparent_32%),radial-gradient(circle_at_86%_22%,rgba(122,216,184,0.18),transparent_28%)]" />
           </div>
-          <span className="rounded-full bg-brand-subtle px-3 py-1 text-xs font-bold text-brand-ink">
-            点击切换今日航线
-          </span>
+
+          <div className="relative z-10 flex min-h-[25rem] flex-col justify-between gap-8 p-5 sm:min-h-[30rem] sm:p-7 lg:min-h-[34rem]">
+            <div className="relative z-30 flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-xl">
+                <p className="bz-eyebrow text-amber-200">Route Map</p>
+                <h2 className="mt-3 text-[clamp(2rem,4vw,4.6rem)] font-black leading-[0.95] tracking-[-0.08em] text-white">
+                  任务地图
+                </h2>
+                <p className="mt-4 max-w-md text-sm font-semibold leading-7 text-white/72 sm:text-base">
+                  像闯关地图一样选择今日航线：先观察节点，再翻开任务卡，最后把学习行动落到沙盘里。
+                </p>
+                {selectedTask && selectedProfile ? (
+                  <div className="mt-4 inline-flex max-w-full items-center gap-3 rounded-[1.35rem] border border-white/14 bg-slate-950/66 p-3 pr-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+                    <CreaturePortrait profile={selectedProfile} className="h-11 w-11 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[0.65rem] font-black uppercase tracking-[0.24em] text-amber-200">当前航线</p>
+                      <h3 className="mt-1 line-clamp-1 text-base font-black text-white">{selectedProfile.visualTitle}</h3>
+                    </div>
+                    <div className="ml-1 min-w-[7rem] rounded-[0.9rem] border border-white/10 bg-white/10 p-2">
+                      <div className="flex items-center justify-between text-[0.68rem] font-black text-white/76">
+                        <span>{questStatusLabel[selectedTask.status]}</span>
+                        <span className="tabular-nums">{Math.round(selectedTask.progress * 100)}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/12">
+                        <span
+                          className="block h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-300 to-emerald-200"
+                          style={{ width: `${Math.round(selectedTask.progress * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/18 bg-white/12 px-4 py-2 text-xs font-black text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur">
+                  点击节点切换航线
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMapExpanded(true)}
+                  data-testid="quest-map-expand-button"
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-100/70 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 shadow-[0_16px_36px_rgba(251,191,36,0.28)] transition hover:-translate-y-0.5 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                  放大查看
+                </button>
+              </div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-0 z-20" data-testid="quest-route-node-layer">
+              {taskNodes.map((quest, index) => {
+                const active = quest.id === selectedQuestId;
+                const profile = questVisualProfileFor(quest, index);
+                const progress = Math.round(quest.progress * 100);
+                const position = questMapNodePositions[index % questMapNodePositions.length];
+                const state = getQuestMapNodeState(quest, active);
+                const stateClasses = getQuestMapNodeClasses(state);
+                return (
+                  <button
+                    key={quest.id}
+                    type="button"
+                    data-testid={`quest-task-map-node-${quest.id}`}
+                    data-map-node-state={state}
+                    aria-pressed={active}
+                    aria-label={`航线 ${index + 1}，${profile.visualTitle}，${questMapNodeStateLabel[state]}，进度 ${progress}%`}
+                    onClick={() => openRouteQuest(quest)}
+                    style={{ left: position.left, top: position.top }}
+                    className={cn(
+                      "group pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200",
+                      state === "locked" ? "opacity-88" : "opacity-100",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full blur-xl transition group-hover:scale-110",
+                        stateClasses.ring,
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "relative z-10 grid h-16 w-16 place-items-center rounded-full border-2 transition duration-200 group-hover:-translate-y-1 group-hover:scale-105 sm:h-[4.5rem] sm:w-[4.5rem]",
+                        active ? "ring-4 ring-white/45" : "ring-1 ring-white/12",
+                        stateClasses.beacon,
+                      )}
+                    >
+                      <CreaturePortrait
+                        profile={profile}
+                        className="h-11 w-11 transition group-hover:scale-105 sm:h-12 sm:w-12"
+                      />
+                      <span className="absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-slate-950 text-[0.68rem] font-black tabular-nums text-amber-100 ring-2 ring-white/20">
+                        {index + 1}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        {/* §19.7 移动端：任务地图节点横滑（70% 宽），sm 起还原网格。 */}
-        <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [&>*]:w-[70%] [&>*]:shrink-0 [&>*]:snap-start sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 sm:[&>*]:w-auto sm:[&>*]:shrink xl:grid-cols-3">
+
+        <div className="grid gap-4 bg-[linear-gradient(180deg,#fffaf6,#ffffff)] p-5 sm:grid-cols-2 xl:grid-cols-3">
           {taskNodes.map((quest, index) => {
             const active = quest.id === selectedQuestId;
             const profile = questVisualProfileFor(quest, index);
+            const progress = Math.round(quest.progress * 100);
+            const routeState =
+              quest.status === "done" || quest.claimed ? "已完成" : quest.status === "active" ? "进行中" : "待解锁";
             return (
               <button
-                key={quest.id}
                 type="button"
-                data-testid={`quest-task-map-node-${quest.id}`}
-                aria-pressed={active}
-                onClick={() => onSelect(quest.id)}
+                onClick={() => openRouteQuest(quest)}
+                key={quest.id}
                 className={cn(
-                  "group flex min-h-20 items-center gap-3 rounded-[1.2rem] border p-3 text-left transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  active ? "border-brand bg-brand-subtle shadow-glow" : "border-slate-200 bg-white hover:border-brand/45",
+                  "group relative overflow-hidden rounded-[1.55rem] border p-0 text-left transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                  active ? "border-brand bg-white shadow-glow" : "border-slate-200 bg-white/92 hover:-translate-y-1 hover:border-brand/35 hover:shadow-card",
                 )}
               >
-                <CreaturePortrait profile={profile} className="h-11 w-11 shrink-0 transition group-hover:scale-105" />
-                <span className="min-w-0">
-                  <span className="block line-clamp-1 text-sm font-black text-fg-strong">{profile.visualTitle}</span>
-                  <span className="mt-1 block text-xs font-semibold tabular-nums text-fg-muted">
-                    航线 {index + 1} · {Math.round(quest.progress * 100)}%
-                  </span>
-                </span>
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-300 via-orange-300 to-emerald-200" />
+                <div className="flex gap-3 p-4">
+                  <CreaturePortrait profile={profile} className="h-14 w-14 shrink-0 transition duration-300 group-hover:-translate-y-1 group-hover:scale-105" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-brand">
+                          航线 {String(index + 1).padStart(2, "0")}
+                        </p>
+                        <h3 className="mt-1 line-clamp-1 text-base font-black text-fg-strong">{profile.visualTitle}</h3>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-slate-950 px-2.5 py-1 text-xs font-black tabular-nums text-white">
+                        {progress}%
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-fg-muted">{quest.coachNote}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-1 text-[0.68rem] font-black",
+                          quest.status === "done" || quest.claimed
+                            ? "bg-emerald-50 text-emerald-700"
+                            : quest.status === "active"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-slate-100 text-slate-500",
+                        )}
+                      >
+                        {routeState}
+                      </span>
+                      <span className="line-clamp-1 text-xs font-bold text-fg-muted">{profile.conceptTag}</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <span
+                        className={cn(
+                          "block h-full rounded-full",
+                          active ? "bg-brand" : quest.status === "done" || quest.claimed ? "bg-emerald-400" : "bg-slate-300",
+                        )}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div data-testid="quest-season-map" className="panel rounded-[1.8rem] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-testid="quest-season-map" className="panel overflow-hidden rounded-[2rem] p-0">
+        <div className="relative overflow-hidden bg-[linear-gradient(145deg,#fff7e8,#ffffff_45%,#eaf7ef)] p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-amber-200/45 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 left-4 h-40 w-40 rounded-full bg-emerald-200/38 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="bz-eyebrow bz-brand-text-on-light">Season Map</p>
             <h2 className="mt-2 text-h2 font-semibold text-fg-strong">本赛季地图</h2>
+            <p className="mt-1 text-sm font-semibold text-fg-muted">卡通航线图把目标拆成四座小岛，每完成一座就点亮一段路线。</p>
           </div>
           <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">
             {season.completedObjectives}/{season.totalObjectives}
           </span>
+          </div>
+          <div className="relative mt-5 overflow-hidden rounded-[1.65rem] border border-amber-200/70 bg-white/76 p-4 shadow-inner shadow-amber-900/5">
+            <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_18%_70%,rgba(251,191,36,0.24),transparent_22%),radial-gradient(circle_at_72%_32%,rgba(16,185,129,0.18),transparent_20%)]" />
+            <div className="relative grid gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-brand">Season Progress</p>
+                  <p className="mt-1 text-sm font-semibold text-fg-muted">本赛季目标完成度</p>
+                </div>
+                <Trophy className="h-8 w-8 text-brand" />
+              </div>
+              <div className="relative min-h-28">
+                <svg viewBox="0 0 320 120" className="h-28 w-full" role="img" aria-label="赛季地图路线示意">
+                  <path d="M28 86 C88 24, 126 110, 178 52 S264 42, 294 18" fill="none" stroke="#f4d9a4" strokeWidth="18" strokeLinecap="round" />
+                  <path d="M28 86 C88 24, 126 110, 178 52 S264 42, 294 18" fill="none" stroke="#e08a38" strokeWidth="5" strokeLinecap="round" strokeDasharray="8 12" />
+                  {[28, 116, 196, 294].map((cx, nodeIndex) => (
+                    <g key={cx}>
+                      <circle cx={cx} cy={[86, 58, 44, 18][nodeIndex]} r="17" fill={nodeIndex < season.completedObjectives ? "#dff8e9" : "#fff7ed"} stroke={nodeIndex < season.completedObjectives ? "#5fbf8b" : "#e08a38"} strokeWidth="3" />
+                      <text x={cx} y={[91, 63, 49, 23][nodeIndex]} textAnchor="middle" className="fill-slate-900 text-[16px] font-black">
+                        {nodeIndex + 1}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <span
+                  className="block h-full rounded-full bg-gradient-to-r from-brand via-amber-300 to-emerald-300"
+                  style={{ width: `${season.totalObjectives ? Math.round((season.completedObjectives / season.totalObjectives) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="mt-4 grid gap-3">
+        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-1">
           {seasonNodes.map((objective, index) => {
             const pseudoQuest = {
               id: objective.id,
@@ -322,20 +571,195 @@ function QuestMapGallery({
                 key={objective.id}
                 href={objective.href}
                 data-testid={`quest-season-map-node-${objective.id}`}
-                className="flex min-h-16 items-center justify-between gap-3 rounded-[1.15rem] border border-slate-200 bg-white p-3 transition hover:-translate-y-0.5 hover:border-brand/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="group flex min-h-20 items-center justify-between gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-3.5 transition hover:-translate-y-0.5 hover:border-brand/45 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                <span className="min-w-0">
-                  <span className="block line-clamp-1 text-sm font-black text-fg-strong">{profile.visualTitle}</span>
-                  <span className="mt-1 block text-xs font-semibold text-fg-muted">{profile.conceptTag}</span>
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-subtle text-sm font-black tabular-nums text-brand-ink">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block line-clamp-1 text-sm font-black text-fg-strong">{profile.visualTitle}</span>
+                    <span className="mt-1 block text-xs font-semibold text-fg-muted">{profile.conceptTag}</span>
+                  </span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-brand" />
+                <ArrowRight className="h-4 w-4 shrink-0 text-brand transition group-hover:translate-x-0.5" />
               </Link>
             );
           })}
         </div>
       </div>
+      {mapExpanded ? (
+        <QuestMapFullscreenDialog
+          quests={taskNodes}
+          selectedQuestId={selectedQuestId}
+          onSelect={onSelect}
+          onClose={() => setMapExpanded(false)}
+        />
+      ) : null}
+      <QuestDetailDialog quest={routeDetailQuest} onClose={() => setRouteDetailQuest(null)} />
     </section>
   );
+}
+
+function QuestMapFullscreenDialog({
+  quests,
+  selectedQuestId,
+  onSelect,
+  onClose,
+}: {
+  quests: QuestItem[];
+  selectedQuestId: string | null;
+  onSelect: (questId: string) => void;
+  onClose: () => void;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useModalA11y(panelRef, onClose, closeRef);
+  const [routeDetailQuest, setRouteDetailQuest] = useState<QuestItem | null>(null);
+
+  const selectedTaskIndex = Math.max(
+    0,
+    quests.findIndex((quest) => quest.id === selectedQuestId),
+  );
+  const selectedTask = quests[selectedTaskIndex] ?? quests[0];
+  const selectedProfile = selectedTask ? questVisualProfileFor(selectedTask, selectedTaskIndex) : null;
+
+  function openRouteQuest(quest: QuestItem) {
+    onSelect(quest.id);
+    setRouteDetailQuest(quest);
+  }
+
+  const dialog = (
+    <>
+      <div
+        className="fixed inset-0 z-[9999] overflow-hidden bg-slate-950/82 backdrop-blur-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="放大查看任务地图"
+        onClick={onClose}
+        data-testid="quest-map-fullscreen-dialog"
+      >
+      <Image
+        src="/brand/quest-world/mission-route-map-v2.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="scale-110 object-cover opacity-42 blur-xl"
+      />
+      <div
+        ref={panelRef}
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex h-[100svh] w-screen overflow-hidden bg-slate-950 text-white shadow-[0_32px_110px_rgba(0,0,0,0.58)]"
+      >
+        <Image
+          src="/brand/quest-world/mission-route-map-v2.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-100"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,8,24,0.74),rgba(4,8,24,0.06)_45%,rgba(4,8,24,0.36))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(251,191,36,0.26),transparent_32%),radial-gradient(circle_at_82%_22%,rgba(45,212,191,0.18),transparent_34%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+
+        <div className="relative z-30 flex h-full w-full flex-col p-5 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="bz-eyebrow text-amber-200">Route Map Detail</p>
+              <h2 className="mt-2 text-[clamp(2.4rem,6vw,5.6rem)] font-black leading-[0.92] tracking-[-0.08em] text-white">
+                放大任务地图
+              </h2>
+              <p className="mt-3 max-w-xl text-sm font-semibold leading-7 text-white/70 sm:text-base">
+                在大地图里查看每条航线的位置、状态和进度；点击节点可切换当前航线。
+              </p>
+            </div>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-white/18 bg-slate-950/50 p-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-xl transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="关闭放大任务地图"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="pointer-events-none absolute inset-0 z-20" data-testid="quest-map-fullscreen-node-layer">
+            {quests.map((quest, index) => {
+              const active = quest.id === selectedQuestId;
+              const profile = questVisualProfileFor(quest, index);
+              const progress = Math.round(quest.progress * 100);
+              const position = questMapNodePositions[index % questMapNodePositions.length];
+              const state = getQuestMapNodeState(quest, active);
+              const stateClasses = getQuestMapNodeClasses(state);
+              return (
+                <button
+                  key={quest.id}
+                  type="button"
+                  data-testid={`quest-map-fullscreen-node-${quest.id}`}
+                  data-map-node-state={state}
+                  aria-pressed={active}
+                  aria-label={`航线 ${index + 1}，${profile.visualTitle}，${questMapNodeStateLabel[state]}，进度 ${progress}%`}
+                  onClick={() => openRouteQuest(quest)}
+                  style={{ left: position.left, top: position.top }}
+                  className="group pointer-events-auto absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl transition group-hover:scale-110",
+                      stateClasses.ring,
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative z-10 grid h-16 w-16 place-items-center rounded-full border-2 transition duration-200 group-hover:-translate-y-1 group-hover:scale-105 sm:h-20 sm:w-20",
+                      active ? "ring-4 ring-white/50" : "ring-1 ring-white/14",
+                      stateClasses.beacon,
+                    )}
+                  >
+                    <CreaturePortrait profile={profile} className="h-11 w-11 transition group-hover:scale-105 sm:h-14 sm:w-14" />
+                    <span className="absolute -right-1.5 -top-1.5 grid h-7 w-7 place-items-center rounded-full bg-slate-950 text-xs font-black tabular-nums text-amber-100 ring-2 ring-white/20">
+                      {index + 1}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedTask && selectedProfile ? (
+            <div className="mt-auto grid gap-3 rounded-[1.5rem] border border-white/14 bg-slate-950/76 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:grid-cols-[auto_minmax(0,1fr)_minmax(10rem,0.28fr)] sm:items-center">
+              <CreaturePortrait profile={selectedProfile} className="h-14 w-14 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.28em] text-amber-200">当前航线</p>
+                <h3 className="mt-1 line-clamp-1 text-xl font-black text-white">{selectedProfile.visualTitle}</h3>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-6 text-white/70">{selectedTask.target}</p>
+              </div>
+              <div className="rounded-[1.1rem] border border-white/10 bg-white/10 p-3">
+                <div className="flex items-center justify-between text-xs font-black text-white/76">
+                  <span>{questStatusLabel[selectedTask.status]}</span>
+                  <span className="tabular-nums">{Math.round(selectedTask.progress * 100)}%</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/12">
+                  <span
+                    className="block h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-300 to-emerald-200"
+                    style={{ width: `${Math.round(selectedTask.progress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      </div>
+      <QuestDetailDialog quest={routeDetailQuest} onClose={() => setRouteDetailQuest(null)} />
+    </>
+  );
+
+  return typeof document === "undefined" ? null : createPortal(dialog, document.body);
 }
 
 function QuestDetailDialog({ quest, onClose }: { quest: QuestItem | null; onClose: () => void }) {
@@ -347,30 +771,41 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
   const cardRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalA11y(cardRef, onClose, closeRef);
+  const profile = questVisualProfileFor(quest, 0);
+  const progress = Math.round(quest.progress * 100);
 
-  return (
+  const dialog = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/56 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[10020] flex items-end justify-center bg-slate-950/74 p-0 backdrop-blur-xl sm:items-center sm:p-5"
       role="dialog"
       aria-modal="true"
       aria-label={`任务详情：${quest.title}`}
       onClick={onClose}
+      data-testid="quest-route-detail-dialog"
     >
-      {/* §19.7：手机上长详情用底部抽屉（贴底滑入、可内滚），sm 起保持居中弹窗。 */}
       <div
         ref={cardRef}
         onClick={(event) => event.stopPropagation()}
-        className="bz-sheet-in max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-t-[1.8rem] bg-white shadow-soft sm:max-h-[85dvh] sm:rounded-[2rem]"
+        className="bz-sheet-in grid max-h-[94dvh] w-full max-w-5xl overflow-hidden rounded-t-[2rem] bg-white shadow-[0_36px_110px_rgba(0,0,0,0.34)] sm:max-h-[90dvh] sm:rounded-[2.2rem] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
       >
         <div aria-hidden className="flex justify-center pt-2.5 sm:hidden">
           <span className="h-1.5 w-12 rounded-full bg-slate-300" />
         </div>
-        <div className="relative bg-slate-950 p-6 text-white">
+        <div className="relative min-h-[22rem] overflow-hidden bg-slate-950 p-6 text-white sm:p-7">
+          <Image
+            src="/brand/quest-world/mission-route-map-v2.png"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 42vw, 100vw"
+            className="object-cover opacity-42 blur-[1px]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(4,8,24,0.92),rgba(4,8,24,0.58)_58%,rgba(251,146,60,0.22))]" />
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
-              <p className="bz-eyebrow-inverse">任务详情</p>
-              <h3 className="mt-2 text-display-sm font-semibold">{quest.title}</h3>
+              <p className="bz-eyebrow text-amber-200">Route Mission</p>
+              <h3 className="mt-3 text-display-md font-black leading-tight text-white">{profile.visualTitle}</h3>
+              <p className="mt-3 max-w-md text-sm font-semibold leading-7 text-white/72">{quest.title}</p>
             </div>
             <button
               ref={closeRef}
@@ -382,24 +817,60 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
               <X className="h-5 w-5" />
             </button>
           </div>
+          <div className="relative z-10 mt-8 flex items-center gap-4 rounded-[1.5rem] border border-white/14 bg-slate-950/62 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+            <CreaturePortrait profile={profile} className="h-16 w-16 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-200">当前要求</p>
+              <p className="mt-1 line-clamp-2 text-sm font-bold leading-6 text-white/82">{quest.target}</p>
+            </div>
+          </div>
+          <div className="relative z-10 mt-5 rounded-[1.25rem] border border-white/12 bg-white/10 p-4">
+            <div className="flex items-center justify-between gap-4 text-sm font-black text-white/82">
+              <span>{questStatusLabel[quest.status]}</span>
+              <span className="tabular-nums">{progress}%</span>
+            </div>
+            <div {...progressAria(`航线 ${profile.visualTitle} 进度`, progress)} className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/14">
+              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-300 to-emerald-200" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
         </div>
-        <div className="grid gap-4 p-5 md:grid-cols-2 md:p-6">
-          <div className="rounded-[1.35rem] bg-slate-50 p-4">
-            <p className="bz-eyebrow text-fg-muted">任务目标</p>
-            <p className="mt-3 text-body font-semibold leading-7 text-fg-default">{quest.target}</p>
+        <div className="overflow-y-auto p-5 sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[1.45rem] border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-brand" />
+                <p className="text-sm font-black text-fg-strong">任务目标</p>
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-7 text-fg-default">{quest.target}</p>
+            </div>
+            <div className="rounded-[1.45rem] border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center gap-2">
+                <PackageOpen className="h-4 w-4 text-brand" />
+                <p className="text-sm font-black text-brand-ink">学习收藏卡</p>
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-7 text-fg-strong">{quest.reward}</p>
+            </div>
+            <div className="rounded-[1.45rem] border border-slate-200 bg-white p-4 sm:col-span-2">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-brand" />
+                <p className="text-sm font-black text-fg-strong">Mr.Brown 提醒</p>
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-7 text-fg-muted">{quest.coachNote}</p>
+            </div>
           </div>
-          <div className="rounded-[1.35rem] bg-brand-subtle p-4">
-            <p className="bz-eyebrow text-brand-ink">学习收藏卡</p>
-            <p className="mt-3 text-body font-semibold leading-7 text-fg-strong">{quest.reward}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            收起任务明细
+          </button>
           </div>
-          <div className="rounded-[1.35rem] bg-slate-950 p-4 text-white md:col-span-2">
-            <p className="bz-eyebrow-inverse">Mr.Brown 提醒</p>
-            <p className="mt-3 text-body font-semibold leading-7 text-white/80">{quest.coachNote}</p>
-          </div>
-        </div>
       </div>
     </div>
   );
+
+  return typeof document === "undefined" ? null : createPortal(dialog, document.body);
 }
 
 
@@ -784,7 +1255,7 @@ export function StudentQuestDashboard({
       <nav
         aria-label="任务中心快捷导航"
         data-testid="quest-anchor-nav"
-        className="sticky top-2 z-30 flex gap-1.5 overflow-x-auto rounded-full border border-slate-200/80 bg-white/92 p-1.5 shadow-soft backdrop-blur md:hidden"
+        className="relative z-10 flex gap-1.5 overflow-x-auto rounded-full border border-slate-200/80 bg-white/92 p-1.5 shadow-soft backdrop-blur md:hidden"
       >
         {[
           { href: "#season-goals", label: "目标", Icon: Target },
@@ -809,10 +1280,10 @@ export function StudentQuestDashboard({
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="bz-eyebrow-inverse">任务中心</p>
             <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
-              把理财好习惯变成可完成的任务
+              任务中心：好习惯闯关
             </h1>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
-              这里不会直接给学习点加分，而是把你的学习、交易、现金管理和复盘行为变成可见目标。好任务让你知道下一步练什么，也让每次打开沙盘都有明确方向。
+              把观察、交易、现金管理和复盘拆成可完成的小关卡。每次打开沙盘，都知道下一步练什么。
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -861,11 +1332,13 @@ export function StudentQuestDashboard({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="bz-eyebrow-inverse">Mr.Brown</p>
-                <h2 className="mt-3 text-h1 font-semibold text-white">{questPayload.coach.title}</h2>
+                <h2 className="mt-3 text-h1 font-semibold text-white">连续任务导航</h2>
               </div>
               <Sparkles className="h-6 w-6 text-brand-warm" />
             </div>
-            <p className="mt-4 text-body leading-8 text-white/68">{questPayload.coach.summary}</p>
+            <p className="mt-4 text-body leading-8 text-white/68">
+              Mr.Brown 会把学习动作串成连续任务：先体检，再调整，最后复盘。
+            </p>
             <div className="mt-6 space-y-3">
               {questPayload.coach.nextActions.map((action, index) => (
                 <div key={action} data-motion-card className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
@@ -949,14 +1422,16 @@ export function StudentQuestDashboard({
             <div className="relative z-10">
               <p className="bz-eyebrow-inverse">活动架</p>
               <h2 className="mt-3 text-display-md font-semibold md:text-display-lg">
-                {questPayload.benefits.title}
+                活动权益
               </h2>
-              <p className="mt-4 text-body leading-8 text-white/68">{questPayload.benefits.summary}</p>
+              <p className="mt-4 text-body leading-8 text-white/68">
+                微练习、班级赛和装饰奖励，都只服务学习复盘，不影响真实排名。
+              </p>
               <div className="mt-6 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-warm" />
                   <p className="text-sm font-semibold leading-6 text-white/68">
-                    {questPayload.benefits.guardrail}
+                    只做学习奖励：不改净值，不制造付费压力。
                   </p>
                 </div>
               </div>
@@ -973,7 +1448,7 @@ export function StudentQuestDashboard({
                   data-motion-card
                   key={item.id}
                   href={item.href}
-                  className="group flex min-h-[236px] flex-col rounded-[1.55rem] border border-slate-200 bg-slate-50 p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:bg-brand-subtle hover:shadow-soft"
+                  className="group flex min-h-[220px] flex-col rounded-[1.55rem] border border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f8fafc)] p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:bg-brand-subtle hover:shadow-soft"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", meta.className)}>
@@ -984,12 +1459,17 @@ export function StudentQuestDashboard({
                       {benefitStatusLabel[item.status]}
                     </span>
                   </div>
-                  <div className="mt-4 flex-1">
-                    <p className="bz-eyebrow bz-brand-text-on-light">{item.label}</p>
-                    <h3 className="mt-2 text-h2 text-fg-strong">{item.title}</h3>
-                    <p className="mt-3 line-clamp-3 text-sm font-semibold leading-6 text-fg-muted">
-                      {item.summary}
-                    </p>
+                  <div className="mt-4 flex flex-1 gap-3">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[1rem] bg-brand-subtle text-brand-ink transition group-hover:scale-105">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="bz-eyebrow bz-brand-text-on-light">{item.label}</p>
+                      <h3 className="mt-2 line-clamp-2 text-h2 text-fg-strong">{item.title}</h3>
+                      <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-fg-muted">
+                        {item.summary}
+                      </p>
+                    </div>
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center justify-between gap-3 text-xs font-semibold text-fg-muted">
@@ -1004,7 +1484,6 @@ export function StudentQuestDashboard({
                         style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
                       />
                     </div>
-                    <p className="mt-3 text-xs font-semibold leading-5 text-fg-muted">{item.guardrail}</p>
                     <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink">
                       {item.actionLabel}
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -1031,9 +1510,11 @@ export function StudentQuestDashboard({
             <div className="relative z-10">
               <p className="bz-eyebrow-inverse">赛季任务</p>
               <h2 className="mt-3 max-w-xl text-display-md font-semibold md:text-display-lg">
-                {season.title}
+                连续任务航线
               </h2>
-              <p className="mt-4 max-w-2xl text-body leading-8 text-white/68">{season.summary}</p>
+              <p className="mt-4 max-w-2xl text-body leading-8 text-white/68">
+                每个目标都是一张可翻开的任务卡：先看要求，再去沙盘完成。
+              </p>
 
               <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-center justify-between gap-4">
@@ -1123,7 +1604,7 @@ export function StudentQuestDashboard({
               <h2 className="text-h1 font-semibold text-fg-strong">任务锦囊栏</h2>
             </div>
             <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-              正面只保留航线、状态和进度，打开后再查看任务目标、导师提示和学习收藏卡。需要更多解释时点“详情”。
+              先看卡背选择航线，再翻到正面执行任务、领取学习卡。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1157,6 +1638,9 @@ export function StudentQuestDashboard({
               const canDraw = quest.claimable || quest.claimed;
               const selected = selectedQuestId === quest.id;
               const visualIndex = Math.max(0, visibleQuests.findIndex((item) => item.id === quest.id));
+              const visualProfile = questVisualProfileFor(quest, visualIndex);
+              const statusText = questStatusLabel[quest.status];
+              const progressPercent = Math.round(quest.progress * 100);
 
               return (
                 <article
@@ -1182,46 +1666,99 @@ export function StudentQuestDashboard({
                       data-testid={`quest-card-back-${quest.id}`}
                       aria-hidden={isFlipped}
                       inert={isFlipped ? true : undefined}
-                      className="poker-flip-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-brand/30 bg-slate-950 p-0 text-white shadow-lg shadow-slate-950/10"
+                      className={cn(
+                        "poker-flip-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-amber-200/60 bg-slate-950 p-0 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]",
+                        isFlipped ? "pointer-events-none" : "pointer-events-auto",
+                      )}
                       style={{ backfaceVisibility: "hidden" }}
                     >
                       <MissionCardBackArtwork priority>
-                        <div className="flex items-start justify-between gap-3 p-5">
-                          <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
-                            第 {visualIndex + 1} 号任务卡背
+                        <button
+                          ref={(node) => {
+                            questFlipButtonRefs.current[quest.id] = node;
+                          }}
+                          data-motion-button
+                          type="button"
+                          data-testid={`quest-flip-${quest.id}`}
+                          aria-controls={`quest-card-front-${quest.id}`}
+                          aria-expanded={isFlipped}
+                          aria-label={`翻开第 ${visualIndex + 1} 张任务卡正面：${quest.title}`}
+                          onClick={() => toggleQuestFlip(quest.id)}
+                          className="group relative z-20 grid h-full w-full place-items-center overflow-hidden rounded-[1.7rem] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200/90"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-5 rounded-[1.45rem] border border-amber-100/22 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_0_46px_rgba(251,191,36,0.14)]"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,246,214,0.34),rgba(251,191,36,0.10)_42%,transparent_68%)] blur-sm transition duration-300 group-hover:scale-105"
+                          />
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 320 420"
+                            className="relative z-10 h-[74%] w-[74%] max-w-[18rem] drop-shadow-[0_22px_46px_rgba(15,23,42,0.38)] transition duration-300 group-hover:-translate-y-1 group-hover:scale-[1.015]"
+                          >
+                            <defs>
+                              <linearGradient id={`mission-back-line-${quest.id}`} x1="0" x2="1" y1="0" y2="1">
+                                <stop offset="0%" stopColor="#fff6ce" />
+                                <stop offset="45%" stopColor="#f7b955" />
+                                <stop offset="100%" stopColor="#79d8c4" />
+                              </linearGradient>
+                              <radialGradient id={`mission-back-core-${quest.id}`} cx="50%" cy="42%" r="58%">
+                                <stop offset="0%" stopColor="#fff8db" stopOpacity="0.95" />
+                                <stop offset="52%" stopColor="#f5b84a" stopOpacity="0.26" />
+                                <stop offset="100%" stopColor="#0f172a" stopOpacity="0" />
+                              </radialGradient>
+                            </defs>
+                            <circle cx="160" cy="190" r="132" fill={`url(#mission-back-core-${quest.id})`} opacity="0.8" />
+                            <path
+                              d="M48 242 C86 190 116 214 148 162 S224 92 278 132"
+                              fill="none"
+                              stroke={`url(#mission-back-line-${quest.id})`}
+                              strokeLinecap="round"
+                              strokeWidth="12"
+                              opacity="0.88"
+                            />
+                            <path
+                              d="M160 58 L188 141 L276 154 L210 213 L229 300 L160 255 L91 300 L110 213 L44 154 L132 141 Z"
+                              fill="rgba(15,23,42,0.34)"
+                              stroke={`url(#mission-back-line-${quest.id})`}
+                              strokeLinejoin="round"
+                              strokeWidth="7"
+                              opacity="0.9"
+                            />
+                            <circle cx="160" cy="190" r="56" fill="rgba(255,250,240,0.20)" stroke="#fff1bd" strokeWidth="4" />
+                            <path
+                              d="M112 190 C138 160 180 160 208 190 C181 220 139 220 112 190Z"
+                              fill="rgba(121,216,196,0.26)"
+                              stroke="#bff4e7"
+                              strokeWidth="4"
+                            />
+                            <circle cx="84" cy="118" r="12" fill="#f7b955" opacity="0.9" />
+                            <circle cx="254" cy="92" r="15" fill="#79d8c4" opacity="0.78" />
+                            <circle cx="260" cy="282" r="22" fill="none" stroke="#fff1bd" strokeWidth="5" opacity="0.58" />
+                            <circle cx="70" cy="310" r="17" fill="#f7b955" opacity="0.72" />
+                            <path
+                              d="M44 358 C92 332 122 374 160 342 S222 312 280 338"
+                              fill="none"
+                              stroke="#fff1bd"
+                              strokeLinecap="round"
+                              strokeWidth="6"
+                              opacity="0.56"
+                            />
+                          </svg>
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-x-12 bottom-10 h-2 rounded-full bg-gradient-to-r from-transparent via-amber-200/62 to-transparent opacity-80"
+                          />
+                          <span className="absolute bottom-9 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-100/40 bg-slate-950/76 px-5 py-3 text-sm font-black text-amber-50 shadow-[0_18px_50px_rgba(15,23,42,0.34)] backdrop-blur-xl transition duration-300 group-hover:-translate-y-1 group-hover:border-amber-100/70 group-hover:bg-amber-200 group-hover:text-slate-950">
+                            <Sparkles className="h-4 w-4" />
+                            翻转卡片
+                            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                           </span>
-                          <span className="rounded-full border border-white/18 bg-white/12 px-3 py-1 text-xs font-black text-white shadow-sm backdrop-blur">
-                            待揭晓
-                          </span>
-                        </div>
-                        <div className="mt-auto p-5">
-                          <div className="rounded-[1.3rem] border border-white/12 bg-slate-950/62 p-4 shadow-inner backdrop-blur-md">
-                            <p className="text-2xl font-black text-white">任务锦囊</p>
-                            <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
-                              点击翻开任务正面，查看目标、导师提示与可领取的学习卡。
-                            </p>
-                            <div aria-hidden="true" className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/14">
-                              <div className="h-full w-3/5 rounded-full bg-gradient-to-r from-brand via-warning to-down" />
-                            </div>
-                          </div>
-                        </div>
+                        </button>
                       </MissionCardBackArtwork>
-                      <button
-                        ref={(node) => {
-                          questFlipButtonRefs.current[quest.id] = node;
-                        }}
-                        data-motion-button
-                        type="button"
-                        data-testid={`quest-flip-${quest.id}`}
-                        aria-controls={`quest-card-front-${quest.id}`}
-                        aria-expanded={isFlipped}
-                        aria-label={isFlipped ? `翻回任务卡背面：${quest.title}` : `翻开第 ${visualIndex + 1} 号任务卡正面`}
-                        onClick={() => toggleQuestFlip(quest.id)}
-                        className="bz-press relative z-10 mx-5 mb-5 mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-brand/35 bg-slate-950/82 px-4 text-sm font-semibold text-white shadow-glow backdrop-blur transition hover:-translate-y-0.5 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                      >
-                        <PackageOpen className="h-4 w-4" />
-                        翻开任务正面
-                      </button>
                     </div>
 
                     <div
@@ -1229,32 +1766,78 @@ export function StudentQuestDashboard({
                       data-testid={`quest-card-front-${quest.id}`}
                       aria-hidden={!isFlipped}
                       inert={!isFlipped ? true : undefined}
-                      className="poker-flip-front-face poker-flip-face absolute inset-0 flex h-full flex-col rounded-[1.7rem] border border-brand/30 bg-slate-950 p-5 text-white shadow-glow"
+                      className={cn(
+                        "poker-flip-front-face poker-flip-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-amber-200 bg-[#fffaf0] p-0 text-slate-950 shadow-[0_24px_80px_rgba(15,23,42,0.16)]",
+                        isFlipped ? "pointer-events-auto" : "pointer-events-none",
+                      )}
                       style={{ backfaceVisibility: "hidden" }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">任务卡</p>
-                          <h3 className="mt-2 text-h2 font-bold text-white">{quest.title}</h3>
-                        </div>
+                      <div className="relative overflow-hidden bg-[radial-gradient(circle_at_15%_0%,rgba(251,191,36,0.52),transparent_36%),linear-gradient(135deg,#12213b,#0f172a_54%,#1e293b)] p-5 text-white">
+                        <div className="absolute -right-12 top-3 h-36 w-36 rounded-full bg-amber-200/22 blur-3xl" />
+                        <svg aria-hidden="true" viewBox="0 0 320 180" className="pointer-events-none absolute bottom-0 right-0 h-36 w-64 opacity-34">
+                          <path d="M22 132 C80 72 128 126 170 70 S242 28 298 66" fill="none" stroke="#f8c46a" strokeWidth="9" strokeLinecap="round" />
+                          <circle cx="64" cy="108" r="15" fill="#f8c46a" opacity="0.75" />
+                          <circle cx="182" cy="58" r="12" fill="#7dd3c7" opacity="0.7" />
+                          <path d="M244 86 l18 42 l44 4 l-34 28 l10 42 l-38 -23 l-38 23 l10 -42 l-34 -28 l44 -4z" fill="none" stroke="#7dd3c7" strokeWidth="5" opacity="0.72" />
+                        </svg>
+                        <div className="relative z-10 flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 gap-3">
+                            <CreaturePortrait profile={visualProfile} className="h-14 w-14 ring-4 ring-amber-100/50 sm:h-16 sm:w-16" priority={visualIndex === 0} />
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-100">航线通行证</p>
+                              <h3 className="mt-1 text-[clamp(1.45rem,6vw,2.25rem)] font-black leading-[1.04] tracking-[-0.04em] text-white sm:text-[clamp(1.85rem,4vw,2.7rem)] sm:leading-[1.02]">
+                                {quest.title}
+                              </h3>
+                              <p className="mt-2 inline-flex rounded-full border border-white/14 bg-white/10 px-3 py-1 text-xs font-bold text-white/78">
+                                {visualProfile.creatureName} · {visualProfile.visualTitle}
+                              </p>
+                            </div>
+                          </div>
                         <button
                           type="button"
                           data-testid={`quest-return-back-${quest.id}`}
                           aria-label={`翻回任务卡背面：${quest.title}`}
                           onClick={() => toggleQuestFlip(quest.id)}
-                          className="inline-flex min-h-10 items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                          className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-white/20 bg-white/14 px-3 py-1 text-xs font-black text-white transition hover:bg-white/24 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                         >
                           翻回卡背
                         </button>
-                      </div>
-                      <div className="mt-5 grid gap-3">
-                        <div className="rounded-[1.3rem] border border-white/10 bg-white/[0.08] p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/48">任务目标</p>
-                          <p className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-white/82">{quest.target}</p>
                         </div>
-                        <div className="rounded-[1.3rem] border border-brand/25 bg-brand/12 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-warm">学习收藏卡</p>
-                          <p className="mt-2 text-sm font-semibold leading-6 text-white">{quest.reward}</p>
+                        <div className="relative z-10 mt-5 grid gap-3 rounded-[1.35rem] border border-white/12 bg-white/10 p-3 backdrop-blur sm:grid-cols-3">
+                          <div className="rounded-[1rem] bg-white/8 p-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/48">状态</p>
+                            <p className="mt-1 text-base font-black text-amber-100">{statusText}</p>
+                          </div>
+                          <div className="rounded-[1rem] bg-teal-200/12 p-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/48">进度</p>
+                            <p className="mt-1 text-base font-black text-teal-100">{progressPercent}%</p>
+                          </div>
+                          <div className="rounded-[1rem] bg-amber-200/12 p-3">
+                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/48">概念</p>
+                            <p className="mt-1 text-base font-black text-white">{visualProfile.conceptTag}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="relative z-10 grid flex-1 gap-4 bg-[linear-gradient(180deg,#fffaf0_0%,#fff7ed_48%,#ffffff_100%)] p-5">
+                        <div className="grid gap-3 sm:grid-cols-[1fr_0.9fr]">
+                          <div className="rounded-[1.45rem] border border-slate-200 bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
+                            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                              <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-950 text-amber-100">
+                                <Target className="h-4 w-4" />
+                              </span>
+                              本次任务目标
+                            </p>
+                            <p className="mt-4 text-lg font-black leading-8 tracking-[-0.02em] text-slate-950 md:text-xl">{quest.target}</p>
+                          </div>
+                          <div className="rounded-[1.45rem] border border-amber-200 bg-[linear-gradient(135deg,#fff7ed,#fff3c4)] p-5 shadow-[0_18px_42px_rgba(217,119,6,0.12)]">
+                            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-orange-700">
+                              <span className="grid h-8 w-8 place-items-center rounded-full bg-orange-500 text-white">
+                                <Gift className="h-4 w-4" />
+                              </span>
+                              完成后奖励
+                            </p>
+                            <p className="mt-4 text-lg font-black leading-8 tracking-[-0.02em] text-slate-950 md:text-xl">{quest.reward}</p>
+                          </div>
                         </div>
                         <button
                           ref={(node) => {
@@ -1264,7 +1847,7 @@ export function StudentQuestDashboard({
                           data-testid={`quest-detail-trigger-${quest.id}`}
                           aria-label={`查看任务详情：${quest.title}`}
                           onClick={() => setDetailQuestId(quest.id)}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-orange-200 bg-white px-5 text-base font-black text-slate-900 shadow-[0_14px_32px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-brand hover:bg-orange-50 hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           <Eye className="h-4 w-4" />
                           查看任务详情
@@ -1293,11 +1876,18 @@ export function StudentQuestDashboard({
                           </p>
                         </div>
                       ) : (
-                        <div className="hidden sm:block">
+                        <div className="hidden rounded-[1.45rem] border border-dashed border-amber-200 bg-[linear-gradient(135deg,#fff7ed,#f8fafc)] p-4 sm:grid sm:grid-cols-[0.85fr_1fr] sm:items-center sm:gap-4">
                           <QuestCardBackArt tier="basic" />
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">学习收藏卡</p>
+                            <p className="mt-2 text-lg font-black text-slate-950">完成后可领取</p>
+                            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                              收藏卡只记录你的任务复盘，不改变净值和排名。
+                            </p>
+                          </div>
                         </div>
                       )}
-                      <p className="mt-3 text-[11px] font-semibold leading-5 text-white/55">
+                      <p className="px-5 text-[11px] font-bold leading-5 text-slate-500">
                         完成任务即可获得对应卡片 · 仅作学习收藏，不改变净值、学习点或学习榜。
                       </p>
                       <button
@@ -1314,7 +1904,7 @@ export function StudentQuestDashboard({
                         disabled={!canDraw || Boolean(collectedCard) || claimingQuestId !== null || drawingQuestId !== null}
                         aria-busy={isQuestBusy}
                         className={cn(
-                          "bz-press mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                          "bz-press mx-5 mb-5 mt-auto inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
                           canDraw && !collectedCard
                             ? "bg-brand text-slate-950 shadow-glow hover:-translate-y-0.5"
                             : collectedCard
@@ -1346,30 +1936,58 @@ export function StudentQuestDashboard({
               );
             })}
             </div>
-            <aside id="mission-queue" data-testid="quest-queue-panel" className="scroll-mt-24 rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-soft">
-              <div className="flex items-start justify-between gap-3">
+            <aside
+              id="mission-queue"
+              data-testid="quest-queue-panel"
+              className="relative flex min-h-[44rem] scroll-mt-24 flex-col overflow-hidden rounded-[1.9rem] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_80px_rgba(15,23,42,0.28)] xl:max-h-[44rem]"
+            >
+              <div className="pointer-events-none absolute -right-14 -top-12 h-32 w-32 rounded-full bg-amber-300/20 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-12 left-10 h-32 w-32 rounded-full bg-emerald-300/12 blur-3xl" />
+              <div className="relative flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">任务队列</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">Mission Dock</p>
                   <h3 className="mt-2 text-h2 font-bold text-white">任务队列</h3>
+                  <p className="mt-1 text-xs font-semibold text-white/58">先选航线，再翻牌执行。</p>
                 </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white/70">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white/76">
                   {visibleQuests.length} 个锦囊
                 </span>
               </div>
-              <div className="mt-5 rounded-[1.3rem] border border-white/10 bg-white/[0.07] p-4">
-                <p className="text-sm font-semibold text-white">流程</p>
-                <div className="mt-3 grid gap-2 text-xs font-semibold text-white/68">
-                  <span>1. 对话领取航线</span>
-                  <span>2. 打开当前锦囊</span>
-                  <span>3. 翻到背面看任务</span>
-                  <span>4. 完成后领取学习卡片</span>
+              <div className="relative mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-[1rem] border border-white/10 bg-white/[0.07] p-3">
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-white/48">已完成</p>
+                  <p className="mt-1 text-lg font-black tabular-nums text-emerald-200">
+                    {visibleQuests.filter((quest) => quest.status === "done" || quest.claimed).length}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-white/10 bg-white/[0.07] p-3">
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-white/48">进行中</p>
+                  <p className="mt-1 text-lg font-black tabular-nums text-amber-200">
+                    {visibleQuests.filter((quest) => quest.status === "active").length}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-white/10 bg-white/[0.07] p-3">
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-white/48">观察</p>
+                  <p className="mt-1 text-lg font-black tabular-nums text-sky-200">
+                    {visibleQuests.filter((quest) => quest.status === "watch").length}
+                  </p>
                 </div>
               </div>
-              <div className="relative mt-5 overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-2 shadow-inner shadow-black/10">
+              <div className="relative mt-4 rounded-[1.25rem] border border-white/10 bg-white/[0.07] p-3">
+                <p className="text-sm font-black text-white">四步流程</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[0.7rem] font-bold text-white/72">
+                  {["对话领航", "打开锦囊", "查看任务", "领取卡片"].map((step, index) => (
+                    <span key={step} className="rounded-full bg-white/8 px-2.5 py-2">
+                      {index + 1}. {step}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="relative mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-2 shadow-inner shadow-black/10">
                 <div className="pointer-events-none absolute left-2 right-4 top-2 z-10 h-8 rounded-t-[1.1rem] bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent" />
                 <div
                   data-testid="quest-queue-scroll"
-                  className="quest-glass-scroll max-h-[20rem] space-y-3 overflow-y-auto overscroll-contain pb-2 pr-2 pt-1"
+                  className="quest-glass-scroll min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2 pr-2 pt-1"
                   aria-label="任务队列，可向下滑动查看更多任务锦囊"
                 >
                   {queuedVisibleQuests.length > 0 ? (
@@ -1395,6 +2013,12 @@ export function StudentQuestDashboard({
                   </span>
                 </div>
                 ) : null}
+              </div>
+              <div className="relative mt-4 rounded-[1.25rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.15),rgba(15,23,42,0.42))] p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">Next Move</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-white/78">
+                  先点航线看明细，再翻开任务卡；完成后回到队列领取学习卡。
+                </p>
               </div>
             </aside>
           </div>
@@ -1475,7 +2099,7 @@ export function StudentQuestDashboard({
                   "group rounded-[1.55rem] border p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-950/8",
                   achievement.unlocked
                     ? "border-border-brand bg-gradient-to-br from-amber-50 via-white to-orange-50"
-                    : "border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100",
+                    : "border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 opacity-78",
                 )}
               >
                 <div className="flex items-center gap-4">
