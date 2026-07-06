@@ -633,7 +633,7 @@ export function StudentHistoryReviewDashboard({
                                   {formatDateLabel(new Date(item.timestamp))}
                                 </span>
                               </div>
-                              <p className="mt-2 line-clamp-2 break-all text-body font-semibold text-fg-strong">{item.label}</p>
+                              <p className="mt-2 line-clamp-2 break-words text-body font-semibold text-fg-strong">{item.label}</p>
                               <p className="mt-2 text-body-sm leading-7 text-fg-muted">{item.impact}</p>
                             </div>
                             <div className="text-right">

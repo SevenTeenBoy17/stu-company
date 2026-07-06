@@ -9,6 +9,7 @@ import {
   HK_INSTRUMENTS,
   MARKET_CATEGORY_ORDER,
   industryImagePath,
+  marketSymbolIconPath,
 } from "@/lib/market-catalog";
 import {
   MARKET_CATALOG,
@@ -41,6 +42,16 @@ describe("market catalog", () => {
     }
   });
 
+  it("ships a concrete symbol badge for every market instrument", () => {
+    const publicDir = join(process.cwd(), "public");
+    for (const category of MARKET_CATEGORY_ORDER) {
+      for (const instrument of getCategoryInstruments(category)) {
+        const rel = marketSymbolIconPath(instrument.id).replace(/^\//, "");
+        expect(existsSync(join(publicDir, rel)), `missing symbol badge for ${instrument.id} (${rel})`).toBe(true);
+      }
+    }
+  });
+
   it("non-US instruments carry sane routing for the Tsanghi daily endpoint", () => {
     for (const instrument of [...CN_INSTRUMENTS, ...HK_INSTRUMENTS, ...FUND_INSTRUMENTS]) {
       expect(["stock", "etf"]).toContain(instrument.kind);
@@ -62,6 +73,7 @@ describe("market catalog", () => {
       // 默认选中该分类首个标的，且详情带行业示意图与币种。
       expect(payload.selected.symbol).toBe(instruments[0].id);
       expect(payload.selected.imageUrl).toBe(industryImagePath(instruments[0].industryKey));
+      expect(payload.selected.symbolImageUrl).toBe(marketSymbolIconPath(instruments[0].id));
       expect(payload.selected.currency).toBe(instruments[0].currency);
       expect(payload.selected.metrics).toHaveLength(6);
       expect(payload.selected.candles.length).toBeGreaterThanOrEqual(4);

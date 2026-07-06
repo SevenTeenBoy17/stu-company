@@ -20,6 +20,7 @@ export type IndustryKey =
   | "ev-robotics"
   | "baijiu"
   | "finance"
+  | "healthcare-medicine"
   | "utility-dividend"
   | "ecommerce"
   | "telecom"
@@ -161,6 +162,16 @@ export const CN_INSTRUMENTS: CatalogInstrument[] = [
     observationAngle: "重点看来水情况、分红比例与利率下行带来的估值支撑。",
     aiRelevance: 16, sectorHeat: 50, fallbackPrice: 26.22, fallbackChange: 0.19, fallbackSeries: series(26.22, 0.02),
   },
+  {
+    id: "600276", category: "cn", kind: "stock", exchange: "XSHG", ticker: "600276", exchangeName: "上交所",
+    currency: "CNY", code: "600276.SH", name: "恒瑞医药", companyName: "Hengrui Medicine",
+    sector: "创新药", sectorGroup: "医药创新", industryKey: "healthcare-medicine",
+    tags: ["创新药", "研发投入", "出海授权"], monogram: "药", accentColor: "#df5f5f",
+    summary: "恒瑞医药适合用来观察创新药研发、集采压力和出海授权之间的平衡。",
+    teachingNote: "医药股不是只看新闻热度，更要看研发管线、审批节奏和现金流承受力。",
+    observationAngle: "重点看新药获批、海外授权收入和研发费用率是否形成正向循环。",
+    aiRelevance: 30, sectorHeat: 68, fallbackPrice: 52.8, fallbackChange: 0.74, fallbackSeries: series(52.8, 0.04),
+  },
 ];
 
 export const HK_INSTRUMENTS: CatalogInstrument[] = [
@@ -223,6 +234,16 @@ export const HK_INSTRUMENTS: CatalogInstrument[] = [
     teachingNote: "适合理解「平台型金融基建」如何随成交量与上市活跃度起伏，是市场温度计。",
     observationAngle: "重点看日均成交额、IPO 节奏与互联互通资金流向。",
     aiRelevance: 26, sectorHeat: 60, fallbackPrice: 366.6, fallbackChange: 0.88, fallbackSeries: series(366.6, 0.04),
+  },
+  {
+    id: "2269", category: "hk", kind: "stock", exchange: "XHKG", ticker: "2269", exchangeName: "港交所",
+    currency: "HKD", code: "2269.HK", name: "药明生物", companyName: "WuXi Biologics",
+    sector: "生物药外包", sectorGroup: "医药创新", industryKey: "healthcare-medicine",
+    tags: ["CXO", "生物药", "全球订单"], monogram: "药", accentColor: "#d85b78",
+    summary: "药明生物代表医药外包赛道，适合观察全球订单、产能利用率和行业信心修复。",
+    teachingNote: "适合学习“产业链卖水人”与政策、海外需求之间的关系，波动通常比稳健药企更大。",
+    observationAngle: "重点看新增项目、产能利用率和海外客户预算是否改善。",
+    aiRelevance: 36, sectorHeat: 64, fallbackPrice: 18.42, fallbackChange: -0.62, fallbackSeries: series(18.42, 0.05),
   },
 ];
 
@@ -297,6 +318,16 @@ export const FUND_INSTRUMENTS: CatalogInstrument[] = [
     observationAngle: "重点看大型科技股景气、估值与利率敏感度。",
     aiRelevance: 76, sectorHeat: 80, fallbackPrice: 710.62, fallbackChange: 0.52, fallbackSeries: series(710.62, 0.03),
   },
+  {
+    id: "512170", category: "fund", kind: "etf", exchange: "XSHG", ticker: "512170", exchangeName: "上交所",
+    currency: "CNY", code: "512170.SH", name: "医疗ETF", companyName: "Healthcare ETF",
+    sector: "医疗服务", sectorGroup: "医药主题基金", industryKey: "healthcare-medicine",
+    tags: ["医药", "医疗服务", "主题基金"], monogram: "医", accentColor: "#d85b78",
+    summary: "医疗ETF 用一篮子方式观察医药与医疗服务板块，适合对比主题基金和个股波动。",
+    teachingNote: "主题基金比宽基更集中，适合训练“看懂赛道，但不过度押注”的配置意识。",
+    observationAngle: "重点看医保政策、创新药进展和医疗服务需求是否共同改善。",
+    aiRelevance: 34, sectorHeat: 66, fallbackPrice: 0.612, fallbackChange: 0.48, fallbackSeries: series(0.612, 0.045),
+  },
 ];
 
 // 非美股分类的标的表（美股从 MARKET_METADATA + US_ROUTING 在 market-watchlist.ts 里组装）。
@@ -308,4 +339,28 @@ export const NON_US_CATEGORY_INSTRUMENTS: Record<Exclude<MarketCategoryId, "us">
 
 export function industryImagePath(key: IndustryKey): string {
   return `/market/industries/${key}.webp`;
+}
+
+export function marketBadgePath(key: IndustryKey): string {
+  const iconKey: Record<IndustryKey, string> = {
+    semiconductor: "semiconductor",
+    "cloud-software": "cloud-software",
+    "ai-platform": "ai-platform",
+    "ev-robotics": "ev-robotics",
+    baijiu: "consumer-retail",
+    finance: "finance",
+    "healthcare-medicine": "healthcare-medicine",
+    "utility-dividend": "utility-dividend",
+    ecommerce: "ecommerce",
+    telecom: "telecom",
+    "consumer-electronics": "consumer-electronics",
+    "broad-index": "broad-index",
+    "overseas-tech-index": "overseas-tech-index",
+  };
+
+  return `/brand/market-radar-icons/${iconKey[key]}.webp`;
+}
+
+export function marketSymbolIconPath(symbol: string): string {
+  return `/brand/market-symbol-icons/${encodeURIComponent(symbol)}.webp`;
 }

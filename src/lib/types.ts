@@ -559,6 +559,9 @@ export interface TickerTapeItem {
   source: MarketQuoteSource;
   accentColor: string;
   monogram: string;
+  sector?: string;
+  sectorGroup?: string;
+  tags?: string[];
   imageUrl?: string;
 }
 
@@ -599,6 +602,7 @@ export interface MarketBoardStock {
   metrics: MarketBoardMetric[];
   facts: Array<{ label: string; value: string }>;
   imageUrl?: string;
+  symbolImageUrl?: string;
   currency?: string;
 }
 

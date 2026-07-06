@@ -365,8 +365,8 @@ export function StudentWealthDashboard({
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
             {summary.zones.map((zone) => (
               <article key={zone.id} data-motion-card className="rounded-[1.6rem] bg-slate-950/[0.035] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-h3 text-fg-strong">{zone.title}</h3>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="min-w-0 whitespace-nowrap text-h3 text-fg-strong">{zone.title}</h3>
                   <span className="rounded-full bg-white px-3 py-1 text-caption font-semibold text-brand-ink">
                     <span className="tabular-nums">{zone.weight.toFixed(1)}</span>%
                   </span>
@@ -476,7 +476,7 @@ export function StudentWealthDashboard({
             <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="rounded-[1.6rem] bg-slate-950/[0.035] p-4">
                 <p className="text-body-sm font-semibold text-fg-strong">1. 本回合最该关注什么？</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2">
                   {review.focusOptions.map((option) => (
                     <button
                       key={option.id}
@@ -501,7 +501,7 @@ export function StudentWealthDashboard({
 
               <div className="rounded-[1.6rem] bg-slate-950/[0.035] p-4">
                 <p className="text-body-sm font-semibold text-fg-strong">2. 下一步更像哪种动作？</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2">
                   {review.actionOptions.map((option) => (
                     <button
                       key={option.id}

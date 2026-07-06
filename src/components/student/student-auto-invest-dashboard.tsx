@@ -7,6 +7,7 @@ import {
   Bot,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   LineChart,
   Loader2,
   PauseCircle,
@@ -77,6 +78,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
   const rootRef = useRef<HTMLDivElement>(null);
   const [payload, setPayload] = useState(initialPayload);
   const [assetId, setAssetId] = useState(initialPayload.selected.assetId);
+  const [assetListOpen, setAssetListOpen] = useState(false);
   const [amountPerRound, setAmountPerRound] = useState(initialPayload.selected.amountPerRound);
   const [durationRounds, setDurationRounds] = useState(initialPayload.selected.durationRounds);
   const [strategy, setStrategy] = useState<AutoInvestStrategy>(initialPayload.selected.strategy);
@@ -155,6 +157,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
   }
 
   const selectedOption = payload.options.find((item) => item.assetId === payload.selected.assetId) ?? payload.options[0];
+  const configuredOption = payload.options.find((item) => item.assetId === assetId) ?? selectedOption;
   const moveClasses = getMarketMoveClasses(selectedOption?.dayChange ?? 0);
   const latestPlan = payload.activePlan;
 
@@ -289,20 +292,97 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
           </p>
 
           <div className="mt-6 space-y-5">
-            <label className="block">
-              <span className="text-caption font-semibold text-fg-default">定投标的</span>
-              <select
-                value={assetId}
-                onChange={(event) => setAssetId(event.target.value)}
-                className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-body font-semibold text-fg-strong outline-none transition focus:border-brand"
+            <div
+              className="relative"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setAssetListOpen(false);
+                }
+              }}
+            >
+              <span id="auto-invest-asset-label" className="text-caption font-semibold text-fg-default">
+                定投标的
+              </span>
+              <button
+                type="button"
+                data-testid="auto-invest-asset-selector"
+                aria-labelledby="auto-invest-asset-label"
+                aria-expanded={assetListOpen}
+                aria-haspopup="listbox"
+                onClick={() => setAssetListOpen((open) => !open)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setAssetListOpen(false);
+                }}
+                className={cn(
+                  "mt-2 flex min-h-14 w-full items-center justify-between gap-3 rounded-[1.15rem] border bg-white px-4 py-3 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] outline-none transition",
+                  assetListOpen ? "border-brand shadow-glow" : "border-slate-200 hover:border-brand/60",
+                )}
               >
-                {payload.options.map((option) => (
-                  <option key={option.assetId} value={option.assetId}>
-                    {option.name} · {option.symbol}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <span className="min-w-0">
+                  <span className="block truncate text-body font-bold text-fg-strong">
+                    {configuredOption?.name ?? "选择定投标的"}
+                  </span>
+                  <span className="mt-1 block text-caption font-semibold text-fg-muted">
+                    {configuredOption?.symbol ?? "请选择"} · 当前 {formatCurrency(configuredOption?.currentPrice ?? 0)}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 shrink-0 text-slate-500 transition-transform",
+                    assetListOpen && "rotate-180 text-brand",
+                  )}
+                />
+              </button>
+
+              {assetListOpen ? (
+                <div
+                  role="listbox"
+                  data-testid="auto-invest-asset-list"
+                  aria-labelledby="auto-invest-asset-label"
+                  className="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
+                >
+                  <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+                    {payload.options.map((option) => {
+                      const active = option.assetId === assetId;
+                      const optionMove = getMarketMoveClasses(option.dayChange);
+                      return (
+                        <button
+                          key={option.assetId}
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          onClick={() => {
+                            setAssetId(option.assetId);
+                            setAssetListOpen(false);
+                          }}
+                          className={cn(
+                            "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] px-3 py-3 text-left transition hover:bg-slate-50",
+                            active && "bg-brand-soft ring-1 ring-brand/35",
+                          )}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-body-sm font-bold text-fg-strong">
+                              {option.name}
+                            </span>
+                            <span className="mt-0.5 block text-caption font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              {option.symbol}
+                            </span>
+                          </span>
+                          <span className="text-right">
+                            <span className="block text-body-sm font-black tabular-nums text-fg-strong">
+                              {formatCurrency(option.currentPrice)}
+                            </span>
+                            <span className={cn("mt-0.5 block text-caption font-bold tabular-nums", optionMove.text)}>
+                              {formatPercent(option.dayChange)}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <label className="block">
               <span className="text-caption font-semibold text-fg-default">每回合金额</span>

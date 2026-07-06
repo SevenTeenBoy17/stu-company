@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { buildRiskProfilePayload } from "@/lib/risk-profile";
@@ -17,7 +17,7 @@ describe("StudentRiskProfileDashboard — new student (no persisted answers)", (
     vi.unstubAllGlobals();
   });
 
-  it("selection counter advances from 0/6 to 1/6 when the first option is clicked", async () => {
+  it("reveals a scenario card before the first option advances the selection counter", async () => {
     const payload = makePayload();
     render(
       <StudentRiskProfileDashboard
@@ -29,15 +29,14 @@ describe("StudentRiskProfileDashboard — new student (no persisted answers)", (
     // Before any click, the counter must show 0/6
     expect(screen.getByTestId("risk-counter").textContent).toBe("0/6 已选择");
 
-    // Find all option buttons in the first scenario card and click the first one
-    const optionButtons = screen.getAllByRole("button", { name: /.+/ });
-    // Filter to the scenario option buttons (not the submit button)
-    const scenarioButtons = optionButtons.filter(
-      (btn) => !btn.textContent?.includes("生成我的投资人格"),
-    );
-    expect(scenarioButtons.length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByTestId("risk-scenario-card-back-1"));
+    expect(screen.getByTestId("risk-reveal-counter").textContent).toBe("1/6 已翻开");
 
-    await userEvent.click(scenarioButtons[0]);
+    const firstCard = screen.getByTestId("risk-scenario-flip-card-1");
+    const optionButtons = within(firstCard).getAllByRole("button");
+    expect(optionButtons.length).toBeGreaterThan(0);
+
+    await userEvent.click(optionButtons[0]);
 
     // After clicking, the counter must advance to 1/6
     expect(screen.getByTestId("risk-counter").textContent).toBe("1/6 已选择");

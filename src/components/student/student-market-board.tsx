@@ -38,7 +38,7 @@ import type {
   MarketCategoryId,
   MarketKlineCandle,
 } from "@/lib/types";
-import { cn, formatDateLabel, getMarketMoveClasses } from "@/lib/utils";
+import { cn, getMarketMoveClasses } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
 
@@ -47,6 +47,96 @@ const MINI_CHART_HEIGHT = 220;
 const RADAR_SIZE = 260;
 const RADAR_CENTER = RADAR_SIZE / 2;
 const RADAR_RADIUS = 92;
+
+type MarketWatchItem = MarketBoardPayload["watchlist"][number];
+
+type MarketThemeFilter = {
+  id: string;
+  label: string;
+  count: number;
+  leadSymbol: string;
+  accentColor: string;
+  iconUrl?: string;
+  description: string;
+};
+
+const MARKET_THEME_DESCRIPTIONS: Record<string, string> = {
+  全部: "查看当前市场分类下的全部观察标的。",
+  科技: "AI、芯片、软件与平台型公司的主线观察。",
+  云软件: "企业软件、云服务与数据基础设施。",
+  AI平台: "广告、搜索、社交与 AI 应用平台。",
+  消费: "消费、零售与日常需求相关样本。",
+  新能源: "新能源车、电池与制造链条。",
+  金融: "银行、保险与交易所等金融基础设施。",
+  红利: "现金流、分红与防御型资产。",
+  医药: "创新药、医疗服务与研发周期。",
+  宽基: "覆盖范围更广的一篮子指数工具。",
+  海外科技: "海外科技与全球资产配置样本。",
+  汽车机器人: "电动车、自动驾驶与机器人叙事。",
+  基础设施: "通信、网络与算力基础设施。",
+  智能硬件: "手机、IoT 与消费电子创新。",
+};
+
+function marketThemeLabel(category: MarketCategoryId, item: MarketWatchItem) {
+  const sectorGroup = item.sectorGroup ?? "";
+  const sector = item.sector ?? "";
+  const tags = item.tags?.join(" ") ?? "";
+  const text = `${sectorGroup} ${sector} ${tags}`;
+
+  if (text.includes("医药") || text.includes("医疗") || text.includes("创新药")) return "医药";
+  if (category === "fund") {
+    if (text.includes("海外")) return "海外科技";
+    if (text.includes("科技") || text.includes("科创") || text.includes("创业")) return "科技";
+    return "宽基";
+  }
+  if (text.includes("半导体") || text.includes("芯片") || text.includes("硬科技")) return "科技";
+  if (text.includes("云") || text.includes("软件") || text.includes("数据库")) return "云软件";
+  if (text.includes("AI平台") || text.includes("搜索") || text.includes("社交")) return "AI平台";
+  if (text.includes("新能源") || text.includes("电池")) return "新能源";
+  if (text.includes("汽车") || text.includes("机器人")) return "汽车机器人";
+  if (text.includes("消费电子") || text.includes("智造")) return "智能硬件";
+  if (text.includes("电商") || text.includes("白酒") || text.includes("消费")) return "消费";
+  if (text.includes("通信") || text.includes("基础设施")) return "基础设施";
+  if (text.includes("银行") || text.includes("保险") || text.includes("金融") || text.includes("交易所")) return "金融";
+  if (text.includes("红利") || text.includes("公用")) return "红利";
+  return sectorGroup || sector || "全部";
+}
+
+function buildThemeFilters(category: MarketCategoryId, items: MarketWatchItem[]): MarketThemeFilter[] {
+  const buckets = new Map<string, MarketThemeFilter>();
+
+  for (const item of items) {
+    const label = marketThemeLabel(category, item);
+    const existing = buckets.get(label);
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+
+    buckets.set(label, {
+      id: label,
+      label,
+      count: 1,
+      leadSymbol: item.symbol,
+      accentColor: item.accentColor,
+      iconUrl: item.imageUrl,
+      description: MARKET_THEME_DESCRIPTIONS[label] ?? `${item.sectorGroup ?? item.sector ?? "板块"}方向的观察样本。`,
+    });
+  }
+
+  return [
+    {
+      id: "all",
+      label: "全部",
+      count: items.length,
+      leadSymbol: items[0]?.symbol ?? "--",
+      accentColor: "#f08a38",
+      iconUrl: items[0]?.imageUrl,
+      description: MARKET_THEME_DESCRIPTIONS["全部"],
+    },
+    ...Array.from(buckets.values()).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, "zh-CN")),
+  ];
+}
 
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
@@ -192,6 +282,7 @@ export function StudentMarketBoard({
   initialPeerHeatPayload: PeerHeatPayload;
 }) {
   const marketBoardRef = useRef<HTMLDivElement>(null);
+  const themeControlRef = useRef<HTMLButtonElement>(null);
   const [payload, setPayload] = useState(initialPayload);
   const [payloadCache, setPayloadCache] = useState<Record<string, MarketBoardPayload>>({
     [`${initialPayload.category}:${initialPayload.selected.symbol}`]: initialPayload,
@@ -199,6 +290,8 @@ export function StudentMarketBoard({
   const [category, setCategory] = useState<MarketCategoryId>(initialPayload.category);
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialPayload.selected.symbol);
   const [search, setSearch] = useState("");
+  const [activeTheme, setActiveTheme] = useState("all");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [studentWatchlist, setStudentWatchlist] = useState<StudentWatchlistPayload | null>(initialWatchlistPayload);
   const [peerHeat, setPeerHeat] = useState<PeerHeatPayload>(initialPeerHeatPayload);
@@ -311,6 +404,8 @@ export function StudentMarketBoard({
     (tab: { id: MarketCategoryId; defaultSymbol: string }) => {
       if (tab.id === category && selectedSymbol === tab.defaultSymbol) return;
       setSearch("");
+      setActiveTheme("all");
+      setThemeMenuOpen(false);
       // 切分类时清掉上一分类残留的自选/同伴热度报错，避免在非美股分类误显。
       setWatchlistMessage(null);
       setPeerHeatError(null);
@@ -342,13 +437,26 @@ export function StudentMarketBoard({
     return () => window.clearInterval(timer);
   }, [loadBoard, loadPeerHeat, category, selectedSymbol]);
 
+  const themeFilters = useMemo(() => buildThemeFilters(payload.category, payload.watchlist), [payload.category, payload.watchlist]);
+  const activeThemeFilter = useMemo(
+    () => themeFilters.find((filter) => filter.id === activeTheme) ?? themeFilters[0],
+    [activeTheme, themeFilters],
+  );
+
+  useEffect(() => {
+    if (!themeFilters.some((filter) => filter.id === activeTheme)) setActiveTheme("all");
+  }, [activeTheme, themeFilters]);
+
   const filteredWatchlist = useMemo(() => {
     const keyword = deferredSearch.trim().toLowerCase();
-    if (!keyword) return payload.watchlist;
-    return payload.watchlist.filter((item) =>
-      `${item.symbol} ${item.name} ${item.companyName}`.toLowerCase().includes(keyword),
+    const byTheme = activeTheme === "all"
+      ? payload.watchlist
+      : payload.watchlist.filter((item) => marketThemeLabel(payload.category, item) === activeTheme);
+    if (!keyword) return byTheme;
+    return byTheme.filter((item) =>
+      `${item.symbol} ${item.name} ${item.companyName} ${item.sector ?? ""} ${item.sectorGroup ?? ""} ${(item.tags ?? []).join(" ")}`.toLowerCase().includes(keyword),
     );
-  }, [deferredSearch, payload.watchlist]);
+  }, [activeTheme, deferredSearch, payload.category, payload.watchlist]);
 
   const selectedMetricValues = useMemo(
     () => payload.selected.metrics.map((item) => item.score),
@@ -485,6 +593,8 @@ export function StudentMarketBoard({
                   onPointerLeave={handleMotionLeave}
                   onClick={() => selectCategory(tab)}
                   aria-pressed={activeTab}
+                  data-testid="market-category-tab"
+                  data-market-category={tab.id}
                   data-motion-button
                   className={cn(
                     "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-body-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500",
@@ -525,65 +635,206 @@ export function StudentMarketBoard({
             </label>
           </div>
 
-          {filteredWatchlist.length > 0 ? (
+          <div className="min-w-0 space-y-4">
             <div
-              aria-busy={boardLoading}
-              className={cn(
-                "grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 transition-opacity",
-                boardLoading && "opacity-60",
-              )}
+              className="relative"
+              data-testid="market-theme-filters"
+              data-active-category={payload.category}
+              onKeyDown={(event) => {
+                // itest5 R3 P3：Esc 关闭板块下拉并把焦点还给触发按钮（与定投下拉同口径）。
+                if (event.key === "Escape" && themeMenuOpen) {
+                  setThemeMenuOpen(false);
+                  themeControlRef.current?.focus();
+                }
+              }}
+              onBlur={(event) => {
+                // 焦点移出整个下拉区域即关闭（点/Tab 到别处）。
+                if (themeMenuOpen && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setThemeMenuOpen(false);
+                }
+              }}
             >
-            {filteredWatchlist.map((item) => {
-              const active = item.symbol === selectedSymbol;
-              return (
-                <button
-                  key={item.symbol}
-                  type="button"
-                  onPointerEnter={handleMotionEnter}
-                  onPointerLeave={handleMotionLeave}
-                  onClick={() => selectSymbol(item.symbol)}
-                  data-motion-card
-                  className={cn(
-                    "market-watch-card min-w-0 rounded-[1.5rem] border px-4 py-4 text-left transition-colors duration-200",
-                    active
-                      ? "border-orange-400 bg-orange-50 shadow-[0_18px_44px_rgba(240,138,56,0.16)]"
-                      : "border-slate-200 bg-white hover:border-orange-300 hover:bg-slate-50",
-                  )}
+              <button
+                ref={themeControlRef}
+                type="button"
+                onPointerEnter={handleMotionEnter}
+                onPointerLeave={handleMotionLeave}
+                onClick={() => setThemeMenuOpen((open) => !open)}
+                aria-expanded={themeMenuOpen}
+                aria-controls="market-theme-menu"
+                data-testid="market-theme-control"
+                data-motion-button
+                className="flex min-h-16 w-full items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200 bg-white px-4 py-3 text-left shadow-[0_18px_54px_rgba(15,23,42,0.06)] transition-colors hover:border-orange-300 hover:bg-orange-50/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[1rem] border border-white bg-slate-950 shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+                    {activeThemeFilter?.iconUrl ? (
+                      <Image
+                        src={activeThemeFilter.iconUrl}
+                        alt={`${activeThemeFilter.label}板块图案`}
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    ) : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-h3 text-fg-strong">全部</span>
+                    <span className="mt-1 block truncate text-body-sm font-semibold text-fg-muted">
+                      当前：{activeThemeFilter?.label ?? "全部"} · {activeThemeFilter?.count ?? payload.watchlist.length} 个样本
+                    </span>
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-caption font-bold text-white">
+                  {themeMenuOpen ? "收起" : "展开板块"}
+                </span>
+              </button>
+
+              {themeMenuOpen ? (
+                <div
+                  id="market-theme-menu"
+                  role="menu"
+                  aria-label="市场板块分类"
+                  className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-30 grid gap-3 rounded-[1.75rem] border border-slate-200 bg-white/95 p-3 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl [grid-template-columns:repeat(auto-fit,minmax(8.75rem,1fr))]"
+                  data-testid="market-theme-menu"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white shadow-[0_10px_24px_rgba(15,23,42,0.18)]"
-                        style={{
-                          background: `linear-gradient(135deg, ${item.accentColor} 0%, rgba(255,255,255,0.16) 115%)`,
+                  {themeFilters.map((filter) => {
+                    const active = filter.id === activeTheme;
+                    return (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        role="menuitemradio"
+                        onPointerEnter={handleMotionEnter}
+                        onPointerLeave={handleMotionLeave}
+                        onClick={() => {
+                          setActiveTheme(filter.id);
+                          setThemeMenuOpen(false);
+                          const nextItems = filter.id === "all"
+                            ? payload.watchlist
+                            : payload.watchlist.filter((item) => marketThemeLabel(payload.category, item) === filter.id);
+                          const firstItem = nextItems[0];
+                          if (firstItem && firstItem.symbol !== selectedSymbol) selectSymbol(firstItem.symbol);
                         }}
+                        aria-checked={active}
+                        data-testid="market-theme-button"
+                        data-theme-label={filter.label}
+                        title={filter.description}
+                        data-motion-button
+                        className={cn(
+                          "group min-w-0 rounded-[1.35rem] border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500",
+                          active
+                            ? "border-orange-400 bg-slate-950 text-white shadow-[0_18px_42px_rgba(15,23,42,0.16)]"
+                            : "border-slate-200 bg-white text-fg-default hover:border-orange-300 hover:bg-orange-50/60",
+                        )}
                       >
-                        {item.monogram}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="break-all text-body font-semibold leading-6 text-fg-strong">{item.name}</p>
-                        <p className="mt-1 max-w-full truncate text-caption uppercase tracking-[0.08em] text-fg-muted">
-                          {item.symbol}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-body font-semibold tabular-nums text-fg-strong">{formatPrice(item.currentPrice)}</p>
-                      <p className={cn("mt-1 text-caption font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
-                        {item.changePercent >= 0 ? "+" : ""}
-                        {item.changePercent.toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-[1rem] border border-white/50 bg-slate-900 shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+                            {filter.iconUrl ? (
+                              <Image
+                                src={filter.iconUrl}
+                                alt={`${filter.label}板块图案`}
+                                fill
+                                sizes="40px"
+                                className="object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0">
+                            <p className={cn("truncate text-body font-bold", active ? "text-white" : "text-fg-strong")}>
+                              {filter.label}
+                            </p>
+                            <p className={cn("mt-0.5 text-caption font-semibold", active ? "text-white/65" : "text-fg-muted")}>
+                              {filter.count} 个样本 · {filter.leadSymbol}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
-          ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted">
-              没有匹配“{search}”的股票，换个关键词或代码试试。
-            </div>
-          )}
+
+            {filteredWatchlist.length > 0 ? (
+              <div
+                aria-busy={boardLoading}
+                className={cn(
+                  "grid min-w-0 gap-3 md:grid-cols-2 2xl:grid-cols-3 transition-opacity",
+                  boardLoading && "opacity-60",
+                )}
+                data-testid="market-watch-card-grid"
+              >
+                {filteredWatchlist.map((item) => {
+                  const active = item.symbol === selectedSymbol;
+                  return (
+                    <button
+                      key={item.symbol}
+                      type="button"
+                      onPointerEnter={handleMotionEnter}
+                      onPointerLeave={handleMotionLeave}
+                      onClick={() => selectSymbol(item.symbol)}
+                      data-motion-card
+                      data-testid="market-watch-card"
+                      className={cn(
+                        "market-watch-card min-w-0 rounded-[1.55rem] border px-4 py-3.5 text-left transition-colors duration-200",
+                        active
+                          ? "border-orange-400 bg-orange-50 shadow-[0_18px_44px_rgba(240,138,56,0.16)]"
+                          : "border-slate-200 bg-white hover:border-orange-300 hover:bg-slate-50",
+                      )}
+                    >
+                      <div className="grid min-w-0 grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-3">
+                        <div
+                          className="relative h-13 w-13 shrink-0 overflow-hidden rounded-[1.15rem] border border-white bg-slate-950 shadow-[0_12px_28px_rgba(15,23,42,0.18)]"
+                          style={{
+                            boxShadow: active
+                              ? `0 18px 34px ${item.accentColor}30`
+                              : "0 12px 28px rgba(15,23,42,0.18)",
+                          }}
+                        >
+                          {item.imageUrl ? (
+                            <Image
+                              src={item.imageUrl}
+                              alt={`${item.name}相关图案`}
+                              fill
+                              sizes="52px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span
+                              className="flex h-full w-full items-center justify-center text-caption font-bold text-white"
+                              style={{ background: `linear-gradient(135deg, ${item.accentColor} 0%, rgba(255,255,255,0.16) 115%)` }}
+                            >
+                              {item.monogram}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-body-lg font-bold leading-6 text-fg-strong" data-market-card-name>
+                            {item.name}
+                          </p>
+                          <p className="mt-1 truncate text-caption font-semibold uppercase tracking-[0.08em] text-fg-muted">
+                            {item.symbol} · {item.sectorGroup ?? item.sector ?? "观察池"}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-body font-bold tabular-nums text-fg-strong">{formatPrice(item.currentPrice)}</p>
+                          <p className={cn("mt-1 text-caption font-bold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
+                            {item.changePercent >= 0 ? "+" : ""}
+                            {item.changePercent.toFixed(2)}%
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-body text-fg-muted">
+                没有匹配“{search || activeTheme}”的股票/基金，换个关键词、代码或板块试试。
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -633,7 +884,7 @@ export function StudentMarketBoard({
                           type="button"
                           disabled={watchlistPending}
                           onClick={() => void updateWatchlist("remove", item.symbol)}
-                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-fg-muted transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-fg-muted transition-colors hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
                           aria-label={`移除 ${item.name}`}
                         >
                           <X className="h-4 w-4" />
@@ -803,8 +1054,22 @@ export function StudentMarketBoard({
                       className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/15 to-transparent" />
+                    {payload.selected.symbolImageUrl ? (
+                      <div
+                        className="absolute left-4 top-4 h-16 w-16 overflow-hidden rounded-[1.25rem] border border-white/25 bg-slate-950 shadow-[0_18px_42px_rgba(15,23,42,0.35)]"
+                        data-testid="market-selected-symbol-icon"
+                      >
+                        <Image
+                          src={payload.selected.symbolImageUrl}
+                          alt={`${payload.selected.name}标的徽章`}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
                     <span className="absolute bottom-3 left-4 rounded-full border border-white/15 bg-slate-950/55 px-3 py-1 text-caption font-semibold text-white/85 backdrop-blur">
-                      {payload.selected.sectorGroup} · 行业示意
+                      {payload.selected.sectorGroup} · 标的识别
                     </span>
                   </div>
                 ) : null}
@@ -846,11 +1111,12 @@ export function StudentMarketBoard({
                     {payload.selected.changePercent.toFixed(2)}%
                   </p>
                   <p className="text-body-sm text-white/70">{payload.selected.companyName}</p>
-                  {payload.selected.source === "tsanghi" ? (
-                    <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-caption font-semibold text-white/75">
-                      日线收盘 · 非实时
-                    </span>
-                  ) : null}
+                  {/* itest5 R3 P2：此前只有 tsanghi 真日线才显示新鲜度徽章，fallback 兜底价
+                      （硬编码/合成走势）反而无任何标识，学生分不清真假。改为始终显示来源徽章，
+                      兜底数据明确标「教学示意 · 非真实行情」。 */}
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-caption font-semibold text-white/75">
+                    {payload.selected.source === "tsanghi" ? "日线收盘 · 非实时" : "教学示意 · 非真实行情"}
+                  </span>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -927,9 +1193,13 @@ export function StudentMarketBoard({
                   >
                     {klineSummary}
                   </p>
-                  <div className="mt-4 grid gap-2 text-caption font-semibold text-white/80 sm:grid-cols-3">
+                  <div className="mt-4 flex flex-wrap gap-2 text-caption font-semibold text-white/80">
                     {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
-                      <span key={task} data-motion-card className="market-task-chip rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center">
+                      <span
+                        key={task}
+                        data-motion-card
+                        className="market-task-chip inline-flex min-h-9 min-w-32 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/10 px-3 py-2 text-center"
+                      >
                         {task}
                       </span>
                     ))}
@@ -959,7 +1229,7 @@ export function StudentMarketBoard({
                 <div className="mt-4 rounded-full bg-white px-3 py-2 text-caption font-semibold text-fg-muted">
                   {payload.selected.source === "tsanghi"
                     ? `数据日期：${new Date(payload.asOf).getUTCMonth() + 1}月${new Date(payload.asOf).getUTCDate()}日（收盘）`
-                    : `更新时间：${formatDateLabel(new Date(payload.asOf))}`}
+                    : "教学示意数据 · 非真实行情，仅用于课堂演示"}
                 </div>
               </div>
             </div>

@@ -28,11 +28,14 @@ const statusClass: Record<CreditLabPayload["selectedScenario"]["status"], string
   danger: "border-error/20 bg-error-soft text-error",
 };
 
+// 信用分渲染在深色 Hero（bg-bg-inverse=ink-900）上。白底语义 token（text-warning=#854d0e /
+// text-down=#107a3e 为白底调深）在深底对比度仅 ~2.5:1，未过 WCAG AA 大字 3:1（itest5 R3 P2）。
+// 改用「深底亮色」，保持语义：绿(优)/暖金(良)/亮琥珀(观察)/亮玫(预警)，均 ≥3:1 于 ink-900。
 function scoreTone(score: number) {
-  if (score >= 82) return "text-down";
-  if (score >= 68) return "text-brand";
-  if (score >= 52) return "text-warning";
-  return "text-error";
+  if (score >= 82) return "text-emerald-300";
+  if (score >= 68) return "text-brand-warm";
+  if (score >= 52) return "text-amber-300";
+  return "text-rose-300";
 }
 
 export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: CreditLabPayload }) {
@@ -218,39 +221,46 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   <WalletCards className="h-5 w-5 text-brand" />
                 </div>
                 <p className="mt-3 text-body-sm leading-6 text-fg-muted">{scenario.purpose}</p>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div className="rounded-2xl bg-slate-950/[0.035] p-3">
+                <div className="mt-4 grid gap-2">
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-slate-950/[0.035] px-3 py-2.5">
                     <p className="text-caption text-fg-muted">本金</p>
-                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-fg-strong">{formatCurrency(scenario.principal)}</p>
+                    <p className="shrink-0 text-body-sm font-semibold tabular-nums text-fg-strong">{formatCurrency(scenario.principal)}</p>
                   </div>
-                  <div className="rounded-2xl bg-slate-950/[0.035] p-3">
+                  <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-slate-950/[0.035] px-3 py-2.5">
                     <p className="text-caption text-fg-muted">总利息</p>
-                    <p className="mt-1 text-body-sm font-semibold tabular-nums text-fg-strong">{formatCurrency(scenario.totalInterest)}</p>
+                    <p className="shrink-0 text-body-sm font-semibold tabular-nums text-fg-strong">{formatCurrency(scenario.totalInterest)}</p>
                   </div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="@container rounded-[1.7rem] border border-slate-200 bg-white p-5">
               <h3 className="text-h2 text-fg-strong">{selected.title}</h3>
               <p className="mt-2 text-body-sm leading-6 text-fg-muted">{selected.concept}</p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <dl data-testid="credit-scenario-metrics" className="mt-5 grid gap-3 @[30rem]:grid-cols-2">
                 {[
-                  ["月供", selected.monthlyPayment],
-                  ["总还款", selected.totalRepayment],
-                  ["总利息", selected.totalInterest],
-                  ["借后债务率", `${selected.debtRatioAfter}%`],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl bg-slate-950/[0.035] p-4">
-                    <p className="text-caption text-fg-muted">{label}</p>
-                    <p className="mt-2 text-body-sm font-semibold tabular-nums text-fg-strong">
-                      {typeof value === "number" ? formatCurrency(value) : value}
-                    </p>
+                  ["月供", "每月现金流压力", selected.monthlyPayment],
+                  ["总还款", "本金与利息合计", selected.totalRepayment],
+                  ["总利息", "额外支付成本", selected.totalInterest],
+                  ["借后债务率", "执行后的债务占比", `${selected.debtRatioAfter}%`],
+                ].map(([label, hint, value], index) => (
+                  <div
+                    key={label}
+                    data-testid={`credit-scenario-metric-${index}`}
+                    className="min-h-[6.25rem] min-w-0 rounded-[1.25rem] border border-slate-200 bg-slate-950/[0.035] px-4 py-3.5 shadow-sm"
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <dt className="min-w-0 text-body-sm font-semibold leading-6 text-fg-strong">{label}</dt>
+                      <dd className="shrink-0 text-right text-body-lg font-bold tabular-nums text-brand-ink">
+                        {typeof value === "number" ? formatCurrency(value) : value}
+                      </dd>
+                    </div>
+                    <dd className="mt-1.5 text-caption leading-5 text-fg-muted">{hint}</dd>
                   </div>
                 ))}
-              </div>
+              </dl>
             </div>
 
             <div className="rounded-[1.7rem] border border-slate-200 bg-slate-50 p-5">

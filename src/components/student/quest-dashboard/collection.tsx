@@ -169,11 +169,37 @@ export function QuestCardCollection({ items }: { items: QuestCardCollectionView[
           })}
         </div>
       ) : (
-        <div className="mt-6 rounded-[1.6rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-          <p className="text-base font-bold text-fg-strong">还没有收藏卡片</p>
-          <p className="mt-2 text-sm font-semibold leading-6 text-fg-muted">
-            完成任务后点击“领取学习卡”，第一张卡片就会加入这里。
-          </p>
+        <div className="mt-6 grid gap-5 overflow-hidden rounded-[1.8rem] border border-dashed border-amber-200 bg-[linear-gradient(135deg,#fffaf0,#f8fafc_55%,#eef6ff)] p-5 md:grid-cols-[minmax(0,0.9fr)_minmax(18rem,1fr)] md:p-6">
+          <div className="flex min-h-56 flex-col justify-center">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/78 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-brand shadow-sm">
+              Card Library
+            </span>
+            <h3 className="mt-4 text-2xl font-black text-fg-strong">还没有收藏卡片</h3>
+            <p className="mt-3 max-w-md text-sm font-semibold leading-7 text-fg-muted">
+              完成任务后点击“领取学习卡”，卡片会像学习战利品一样加入这里。它只记录复盘轨迹，不改变净值和排名。
+            </p>
+            <Link
+              href="#mission-main"
+              className="mt-5 inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-black text-white shadow-[0_14px_34px_rgba(15,23,42,0.18)] transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              去翻开任务锦囊
+            </Link>
+          </div>
+          <div className="relative min-h-64">
+            <div aria-hidden className="absolute left-1/2 top-1/2 h-56 w-40 -translate-x-[82%] -translate-y-1/2 -rotate-12 overflow-hidden rounded-[1.4rem] border border-white/80 bg-slate-950 shadow-2xl shadow-slate-950/18">
+              <Image src="/brand/quest-cards/back-basic.svg" alt="" fill sizes="180px" className="object-cover opacity-95" />
+            </div>
+            <div aria-hidden className="absolute left-1/2 top-1/2 h-60 w-44 -translate-x-1/2 -translate-y-1/2 rotate-3 overflow-hidden rounded-[1.5rem] border border-white/80 bg-slate-950 shadow-2xl shadow-slate-950/22">
+              <Image src="/brand/quest-cards/back-advanced.svg" alt="" fill sizes="200px" className="object-cover opacity-95" />
+            </div>
+            <div aria-hidden className="absolute left-1/2 top-1/2 h-56 w-40 -translate-y-[46%] translate-x-[18%] rotate-12 overflow-hidden rounded-[1.4rem] border border-white/80 bg-slate-950 shadow-2xl shadow-slate-950/18">
+              <Image src="/brand/quest-cards/back-system.svg" alt="" fill sizes="180px" className="object-cover opacity-95" />
+            </div>
+            <div className="absolute bottom-2 left-1/2 w-[min(92%,22rem)] -translate-x-1/2 rounded-[1.4rem] border border-white/80 bg-white/82 p-4 text-center shadow-card backdrop-blur">
+              <p className="text-sm font-black text-fg-strong">第一张卡正在等待领取</p>
+              <p className="mt-1 text-xs font-semibold text-fg-muted">完成任意可领取锦囊后，这里会自动生成收藏记录。</p>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -390,7 +416,7 @@ export function CompanionAlbum({
               }
               className={cn(
                 "group relative flex aspect-[3/4] flex-col overflow-hidden rounded-[1.3rem] border p-3 shadow-sm transition duration-300",
-                isUnlocked ? "border-white/15 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-950/15" : "border-slate-200",
+                isUnlocked ? "border-white/15 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-950/15" : "border-slate-200 opacity-72",
               )}
               style={
                 isUnlocked
@@ -406,7 +432,7 @@ export function CompanionAlbum({
                   height={150}
                   className={cn(
                     "h-auto w-[82%] rounded-[1rem] object-cover drop-shadow-[0_12px_24px_rgba(0,0,0,0.24)]",
-                    isUnlocked ? "" : "opacity-35 grayscale",
+                    isUnlocked ? "" : "opacity-28 grayscale blur-[2.2px] saturate-0",
                   )}
                 />
                 {!isUnlocked ? (
