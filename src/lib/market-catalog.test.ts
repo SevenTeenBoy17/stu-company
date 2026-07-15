@@ -62,6 +62,32 @@ describe("market catalog", () => {
     }
   });
 
+  it("keeps non-US catalog copy educational instead of trade-advice oriented", () => {
+    const bannedTradeAdviceTerms = [
+      /买入/,
+      /卖出/,
+      /抄底/,
+      /追涨/,
+      /稳赚/,
+      /必涨/,
+      /必赢/,
+      /保证收益/,
+      /目标价/,
+      /荐股/,
+      /交易信号/,
+      /默认选择/,
+    ];
+    const educationalTerms = /观察|理解|课堂|复盘|重点看|样本|训练|配置|对照|练习|证据/;
+
+    for (const instrument of [...CN_INSTRUMENTS, ...HK_INSTRUMENTS, ...FUND_INSTRUMENTS]) {
+      const copy = [instrument.summary, instrument.teachingNote, instrument.observationAngle].join(" ");
+      expect(copy, `${instrument.id} should keep an educational framing`).toMatch(educationalTerms);
+      for (const term of bannedTradeAdviceTerms) {
+        expect(copy, `${instrument.id} should not include ${term}`).not.toMatch(term);
+      }
+    }
+  });
+
   it("builds a coherent board payload for every category", () => {
     for (const category of MARKET_CATEGORY_ORDER) {
       const payload = buildCategoryBoardPayload(category);

@@ -38,4 +38,25 @@ describe("market watchlist builders", () => {
     const base = buildMarketBoardPayload({ selectedSymbol: "NVDA" });
     expect(base.marketSummary[0]?.symbol).not.toBe("MU");
   });
+
+  it("derives the selected headline quote from real kline data when the quote is missing", () => {
+    const payload = buildMarketBoardPayload({
+      selectedSymbol: "MU",
+      provider: "hybrid",
+      quotes: {},
+      klineSource: "tsanghi",
+      klineSeries: [100, 108, 120, 150],
+      klineCandles: [
+        { time: "2026-07-01", open: 98, high: 103, low: 96, close: 100 },
+        { time: "2026-07-02", open: 101, high: 110, low: 100, close: 108 },
+        { time: "2026-07-03", open: 109, high: 122, low: 108, close: 120 },
+        { time: "2026-07-06", open: 121, high: 153, low: 120, close: 150 },
+      ],
+    });
+
+    expect(payload.selected.source).toBe("tsanghi");
+    expect(payload.selected.currentPrice).toBe(150);
+    expect(payload.selected.changePercent).toBe(25);
+    expect(payload.selected.miniSeries.at(-1)).toBe(150);
+  });
 });

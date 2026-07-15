@@ -79,6 +79,13 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
   const [payload, setPayload] = useState(initialPayload);
   const [assetId, setAssetId] = useState(initialPayload.selected.assetId);
   const [assetListOpen, setAssetListOpen] = useState(false);
+  // itest6 R3 P3：Esc 只在触发按钮聚焦时生效，焦点进入选项后按 Esc 无反应、且关闭后焦点丢失。
+  // 用容器级 keydown（冒泡覆盖触发按钮+全部选项）关闭并把焦点还给触发按钮，符合 listbox 键盘契约。
+  const assetTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeAssetList = () => {
+    setAssetListOpen(false);
+    assetTriggerRef.current?.focus();
+  };
   const [amountPerRound, setAmountPerRound] = useState(initialPayload.selected.amountPerRound);
   const [durationRounds, setDurationRounds] = useState(initialPayload.selected.durationRounds);
   const [strategy, setStrategy] = useState<AutoInvestStrategy>(initialPayload.selected.strategy);
@@ -299,20 +306,24 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   setAssetListOpen(false);
                 }
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && assetListOpen) {
+                  event.preventDefault();
+                  closeAssetList();
+                }
+              }}
             >
               <span id="auto-invest-asset-label" className="text-caption font-semibold text-fg-default">
                 定投标的
               </span>
               <button
+                ref={assetTriggerRef}
                 type="button"
                 data-testid="auto-invest-asset-selector"
                 aria-labelledby="auto-invest-asset-label"
                 aria-expanded={assetListOpen}
                 aria-haspopup="listbox"
                 onClick={() => setAssetListOpen((open) => !open)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setAssetListOpen(false);
-                }}
                 className={cn(
                   "mt-2 flex min-h-14 w-full items-center justify-between gap-3 rounded-[1.15rem] border bg-white px-4 py-3 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] outline-none transition",
                   assetListOpen ? "border-brand shadow-glow" : "border-slate-200 hover:border-brand/60",
@@ -364,7 +375,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                             <span className="block truncate text-body-sm font-bold text-fg-strong">
                               {option.name}
                             </span>
-                            <span className="mt-0.5 block text-caption font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            <span className="mt-0.5 block text-caption font-semibold uppercase tracking-[0.12em] text-slate-500">
                               {option.symbol}
                             </span>
                           </span>

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { authenticateUser, roleHomePath } from "@/lib/db/repo";
-import { buildRateLimitMessage, peekRateLimit, rateLimit, rateLimitKey } from "@/lib/rate-limit";
+import { clientIpFrom, peekRateLimit, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
 // Per-IP failed-login budget over 10 min. Tolerant enough for a whole classroom
 // behind one school NAT IP (only FAILURES count, not successful logins), but low
@@ -38,10 +38,15 @@ export async function POST(request: Request) {
 
     const body = parsed.data;
 
-    // (1) Per-account window — stops single-account brute force.
-    const rl = rateLimit(rateLimitKey("login-account", body.email.toLowerCase(), request), 12, 60_000 * 10);
-    if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+    // (1) Per-account brute-force window, keyed by (email + client IP) and PEEK-based
+    // (itest6 R3 P2): the old email-only key + consume-on-every-attempt let anyone lock a
+    // victim's (enumerable) account for 10 min with 12 wrong passwords — the correct password
+    // got 429 too (targeted login DoS). Keying by email+IP means an attacker only burns their
+    // OWN IP's budget for that account; the real user on another IP is unaffected. Peek here so
+    // a correct password never costs a slot — only failures consume (see below).
+    const accountKey = `login-account:${body.email.toLowerCase()}:${clientIpFrom(request)}`;
+    if (!peekRateLimit(accountKey, 12)) {
+      return apiError("invalid_input", "登录尝试过于频繁，请稍后再试。", 429);
     }
 
     // (2) Per-IP failure budget — stops password spraying across many accounts
@@ -54,8 +59,9 @@ export async function POST(request: Request) {
     const user = await authenticateUser(body.email.toLowerCase(), body.password);
 
     if (!user) {
-      // Only failures consume the IP budget.
+      // Only failures consume budgets — a correct password is never throttled by prior failures.
       rateLimit(ipFailureKey, LOGIN_IP_FAILURE_LIMIT, 60_000 * 10);
+      rateLimit(accountKey, 12, 60_000 * 10);
       return apiError("unauthorized", INVALID_LOGIN_MESSAGE, 401);
     }
 

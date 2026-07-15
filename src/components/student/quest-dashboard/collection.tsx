@@ -454,7 +454,7 @@ export function CompanionAlbum({
               <span
                 className={cn(
                   "mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-wider",
-                  isUnlocked ? "bg-white/88 text-slate-950" : "bg-slate-200 text-slate-600",
+                  isUnlocked ? "bg-white/88 text-slate-950" : "bg-slate-900 text-white",
                 )}
               >
                 {isUnlocked ? (

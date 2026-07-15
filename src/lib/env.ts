@@ -33,6 +33,7 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().optional(),
   // Shared secret for the Vercel Cron weekly-report endpoint.
   CRON_SECRET: z.string().optional(),
+  TRUSTED_PROXY: z.enum(["vercel", "xff-rightmost", "none"]).default("vercel"),
 });
 
 export const env = envSchema.parse({
@@ -58,4 +59,5 @@ export const env = envSchema.parse({
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
   CRON_SECRET: process.env.CRON_SECRET,
+  TRUSTED_PROXY: process.env.TRUSTED_PROXY,
 });

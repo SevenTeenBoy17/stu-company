@@ -680,7 +680,7 @@ export function StudentMarketBoard({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-h3 text-fg-strong">全部</span>
-                    <span className="mt-1 block truncate text-body-sm font-semibold text-fg-muted">
+                    <span className="mt-1 block text-body-sm font-semibold leading-5 text-fg-muted">
                       当前：{activeThemeFilter?.label ?? "全部"} · {activeThemeFilter?.count ?? payload.watchlist.length} 个样本
                     </span>
                   </span>
@@ -1133,7 +1133,7 @@ export function StudentMarketBoard({
                       <p className="text-h3 text-white">日 K 线与趋势速写</p>
                       <p className="mt-1 text-body-sm text-white/70">
                         实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。
-                        {payload.selected.source === "tsanghi" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
+                        {payload.category !== "us" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
                       </p>
                     </div>
                     <Activity className="h-5 w-5 text-brand-warm" />

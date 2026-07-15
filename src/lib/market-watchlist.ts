@@ -76,6 +76,8 @@ type BuilderInput = {
   quotes?: Record<string, QuoteInput>;
   klineSeries?: number[];
   klineCandles?: MarketKlineCandle[];
+  // 选中标的 K 线来源。用于 quote 缺失但 K 线真实可用时，从收盘价派生头部行情。
+  klineSource?: MarketQuoteSource;
   staticInfo?: StaticInfoInput;
   // 每只 symbol 的真实收盘序列：让排行/预览评分吃真实走势而非合成兜底（实时 provider 才会传）。
   seriesBySymbol?: Record<string, number[]>;
@@ -379,6 +381,30 @@ function resolveQuote(instrument: CatalogInstrument, quotes?: BuilderInput["quot
     changePercent: quote?.changePercent ?? instrument.fallbackChange,
     source:
       quote?.source && typeof quote.currentPrice === "number" ? quote.source : ("fallback" as const),
+  };
+}
+
+function quoteFromLiveKline(
+  source: MarketQuoteSource | undefined,
+  series: number[] | undefined,
+  candles?: MarketKlineCandle[],
+) {
+  if (source !== "tsanghi") return null;
+
+  const candleCloses = (candles ?? [])
+    .map((candle) => candle.close)
+    .filter((value) => Number.isFinite(value));
+  const closes = candleCloses.length >= 2 ? candleCloses : (series ?? []).filter((value) => Number.isFinite(value));
+  if (closes.length < 2) return null;
+
+  const latest = closes.at(-1)!;
+  const previous = closes.at(-2)!;
+  if (!Number.isFinite(latest) || !Number.isFinite(previous) || previous <= 0) return null;
+
+  return {
+    currentPrice: Number(latest.toFixed(3)),
+    changePercent: Number((((latest - previous) / previous) * 100).toFixed(2)),
+    source,
   };
 }
 
@@ -713,12 +739,16 @@ export function buildCategoryBoardPayload(
     toTickerItem(instrument, resolveQuote(instrument, input?.quotes)),
   );
 
-  const selectedQuote = resolveQuote(selectedInstrument, input?.quotes);
+  const baseSelectedQuote = resolveQuote(selectedInstrument, input?.quotes);
+  const liveSelectedSeries =
+    input?.klineSeries && input.klineSeries.length >= 4 ? input.klineSeries : undefined;
   const selectedSeries =
     input?.klineSeries && input.klineSeries.length >= 4
       ? input.klineSeries
       : selectedInstrument.fallbackSeries;
   const selectedCandles = normalizeCandles(input?.klineCandles, selectedSeries);
+  const klineQuote = quoteFromLiveKline(input?.klineSource, liveSelectedSeries, input?.klineCandles);
+  const selectedQuote = baseSelectedQuote.source === "fallback" && klineQuote ? klineQuote : baseSelectedQuote;
   const metrics = buildTeachingMetrics(
     selectedInstrument,
     selectedQuote.currentPrice,

@@ -78,14 +78,14 @@ function CompactNavLink({ item, active, index }: { item: NavItem; active: boolea
     <Link
       href={item.href}
       className={cn(
-        "shrink-0 rounded-full border px-4 py-3 text-body font-semibold transition-colors",
+        "inline-flex max-w-full items-center rounded-full border px-4 py-3 text-body font-semibold transition-colors",
         active
           ? "border-border-brand bg-brand-soft text-slate-950"
           : "border-transparent bg-slate-950/[0.04] text-slate-600 hover:bg-slate-950/[0.07]",
       )}
     >
-      <span>{item.label}</span>
-      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-400")}>
+      <span className="min-w-0 truncate">{item.label}</span>
+      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-500")}>
         {navIndexLabel(index)}
       </span>
     </Link>
@@ -173,7 +173,7 @@ export function PlatformLayout({
                     </Link>
                   ))}
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex flex-wrap gap-2 pb-1">
                   {studentSecondaryItems.map((item, index) => (
                     <CompactNavLink
                       key={item.href}

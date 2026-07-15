@@ -35,6 +35,7 @@ Configure these variables for Production and Preview:
 - `ITICK_STOCK_WS_URL`
 - `ALLTICK_API_KEY`
 - `ALLTICK_STOCK_BASE_URL`
+- `TRUSTED_PROXY`
 
 Transactional email + verification + cron (optional, but required to activate those features):
 
@@ -78,6 +79,7 @@ style and keep it consistent across Production and Preview.
 - `ITICK_REST_BASE_URL`: `https://api0.itick.org`
 - `ITICK_STOCK_WS_URL`: `wss://api.itick.org/stock`
 - `ALLTICK_STOCK_BASE_URL`: `https://quote.alltick.co/quote-stock-b-api`
+- `TRUSTED_PROXY`: `vercel` for Vercel deployments. Use `none` for bare self-hosting without a trusted reverse proxy; use `xff-rightmost` only when your proxy reliably owns the rightmost `X-Forwarded-For` hop.
 - `WECHAT_NOTIFY_URL`: the public HTTPS callback URL, for example `https://brown-zone-web.vercel.app/api/billing/notify`.
 - `WECHAT_PRIVATE_KEY`: merchant private key in PEM format. Keep line breaks intact in the Vercel secret value.
 - `WECHAT_PLATFORM_PUBLIC_KEY`: WeChat Pay platform public key used for APIv3 callback signature verification.

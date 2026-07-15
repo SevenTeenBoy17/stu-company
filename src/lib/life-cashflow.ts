@@ -33,6 +33,7 @@ export type LifeCashflowPayload = {
   generatedAt: string;
   selectedPlanId: BudgetPlanId;
   selectedInsuranceId: InsurancePlanId;
+  alreadyAppliedThisRound: boolean;
   overview: {
     monthlyIncome: number;
     requiredExpense: number;
@@ -341,6 +342,9 @@ export function buildLifeCashflowPayload(
   const wealth = buildWealthSummary(run);
   const plan = findBudgetPlan(planId);
   const insurance = findInsurancePlan(insuranceId);
+  const alreadyAppliedThisRound = run.actionLog.some(
+    (entry) => entry.round === run.currentRound && entry.meta?.kind === "life_cashflow_challenge",
+  );
   const monthlyIncome = Math.round(1800 + run.currentRound * 120 + clamp(wealth.netWorth / 500, 0, 420));
   const baseExpense = Math.round(monthlyIncome * 0.42);
   const debtPayment = Math.round(Math.min(monthlyIncome * 0.18, run.debt * 0.025));
@@ -419,6 +423,7 @@ export function buildLifeCashflowPayload(
     generatedAt: now.toISOString(),
     selectedPlanId: plan.id,
     selectedInsuranceId: insurance.id,
+    alreadyAppliedThisRound,
     overview,
     budgetRows,
     insurance: {

@@ -249,15 +249,13 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   <div
                     key={label}
                     data-testid={`credit-scenario-metric-${index}`}
-                    className="min-h-[6.25rem] min-w-0 rounded-[1.25rem] border border-slate-200 bg-slate-950/[0.035] px-4 py-3.5 shadow-sm"
+                    className="grid min-h-[6.25rem] min-w-0 grid-cols-[minmax(0,1fr)_auto] rounded-[1.25rem] border border-slate-200 bg-slate-950/[0.035] px-4 py-3.5 shadow-sm"
                   >
-                    <div className="flex min-w-0 items-start justify-between gap-3">
-                      <dt className="min-w-0 text-body-sm font-semibold leading-6 text-fg-strong">{label}</dt>
-                      <dd className="shrink-0 text-right text-body-lg font-bold tabular-nums text-brand-ink">
-                        {typeof value === "number" ? formatCurrency(value) : value}
-                      </dd>
-                    </div>
-                    <dd className="mt-1.5 text-caption leading-5 text-fg-muted">{hint}</dd>
+                    <dt className="min-w-0 text-body-sm font-semibold leading-6 text-fg-strong">{label}</dt>
+                    <dd className="shrink-0 text-right text-body-lg font-bold tabular-nums text-brand-ink">
+                      {typeof value === "number" ? formatCurrency(value) : value}
+                    </dd>
+                    <dd className="col-span-2 mt-1.5 text-caption leading-5 text-fg-muted">{hint}</dd>
                   </div>
                 ))}
               </dl>

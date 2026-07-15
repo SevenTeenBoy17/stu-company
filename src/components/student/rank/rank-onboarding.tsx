@@ -198,11 +198,15 @@ export function RankOnboarding({
 
       <fieldset className="mt-5">
         <legend className="text-xs font-medium text-fg-muted">谁可以看到我</legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+        {/* itest6 R3 P3：隐私可见性是单选，此前选中态仅靠颜色（无 role=radio/aria-checked），
+            屏幕阅读器/色觉障碍用户在加入榜单前无法确认选的是「隐身」还是「公开」。补 radiogroup 语义。 */}
+        <div className="mt-2 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="谁可以看到我">
           {VISIBILITY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
+              role="radio"
+              aria-checked={visibility === opt.value}
               onClick={() => setVisibility(opt.value)}
               className={`rounded-xl border px-3 py-2 text-left transition ${
                 visibility === opt.value

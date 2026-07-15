@@ -196,6 +196,16 @@ async function exercise(page: Page, route: RouteDef) {
 
 async function visitRoute(page: Page, route: RouteDef, viewport: "desktop" | "mobile", interact: boolean) {
   // Per-route listeners so each finding is attributed to the right page.
+  const pendingApiRequests = new Set<Request>();
+  const ignoredTimedOutRequests = new Set<Request>();
+  const isApiRequest = (req: Request) => req.url().includes("/api/");
+  const onRequest = (req: Request) => {
+    if (isApiRequest(req)) pendingApiRequests.add(req);
+  };
+  const onRequestFinished = (req: Request) => {
+    pendingApiRequests.delete(req);
+    ignoredTimedOutRequests.delete(req);
+  };
   const onConsole = (msg: ConsoleMessage) => {
     const type = msg.type();
     if (type !== "error" && type !== "warning") return;
@@ -222,6 +232,11 @@ async function visitRoute(page: Page, route: RouteDef, viewport: "desktop" | "mo
   const onRequestFailed = (req: Request) => {
     const url = req.url();
     if (!url.includes("/api/")) return; // ignore 3rd-party/analytics noise
+    pendingApiRequests.delete(req);
+    if (ignoredTimedOutRequests.has(req)) {
+      ignoredTimedOutRequests.delete(req);
+      return;
+    }
     add({
       route: route.path,
       name: route.name,
@@ -243,10 +258,33 @@ async function visitRoute(page: Page, route: RouteDef, viewport: "desktop" | "mo
       detail: `${status} ${res.request().method()} ${url.replace(/^https?:\/\/[^/]+/, "")}`,
     });
   };
+  const waitForApiSettled = async (stage: string) => {
+    const deadline = Date.now() + 30_000;
+    while (pendingApiRequests.size > 0 && Date.now() < deadline) {
+      await page.waitForTimeout(250);
+    }
+    if (pendingApiRequests.size > 0) {
+      const slow = Array.from(pendingApiRequests)
+        .slice(0, 4)
+        .map((req) => `${req.method()} ${new URL(req.url()).pathname}`)
+        .join("; ");
+      for (const req of pendingApiRequests) ignoredTimedOutRequests.add(req);
+      pendingApiRequests.clear();
+      add({
+        route: route.path,
+        name: route.name,
+        kind: "ASYNC_TIMEOUT",
+        severity: "medium",
+        detail: `${stage} 后仍有后台请求未在 30s 内返回：${slow}`,
+      });
+    }
+  };
 
+  page.on("request", onRequest);
   page.on("console", onConsole);
   page.on("pageerror", onPageError);
   page.on("requestfailed", onRequestFailed);
+  page.on("requestfinished", onRequestFinished);
   page.on("response", onResponse);
 
   try {
@@ -273,16 +311,22 @@ async function visitRoute(page: Page, route: RouteDef, viewport: "desktop" | "mo
       });
     }
     await settle(page);
+    await waitForApiSettled("页面加载");
     await inspectVisible(page, route);
-    if (interact) await exercise(page, route);
+    if (interact) {
+      await exercise(page, route);
+      await waitForApiSettled("交互操作");
+    }
 
     const file = path.join(SCREENS_DIR, `${route.name}-${viewport}.png`);
     await page.screenshot({ path: file, fullPage: true }).catch(() => {});
     console.log(`[内测] ${route.name} @ ${viewport}: 累计 ${findings.length} findings -> ${file}`);
   } finally {
+    page.off("request", onRequest);
     page.off("console", onConsole);
     page.off("pageerror", onPageError);
     page.off("requestfailed", onRequestFailed);
+    page.off("requestfinished", onRequestFinished);
     page.off("response", onResponse);
   }
 }

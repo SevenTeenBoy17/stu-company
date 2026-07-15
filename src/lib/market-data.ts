@@ -387,7 +387,9 @@ const baseEventCards: EventCard[] = [
   },
   {
     id: "event-ponzi-scheme",
-    title: "「保证高收益」的项目找上门",
+    // 标题被 AI 教练兑底逐字回显（ai.ts），故标题不放「保证/稳赚」这类词，改用同样经典的
+    // 骗局红旗「高收益零风险」；骗局原话仍保留在 description 里做识别教学（description 不进兑底）。
+    title: "「高收益零风险」的项目找上门",
     category: "sentiment",
     signal: "利空",
     description:
@@ -824,6 +826,7 @@ export async function getMarketBoardPayload(
       quotes: tsanghiSnapshot.quotes,
       klineSeries: tsanghiSnapshot.selectedKline,
       klineCandles: tsanghiSnapshot.selectedCandles,
+      klineSource: "tsanghi",
       staticInfo: tsanghiSnapshot.staticInfo,
       seriesBySymbol,
     });
@@ -840,6 +843,7 @@ export async function getMarketBoardPayload(
       quotes: itickSnapshot.quotes,
       klineSeries: itickSnapshot.selectedKline,
       klineCandles: itickSnapshot.selectedCandles,
+      klineSource: "itick",
     });
   }
 
@@ -854,6 +858,7 @@ export async function getMarketBoardPayload(
     note: liveAlltick ? snapshot.note : itickSnapshot.note,
     quotes: liveAlltick ? snapshot.quotes : itickSnapshot.quotes,
     klineSeries: liveAlltick ? snapshot.selectedKline : itickSnapshot.selectedKline,
+    klineSource: liveAlltick ? "alltick" : "itick",
     // AllTick 的看板快照只暴露 selectedKline（收盘序列），没有 OHLC 蜡烛数据。
     // 当 AllTick 实时在线时传 undefined，让 normalizeCandles 用 AllTick 自己的序列合成蜡烛，
     // 保证蜡烛实体与折线同源；只有真正回退到 iTick 时才借用 iTick 的蜡烛（此时折线也来自 iTick）。
@@ -895,6 +900,7 @@ export async function getCategoryBoardPayload(
     seriesBySymbol: snapshot.seriesBySymbol,
     klineSeries: snapshot.selectedKline,
     klineCandles: snapshot.selectedCandles,
+    klineSource: "tsanghi",
     staticInfo: snapshot.staticInfo,
   });
 }

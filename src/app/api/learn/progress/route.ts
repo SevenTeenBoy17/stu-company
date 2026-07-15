@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { readSession } from "@/lib/auth";
+import { requireUser } from "@/lib/api-guard";
 import { getLearningProgress } from "@/lib/db/repo";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,10 @@ export const dynamic = "force-dynamic";
  * its progress controls, and the browser never logs an auth error for a guest.
  */
 export async function GET() {
-  const session = await readSession();
-  if (!session || session.role !== "student") {
+  const auth = await requireUser("student");
+  if (auth.error) {
     return NextResponse.json({ progress: null });
   }
-  const progress = await getLearningProgress(session.userId);
+  const progress = await getLearningProgress(auth.user.id);
   return NextResponse.json({ progress });
 }
