@@ -109,5 +109,5 @@ npx playwright test itest6-autoinvest-keyboard.spec.ts → 1 passed（Esc-from-o
 
 - **本轮修复**：3×P2 + 5×P3 **全部 8 项修复完毕**（无推迟项），且**用抓 bug 的同法复验**：Playwright（点击遮挡/键盘）、真 HTTP 探针（登录 DoS 跨 IP 隔离）、数值（K 线方向）、真服务器日志（`[repo.fallback]` 1→0）。
 - **回归守护新增**：`itest6-quest-nodes.spec.ts`、`itest6-autoinvest-keyboard.spec.ts`、`repo-domain-error.test.ts` 三个针对性用例，永久守护本轮交互与 SLI 修复。
-- **P3-5 治本超出初判范围**：初判以为仅 `repo.ts` 40+ 处，api-probe 实测暴露领域拒绝亦分布在 9 个纯教学模块；已引入零依赖 `domain-error.ts` 共享模块统一治理（共 85 处 DomainError），并保留 10+ 处 infra/完整性/反欺诈边界为普通 `Error` 继续告警。
+- **P3-5 治本超出初判范围**：初判以为仅 `repo.ts` 40+ 处，api-probe 实测暴露领域拒绝亦分布在 9 个纯教学模块与内存兜底 `store.ts`；已引入零依赖 `domain-error.ts` 共享模块统一治理——**共 130 处 DomainError**（repo.ts 54 + 9 纯模块 30 + store.ts 46），并在 DB 路径与内存路径**两侧一致地**保留 infra/完整性/反欺诈边界（JSONB 损坏、班级 FK 漂移、支付金额不符、写入回读落空、建校竞态、记录生成失败、基金池缺失等）为普通 `Error` 继续告警。（store.ts 抛错在 fallback() 内不产生 SLI，改它纯为路由层"同消息→同类型"一致性。）
 - **工作树捆绑**：当前工作树同时包含用户未提交的 Codex WIP 与本轮 itest6 修复，二者作为一个整体通过全部验证。已按你指示"整体一起，建分支+PR"落地到 `feat/itest6-clickthrough-qa` → [PR #18](https://github.com/SevenTeenBoy17/stu-company/pull/18)（未擅自合并到 main）。
