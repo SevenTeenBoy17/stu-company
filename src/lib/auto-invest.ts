@@ -2,6 +2,7 @@ import { marketAssets } from "@/lib/market-data";
 import { evaluateRun, getRoundQuotesForRun } from "@/lib/simulation";
 import type { ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type AutoInvestStrategy = "steady" | "buyDip" | "momentum";
 
@@ -366,10 +367,10 @@ export function createAutoInvestPlan(
   now = new Date(),
 ): ScenarioRun {
   if (run.currentRound >= run.totalRounds) {
-    throw new Error("当前赛季已经结束，无法创建新的定投计划。");
+    throw new DomainError("当前赛季已经结束，无法创建新的定投计划。");
   }
   if (getActiveAutoInvestPlan(run)) {
-    throw new Error("已有一个正在执行的定投计划，请先取消后再创建新计划。");
+    throw new DomainError("已有一个正在执行的定投计划，请先取消后再创建新计划。");
   }
 
   const nextRun = structuredClone(run);
@@ -406,7 +407,7 @@ export function createAutoInvestPlan(
 export function cancelAutoInvestPlan(run: ScenarioRun, now = new Date()): ScenarioRun {
   const plan = getActiveAutoInvestPlan(run);
   if (!plan) {
-    throw new Error("当前没有正在执行的定投计划。");
+    throw new DomainError("当前没有正在执行的定投计划。");
   }
   const nextRun = structuredClone(run);
   appendAutoInvestLog(nextRun, {

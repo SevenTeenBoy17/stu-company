@@ -2,6 +2,7 @@ import { buildWealthSummary, type WealthSummary } from "@/lib/allocation";
 import { computeLearningStreak } from "@/lib/simulation";
 import type { LearningProgressSummary, ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type StudentQuestStatus = "done" | "active" | "watch" | "locked";
 export type StudentQuestCategory = "finance" | "learning" | "discipline" | "risk" | "review";
@@ -535,13 +536,13 @@ export function claimQuestReward(
   const payload = buildStudentQuestPayload(run, learning, now);
   const quest = payload.quests.find((item) => item.id === questId);
   if (!quest) {
-    throw new Error("任务不存在，请刷新后重试。");
+    throw new DomainError("任务不存在，请刷新后重试。");
   }
   if (quest.status !== "done") {
-    throw new Error("这个任务还没有完成，先按提示完成真实行为再来领取。");
+    throw new DomainError("这个任务还没有完成，先按提示完成真实行为再来领取。");
   }
   if (quest.claimed) {
-    throw new Error("这个装饰奖励已经领取过了。");
+    throw new DomainError("这个装饰奖励已经领取过了。");
   }
 
   const nextRun = structuredClone(run);

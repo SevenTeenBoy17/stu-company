@@ -64,25 +64,42 @@
 - **修复**：容器级 `onKeyDown`（冒泡覆盖触发按钮+全部选项）处理 Esc；`closeAssetList()` 关闭并把焦点还给触发按钮（`assetTriggerRef`）。移除触发按钮上冗余的 Esc handler。
 - **复验**：Playwright `tests/e2e/itest6-autoinvest-keyboard.spec.ts` PASS ✅——**焦点在选项上按 Esc**（此前死路）→ 列表关闭 **且** 焦点回到触发按钮；触发按钮按 Esc 仍关闭（老路径回归守护）。
 
-## 4. 一条推迟项（有意为之，附实现设计）
+## 4. P3-5 治本：领域错误不再误报 `[repo.fallback]` SLI
 
-### P3-5 `[repo.fallback]` SLI 误报 · `src/lib/db/repo.ts:363-373`
-- **现状**：写事务里 40+ 处 `throw new Error("中文校验提示")`（领域拒绝，如"本回合已经提交过预测"）与真 DB 故障走同一 catch，被 `logFallback(fn,"query_failed",err)` 记为 DB 故障并触发 `[repo.fallback]` 告警——用户侧无害（错误仍正确冒泡出正确文案、数据安全），但污染 DB 故障 SLI，造成虚假告警。
-- **为何推迟**：治本方案是引入 `DomainError` 类 + catch 前置守卫（`if (err instanceof DomainError) throw err`）并改写 40+ 处 throw 点——这是横扫式改动，触碰**核心写兜底不变量**（P2 安全不变量），且由 `repo-fallback.audit`/`repo-logging` 契约测试守护，又叠在用户未提交的 Codex WIP 之上。按 systematic-debugging 的"单一有界改动、审慎横扫重构"纪律，**它应作为独立的 `db_architect` 域改动单独提交**，不宜塞进本轮复验尾巴。
-- **精确实现设计（就绪待做）**：
-  1. 新增 `class DomainError extends Error`（或 `errors.ts`），领域拒绝改抛 `DomainError`；保留 JSONB malformed / 连接失败为普通 `Error`（它们**应当**告警）。
-  2. `withDbExecutor` catch 起始：`if (err instanceof DomainError) throw err;`（不 logFallback、不发 SLI）。
-  3. 更新 `repo-logging.test.ts` 契约：领域错误不产生 `[repo.fallback]` 行。
+### P3-5 `[repo.fallback]` SLI 误报（治本）· `src/lib/domain-error.ts` + `repo.ts` + 9 个纯教学模块
+- **根因**：领域校验拒绝（如"本回合已执行过生活账本""余额不足""邀请码已过期"）以 `throw new Error("中文")`
+  抛出，且不仅在 `repo.ts` 里，也在被 repo 事务调用的**纯教学模块**（simulation / life-cashflow / quests /
+  auto-invest / credit-lab / goal-accounts / opportunity / wealth-review / season-challenges）里。它们与真 DB
+  故障走同一 `withDbExecutor` catch，被 `logFallback(fn,"query_failed")` 记为 DB 故障并触发文档化的
+  `[repo.fallback]` SLI 告警——用户侧无害（错误仍正确冒泡出中文文案、数据安全、状态码不变），但污染 DB 故障
+  告警，制造虚假告警。**是本轮 api-probe 实测证据抓出来的**：修前该探针的"生活账本同回合二次执行被拒"会在
+  服务器打出一条 `[repo.fallback] fn=applyLifeCashflowChallengeForUser reason=query_failed …本回合已执行过生活账本`。
+- **8 维监工 + 3 路对抗证伪**（Workflow）确认：`handleRouteError` 按 `instanceof Error ? message` + 消息正则映射
+  状态码 → `DomainError extends Error`、message 不变 ⇒ 路由**字节级不变**（`safe:true`）；`repo-fallback.audit`
+  的模拟故障是普通 Error（非 DomainError）⇒ 守卫对它是 no-op ⇒ 3 条写兜底契约**保持全绿即证明** infra 错误仍
+  照常告警+按 WRITE_FNS 冒泡（P2 不变量不受影响）。
+- **实现**：
+  1. 新增**零依赖**模块 `src/lib/domain-error.ts` 导出 `class DomainError extends Error`（放共享模块以免 repo↔纯模块循环依赖）。
+  2. `withDbExecutor` catch 起始加 `if (err instanceof DomainError) throw err;`（在 logFallback 之前 → 不记 SLI、不计 fallbackCount、不走内存兜底、照常冒泡）。
+  3. 领域拒绝改抛 `DomainError`：`repo.ts` 54 处 + 9 个纯模块 30 处（共 85 处）。
+  4. **刻意保留普通 `Error`（须继续告警）** 的边界项：`repo.ts` 的 JSONB 损坏(599/607)、班级 FK 漂移(2293)、
+     成长报告缺失+`!student`(2362)、支付金额不符**反欺诈信号**(3169)、写入回读落空(1634)、建校病态竞态(3359)、
+     沙盘无法预置(918)；`credit-lab` API 误用守卫、`goal-accounts`/`protection-umbrella` 记录生成失败、`fund-lab` 基金池缺失。
+- **复验（治本证据）**：新增契约测试 `repo-domain-error.test.ts`（4 例：extends Error+message 原样 / 与普通 Error
+  路由完全一致(409) / DB 路径 DomainError 冒泡且【不】记 [repo.fallback] / 对照组 infra Error 仍记）；`repo-fallback.audit`
+  3 例、`repo-logging` 保持全绿。**真服务器铁证**：同一 api-probe 跑，`[repo.fallback]` 计数 **1 → 0**，而
+  "生活账本同回合二次执行被拒 first=200 second=400" 仍成立（行为不变、误报消除）。
 
 ## 5. 全套复验命令输出（真结果）
 
 ```
 npx tsc --noEmit                    → 0 errors
 npm run lint                        → 0 errors, 0 warnings
-npx vitest run                      → Test Files 98 passed / Tests 656 passed
+npx vitest run                      → Test Files 99 passed / Tests 660 passed（+4 新 DomainError 契约）
 npm run build                       → ✓ Compiled successfully
 BASE_URL=http://127.0.0.1:8910 node scripts/api-probe.mjs
                                     → 33/33 passed, 0 failed（真 DB 生产服务器）
+[repo.fallback] 计数（同一 api-probe 跑，真服务器日志） → 1 → 0（P3-5 误报消除）
 node scratchpad/login-dos-probe.mjs → PROBE_PASS（攻击者第13次=429 / 受害者跨IP=200 / 攻击者本IP=429）
 npx playwright test itest6-quest-nodes.spec.ts       → 1 passed（tested=6 intercepted=0）
 npx playwright test itest6-autoinvest-keyboard.spec.ts → 1 passed（Esc-from-option 关闭+焦点归还）
@@ -90,6 +107,7 @@ npx playwright test itest6-autoinvest-keyboard.spec.ts → 1 passed（Esc-from-o
 
 ## 6. 交付说明
 
-- **本轮修复**：3×P2 全部修复并**用抓 bug 的同法复验**（Playwright/真 HTTP 探针/数值），5×P3 修复 4 项、推迟 1 项（P3-5，附就绪设计）。
-- **回归守护新增**：`itest6-quest-nodes.spec.ts`、`itest6-autoinvest-keyboard.spec.ts` 两个针对性 E2E，永久守护本轮两处交互修复。
-- **工作树捆绑**：当前工作树同时包含用户未提交的 Codex WIP 与本轮 itest6 修复（共 68 个变更条目），二者作为一个整体通过全部验证。**如何提交/合并（整体一起，还是拆分）请你定夺**（同 PR #17 的处理方式）——我不会擅自提交你的 Codex WIP。
+- **本轮修复**：3×P2 + 5×P3 **全部 8 项修复完毕**（无推迟项），且**用抓 bug 的同法复验**：Playwright（点击遮挡/键盘）、真 HTTP 探针（登录 DoS 跨 IP 隔离）、数值（K 线方向）、真服务器日志（`[repo.fallback]` 1→0）。
+- **回归守护新增**：`itest6-quest-nodes.spec.ts`、`itest6-autoinvest-keyboard.spec.ts`、`repo-domain-error.test.ts` 三个针对性用例，永久守护本轮交互与 SLI 修复。
+- **P3-5 治本超出初判范围**：初判以为仅 `repo.ts` 40+ 处，api-probe 实测暴露领域拒绝亦分布在 9 个纯教学模块；已引入零依赖 `domain-error.ts` 共享模块统一治理（共 85 处 DomainError），并保留 10+ 处 infra/完整性/反欺诈边界为普通 `Error` 继续告警。
+- **工作树捆绑**：当前工作树同时包含用户未提交的 Codex WIP 与本轮 itest6 修复，二者作为一个整体通过全部验证。已按你指示"整体一起，建分支+PR"落地到 `feat/itest6-clickthrough-qa` → [PR #18](https://github.com/SevenTeenBoy17/stu-company/pull/18)（未擅自合并到 main）。

@@ -18,6 +18,7 @@ import {
   PortfolioSnapshotSchema,
 } from "@/lib/db/payload-schemas";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { DomainError } from "@/lib/domain-error";
 
 import { learningModules } from "@/lib/content";
 import {
@@ -338,6 +339,11 @@ const WRITE_FNS = new Set<string>([
   "createProtectionUmbrellaActionForUser", "createStudentWatchlistActionForUser", "createWealthReviewForUser",
 ]);
 
+// 从零依赖模块 @/lib/domain-error 引入并【再导出】DomainError：既供本文件 catch 守卫使用，
+// 也让历史 `import { DomainError } from "@/lib/db/repo"`（路由/测试）继续可用。领域拒绝的抛出点
+// 分布在 repo.ts 与被其事务调用的纯教学模块两侧，故类型定义须放在共享模块以免循环依赖。
+export { DomainError };
+
 async function withDbExecutor<T>(
   fn: string,
   executor: DbExecutor | null,
@@ -363,6 +369,11 @@ async function withDbExecutor<T>(
   try {
     return await withQueryTimeout(fn, dbFn(executor));
   } catch (err) {
+    // 领域校验错误（业务规则拒绝）不是 DB 故障：直接冒泡，不记 query_failed、不发
+    // [repo.fallback] SLI、不走内存兜底（itest6 R3 P3：消除虚假 DB 故障告警）。
+    if (err instanceof DomainError) {
+      throw err;
+    }
     logFallback(fn, "query_failed", err);
     // Writes never silently fall back (P2): a failed persist must surface as an
     // error, not pretend success in memory. Reads fall back only when allowed.
@@ -873,7 +884,7 @@ async function selectDefaultClassroomId(executor: DbExecutor, fallbackTeacherId:
 
 async function ensureStudentSandbox(executor: DbExecutor, user: UserRecord) {
   if (user.role !== "student") {
-    throw new Error("当前账号不是学生账号。");
+    throw new DomainError("当前账号不是学生账号。");
   }
 
   let classroomId = user.classroomId;
@@ -1246,17 +1257,17 @@ export async function registerUserByInvite(input: {
 
         if (reservedRows.length === 0) {
           const probe = await findInviteByCodeWithExecutor(tx, normalizedInviteCode);
-          if (!probe) throw new Error("邀请码不存在。");
+          if (!probe) throw new DomainError("邀请码不存在。");
           if (new Date(probe.expiresAt).getTime() < Date.now()) {
-            throw new Error("邀请码已过期。");
+            throw new DomainError("邀请码已过期。");
           }
-          throw new Error("邀请码已达到使用上限。");
+          throw new DomainError("邀请码已达到使用上限。");
         }
 
         const invite = toInvite(reservedRows[0]);
 
         const existingUser = await selectUserByEmail(tx, normalizedEmail);
-        if (existingUser) throw new Error("这个邮箱已经被注册过了。");
+        if (existingUser) throw new DomainError("这个邮箱已经被注册过了。");
 
         const newUser: UserRecord = {
           id: createId("user"),
@@ -1354,7 +1365,7 @@ export async function registerUserByEmail(input: {
     async (db) =>
       db.transaction(async (tx) => {
         const existingUser = await selectUserByEmail(tx, normalizedEmail);
-        if (existingUser) throw new Error("这个邮箱已经被注册过了。");
+        if (existingUser) throw new DomainError("这个邮箱已经被注册过了。");
 
         let role: UserRecord["role"] = "student";
         let classroomId: string | undefined;
@@ -1379,7 +1390,7 @@ export async function registerUserByEmail(input: {
             classroomId = invite.classroomId;
             studentLinkId = invite.studentLinkId;
           } else {
-            throw new Error("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
+            throw new DomainError("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
           }
         }
 
@@ -1501,9 +1512,9 @@ export async function createRoundPredictionForUser(
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
         if (run.currentRound >= run.totalRounds) {
-          throw new Error("本局已经结束，不能继续提交涨跌预测。");
+          throw new DomainError("本局已经结束，不能继续提交涨跌预测。");
         }
 
         const [existing] = await tx
@@ -1518,7 +1529,7 @@ export async function createRoundPredictionForUser(
           )
           .limit(1);
         if (existing) {
-          throw new Error("本回合已经提交过预测。");
+          throw new DomainError("本回合已经提交过预测。");
         }
 
         const [row] = await tx
@@ -1535,16 +1546,16 @@ export async function createRoundPredictionForUser(
       }),
     () => {
       const run = store.getRunForUser(userId);
-      if (!run) throw new Error("未找到对应的学生沙盘。");
+      if (!run) throw new DomainError("未找到对应的学生沙盘。");
       if (run.currentRound >= run.totalRounds) {
-        throw new Error("本局已经结束，不能继续提交涨跌预测。");
+        throw new DomainError("本局已经结束，不能继续提交涨跌预测。");
       }
 
       const existing = listFallbackRoundPredictionsForRun(run.id).find(
         (prediction) => prediction.userId === userId && prediction.round === run.currentRound,
       );
       if (existing) {
-        throw new Error("本回合已经提交过预测。");
+        throw new DomainError("本回合已经提交过预测。");
       }
 
       const record: RoundPrediction = {
@@ -1637,7 +1648,7 @@ export async function getSimulationStateForUser(userId: string) {
     async (db) => {
       const user = await selectUserById(db, userId);
       if (!user || user.role !== "student") {
-        throw new Error("当前账号没有可用的学生沙盘。");
+        throw new DomainError("当前账号没有可用的学生沙盘。");
       }
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
@@ -1668,7 +1679,7 @@ export async function getPeerHeatForStudent(userId: string) {
     async (db) => {
       const user = await selectUserById(db, userId);
       if (!user || user.role !== "student") {
-        throw new Error("当前账号没有可用的学生沙盘。");
+        throw new DomainError("当前账号没有可用的学生沙盘。");
       }
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
@@ -1692,7 +1703,7 @@ export async function applyActionForUser(
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = applySimulationAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -1709,7 +1720,7 @@ export async function applyEventChoiceForUser(userId: string, choiceId: string) 
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = applyEventChoice(run, choiceId);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -1798,8 +1809,8 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
       db.transaction(async (tx) => {
         const owner = await selectUserById(tx, ownerUserId);
         const student = await selectUserById(tx, studentUserId);
-        if (!owner || !student) throw new Error("用户不存在。");
-        if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+        if (!owner || !student) throw new DomainError("用户不存在。");
+        if (student.role !== "student") throw new DomainError("只能把学生加入家庭组。");
 
         const state = resolveSubscriptionState(
           owner.subscriptionTier,
@@ -1807,7 +1818,7 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
           owner.subscriptionExpiresAt,
         );
         if (!(state.status === "active" && owner.subscriptionTier === "premium")) {
-          throw new Error("只有高级版家长才能创建家庭组。");
+          throw new DomainError("只有高级版家长才能创建家庭组。");
         }
 
         const [link] = await tx
@@ -1820,14 +1831,14 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
             ),
           )
           .limit(1);
-        if (!link) throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+        if (!link) throw new DomainError("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
 
         const [existing] = await tx
           .select()
           .from(familyMembers)
           .where(eq(familyMembers.studentUserId, studentUserId))
           .limit(1);
-        if (existing) throw new Error("该学生已在一个家庭组中。");
+        if (existing) throw new DomainError("该学生已在一个家庭组中。");
 
         // Lock this owner's existing family rows so concurrent adds serialize and
         // cannot both pass the seat-cap check (TOCTOU over-subscription).
@@ -1837,7 +1848,7 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
           .where(eq(familyMembers.ownerUserId, ownerUserId))
           .for("update");
         if (!canAddFamilyMember(current.length, state.features.maxStudents)) {
-          throw new Error(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
+          throw new DomainError(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
         }
 
         const id = createId("fam");
@@ -1964,7 +1975,7 @@ export async function replayRunForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         // Off-season practice seed (random) so a replay gives fresh variety and
         // does not collide with the fair weekly-season leaderboard.
@@ -1989,7 +2000,7 @@ export async function advanceRunForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = executeAutoInvestForRound(advanceSimulationRun(run));
         await settleRoundPredictionsForRun(tx, run, updated);
@@ -2012,7 +2023,7 @@ export async function createAutoInvestPlanForUser(userId: string, input: Partial
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = createAutoInvestPlan(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -2029,7 +2040,7 @@ export async function cancelAutoInvestPlanForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = cancelAutoInvestPlan(run);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -2046,7 +2057,7 @@ export async function applyLifeCashflowChallengeForUser(userId: string, input: L
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = applyLifeCashflowChallenge(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2063,7 +2074,7 @@ export async function applyCreditLabActionForUser(userId: string, input: CreditL
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = applyCreditLabAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2080,7 +2091,7 @@ export async function claimQuestRewardForUser(userId: string, questId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const rows = await tx
           .select({ moduleKey: learningProgress.moduleKey })
@@ -2105,7 +2116,7 @@ export async function claimSeasonRewardForUser(userId: string, challengeId: stri
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = claimSeasonChallengeReward(run, challengeId);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2122,7 +2133,7 @@ export async function createOpportunityNoteForUser(userId: string, input: Opport
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createOpportunityNote(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2139,7 +2150,7 @@ export async function createFundLabActionForUser(userId: string, input: FundLabA
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createFundLabAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2156,7 +2167,7 @@ export async function createGoalAccountActionForUser(userId: string, input: Goal
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createGoalAccountAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2173,7 +2184,7 @@ export async function createProtectionUmbrellaActionForUser(userId: string, inpu
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createProtectionUmbrellaAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2190,7 +2201,7 @@ export async function createStudentWatchlistActionForUser(userId: string, input:
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createStudentWatchlistAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2207,7 +2218,7 @@ export async function createWealthReviewForUser(userId: string, input: WealthRev
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createWealthReview(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2231,7 +2242,7 @@ export async function createAssignmentForTeacher(
     async (db) => {
       const teacher = await selectUserById(db, teacherId);
       if (!teacher?.classroomId) {
-        throw new Error("当前教师账号没有绑定班级。");
+        throw new DomainError("当前教师账号没有绑定班级。");
       }
 
       const assignment: Assignment = {
@@ -2262,10 +2273,12 @@ export async function getTeacherOverview(userId: string) {
     async (db) => {
       const teacher = await selectUserById(db, userId);
       if (!teacher?.classroomId) {
-        throw new Error("当前账号没有教师权限或未绑定班级。");
+        throw new DomainError("当前账号没有教师权限或未绑定班级。");
       }
 
       const classroom = await selectClassroomById(db, teacher.classroomId);
+      // 保持普通 Error（非 DomainError）：教师 classroomId 有值却查不到班级 = 潜在 FK 漂移/
+      // 数据不一致，应继续记 [repo.fallback] 告警可见（itest6 R3 P3-5 监工复核结论）。
       if (!classroom) throw new Error("班级不存在。");
 
       // DB-2: scope every query to this classroom in SQL (the assignments query
@@ -2324,7 +2337,7 @@ export async function getParentOverview(userId: string) {
         .where(eq(studentParentLinks.parentUserId, userId))
         .limit(1);
       if (!parent || !linkRow) {
-        throw new Error("当前账号还没有绑定学生。");
+        throw new DomainError("当前账号还没有绑定学生。");
       }
 
       const student = await selectUserById(db, linkRow.studentUserId);
@@ -2609,7 +2622,7 @@ export async function appendAiMessages(sessionId: string, userId: string, messag
       db.transaction(async (tx) => {
         const session = await getAiSessionByIdWithExecutor(tx, sessionId, userId);
         if (!session) {
-          throw new Error("未找到对应的 AI 会话。");
+          throw new DomainError("未找到对应的 AI 会话。");
         }
 
         const latestAt = messages[messages.length - 1]?.createdAt ?? new Date().toISOString();
@@ -2711,7 +2724,7 @@ export async function updateUserPassword(userId: string, password: string) {
         .where(eq(users.id, userId))
         .returning();
 
-      if (!updated) throw new Error("用户不存在。");
+      if (!updated) throw new DomainError("用户不存在。");
       const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
       return toUserRecord(updated, profile[0]);
     },
@@ -2726,7 +2739,7 @@ export async function updateUserEmail(userId: string, email: string) {
     async (db) => {
       const existing = await selectUserByEmail(db, normalizedEmail);
       if (existing && existing.id !== userId) {
-        throw new Error("这个邮箱已经被注册过了。");
+        throw new DomainError("这个邮箱已经被注册过了。");
       }
 
       const [updated] = await db
@@ -2738,7 +2751,7 @@ export async function updateUserEmail(userId: string, email: string) {
         .where(eq(users.id, userId))
         .returning();
 
-      if (!updated) throw new Error("用户不存在。");
+      if (!updated) throw new DomainError("用户不存在。");
       const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
       return toUserRecord(updated, profile[0]);
     },
@@ -2798,7 +2811,7 @@ export async function createAdminManagedUser(input: {
     async (db) =>
       db.transaction(async (tx) => {
         const existing = await selectUserByEmail(tx, normalizedEmail);
-        if (existing) throw new Error("这个邮箱已经注册过了。");
+        if (existing) throw new DomainError("这个邮箱已经注册过了。");
 
         const now = new Date();
         const trialExpiresAt =
@@ -2888,7 +2901,7 @@ export async function updateAdminManagedUser(
     async (db) =>
       db.transaction(async (tx) => {
         const current = await selectUserById(tx, userId);
-        if (!current) throw new Error("用户不存在。");
+        if (!current) throw new DomainError("用户不存在。");
 
         const nextRole = input.role ?? current.role;
         const classroomId =
@@ -2930,7 +2943,7 @@ export async function updateAdminManagedUser(
         }
 
         const [updated] = await tx.update(users).set(patch).where(eq(users.id, userId)).returning();
-        if (!updated) throw new Error("用户不存在。");
+        if (!updated) throw new DomainError("用户不存在。");
 
         const profilePatch: Partial<typeof profiles.$inferInsert> = {};
         if (input.name !== undefined) profilePatch.name = input.name.trim();
@@ -3054,7 +3067,7 @@ export async function updatePaymentOrderProviderFields(
         })
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .returning();
-      if (!order) throw new Error("支付订单不存在。");
+      if (!order) throw new DomainError("支付订单不存在。");
       return toPaymentOrder(order);
     },
     () => store.updatePaymentOrderProviderFields(outTradeNo, fields),
@@ -3073,9 +3086,9 @@ export async function attachManualPaymentProof(
         .from(paymentOrders)
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .limit(1);
-      if (!existing) throw new Error("支付订单不存在。");
-      if (existing.channel !== "manual") throw new Error("该订单不是人工核验订单。");
-      if (existing.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+      if (!existing) throw new DomainError("支付订单不存在。");
+      if (existing.channel !== "manual") throw new DomainError("该订单不是人工核验订单。");
+      if (existing.status !== "pending") throw new DomainError("该订单已处理，不能重复提交凭证。");
 
       const [order] = await db
         .update(paymentOrders)
@@ -3134,12 +3147,14 @@ export async function fulfillPaymentOrder(input: {
           .where(eq(paymentOrders.outTradeNo, input.outTradeNo))
           .limit(1)
           .for("update");
-        if (!order) throw new Error("支付订单不存在。");
+        if (!order) throw new DomainError("支付订单不存在。");
 
         // Defense-in-depth: a SUCCESS callback must report the amount we charged.
         // Tier is server-set from order.tier (not the payload), so this only guards
         // against an under/over-paid amount fulfilling the full subscription.
         if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
+          // 保持普通 Error（非 DomainError）：支付金额与订单不符=反欺诈信号，必须保持
+          // [repo.fallback] 可见/可告警，不能因静音领域错误而丢失（itest6 R3 P3-5 监工复核结论）。
           throw new Error(
             `支付金额不一致（订单 ${order.amountFen} 分，回调 ${input.paidAmountFen} 分），已拒绝履约。`,
           );
@@ -3161,7 +3176,7 @@ export async function fulfillPaymentOrder(input: {
         }
 
         const [targetUser] = await tx.select().from(users).where(eq(users.id, order.targetUserId)).limit(1);
-        if (!targetUser) throw new Error("订阅目标账号不存在。");
+        if (!targetUser) throw new DomainError("订阅目标账号不存在。");
 
         const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
         const currentExpiry = targetUser.subscriptionExpiresAt ?? paidAt;
@@ -3228,7 +3243,7 @@ export async function markPaymentOrderStatus(
         .set({ status, updatedAt: new Date() })
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .returning();
-      if (!order) throw new Error("支付订单不存在。");
+      if (!order) throw new DomainError("支付订单不存在。");
       return toPaymentOrder(order);
     },
     () => store.markPaymentOrderStatus(outTradeNo, status),

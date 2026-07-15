@@ -1,6 +1,7 @@
 import { evaluateRun } from "@/lib/simulation";
 import type { ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type GoalAccountId = "emergency" | "laptop" | "study-trip" | "startup";
 
@@ -214,8 +215,8 @@ export function createGoalAccountAction(
   const now = input.now ?? new Date();
   const goal = findGoal(input.goalId);
   const amount = Math.round(input.amount);
-  if (amount <= 0) throw new Error("目标金额必须大于 0。");
-  if (amount > run.cash) throw new Error("可用现金不足，先回到生活账本检查本回合现金流。");
+  if (amount <= 0) throw new DomainError("目标金额必须大于 0。");
+  if (amount > run.cash) throw new DomainError("可用现金不足，先回到生活账本检查本回合现金流。");
 
   const nextRun = structuredClone(run);
   nextRun.cash -= amount;

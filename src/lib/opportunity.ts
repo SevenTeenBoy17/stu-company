@@ -1,5 +1,6 @@
 import type { ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type OpportunityThemeId = "ai-infra" | "steady-cashflow" | "green-energy" | "safe-haven";
 export type OpportunityReason = "capital" | "policy" | "valuation" | "risk-release" | "learning";
@@ -211,13 +212,13 @@ export function buildOpportunityPayload(run: ScenarioRun): OpportunityPayload {
 export function createOpportunityNote(run: ScenarioRun, input: OpportunityNoteInput) {
   const card = opportunityCards.find((item) => item.id === input.cardId);
   if (!card) {
-    throw new Error("未找到对应的机会主题。");
+    throw new DomainError("未找到对应的机会主题。");
   }
 
   const confidence = clamp(Math.round(input.confidence), 1, 100);
   const note = input.note.trim();
   if (note.length < 8) {
-    throw new Error("观察理由太短，请至少写清楚一条证据或风险。");
+    throw new DomainError("观察理由太短，请至少写清楚一条证据或风险。");
   }
 
   const evidenceScore = Math.min(24, note.length * 0.9);

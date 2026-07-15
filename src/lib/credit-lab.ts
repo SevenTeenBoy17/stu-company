@@ -1,6 +1,7 @@
 import { evaluateRun } from "@/lib/simulation";
 import type { ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type CreditScenarioId = "device-installment" | "emergency-loan" | "startup-bridge";
 export type CreditLabIntent = "simulate" | "borrow" | "repay";
@@ -271,7 +272,7 @@ export function applyCreditLabAction(
 
   if (intent === "repay") {
     amount = Math.min(requestedAmount ?? Math.round(nextRun.debt * 0.16), nextRun.debt, nextRun.cash);
-    if (amount <= 0) throw new Error("当前没有可还款金额，请先检查现金或债务余额。");
+    if (amount <= 0) throw new DomainError("当前没有可还款金额，请先检查现金或债务余额。");
     nextRun.cash -= amount;
     nextRun.debt = Math.max(0, nextRun.debt - amount);
     summary = `已提前还款 ${amount.toLocaleString("zh-CN")} 元，净值不变，但未来利息压力下降。`;
@@ -284,7 +285,7 @@ export function applyCreditLabAction(
     // portfolio, so the 0.58 guard actually engages on over-borrowing (#5 audit).
     const ratioAfter = (nextRun.debt + amount) / Math.max(creditCapacityBase(nextRun) + amount, 1);
     if (ratioAfter > 0.58) {
-      throw new Error("这笔借款会让债务率过高，请先降低金额或先还款。");
+      throw new DomainError("这笔借款会让债务率过高，请先降低金额或先还款。");
     }
     nextRun.cash += amount;
     nextRun.debt += amount;

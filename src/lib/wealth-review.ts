@@ -1,6 +1,7 @@
 import { buildWealthSummary, type WealthSummary } from "@/lib/allocation";
 import type { ActionLog, ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type WealthReviewFocus = "safety-buffer" | "diversification" | "debt-control" | "growth-engine";
 export type WealthReviewAction = "raise-cash" | "rebalance" | "hold-and-watch" | "reduce-debt" | "link-goal";
@@ -214,7 +215,7 @@ export function createWealthReview(run: ScenarioRun, input: WealthReviewInput) {
   const confidence = clamp(Math.round(input.confidence), 1, 100);
   const note = input.note.trim();
   if (note.length < 8) {
-    throw new Error("复盘理由太短，请至少写清楚一个关注点或下一步验证动作。");
+    throw new DomainError("复盘理由太短，请至少写清楚一个关注点或下一步验证动作。");
   }
 
   const matchedFocusBonus = input.focus === recommendedFocus(summary) ? 10 : 4;

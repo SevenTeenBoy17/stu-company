@@ -17,6 +17,7 @@ import type {
   UserRecord,
 } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 type SimulationActionInput =
   | {
@@ -371,14 +372,14 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
   if (action.type === "trade") {
     const quote = roundQuotes.find((asset) => asset.id === action.assetId);
     if (!quote) {
-      throw new Error("未找到对应资产。");
+      throw new DomainError("未找到对应资产。");
     }
     const quantity = Math.max(1, Math.floor(action.quantity));
     const notional = quote.currentPrice * quantity;
 
     if (action.side === "buy") {
       if (nextRun.cash < notional) {
-        throw new Error("可用现金不足，请先降低数量或补充流动性。");
+        throw new DomainError("可用现金不足，请先降低数量或补充流动性。");
       }
       nextRun.cash -= notional;
       upsertHolding(nextRun, action.assetId, quantity, quote.currentPrice);
@@ -391,7 +392,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     } else {
       const holding = nextRun.holdings.find((item) => item.assetId === action.assetId);
       if (!holding || holding.quantity < quantity) {
-        throw new Error("持仓数量不足，无法完成卖出。");
+        throw new DomainError("持仓数量不足，无法完成卖出。");
       }
       nextRun.cash += notional;
       upsertHolding(nextRun, action.assetId, -quantity, quote.currentPrice);
@@ -408,7 +409,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     const amount = Math.max(500, Math.round(action.amount));
 
     if (action.action === "deposit") {
-      if (nextRun.cash < amount) throw new Error("现金不足，无法转入储蓄。");
+      if (nextRun.cash < amount) throw new DomainError("现金不足，无法转入储蓄。");
       nextRun.cash -= amount;
       nextRun.savings += amount;
       appendAction(nextRun, {
@@ -420,7 +421,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
     }
 
     if (action.action === "withdraw") {
-      if (nextRun.savings < amount) throw new Error("储蓄余额不足。");
+      if (nextRun.savings < amount) throw new DomainError("储蓄余额不足。");
       nextRun.savings -= amount;
       nextRun.cash += amount;
       appendAction(nextRun, {
@@ -435,7 +436,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
       // 内测 rank5：贷款无上限会让债务复利滚到净值为负、回撤显示 >100%，误导学生。
       // 教学上限 = 总债务不超过起始资金 1 倍（120,000）——杠杆本身是教学点，失控不是。
       if (nextRun.debt + amount > TEACHING_DEBT_CAP) {
-        throw new Error(
+        throw new DomainError(
           `教学贷款有上限：总债务不能超过 ￥${TEACHING_DEBT_CAP.toLocaleString("zh-CN")}（起始资金的 1 倍）。先偿还部分债务，再考虑新的杠杆。`,
         );
       }
@@ -451,7 +452,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
 
     if (action.action === "repay") {
       const repayAmount = Math.min(amount, nextRun.debt);
-      if (nextRun.cash < repayAmount) throw new Error("现金不足，无法还款。");
+      if (nextRun.cash < repayAmount) throw new DomainError("现金不足，无法还款。");
       nextRun.cash -= repayAmount;
       nextRun.debt -= repayAmount;
       appendAction(nextRun, {
@@ -466,7 +467,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
   if (action.type === "property") {
     if (action.action === "buy") {
       if (nextRun.cash < PROPERTY_UNIT_PRICE) {
-        throw new Error("现金不足，无法完成房产配置。");
+        throw new DomainError("现金不足，无法完成房产配置。");
       }
       nextRun.cash -= PROPERTY_UNIT_PRICE;
       nextRun.propertyUnits += 1;
@@ -478,7 +479,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
         amount: -PROPERTY_UNIT_PRICE,
       });
     } else {
-      if (!nextRun.propertyUnits) throw new Error("当前没有可出售的房产仓位。");
+      if (!nextRun.propertyUnits) throw new DomainError("当前没有可出售的房产仓位。");
       const currentValue = Math.round(getPropertyValue(nextRun, nextRun.currentRound) / nextRun.propertyUnits);
       nextRun.cash += currentValue;
       nextRun.propertyUnits -= 1;
@@ -495,7 +496,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
   if (action.type === "venture") {
     if (action.action === "invest") {
       const amount = Math.max(2_000, Math.round(action.amount));
-      if (nextRun.cash < amount) throw new Error("现金不足，无法投入创业项目。");
+      if (nextRun.cash < amount) throw new DomainError("现金不足，无法投入创业项目。");
       nextRun.cash -= amount;
       nextRun.ventureStake += amount;
       nextRun.ventureBasis += amount;
@@ -506,7 +507,7 @@ export function applySimulationAction(run: ScenarioRun, action: SimulationAction
         amount: -amount,
       });
     } else {
-      if (!nextRun.ventureStake) throw new Error("当前没有创业项目可退出。");
+      if (!nextRun.ventureStake) throw new DomainError("当前没有创业项目可退出。");
       const amount = Math.max(2_000, Math.round(action.amount ?? nextRun.ventureStake));
       const currentValue = Math.min(getVentureValue(nextRun, nextRun.currentRound), amount);
       nextRun.cash += currentValue;
@@ -547,17 +548,17 @@ export function applyEventChoice(run: ScenarioRun, choiceId: string): ScenarioRu
   const event = getEventCard(eventId);
 
   if (!event.choices?.length) {
-    throw new Error("当前事件没有可做的选择。");
+    throw new DomainError("当前事件没有可做的选择。");
   }
   const alreadyChose = nextRun.actionLog.some(
     (entry) => entry.type === "event" && entry.round === nextRun.currentRound,
   );
   if (alreadyChose) {
-    throw new Error("本回合的事件选择已经做过了。");
+    throw new DomainError("本回合的事件选择已经做过了。");
   }
   const choice = event.choices.find((item) => item.id === choiceId);
   if (!choice) {
-    throw new Error("无效的事件选择。");
+    throw new DomainError("无效的事件选择。");
   }
 
   const netWorth = evaluateRun(nextRun, nextRun.currentRound).netWorth;

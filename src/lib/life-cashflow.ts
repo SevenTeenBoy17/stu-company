@@ -2,6 +2,7 @@ import { buildWealthSummary } from "@/lib/allocation";
 import { evaluateRun } from "@/lib/simulation";
 import type { ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export type BudgetPlanId = "shield" | "balanced" | "growth";
 export type InsurancePlanId = "none" | "basic" | "plus";
@@ -454,7 +455,7 @@ export function applyLifeCashflowChallenge(
     (entry) => entry.round === run.currentRound && entry.meta?.kind === "life_cashflow_challenge",
   );
   if (alreadyAppliedThisRound) {
-    throw new Error("本回合已执行过生活账本，请先推进回合再执行下一次。");
+    throw new DomainError("本回合已执行过生活账本，请先推进回合再执行下一次。");
   }
   const selectedPlanId = input.planId ?? "balanced";
   const selectedInsuranceId = input.insuranceId ?? "basic";
