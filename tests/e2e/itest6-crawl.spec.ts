@@ -144,6 +144,10 @@ async function crawlRole(page: Page, role: string, findings: Record<string, unkn
 
 for (const role of Object.keys(ROUTES)) {
   test(`itest6 crawl · ${role}`, async ({ page }) => {
+    // R1 探索式全控件爬虫：无断言、逐控件重载+点击，单角色可跑数十分钟。它是一次性诊断工具
+    // （findings 已沉淀到 itest6 报告），不是确定性回归用例——默认不在 CI/常规 e2e 跑，否则会
+    // 撞满超时把 E2E job 拖挂。需要复跑时显式：`ITEST6_CRAWL=1 npx playwright test itest6-crawl`。
+    test.skip(!process.env.ITEST6_CRAWL, "R1 诊断爬虫（慢/无断言），设 ITEST6_CRAWL=1 手动运行；CI 默认跳过");
     test.setTimeout(3_000_000);
     const findings: Record<string, unknown[]> = {
       logins: [], pages: [], clicks: [], skipped: [], pageLoadErrors: [],
