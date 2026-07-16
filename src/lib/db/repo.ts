@@ -397,6 +397,13 @@ async function withDb<T>(
   try {
     return await withDbExecutor(fn, primaryDb, executor, fallback);
   } catch (error) {
+    // 与内层 withDbExecutor 守卫对称（itest7 P2）：领域拒绝不是 DB 故障，绝不参与
+    // direct_supabase 二次重试、绝不打印 [repo.fallback] SLI。生产(Supabase pooler)下
+    // getDirectFallbackDb() 非空，若不在此拦截，领域错误会误发 fallback SLI 且把整事务
+    // 对着跨洋 direct 连接白跑一遍（本地非 pooler 观察不到）。
+    if (error instanceof DomainError) {
+      throw error;
+    }
     const directDb = getDirectFallbackDb();
     if (!primaryDb || !directDb || directDb === primaryDb) {
       throw error;
