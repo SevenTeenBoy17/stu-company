@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 
-import type { LeaderboardEntry } from "@/lib/types";
+import type { PublicSeasonLeaderboardEntry } from "@/lib/types";
 
 type SeasonPayload = {
   seasonKey: string;
-  leaderboard: LeaderboardEntry[];
-  viewerId: string;
+  leaderboard: PublicSeasonLeaderboardEntry[];
 };
 
 /** P2: global weekly season leaderboard — everyone this week shares one market. */
@@ -48,7 +47,7 @@ export function SeasonLeaderboard() {
   }, [retryKey]);
 
   const topThreeViewer =
-    data?.leaderboard.find((entry) => entry.userId === data.viewerId && entry.rank <= 3) ?? null;
+    data?.leaderboard.find((entry) => entry.isViewer && entry.rank <= 3) ?? null;
 
   return (
     <section className="mt-5 overflow-hidden rounded-[1.7rem] border border-border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
@@ -97,10 +96,10 @@ export function SeasonLeaderboard() {
           ) : null}
           <ol className="mt-3 space-y-1.5">
             {data.leaderboard.map((entry) => {
-              const isViewer = entry.userId === data.viewerId;
+              const isViewer = entry.isViewer;
               return (
                 <li
-                  key={entry.userId}
+                  key={entry.rank}
                   className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 ${
                     isViewer ? "bg-brand-subtle font-bold text-brand-ink" : "bg-bg-muted text-fg-default"
                   }`}

@@ -31,8 +31,13 @@ const envSchema = z.object({
   // when absent, those flows degrade to dev-surfaced links.
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
-  // Shared secret for the Vercel Cron weekly-report endpoint.
-  CRON_SECRET: z.string().optional(),
+  // Shared secret for the Vercel Cron endpoints (weekly-report / recompute-leaderboard).
+  // itest7 P3：生产下强制 ≥32 位（与 SESSION_SECRET 同标准），弱密钥在启动/构建期即被 zod 拦下，
+  // 杜绝短密钥被计时/暴力还原后无限触发写放大与邮件轰炸。
+  CRON_SECRET:
+    process.env.NODE_ENV === "production"
+      ? z.string().min(32, "CRON_SECRET must be ≥32 chars in production").optional()
+      : z.string().optional(),
   TRUSTED_PROXY: z.enum(["vercel", "xff-rightmost", "none"]).default("vercel"),
 });
 

@@ -1886,22 +1886,26 @@ export async function removeFamilyMember(ownerUserId: string, studentUserId: str
 }
 
 /** Global weekly season leaderboard across all runs that used this week's seed. */
-export async function getSeasonLeaderboard() {
+export async function getSeasonLeaderboard(classroomId: string) {
+  // itest7 P1：赛季榜必须限定在 viewer 的班级内，避免把跨班/跨校陌生未成年人的真名与内部
+  // userId/classroomId 全局暴露。无班级则无榜（学生正常都有 classroomId）。
+  if (!classroomId) return [];
   return withDb(
     "getSeasonLeaderboard",
     async (db) => {
       // Filter to the current season's runs in SQL (indexed) instead of scanning
       // every historical run, then only load the users who own those runs.
       const seed = currentSeasonSeed();
-      // Rank in SQL (composite index seed, net_worth) and take only the top N,
-      // instead of loading every season run and sorting in the app.
+      // Rank in SQL (composite index seed, net_worth) and take only the top N，
+      // 并 join users 按班级作用域过滤（itest7 P1），只取本班本周前 N。
       const runRows = await db
-        .select()
+        .select({ run: scenarioRuns })
         .from(scenarioRuns)
-        .where(eq(scenarioRuns.seed, seed))
+        .innerJoin(users, eq(users.id, scenarioRuns.userId))
+        .where(and(eq(scenarioRuns.seed, seed), eq(users.classroomId, classroomId)))
         .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
         .limit(20);
-      const runs = runRows.map(toRun);
+      const runs = runRows.map((row) => toRun(row.run));
       if (runs.length === 0) return [];
 
       const ownerIds = [...new Set(runs.map((run) => run.userId))];

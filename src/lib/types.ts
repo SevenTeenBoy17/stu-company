@@ -347,6 +347,18 @@ export interface LeaderboardEntry {
   rank: number;
 }
 
+/**
+ * 赛季榜【对客户端公开】的条目形状（itest7 P1）：绝不含内部 userId/classroomId——它们会被拿去
+ * 关联 别名↔身份、枚举其他未成年人。自我高亮改用服务端算好的 isViewer，React key 用榜内唯一的 rank。
+ */
+export interface PublicSeasonLeaderboardEntry {
+  rank: number;
+  name: string;
+  netWorth: number;
+  disciplineScore: number;
+  isViewer: boolean;
+}
+
 // ── Financial Power leaderboard (V1) ────────────────────────────────────────
 export type RankVisibility = "public" | "school_only" | "hidden";
 export type RankPeriod = "weekly" | "monthly" | "season";

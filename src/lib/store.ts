@@ -637,9 +637,9 @@ export function applyFamilyEntitlement(user: UserRecord): UserRecord {
 }
 
 /** Global weekly season leaderboard across all runs that used this week's seed. */
-export function getSeasonLeaderboard() {
+export function getSeasonLeaderboard(classroomId?: string) {
   const store = getStore();
-  return buildSeasonLeaderboard(store.runs, store.users);
+  return buildSeasonLeaderboard(store.runs, store.users, new Date(), classroomId);
 }
 
 // ── Financial Power leaderboard (V1) ────────────────────────────────────────

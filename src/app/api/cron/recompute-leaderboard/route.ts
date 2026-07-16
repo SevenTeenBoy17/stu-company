@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiError } from "@/lib/api-response";
-import { env } from "@/lib/env";
+import { authorizeCron } from "@/lib/cron-auth";
 import { recomputeAllRankedUsers } from "@/lib/leaderboard/service";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +12,8 @@ export const dynamic = "force-dynamic";
  * reset reaches inactive students at term boundaries.
  */
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV === "production" && !env.CRON_SECRET) {
-    return apiError("service_unavailable", "Cron 未配置密钥，已拒绝。", 503);
-  }
-  if (env.CRON_SECRET) {
-    const authorization = request.headers.get("authorization");
-    if (authorization !== `Bearer ${env.CRON_SECRET}`) {
-      return apiError("unauthorized", "无效的 Cron 凭证。", 401);
-    }
-  }
+  const denied = authorizeCron(request); // 生产必配 + 常量时间比较（itest7 P3）
+  if (denied) return denied;
 
   const result = await recomputeAllRankedUsers();
   return NextResponse.json(result);

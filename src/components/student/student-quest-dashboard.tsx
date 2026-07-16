@@ -487,7 +487,7 @@ function QuestMapGallery({
                             ? "bg-emerald-50 text-emerald-700"
                             : quest.status === "active"
                               ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-500",
+                              : "bg-slate-100 text-slate-600", // itest7 P3：slate-500(4.36:1)→slate-600(≥5.5:1) 过 AA
                         )}
                       >
                         {routeState}

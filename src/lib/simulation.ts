@@ -776,10 +776,13 @@ export function buildSeasonLeaderboard(
   runs: ScenarioRun[],
   users: UserRecord[],
   now: Date = new Date(),
+  classroomId?: string,
 ): LeaderboardEntry[] {
   const seed = currentSeasonSeed(now);
+  // itest7 P1：可选按班级作用域收窄——避免赛季榜把跨班/跨校陌生未成年人的真名与内部 id
+  // 全局暴露给每个学生（战力榜已用别名+同意+隐身治理，赛季榜此前是未处理的孪生体）。
   return buildLeaderboard(
-    runs.filter((run) => run.seed === seed),
+    runs.filter((run) => run.seed === seed && (!classroomId || run.classroomId === classroomId)),
     users,
   );
 }

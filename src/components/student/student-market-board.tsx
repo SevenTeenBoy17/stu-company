@@ -307,7 +307,12 @@ export function StudentMarketBoard({
   // 切分类/标的后、新数据到达前，当前 payload 仍是旧分类的数据 → 用于过渡态降透明 + aria-busy。
   const boardLoading = isPending || payload.category !== category;
 
+  // itest7 P3：请求时序令牌。快速切换分类/标的时多个 board 请求并发，若较早发出的慢响应晚于
+  // 较新的返回，会覆盖已到达的新数据 → payload.category 卡在旧值、boardLoading 恒 true（骨架卡住）。
+  // 只有「最新」一次请求才允许写入可见 payload / error；缓存按响应自身 key 写入可无条件保留。
+  const loadBoardSeq = useRef(0);
   const loadBoard = useCallback(async (cat: MarketCategoryId, symbol: string) => {
+    const seq = ++loadBoardSeq.current;
     try {
       const response = await fetch(
         `/api/market/board?category=${cat}&symbol=${encodeURIComponent(symbol)}`,
@@ -319,13 +324,16 @@ export function StudentMarketBoard({
         throw new Error("市场信息刷新失败，请稍后重试。");
       }
 
-      setPayload(nextPayload);
+      // 缓存写入用响应自身的 (category:symbol) key，不会串味，可保留。
       setPayloadCache((current) => ({
         ...current,
         [`${nextPayload.category}:${nextPayload.selected.symbol}`]: nextPayload,
       }));
+      if (seq !== loadBoardSeq.current) return; // 已有更新请求发出，丢弃这次陈旧响应
+      setPayload(nextPayload);
       setError(null);
     } catch (nextError) {
+      if (seq !== loadBoardSeq.current) return;
       setError(nextError instanceof Error ? nextError.message : "市场信息刷新失败。");
     }
   }, []);

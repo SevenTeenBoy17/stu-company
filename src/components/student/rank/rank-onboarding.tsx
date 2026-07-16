@@ -199,14 +199,39 @@ export function RankOnboarding({
       <fieldset className="mt-5">
         <legend className="text-xs font-medium text-fg-muted">谁可以看到我</legend>
         {/* itest6 R3 P3：隐私可见性是单选，此前选中态仅靠颜色（无 role=radio/aria-checked），
-            屏幕阅读器/色觉障碍用户在加入榜单前无法确认选的是「隐身」还是「公开」。补 radiogroup 语义。 */}
-        <div className="mt-2 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="谁可以看到我">
+            屏幕阅读器/色觉障碍用户在加入榜单前无法确认选的是「隐身」还是「公开」。补 radiogroup 语义。
+            itest7 P3：再补 WAI-ARIA radiogroup 键盘契约——方向键切换 + roving tabindex（整组只占一个
+            Tab 停靠、选中项 tabIndex=0 其余 -1），与原生 radio 组一致。 */}
+        <div
+          className="mt-2 grid gap-2 sm:grid-cols-3"
+          role="radiogroup"
+          aria-label="谁可以看到我"
+          onKeyDown={(event) => {
+            const dir =
+              event.key === "ArrowRight" || event.key === "ArrowDown"
+                ? 1
+                : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                  ? -1
+                  : 0;
+            if (dir === 0) return;
+            event.preventDefault();
+            const current = Math.max(
+              0,
+              VISIBILITY_OPTIONS.findIndex((opt) => opt.value === visibility),
+            );
+            const next = (current + dir + VISIBILITY_OPTIONS.length) % VISIBILITY_OPTIONS.length;
+            setVisibility(VISIBILITY_OPTIONS[next].value);
+            const radios = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
+            radios[next]?.focus();
+          }}
+        >
           {VISIBILITY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               role="radio"
               aria-checked={visibility === opt.value}
+              tabIndex={visibility === opt.value ? 0 : -1}
               onClick={() => setVisibility(opt.value)}
               className={`rounded-xl border px-3 py-2 text-left transition ${
                 visibility === opt.value
