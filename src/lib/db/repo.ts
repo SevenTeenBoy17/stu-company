@@ -1897,15 +1897,16 @@ export async function getSeasonLeaderboard(classroomId: string) {
       // every historical run, then only load the users who own those runs.
       const seed = currentSeasonSeed();
       // Rank in SQL (composite index seed, net_worth) and take only the top N，
-      // 并 join users 按班级作用域过滤（itest7 P1），只取本班本周前 N。
+      // 按班级作用域过滤（itest7 P1）：直接用 scenario_runs.classroom_id（notNull + 索引
+      // scenario_runs_classroom_id_idx），无需 join users——且与 store 兜底路径(run.classroomId)
+      // 语义一致（itest7 自审：此前 join users.classroomId 与兜底不一致且未走该列索引）。
       const runRows = await db
-        .select({ run: scenarioRuns })
+        .select()
         .from(scenarioRuns)
-        .innerJoin(users, eq(users.id, scenarioRuns.userId))
-        .where(and(eq(scenarioRuns.seed, seed), eq(users.classroomId, classroomId)))
+        .where(and(eq(scenarioRuns.seed, seed), eq(scenarioRuns.classroomId, classroomId)))
         .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
         .limit(20);
-      const runs = runRows.map((row) => toRun(row.run));
+      const runs = runRows.map(toRun);
       if (runs.length === 0) return [];
 
       const ownerIds = [...new Set(runs.map((run) => run.userId))];
@@ -1917,7 +1918,8 @@ export async function getSeasonLeaderboard(classroomId: string) {
       const userRecords = userRows.map((row) => toUserRecord(row.user, row.profile));
       return buildLeaderboard(runs, userRecords);
     },
-    () => store.getSeasonLeaderboard(),
+    // itest7 自审：兜底也必须传 classroomId，否则读兜底路径会退回【全局】赛季榜，重新泄露跨班真名。
+    () => store.getSeasonLeaderboard(classroomId),
   );
 }
 

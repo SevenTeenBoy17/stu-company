@@ -205,6 +205,23 @@ describe("buildSeasonLeaderboard (global weekly season)", () => {
     expect(board.some((entry) => entry.userId === "u2")).toBe(false);
   });
 
+  it("按 classroomId 作用域收窄——只含本班 run，不泄露其它班的未成年人 (itest7 P1)", () => {
+    const now = new Date("2026-05-25T00:00:00Z");
+    const seed = currentSeasonSeed(now);
+    const classA = createInitialRun("a1", "classA", "x", seed);
+    const classB = createInitialRun("b1", "classB", "x", seed);
+
+    // 不传 classroomId → 全局（两班都在）——保持旧行为的向后兼容。
+    const global = buildSeasonLeaderboard([classA, classB], [], now);
+    expect(global.some((e) => e.userId === "a1")).toBe(true);
+    expect(global.some((e) => e.userId === "b1")).toBe(true);
+
+    // 传 viewer 的班级 → 只含本班，另一个班的学生不出现（PII 作用域）。
+    const scoped = buildSeasonLeaderboard([classA, classB], [], now, "classA");
+    expect(scoped.some((e) => e.userId === "a1")).toBe(true);
+    expect(scoped.some((e) => e.userId === "b1")).toBe(false);
+  });
+
   it("defaults new runs into the current season", () => {
     const run = createInitialRun("u3", "c", "x");
     expect(run.seed).toBe(currentSeasonSeed());
