@@ -184,7 +184,8 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
             <div data-motion-viz className="rounded-[1.6rem] bg-bg-inverse p-5 text-white">
-              <svg viewBox="0 0 220 220" className="mx-auto h-64 w-full max-w-72">
+              {/* itest9 a11y P3(1.1.1)：装饰性雷达图，数据已有文本等价物 → 对读屏隐藏。 */}
+              <svg viewBox="0 0 220 220" className="mx-auto h-64 w-full max-w-72" aria-hidden="true">
                 {[25, 50, 75, 100].map((level) => (
                   <polygon
                     key={level}

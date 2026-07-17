@@ -845,7 +845,10 @@ export function StudentSandbox({
           </div>
 
           {message ? (
-            <div className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-3 text-body-sm font-semibold text-orange-700">
+            <div
+              role="status"
+              className="mt-5 rounded-[1.5rem] border border-orange-200 bg-orange-50 px-4 py-3 text-body-sm font-semibold text-orange-700"
+            >
               {message}
             </div>
           ) : null}

@@ -71,7 +71,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section data-motion-reveal className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">班级排行</p>
+          <h2 className="bz-eyebrow">班级排行</h2>
           <div className="mt-5 space-y-3">
             {data.leaderboard.map((entry) => (
               <div key={entry.userId} data-motion-card className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bg-muted px-4 py-4">
@@ -151,7 +151,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <section data-motion-reveal className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">学生行为标签</p>
+          <h2 className="bz-eyebrow">学生行为标签</h2>
           <div className="mt-5 space-y-4">
             {data.students.map((student) => (
               <div key={student.id} data-motion-card className="rounded-2xl bg-bg-muted p-5">
@@ -185,7 +185,7 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
         </section>
 
         <section data-motion-reveal className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">邀请码池</p>
+          <h2 className="bz-eyebrow">邀请码池</h2>
           <div className="mt-5 space-y-3">
             {data.invites.map((invite) => (
               <div key={invite.id} data-motion-card className="rounded-2xl bg-bg-muted px-4 py-4">

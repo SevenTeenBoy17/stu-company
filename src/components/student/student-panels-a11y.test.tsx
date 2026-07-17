@@ -5,8 +5,11 @@ import { axe } from "vitest-axe";
 
 import { buildAutoInvestPayload } from "@/lib/auto-invest";
 import { buildCreditLabPayload } from "@/lib/credit-lab";
+import { buildFundLabPayload } from "@/lib/fund-lab";
+import { buildLifeCashflowPayload } from "@/lib/life-cashflow";
 import { buildMarketBoardPayload } from "@/lib/market-watchlist";
 import { buildPeerHeatPayload } from "@/lib/peer-heat";
+import { buildProtectionUmbrellaPayload } from "@/lib/protection-umbrella";
 import { buildRiskProfilePayload } from "@/lib/risk-profile";
 import type { StudentQuestPayload } from "@/lib/quests";
 import type { StudentSeasonChallengePayload } from "@/lib/season-challenges";
@@ -16,7 +19,10 @@ import { buildStudentWatchlistPayload } from "@/lib/student-watchlist";
 import { server } from "../../../tests/msw/server";
 import { StudentAutoInvestDashboard } from "./student-auto-invest-dashboard";
 import { StudentCreditLabDashboard } from "./student-credit-lab-dashboard";
+import { StudentFundLabDashboard } from "./student-fund-lab-dashboard";
+import { StudentLifeCashflowDashboard } from "./student-life-cashflow-dashboard";
 import { StudentMarketBoard } from "./student-market-board";
+import { StudentProtectionUmbrellaDashboard } from "./student-protection-umbrella-dashboard";
 import { StudentQuestDashboard } from "./student-quest-dashboard";
 import { StudentRiskProfileDashboard } from "./student-risk-profile-dashboard";
 
@@ -202,6 +208,45 @@ describe("student high-traffic panels accessibility smoke", () => {
     );
 
     await screen.findByTestId("behavior-persona-submit");
+    const results = await axe(container, COMPONENT_AXE_OPTIONS);
+    expect(results).toHaveNoViolations();
+  });
+
+  // itest9 a11y guardrail：锁死本轮修复（fund-lab sparkline aria-hidden + 结果 aria-live、
+  // protection 选择卡 aria-pressed + 雷达 aria-hidden、life 预算/保险卡 aria-pressed）。
+  it("renders the fund lab dashboard without axe-core violations", async () => {
+    mockReducedMotion();
+    mockSvgPathLength();
+    const { container } = render(<StudentFundLabDashboard initialPayload={buildFundLabPayload(makeRun())} />);
+
+    await screen.findByTestId("fund-lab-dashboard");
+    const results = await axe(container, COMPONENT_AXE_OPTIONS);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("renders the protection umbrella dashboard without axe-core violations", async () => {
+    mockReducedMotion();
+    mockSvgPathLength();
+    const { container } = render(
+      <StudentProtectionUmbrellaDashboard
+        initialPayload={buildProtectionUmbrellaPayload(makeRun(), "basic", new Date("2026-07-06T08:00:00.000Z"))}
+      />,
+    );
+
+    await screen.findByTestId("protection-submit");
+    const results = await axe(container, COMPONENT_AXE_OPTIONS);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("renders the life cashflow dashboard without axe-core violations", async () => {
+    mockReducedMotion();
+    const { container } = render(
+      <StudentLifeCashflowDashboard
+        initialPayload={buildLifeCashflowPayload(makeRun(), "balanced", "basic", new Date("2026-07-06T08:00:00.000Z"))}
+      />,
+    );
+
+    await screen.findByTestId("life-cashflow-dashboard");
     const results = await axe(container, COMPONENT_AXE_OPTIONS);
     expect(results).toHaveNoViolations();
   });

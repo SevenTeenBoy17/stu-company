@@ -320,7 +320,9 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 ref={assetTriggerRef}
                 type="button"
                 data-testid="auto-invest-asset-selector"
-                aria-labelledby="auto-invest-asset-label"
+                // itest9 a11y P2(4.1.2)：去掉 aria-labelledby——它把可及名覆盖成静态「定投标的」、盖掉了
+                // 按钮内已选标的的文本。移除后按钮自身文本(标的名+现价)成为名称，折叠态也能播报当前值。
+                aria-label="定投标的"
                 aria-expanded={assetListOpen}
                 aria-haspopup="listbox"
                 onClick={() => setAssetListOpen((open) => !open)}

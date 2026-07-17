@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { PowerCard } from "./power-card";
@@ -27,6 +27,11 @@ export function RankDashboard() {
   const [openingEdit, setOpeningEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // itest9 a11y P3(2.4.3)：编辑档案在整视图间切换，键盘/AT 焦点会掉到 body。
+  // 进入编辑态把焦点移入表单区，返回时交还「编辑档案」按钮，形成可预期焦点回路。
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const editRegionRef = useRef<HTMLDivElement>(null);
+  const firstFocusRender = useRef(true);
 
   async function openEdit() {
     if (openingEdit) return;
@@ -95,6 +100,20 @@ export function RankDashboard() {
     };
   }, [refreshKey]);
 
+  useEffect(() => {
+    // Skip the very first render so we don't steal focus on initial mount.
+    if (firstFocusRender.current) {
+      firstFocusRender.current = false;
+      return;
+    }
+    if (editing) {
+      editRegionRef.current?.focus();
+    } else {
+      // Null when returning to the onboarding (no-profile) view — .focus() no-ops.
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center rounded-[1.7rem] border border-border bg-white p-12 text-fg-muted">
@@ -125,14 +144,16 @@ export function RankDashboard() {
 
   if (editing && editInitial) {
     return (
-      <RankOnboarding
-        initial={editInitial}
-        onCancel={() => setEditing(false)}
-        onComplete={() => {
-          setEditing(false);
-          setRefreshKey((k) => k + 1);
-        }}
-      />
+      <div ref={editRegionRef} tabIndex={-1} className="outline-none">
+        <RankOnboarding
+          initial={editInitial}
+          onCancel={() => setEditing(false)}
+          onComplete={() => {
+            setEditing(false);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      </div>
     );
   }
 
@@ -141,6 +162,7 @@ export function RankDashboard() {
       <div className="flex flex-col items-end gap-1">
         <button
           type="button"
+          ref={editButtonRef}
           onClick={openEdit}
           disabled={openingEdit}
           className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-fg-default transition hover:border-brand/40 disabled:opacity-60"

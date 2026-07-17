@@ -169,6 +169,7 @@ export function RankOnboarding({
             onChange={(e) => setSchoolName(e.target.value)}
             list="rank-school-suggestions"
             aria-label="学校全称"
+            aria-required="true"
             placeholder="例如：成都市第七中学"
             maxLength={40}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -191,6 +192,7 @@ export function RankOnboarding({
             value={alias}
             onChange={(e) => setAlias(e.target.value)}
             aria-label="榜单昵称"
+            aria-required="true"
             placeholder="例如：稳健小能手"
             maxLength={20}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -262,7 +264,12 @@ export function RankOnboarding({
         </span>
       </label>
 
-      {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}
+      {/* itest9 a11y P2(4.1.3)：校验失败提示须对读屏播报，否则用户点保存无反应无从知错。 */}
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-error">
+          {error}
+        </p>
+      ) : null}
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
         <button

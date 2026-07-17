@@ -536,7 +536,10 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                         : "游客模式"}
                   </span>
                   {statusNote ? (
-                    <span className="rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand-ink">
+                    <span
+                      role="status"
+                      className="rounded-full bg-brand-subtle px-3 py-1 text-xs font-medium text-brand-ink"
+                    >
                       {statusNote}
                     </span>
                   ) : null}
