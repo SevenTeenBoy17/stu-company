@@ -44,13 +44,12 @@ Transactional email + verification + cron (optional, but required to activate th
 - `EMAIL_FROM` — verified Resend sender, e.g. `Mr.Brown 经济沙盘 <noreply@yourdomain.com>`.
 - `REQUIRE_EMAIL_VERIFICATION` — gray-launch gate. Keep `false` until Resend delivery is
   confirmed in production; set `true` to block unverified trial users from the AI assessment.
-- `CRON_SECRET` — **required in Production, and must be ≥ 32 characters** (itest7 hardening:
-  `src/lib/env.ts` now enforces `.min(32)` in production; a shorter value makes zod env validation
-  throw **at startup → the app fails to boot**). Guards `/api/cron/weekly-report` and
-  `/api/cron/recompute-leaderboard`; Vercel Cron sends it as `Authorization: Bearer $CRON_SECRET`
-  and the routes compare it with `crypto.timingSafeEqual`.
-  ⚠️ **Deploy prerequisite**: if the current Production `CRON_SECRET` is < 32 chars, rotate it to a
-  ≥32-char random string **before** deploying this change (and update the Vercel Cron config).
+- `CRON_SECRET` — **required in Production** so `/api/cron/weekly-report` and
+  `/api/cron/recompute-leaderboard` reject unauthenticated calls; Vercel Cron sends it as
+  `Authorization: Bearer $CRON_SECRET` and the routes compare it with `crypto.timingSafeEqual`.
+  **Recommended ≥ 32 characters**: a shorter value logs a startup **warning** (does **not** block
+  boot — a weak cron token is minor and shouldn't take the app down). Rotate to a ≥32-char random
+  string (`openssl rand -hex 24`) when convenient and update the Vercel Cron config.
 
 If real WeChat Pay is enabled, also configure these variables for Production:
 

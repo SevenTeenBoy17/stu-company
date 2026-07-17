@@ -32,12 +32,10 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   // Shared secret for the Vercel Cron endpoints (weekly-report / recompute-leaderboard).
-  // itest7 P3：生产下强制 ≥32 位（与 SESSION_SECRET 同标准），弱密钥在启动/构建期即被 zod 拦下，
-  // 杜绝短密钥被计时/暴力还原后无限触发写放大与邮件轰炸。
-  CRON_SECRET:
-    process.env.NODE_ENV === "production"
-      ? z.string().min(32, "CRON_SECRET must be ≥32 chars in production").optional()
-      : z.string().optional(),
+  // itest7/itest8 部署审计：建议 ≥32 位，但【不】用 zod 硬失败——一个偏短的 cron 令牌是轻微问题
+  // （blast radius 限于写放大/邮件、且 timingSafeEqual 已挡计时攻击），不值得让【整个应用】因它 boot
+  // 失败（对比 SESSION_SECRET 关乎全站 auth 才硬失败）。改为启动期【打警告不阻断】（见下方 env 解析后）。
+  CRON_SECRET: z.string().optional(),
   TRUSTED_PROXY: z.enum(["vercel", "xff-rightmost", "none"]).default("vercel"),
 });
 
@@ -66,3 +64,11 @@ export const env = envSchema.parse({
   CRON_SECRET: process.env.CRON_SECRET,
   TRUSTED_PROXY: process.env.TRUSTED_PROXY,
 });
+
+// itest8 部署审计：生产下 CRON_SECRET 偏短只打警告、不阻断启动（避免一个弱 cron 令牌把整个应用
+// boot 拦下）。运维应据此轮换为 ≥32 位随机串以增强 /api/cron/* 鉴权强度。
+if (process.env.NODE_ENV === "production" && env.CRON_SECRET && env.CRON_SECRET.length < 32) {
+  console.warn(
+    "[env] CRON_SECRET 少于 32 位：建议轮换为 ≥32 位随机串（openssl rand -hex 24），以增强 cron 端点鉴权强度。",
+  );
+}

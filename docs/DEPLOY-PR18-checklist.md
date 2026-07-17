@@ -1,15 +1,14 @@
 # PR #18 生产部署清单（itest5–8 硬化合集）
 
-> `feat/itest6-clickthrough-qa` → `main` 合并前后按此清单执行。这批改动含 **1 个会导致启动失败的 env 要求** 和 **1 个数据库迁移**，务必先做前置项再部署。
+> `feat/itest6-clickthrough-qa` → `main` 合并前后按此清单执行。唯一的强前置是**数据库迁移 0021**；`CRON_SECRET` 偏短只告警不阻断启动（无宕机风险）。
 
-## ⚠️ 部署前置（不做会宕机 / 迁移失败）
+## 部署前置
 
-### 1. `CRON_SECRET` 必须 ≥ 32 位（否则应用启动即崩）
-- `src/lib/env.ts` 现在在 production 下强制 `CRON_SECRET.min(32)`。若线上当前值 < 32 位，部署后 zod env 校验在启动时抛错 → **整个应用无法启动**。
-- **动作**：部署前在 Vercel 生产环境把 `CRON_SECRET` 轮换为 ≥32 位随机串，并同步更新 Vercel Cron 配置里发送的 Bearer 值。
-- 校验：`openssl rand -hex 24`（48 位十六进制）即满足。
+### 1. `CRON_SECRET` 建议 ≥ 32 位（非阻断，只告警）
+- `src/lib/env.ts` 在 production 下若 `CRON_SECRET` < 32 位会打启动**警告**（不再硬失败、不阻断 boot——一个弱 cron 令牌不值得让整站宕机）。
+- **动作（建议、非强制）**：择机把 `CRON_SECRET` 轮换为 ≥32 位随机串（`openssl rand -hex 24`）并更新 Vercel Cron 配置。cron 路由用 `crypto.timingSafeEqual` 比较。
 
-### 2. 数据库迁移 `0021_scenario_run_user_unique`
+### 2. 数据库迁移 `0021_scenario_run_user_unique`（强前置）
 - 给 `scenario_runs.user_id` 加**唯一索引**（itest8 P1：并发首屏防重复 run）。
 - **动作**：`npm run db:migrate`（canonical，勿用 `drizzle-kit push`）。
 - ⚠️ **若失败并报 `unique_violation`**：说明生产库已因旧 bug 存在重复 run。迁移**故意不自动删数据**。先手动去重（保留最进阶的一条），再重跑迁移：
