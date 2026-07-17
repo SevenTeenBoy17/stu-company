@@ -50,4 +50,18 @@ describe("handleRouteError", () => {
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toBe("invalid_input");
   });
+
+  it("itest8 P2：畸形 JSON 的 SyntaxError 收成中文 invalid_input，不回显英文原生错误/原始输入", async () => {
+    // request.json() 对畸形体抛的正是这种 message。
+    const res = handleRouteError(
+      new SyntaxError(`Unexpected token 'o', "not json {{{" is not valid JSON`),
+      "兜底",
+    );
+    const body = (await res.json()) as { error: string; message: string };
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("invalid_input");
+    expect(body.message).toBe("请求格式不正确，请检查后重试。");
+    expect(body.message).not.toContain("Unexpected token"); // 不泄露英文原生错误
+    expect(body.message).not.toContain("not json"); // 不回显原始输入
+  });
 });

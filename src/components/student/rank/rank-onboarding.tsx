@@ -13,7 +13,9 @@ interface Option {
 const VISIBILITY_OPTIONS: { value: RankVisibility; label: string; hint: string }[] = [
   { value: "public", label: "公开", hint: "全国/省/市/校都可见你的昵称与学习点" },
   { value: "school_only", label: "仅校内", hint: "只在本校榜单出现，对外不显示" },
-  { value: "hidden", label: "隐身", hint: "只自己可见学习点，不进入任何榜单" },
+  // itest8 P3：文案不能承诺「不进入任何榜单」——班级赛季记分牌(同班本就互知真名)不受该设置管辖。
+  // 收窄为准确承诺：只影响跨校的财商战力榜。
+  { value: "hidden", label: "隐身", hint: "只自己可见学习点，不进入财商战力榜（跨校/省/市排名）" },
 ];
 
 export interface RankOnboardingInitial {

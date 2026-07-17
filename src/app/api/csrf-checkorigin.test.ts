@@ -77,7 +77,10 @@ describe("CSRF 结构审计：变更路由必须 checkOrigin (itest7 P3)", () =>
       .filter((file) => {
         const src = fs.readFileSync(file, "utf8");
         const mutating = /export async function (POST|PUT|PATCH|DELETE)\b/.test(src);
-        return mutating && !src.includes("checkOrigin") && !CHECK_ORIGIN_EXEMPT.includes(rel(file));
+        // itest8 P3：匹配【调用】checkOrigin(...) 而非仅 import——`includes("checkOrigin")` 会把只
+        // import 未调用的路由误判为已防护（假阴性）。要求出现真正的调用形式 checkOrigin( 。
+        const callsCheckOrigin = /checkOrigin\s*\(/.test(src);
+        return mutating && !callsCheckOrigin && !CHECK_ORIGIN_EXEMPT.includes(rel(file));
       })
       .map(rel)
       .sort();

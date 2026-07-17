@@ -916,8 +916,15 @@ async function ensureStudentSandbox(executor: DbExecutor, user: UserRecord) {
 
   let run = await selectRunForUser(executor, user.id);
   if (!run) {
+    // itest8 P1：并发首屏(Promise.all[getSimulationStateForUser, getPeerHeatForStudent])会让两个独立
+    // 事务都读到 null 再各自 insert。冲突目标必须是 user_id 唯一约束——空目标的 onConflictDoNothing
+    // 只对主键(随机 id)生效、两条永不冲突=建出重复 run。指定 target=userId 后并发方 DoNothing，再 re-select
+    // 拿到胜出者的唯一 run。
     const initialRun = createInitialRun(user.id, classroomId);
-    await executor.insert(scenarioRuns).values(toRunInsert(initialRun)).onConflictDoNothing();
+    await executor
+      .insert(scenarioRuns)
+      .values(toRunInsert(initialRun))
+      .onConflictDoNothing({ target: scenarioRuns.userId });
     run = (await selectRunForUser(executor, user.id)) ?? initialRun;
   }
 
@@ -2361,7 +2368,7 @@ export async function getParentOverview(userId: string) {
         .limit(1);
       const run = await selectRunForUser(db, linkRow.studentUserId);
       if (!student || !reportRow || !run) {
-        throw new Error("成长报告数据暂不可用。");
+        throw new DomainError("成长报告数据暂不可用。");
       }
 
       return {

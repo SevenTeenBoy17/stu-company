@@ -189,7 +189,10 @@ export const scenarioRuns = pgTable("scenario_runs", {
   // Materialized latest net worth so the weekly season leaderboard can rank in SQL.
   netWorth: integer("net_worth"),
 }, (table) => [
-  index("scenario_runs_user_id_idx").on(table.userId),
+  // itest8 P1：一名学生恒定只有一条 run（赛季重玩是原地重置同 row，见 repo.resetSeasonRun）。
+  // 唯一约束防止 ensureStudentSandbox 的 check-then-insert 在并发首屏(Promise.all)下建出重复 run
+  // → 否则 limit(1) 无序读写命中不同行=丢单/进度回退、且赛季榜同名重复上榜。对齐 growth_reports.unique。
+  uniqueIndex("scenario_runs_user_id_key").on(table.userId),
   index("scenario_runs_classroom_id_idx").on(table.classroomId),
   // Weekly season leaderboard: filter by seed, rank by net worth — composite index
   // serves the ORDER BY net_worth DESC LIMIT N top-N query.

@@ -143,6 +143,10 @@ alter table public.rank_profiles enable row level security;
 alter table public.leaderboard_snapshots enable row level security;
 alter table public.learning_progress enable row level security;
 alter table public.family_members enable row level security;
+-- itest8 P3：profiles / ai_messages 有 RLS 策略但此前漏 enable → 策略惰性、且 authenticated 角色
+-- 可读全表(横向越权 PII)。补 enable，与已 enable 的 ai_sessions/users 对齐。
+alter table public.profiles enable row level security;
+alter table public.ai_messages enable row level security;
 -- Fix (2026-06-04): classrooms + student_parent_links have policies defined below
 -- but RLS was never ENABLED on them, so the policies were inert and ANY
 -- authenticated user could read every classroom and every parent-student bond

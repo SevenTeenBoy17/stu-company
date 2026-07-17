@@ -21,6 +21,13 @@ export function handleRouteError(error: unknown, fallbackMessage: string) {
     return apiError("invalid_input", "请求参数格式不正确，请检查后重试。", 400);
   }
 
+  // itest8 P2：畸形请求体 request.json() 抛 V8 原生 SyntaxError（"Unexpected token ... is not
+  // valid JSON"）。不能把英文原生错误+回显的原始输入直接返给用户——既违反「中文错误文案」不变量、
+  // 又属轻度信息泄露。统一收成中文 invalid_input，一处修全部走 handleRouteError 的路由。
+  if (error instanceof SyntaxError) {
+    return apiError("invalid_input", "请求格式不正确，请检查后重试。", 400);
+  }
+
   const message = error instanceof Error ? error.message : fallbackMessage;
 
   // DB/connectivity faults map to a calm Chinese 503 — never leak the raw
