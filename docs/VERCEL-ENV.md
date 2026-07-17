@@ -44,8 +44,13 @@ Transactional email + verification + cron (optional, but required to activate th
 - `EMAIL_FROM` — verified Resend sender, e.g. `Mr.Brown 经济沙盘 <noreply@yourdomain.com>`.
 - `REQUIRE_EMAIL_VERIFICATION` — gray-launch gate. Keep `false` until Resend delivery is
   confirmed in production; set `true` to block unverified trial users from the AI assessment.
-- `CRON_SECRET` — **required in Production** so `/api/cron/weekly-report` rejects
-  unauthenticated calls; Vercel Cron sends it as `Authorization: Bearer $CRON_SECRET`.
+- `CRON_SECRET` — **required in Production, and must be ≥ 32 characters** (itest7 hardening:
+  `src/lib/env.ts` now enforces `.min(32)` in production; a shorter value makes zod env validation
+  throw **at startup → the app fails to boot**). Guards `/api/cron/weekly-report` and
+  `/api/cron/recompute-leaderboard`; Vercel Cron sends it as `Authorization: Bearer $CRON_SECRET`
+  and the routes compare it with `crypto.timingSafeEqual`.
+  ⚠️ **Deploy prerequisite**: if the current Production `CRON_SECRET` is < 32 chars, rotate it to a
+  ≥32-char random string **before** deploying this change (and update the Vercel Cron config).
 
 If real WeChat Pay is enabled, also configure these variables for Production:
 
@@ -72,6 +77,7 @@ style and keep it consistent across Production and Preview.
 
 - `APP_URL`: the final Vercel production URL, for example `https://brown-zone-web.vercel.app`
 - `SESSION_SECRET`: a long random string, at least 32 characters
+- `CRON_SECRET`: a long random string, **at least 32 characters** (enforced in production; see above)
 - `DATABASE_URL`: Supabase Postgres pooled connection string
 - `AI_BASE_URL_PRIMARY`: your operator-supplied Anthropic-compatible endpoint. Leave empty to disable remote AI (local fallback narratives still work).
   国内用户推荐 `https://api.llm-token.cn/v1`（延迟更低）；旧 `https://gpt-agent.cc/v1` 可配为 SECONDARY 作 failover。
