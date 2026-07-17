@@ -225,6 +225,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                   data-motion-button
                   key={item.id}
                   type="button"
+                  aria-pressed={plan === item.id}
                   data-testid={`fund-plan-${item.id}`}
                   disabled={previewPending || pending}
                   onClick={() => void previewCombination(item.id)}

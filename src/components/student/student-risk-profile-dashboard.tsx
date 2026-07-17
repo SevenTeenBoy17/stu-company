@@ -528,7 +528,7 @@ export function StudentRiskProfileDashboard({
                             已选择
                           </span>
                         ) : (
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-bold text-slate-500">待选择</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-caption font-bold text-slate-600">待选择</span>
                         )}
                       </div>
 
@@ -540,6 +540,7 @@ export function StudentRiskProfileDashboard({
                               data-motion-button
                               key={option.id}
                               type="button"
+                              aria-pressed={selected}
                               tabIndex={revealed ? 0 : -1}
                               disabled={!revealed}
                               onClick={() =>

@@ -683,6 +683,7 @@ export function StudentSandbox({
                 <button
                   key={tab.id}
                   type="button"
+                  aria-pressed={activeTab === tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     "rounded-2xl px-4 py-3 text-left transition-colors",

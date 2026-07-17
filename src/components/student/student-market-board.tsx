@@ -779,6 +779,7 @@ export function StudentMarketBoard({
                     <button
                       key={item.symbol}
                       type="button"
+                      aria-pressed={active}
                       onPointerEnter={handleMotionEnter}
                       onPointerLeave={handleMotionLeave}
                       onClick={() => selectSymbol(item.symbol)}

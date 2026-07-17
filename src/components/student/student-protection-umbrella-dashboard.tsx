@@ -234,6 +234,7 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
                   data-motion-card
                   key={plan.id}
                   type="button"
+                  aria-pressed={plan.id === planId}
                   data-testid={`protection-plan-${plan.id}`}
                   onClick={() => previewPlan(plan.id)}
                   disabled={previewPending || pending}

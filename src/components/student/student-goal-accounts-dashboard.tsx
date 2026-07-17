@@ -134,6 +134,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
                 data-motion-card
                 key={goal.id}
                 type="button"
+                aria-pressed={goal.id === goalId}
                 onClick={() => selectGoal(goal.id)}
                 className={cn(
                   "rounded-[1.6rem] border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg",

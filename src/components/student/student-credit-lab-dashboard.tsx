@@ -199,6 +199,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               <button
                 key={scenario.id}
                 type="button"
+                aria-pressed={scenario.id === scenarioId}
                 data-credit-card
                 data-motion-card
                   onClick={() => {

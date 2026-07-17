@@ -325,6 +325,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <button
                     key={plan.id}
                     type="button"
+                    aria-pressed={active}
                     data-testid={`budget-plan-${plan.id}`}
                     onClick={() => {
                       setPlanId(plan.id);
@@ -394,6 +395,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <button
                     key={option.id}
                     type="button"
+                    aria-pressed={active}
                     data-testid={`insurance-plan-${option.id}`}
                     onClick={() => {
                       setInsuranceId(option.id);

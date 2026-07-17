@@ -90,30 +90,44 @@ export function TeacherConsole({ initialData }: { initialData: TeacherOverview }
         </section>
 
         <section data-motion-reveal className="panel rounded-3xl p-6">
-          <p className="bz-eyebrow">发起任务</p>
+          {/* itest9 a11y P1(3.3.2/1.3.1/4.1.2)：分区标题用 h2、4 个输入补可见 label——此前读屏只报控件 value、
+              无字段名，教师无法分辨/填写发布任务表单。 */}
+          <h2 className="bz-eyebrow">发起任务</h2>
           <div className="mt-5 space-y-4">
-            <input
-              value={form.title}
-              onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-              className="bz-field"
-            />
-            <textarea
-              value={form.brief}
-              onChange={(event) => setForm((current) => ({ ...current, brief: event.target.value }))}
-              rows={4}
-              className="bz-field"
-            />
+            <label className="block">
+              <span className="mb-1 block text-caption font-semibold text-fg-muted">任务标题</span>
+              <input
+                value={form.title}
+                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                className="bz-field"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-caption font-semibold text-fg-muted">任务简介</span>
+              <textarea
+                value={form.brief}
+                onChange={(event) => setForm((current) => ({ ...current, brief: event.target.value }))}
+                rows={4}
+                className="bz-field"
+              />
+            </label>
             <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                value={form.difficulty}
-                onChange={(event) => setForm((current) => ({ ...current, difficulty: event.target.value }))}
-                className="bz-field"
-              />
-              <input
-                value={form.dueLabel}
-                onChange={(event) => setForm((current) => ({ ...current, dueLabel: event.target.value }))}
-                className="bz-field"
-              />
+              <label className="block">
+                <span className="mb-1 block text-caption font-semibold text-fg-muted">难度</span>
+                <input
+                  value={form.difficulty}
+                  onChange={(event) => setForm((current) => ({ ...current, difficulty: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-caption font-semibold text-fg-muted">截止时间</span>
+                <input
+                  value={form.dueLabel}
+                  onChange={(event) => setForm((current) => ({ ...current, dueLabel: event.target.value }))}
+                  className="bz-field"
+                />
+              </label>
             </div>
             <button
               data-motion-button

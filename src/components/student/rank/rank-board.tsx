@@ -263,7 +263,7 @@ export function RankBoard({
                   <span className="block font-mono text-lg font-bold tabular-nums text-[color:var(--up-600)]">
                     {entry.power.toLocaleString("zh-CN")}
                   </span>
-                  <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-subtle">
+                  <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-muted">
                     学习点
                   </span>
                 </span>

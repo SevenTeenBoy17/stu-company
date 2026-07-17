@@ -577,7 +577,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <p className="font-semibold text-slate-950">{session.title}</p>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-slate-600">
                                   {formatDateLabel(new Date(session.updatedAt))}
                                 </span>
                               </div>
@@ -599,7 +599,14 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     </div>
                   ) : null}
 
-                <div className="h-full overflow-y-auto px-5 py-5">
+                {/* itest9 a11y P2(4.1.3)：聊天记录设为 log 实时区，新增的 AI 回复才会被读屏自动播报。 */}
+                <div
+                  className="h-full overflow-y-auto px-5 py-5"
+                  role="log"
+                  aria-live="polite"
+                  aria-relevant="additions"
+                  aria-label="KeyAI 对话记录"
+                >
                   {messages.length ? (
                     <div className="space-y-4">
                       {messages.map((message) => (
@@ -659,7 +666,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
 
               <div className="safe-drawer-offset border-t border-slate-200 bg-[var(--ink-700)] p-4 text-white">
                 {error ? (
-                  <div className="mb-3 rounded-[1.2rem] bg-white/8 px-3 py-2 text-sm text-white/80">
+                  <div role="alert" className="mb-3 rounded-[1.2rem] bg-white/8 px-3 py-2 text-sm text-white/80">
                     {error}
                   </div>
                 ) : null}
