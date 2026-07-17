@@ -10,7 +10,10 @@ type SeasonPayload = {
   leaderboard: PublicSeasonLeaderboardEntry[];
 };
 
-/** P2: global weekly season leaderboard — everyone this week shares one market. */
+/**
+ * 本周赛季榜（**按 viewer 班级作用域**）。itest7 P1 把它从全局榜收窄到班级记分牌，以免跨班/跨校
+ * 陌生未成年人的真名被全局暴露（战力榜才是跨校榜，且有别名+同意+隐身治理）。
+ */
 export function SeasonLeaderboard() {
   const [data, setData] = useState<SeasonPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +64,8 @@ export function SeasonLeaderboard() {
         ) : null}
       </div>
       <p className="mt-2 text-xs leading-5 text-fg-muted">
-        本周所有玩家面对同一套行情，凭决策一较高下。每周一刷新。
+        {/* itest8 浏览器复验：itest7 把榜收窄到班级后，此处仍写「所有玩家」= 与实际不符的过度宣称。 */}
+        本班同学本周面对同一套行情，凭决策一较高下。每周一刷新。
       </p>
 
       {error ? (
