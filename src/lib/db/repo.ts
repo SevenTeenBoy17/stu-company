@@ -3628,6 +3628,17 @@ export async function listLeaderboardSnapshots(
  * ranker (ranking.ts) consumes. Only consented users (decision 3) are eligible;
  * visibility filtering happens in ranking.ts at read time.
  */
+/**
+ * 加载某 period+periodKey 下所有【已同意】的战力快照，交给纯核 rankLeaderboard 在内存里做
+ * scope 过滤 + RANK() + 分页（pure-core，可测，镜像 SQL 的 RANK() OVER）。
+ *
+ * 性能画像（itest8 perf 审计实测）：WHERE (period, period_key) 走 leaderboard_snapshots_rank_idx
+ * (period, period_key, power) 的前导列 → Index Scan 非全表扫。当前载入量 = 该周期【全国已同意】
+ * 快照数，在试点规模（数所学校）完全可接受。
+ * ⚠️ 扩量红线：当单周期已同意用户达数千+时，此处按 scope（school/city/province）在 SQL 侧过滤 +
+ * `RANK() OVER (PARTITION BY scope ORDER BY power DESC)` + LIMIT 分页，避免把全国快照拉进内存。
+ * 届时保留 ranking.ts 纯核作为 school 内小集合的排序与可见性裁剪。
+ */
 export async function listRankSnapshots(
   period: RankPeriod,
   periodKey: string,
