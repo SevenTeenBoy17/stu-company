@@ -4,6 +4,7 @@ import { AdminUserManager } from "@/components/admin/admin-user-manager";
 import { ManualWechatConfigCard } from "@/components/admin/manual-wechat-config-card";
 import { ManualPaymentOrders } from "@/components/admin/manual-payment-orders";
 import { PlatformLayout } from "@/components/platform/platform-layout";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { getManualWechatCollectionConfig, getManualWechatReadiness } from "@/lib/billing/manual-wechat";
 import { MoneyText } from "@/components/shared/money-text";
 import { getAdminOverview, roleHomePath } from "@/lib/db/repo";
@@ -20,7 +21,7 @@ export default async function AdminPage() {
   if (user.role !== "admin") redirect(roleHomePath(user.role));
 
   const overview = await getAdminOverview();
-  const canManagePasswords = user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
+  const canManagePasswords = isSuperAdmin(user);
   const manualWechatConfig = await getManualWechatCollectionConfig();
   const manualWechatReadiness = getManualWechatReadiness(manualWechatConfig);
 

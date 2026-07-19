@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { updateUserPassword } from "@/lib/db/repo";
 
 const passwordSchema = z.object({
@@ -10,9 +11,6 @@ const passwordSchema = z.object({
   password: z.string().min(8).max(72),
 });
 
-function isSuperAdmin(user: { id: string; email: string }) {
-  return user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
-}
 
 export async function POST(request: Request) {
   const originBlock = checkOrigin(request);

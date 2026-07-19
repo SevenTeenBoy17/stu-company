@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { hashPassword, verifyPassword } from "@/lib/password";
 
+import { SUPERADMIN_TEAM } from "@/lib/auth-roles";
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
@@ -198,6 +199,16 @@ function createSeedUsers() {
       name: "超级管理员",
       title: "账号与权限总控",
     },
+    // 参赛团队成员（本公司参赛学生），既是产品用户，也是超级管理员。名单与
+    // src/lib/auth-roles.ts 的 SUPERADMIN_TEAM 同源，账号与授权名单永不漂移。
+    ...SUPERADMIN_TEAM.map((member) => ({
+      id: member.id,
+      email: member.email,
+      passwordHash: superPassword,
+      role: "admin" as Role,
+      name: member.name,
+      title: "参赛队员 · 超级管理员",
+    })),
   ] satisfies UserRecord[];
 
   return users.map((user) => {
@@ -292,6 +303,16 @@ function createSeedProfiles() {
         { label: "账号", value: "superadmin" },
       ],
     },
+    // 参赛团队成员画像（与 SUPERADMIN_TEAM 同源）。
+    ...SUPERADMIN_TEAM.map((member) => ({
+      userId: member.id,
+      headline: `${member.name} · 参赛团队成员，兼产品用户与超级管理员。`,
+      bio: "参加公司竞赛的学生，既在产品内体验完整学习旅程，也拥有后台账号与权限的最高维护权。",
+      metrics: [
+        { label: "身份", value: "参赛队员" },
+        { label: "权限级别", value: "超级管理员" },
+      ],
+    })),
   ] satisfies ProfileRecord[];
 }
 
