@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { validateInviteCode } from "@/lib/db/repo";
 import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     // 每次请求都消耗（枚举无论命中与否都发请求），与 register-by-invite 的 IP 维度对齐。
     const limited = rateLimit(rateLimitKey("invite-validate", undefined, request), 30, 60_000 * 10);
     if (!limited.ok) {
-      return apiError("invalid_input", "校验过于频繁，请稍后再试。", 429);
+      return rateLimitedError("校验过于频繁，请稍后再试。");
     }
 
     const { searchParams } = new URL(request.url);

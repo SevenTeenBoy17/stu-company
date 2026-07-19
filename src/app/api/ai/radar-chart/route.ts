@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestTutorRadarPayload } from "@/lib/ai";
 import { evaluatePersonalAiAccess, resolveSubscriptionState } from "@/lib/billing/subscription";
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   // H4: radar chart triggers an AI call; protect the same budget.
   const rl = rateLimit(rateLimitKey("ai-radar", auth.user.id, request), 20, 60_000);
   if (!rl.ok) {
-    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
   }
 
   try {

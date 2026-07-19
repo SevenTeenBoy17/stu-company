@@ -191,7 +191,7 @@ describe("POST /api/student/risk-profile/behavior", () => {
     const limited = await POST(makeRequest());
     expect(limited.status).toBe(429);
     const body = await limited.json();
-    expect(body.error).toBe("service_unavailable");
+    expect(body.error).toBe("rate_limited");
     // Message must be Chinese and mention retry time.
     expect(body.message).toMatch(/请.*秒后再试/);
   });

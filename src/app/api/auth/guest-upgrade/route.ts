@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { persistSession } from "@/lib/auth";
 import { createBillingIntent } from "@/lib/billing/billing-intent";
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const rl = rateLimit(rateLimitKey("guest-upgrade", auth.user.id, request), 5, 60_000 * 10);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const body = guestUpgradeSchema.parse(await request.json());

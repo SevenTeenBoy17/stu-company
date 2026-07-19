@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { authenticateUser, roleHomePath } from "@/lib/db/repo";
 import { clientIpFrom, peekRateLimit, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -46,14 +46,14 @@ export async function POST(request: Request) {
     // a correct password never costs a slot — only failures consume (see below).
     const accountKey = `login-account:${body.email.toLowerCase()}:${clientIpFrom(request)}`;
     if (!peekRateLimit(accountKey, 12)) {
-      return apiError("invalid_input", "登录尝试过于频繁，请稍后再试。", 429);
+      return rateLimitedError("登录尝试过于频繁，请稍后再试。");
     }
 
     // (2) Per-IP failure budget — stops password spraying across many accounts
     // from one IP. Peek (don't consume) so a successful login never costs a slot.
     const ipFailureKey = rateLimitKey("login-ip-fail", undefined, request);
     if (!peekRateLimit(ipFailureKey, LOGIN_IP_FAILURE_LIMIT)) {
-      return apiError("invalid_input", "登录尝试过于频繁，请稍后再试。", 429);
+      return rateLimitedError("登录尝试过于频繁，请稍后再试。");
     }
 
     const user = await authenticateUser(body.email.toLowerCase(), body.password);

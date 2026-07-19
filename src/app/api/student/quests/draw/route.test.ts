@@ -189,7 +189,7 @@ describe("POST /api/student/quests/draw", () => {
     const over = await POST(makeRequest({ questId: "review-rhythm", source: "quest_claim" }));
     expect(over.status).toBe(429);
     const body = await over.json();
-    expect(body.error).toBe("service_unavailable");
+    expect(body.error).toBe("rate_limited");
     expect(body.message).toMatch(/请求过于频繁/);
   });
 

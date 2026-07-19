@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestOnboardingNarrative } from "@/lib/ai";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const rl = rateLimit(rateLimitKey("ai-onboarding", auth.user.id, request), 12, 60_000);
   if (!rl.ok) {
-    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
   }
 
   try {

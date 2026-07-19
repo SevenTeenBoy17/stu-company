@@ -328,6 +328,7 @@ const WRITE_FNS = new Set<string>([
   // wrapper that never enters withDb itself, so the DB-write key is the plural.
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessages",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
+  "getOrCreateGuardianInviteForStudent",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
   "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
@@ -1184,6 +1185,97 @@ function normalizeInviteCode(code: string) {
   return code.trim().toUpperCase();
 }
 
+/**
+ * LC10h P1 (LC-11): a student mints their own guardian invite code so a
+ * self-registered parent can bind to them. Without this the family-linking chain
+ * (Premium sharing, adult-proxy purchase, weekly parent report) was unreachable
+ * for any organically-registered user — the only `studentLinkId`-carrying codes
+ * came from the seed.
+ *
+ * Idempotent per student: if a still-valid, unused guardian code already exists
+ * for this student's link, it is returned as-is rather than minting a duplicate.
+ * The code carries a `studentParentLinks` row (student side filled, parent side
+ * left for the parent's registration to claim), mirroring the seed path so the
+ * existing registration binding logic lights up unchanged.
+ */
+export async function getOrCreateGuardianInviteForStudent(studentUserId: string) {
+  return withDb(
+    "getOrCreateGuardianInviteForStudent",
+    async (db) => {
+      return db.transaction(async (tx) => {
+        const [student] = await tx.select().from(users).where(eq(users.id, studentUserId)).limit(1);
+        if (!student) throw new DomainError("用户不存在。");
+        if (student.role !== "student") throw new DomainError("只有学生账号可以生成家长绑定邀请码。");
+
+        // Reuse an existing unclaimed link for this student (parent side still open).
+        const [existingLink] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(
+            and(
+              eq(studentParentLinks.studentUserId, studentUserId),
+              eq(studentParentLinks.parentUserId, studentUserId),
+            ),
+          )
+          .limit(1);
+
+        let linkId = existingLink?.id;
+        if (linkId) {
+          const [reusable] = await tx
+            .select()
+            .from(inviteCodes)
+            .where(
+              and(
+                eq(inviteCodes.studentLinkId, linkId),
+                sql`${inviteCodes.usesRemaining} > 0`,
+                sql`${inviteCodes.expiresAt} > now()`,
+              ),
+            )
+            .limit(1);
+          if (reusable) return { invite: toInvite(reusable), reused: true };
+        }
+
+        if (!linkId) {
+          // Placeholder link: parentUserId = studentUserId until a parent claims it
+          // (the registration flow overwrites parentUserId on bind).
+          linkId = createId("link");
+          await tx.insert(studentParentLinks).values({
+            id: linkId,
+            studentUserId,
+            parentUserId: studentUserId,
+            bondCode: createId("bond"),
+          });
+        }
+
+        const [studentProfile] = await tx
+          .select({ name: profiles.name })
+          .from(profiles)
+          .where(eq(profiles.userId, studentUserId))
+          .limit(1);
+        const code = `MRB-P-${createId("g").slice(-8).toUpperCase()}`;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        const [row] = await tx
+          .insert(inviteCodes)
+          .values({
+            id: createId("invite"),
+            code,
+            role: "parent",
+            label: `家长绑定码 · ${studentProfile?.name ?? "学生"}`,
+            classroomId: student.classroomId ?? null,
+            studentLinkId: linkId,
+            createdBy: studentUserId,
+            usesRemaining: 1,
+            expiresAt,
+          })
+          .returning();
+        return { invite: toInvite(row), reused: false };
+      });
+    },
+    () => store.getOrCreateGuardianInviteForStudent(studentUserId),
+  );
+}
+
 export async function findInviteByCode(code: string) {
   const normalizedCode = normalizeInviteCode(code);
   return withDb(
@@ -1469,6 +1561,35 @@ export async function registerUserByEmail(input: {
           await tx.update(users).set({ classroomId: SANDBOX_CLASSROOM_ID }).where(eq(users.id, newUser.id));
           newUser.classroomId = SANDBOX_CLASSROOM_ID;
           await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, SANDBOX_CLASSROOM_ID)));
+        }
+
+        // LC10h P1 (LC-11): a parent registering here with a guardian invite must
+        // claim the carried link (parentUserId) so the family-linking chain works —
+        // registerUserByInvite already did this, but the public email-register path
+        // (used by the student-minted guardian code) skipped it, leaving the bond
+        // half-open and blocking addFamilyMember / adult-proxy purchase.
+        if (newUser.role === "parent" && studentLinkId) {
+          const [link] = await tx
+            .update(studentParentLinks)
+            .set({ parentUserId: newUser.id })
+            .where(eq(studentParentLinks.id, studentLinkId))
+            .returning();
+          const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
+          if (link && linkedRun) {
+            const report = buildGrowthReport(linkedRun, link.studentUserId, newUser.id);
+            await tx
+              .insert(growthReports)
+              .values({
+                id: createId("growth-report"),
+                studentUserId: link.studentUserId,
+                parentUserId: newUser.id,
+                payload: report,
+              })
+              .onConflictDoUpdate({
+                target: growthReports.studentUserId,
+                set: { parentUserId: newUser.id, payload: report },
+              });
+          }
         }
 
         return newUser;
@@ -2931,8 +3052,18 @@ export async function updateAdminManagedUser(
         const patch: Partial<typeof users.$inferInsert> = {
           role: nextRole,
           classroomId,
-          tokenVersion: sql`${users.tokenVersion} + 1` as unknown as number,
         };
+
+        // LC10h P3 (LC-07): only bump tokenVersion (which force-logs-out the user)
+        // when a JWT-embedded claim actually changes. The session JWT carries only
+        // role + classroomId; subscription/trial state is read from the DB on every
+        // request, so adjusting a trial/subscription must NOT kick the user offline.
+        // Revoking on role/classroom change is still required to prevent a
+        // downgraded user reusing a higher-privilege token.
+        const jwtClaimChanged = nextRole !== current.role || classroomId !== (current.classroomId ?? null);
+        if (jwtClaimChanged) {
+          patch.tokenVersion = sql`${users.tokenVersion} + 1` as unknown as number;
+        }
 
         if (input.trialDays !== undefined) {
           patch.trialExpiresAt =

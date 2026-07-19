@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildRateLimitMessage, rateLimit } from "@/lib/rate-limit";
+import { buildRateLimitMessage, rateLimit, registerRateLimit } from "@/lib/rate-limit";
 
 // TEST-STRATEGY R5: the limiter is a correct per-process sliding window. The
 // tests also document that counts are not shared across serverless instances;
@@ -46,6 +46,29 @@ describe("rateLimit sliding window (R5)", () => {
   it("stays bounded and responsive past MAX_TRACKED_KEYS (5000)", () => {
     for (let i = 0; i < 5_050; i++) rateLimit(`r5:flood:${i}`, 5, 1000);
     expect(rateLimit("r5:flood:fresh", 5, 1000).ok).toBe(true);
+  });
+});
+
+describe("registerRateLimit env override (LC10h LC-02)", () => {
+  const OLD = { max: process.env.REGISTER_RATE_LIMIT_MAX, win: process.env.REGISTER_RATE_LIMIT_WINDOW_MS };
+  afterEach(() => {
+    if (OLD.max === undefined) delete process.env.REGISTER_RATE_LIMIT_MAX;
+    else process.env.REGISTER_RATE_LIMIT_MAX = OLD.max;
+    if (OLD.win === undefined) delete process.env.REGISTER_RATE_LIMIT_WINDOW_MS;
+    else process.env.REGISTER_RATE_LIMIT_WINDOW_MS = OLD.win;
+  });
+  const req = () => new Request("https://x/api/auth/register", { headers: { "x-real-ip": "10.9.9.9" } });
+
+  it("defaults to 5 per window when unset (behaviour unchanged)", () => {
+    delete process.env.REGISTER_RATE_LIMIT_MAX;
+    for (let i = 0; i < 5; i++) expect(registerRateLimit(req(), "reg-default").ok).toBe(true);
+    expect(registerRateLimit(req(), "reg-default").ok).toBe(false);
+  });
+
+  it("widens the cap for a supervised classroom sign-up when REGISTER_RATE_LIMIT_MAX is raised", () => {
+    process.env.REGISTER_RATE_LIMIT_MAX = "40";
+    for (let i = 0; i < 40; i++) expect(registerRateLimit(req(), "reg-widened").ok).toBe(true);
+    expect(registerRateLimit(req(), "reg-widened").ok).toBe(false);
   });
 });
 

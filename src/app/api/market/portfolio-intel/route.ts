@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiError, handleRouteError } from "@/lib/api-response";
+import { apiError, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestAllocationInsight } from "@/lib/ai";
 import { fetchAlltickMarketPulse } from "@/lib/alltick";
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     // H4: portfolio intel goes through the AI gateway too.
     const rl = rateLimit(rateLimitKey("ai-intel", auth.user.id, request), 20, 60_000);
     if (!rl.ok) {
-      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const state = await getSimulationStateForUser(auth.user.id);

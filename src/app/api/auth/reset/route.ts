@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { updateUserPassword } from "@/lib/db/repo";
 import { verifyPasswordResetToken } from "@/lib/password-reset";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const rl = rateLimit(rateLimitKey("reset-password", undefined, request), 10, 60_000 * 10);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const body = resetSchema.parse(await request.json());

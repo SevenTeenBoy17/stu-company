@@ -1303,6 +1303,42 @@ export function findInviteByCode(code: string) {
   return getStore().invites.find((invite) => invite.code.toUpperCase() === code.toUpperCase()) ?? null;
 }
 
+// LC10h P1 (LC-11) in-memory mirror of the guardian-invite mint. Idempotent per
+// student: reuse a still-valid unclaimed guardian code, else create link + code.
+export function getOrCreateGuardianInviteForStudent(studentUserId: string) {
+  const store = getStore();
+  const student = store.users.find((u) => u.id === studentUserId);
+  if (!student) throw new Error("用户不存在。");
+  if (student.role !== "student") throw new Error("只有学生账号可以生成家长绑定邀请码。");
+
+  let link = store.parentLinks.find((l) => l.studentUserId === studentUserId && l.parentUserId === studentUserId);
+  if (link) {
+    const reusable = store.invites.find(
+      (i) => i.studentLinkId === link!.id && i.usesRemaining > 0 && new Date(i.expiresAt).getTime() > Date.now(),
+    );
+    if (reusable) return { invite: reusable, reused: true };
+  }
+  if (!link) {
+    link = { id: createId("link"), studentUserId, parentUserId: studentUserId, bondCode: createId("bond") };
+    store.parentLinks.push(link);
+  }
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+  const invite: InviteCode = {
+    id: createId("invite"),
+    code: `MRB-P-${createId("g").slice(-8).toUpperCase()}`,
+    role: "parent",
+    label: `家长绑定码 · ${student.name ?? "学生"}`,
+    classroomId: student.classroomId,
+    studentLinkId: link.id,
+    createdBy: studentUserId,
+    usesRemaining: 1,
+    expiresAt: expiresAt.toISOString(),
+  };
+  store.invites.push(invite);
+  return { invite, reused: false };
+}
+
 export function validateInviteCode(code: string) {
   const invite = findInviteByCode(code);
   if (!invite) return { valid: false, reason: "邀请码不存在。" };
@@ -1402,12 +1438,14 @@ export async function registerUserByEmail(input: {
 
   let role: UserRecord["role"] = "student";
   let classroomId: string | undefined;
+  let studentLinkId: string | undefined;
 
   if (input.inviteCode) {
     const inviteStatus = validateInviteCode(input.inviteCode);
     if (inviteStatus.valid && inviteStatus.invite) {
       role = inviteStatus.invite.role;
       classroomId = inviteStatus.invite.classroomId;
+      studentLinkId = inviteStatus.invite.studentLinkId;
       inviteStatus.invite.usesRemaining -= 1;
     } else {
       throw new DomainError("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
@@ -1448,6 +1486,20 @@ export async function registerUserByEmail(input: {
 
   if (newUser.role === "student" && newUser.classroomId) {
     store.runs.push(createInitialRun(newUser.id, newUser.classroomId));
+  }
+
+  // LC10h P1 (LC-11): mirror registerUserByInvite — a parent registering with a
+  // guardian invite must claim the carried link so family linking works.
+  if (newUser.role === "parent" && studentLinkId) {
+    const studentLink = store.parentLinks.find((item) => item.id === studentLinkId);
+    if (studentLink) {
+      studentLink.parentUserId = newUser.id;
+      store.growthReports = store.growthReports.filter((report) => report.parentUserId !== newUser.id);
+      const linkedRun = store.runs.find((run) => run.userId === studentLink.studentUserId);
+      if (linkedRun) {
+        store.growthReports.push(buildGrowthReport(linkedRun, studentLink.studentUserId, newUser.id));
+      }
+    }
   }
 
   return newUser;

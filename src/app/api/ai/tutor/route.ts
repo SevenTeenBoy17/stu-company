@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { requestTutorInsight } from "@/lib/ai";
 import { evaluatePersonalAiAccess, resolveSubscriptionState } from "@/lib/billing/subscription";
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // H4: tutor is cheaper per call than chat but still hits the AI gateway.
   const rl = rateLimit(rateLimitKey("ai-tutor", auth.user.id, request), 20, 60_000);
   if (!rl.ok) {
-    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
   }
 
   try {

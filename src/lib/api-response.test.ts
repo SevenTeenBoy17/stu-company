@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { handleRouteError } from "@/lib/api-response";
+import { handleRouteError, rateLimitedError } from "@/lib/api-response";
+
+describe("rateLimitedError (LC10h LC-01)", () => {
+  it("emits the stable rate_limited code at 429 so clients can detect throttling programmatically", async () => {
+    const res = rateLimitedError("请求过于频繁，请 30 秒后再试。", 30_000);
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("rate_limited");
+    expect(body.error).not.toBe("invalid_input");
+    expect(body.message).toContain("频繁");
+  });
+
+  it("sets Retry-After (seconds, ceil) when retryAfterMs is known and omits it otherwise", () => {
+    expect(rateLimitedError("x", 2_400).headers.get("Retry-After")).toBe("3");
+    expect(rateLimitedError("x").headers.get("Retry-After")).toBeNull();
+    expect(rateLimitedError("x", 0).headers.get("Retry-After")).toBeNull();
+  });
+});
 
 describe("handleRouteError", () => {
   it("maps the client-side query-race 'timed out' error to 503 db_unavailable — never leaks the raw internal message", async () => {

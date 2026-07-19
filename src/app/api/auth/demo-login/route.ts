@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { authenticateUser, getQuickDemoCredentials, roleHomePath } from "@/lib/db/repo";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const rl = rateLimit(rateLimitKey("demo-login", email, request), 20, 60_000 * 10);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     // Only the built-in demo accounts may use one-click login.

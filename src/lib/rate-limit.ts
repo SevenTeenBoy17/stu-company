@@ -106,3 +106,21 @@ export function buildRateLimitMessage(result: RateLimitResult) {
   const seconds = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
   return `请求过于频繁，请 ${seconds} 秒后再试。`;
 }
+
+/**
+ * LC10h P2 (LC-02): registration is IP-keyed, so a whole classroom / dorm behind
+ * one NAT hits the shared cap when signing up together. The default (5 / 10 min)
+ * is unchanged, but an operator can widen it for a supervised sign-up session via
+ * REGISTER_RATE_LIMIT_MAX (count) and REGISTER_RATE_LIMIT_WINDOW_MS (window).
+ * The E2E multiplier still applies on top, as with every other limit.
+ */
+function positiveIntEnv(name: string, fallback: number): number {
+  const raw = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(raw) && raw >= 1 ? raw : fallback;
+}
+
+export function registerRateLimit(request: Request, scope = "register"): RateLimitResult {
+  const max = positiveIntEnv("REGISTER_RATE_LIMIT_MAX", 5);
+  const windowMs = positiveIntEnv("REGISTER_RATE_LIMIT_WINDOW_MS", 10 * 60_000);
+  return rateLimit(rateLimitKey(scope, undefined, request), max, windowMs);
+}

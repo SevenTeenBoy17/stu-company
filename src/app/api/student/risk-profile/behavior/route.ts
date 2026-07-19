@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requestBehaviorPersona } from "@/lib/ai";
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import {
   getLearningProgress,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const rl = rateLimit(rateLimitKey("behavior-persona", auth.user.id, request), 6, 60_000);
     if (!rl.ok) {
-      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const [state, learning, existingProfile] = await Promise.all([

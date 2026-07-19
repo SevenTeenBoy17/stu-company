@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { createBillingIntent } from "@/lib/billing/billing-intent";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   try {
     const rl = rateLimit(rateLimitKey("parent-link", auth.user.id, request), 8, 60_000 * 10);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const { token, intent } = await createBillingIntent({

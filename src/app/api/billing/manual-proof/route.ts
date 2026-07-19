@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { attachManualPaymentProof, getPaymentOrderByOutTradeNo } from "@/lib/db/repo";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   // pending 订单——补限流防止重复轰炸/存储放大（AGENTS.md 要求 payment-intent 路由挂限流）。
   const rl = rateLimit(rateLimitKey("manual-proof", auth.user.id, request), 8, 60_000);
   if (!rl.ok) {
-    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
   }
 
   try {
