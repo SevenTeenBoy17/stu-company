@@ -142,9 +142,9 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div>
             <p className="bz-eyebrow-inverse">Protection Umbrella</p>
-            <h1 className="mt-4 max-w-4xl text-h1 md:text-display-lg">
+            <h2 className="mt-4 max-w-4xl text-h1 md:text-display-lg">
               风险保护伞：先学会防守，再追求成长
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body leading-8 text-white/68">
               保险、应急金、债务和资产分散不是&ldquo;没意思&rdquo;的部分，它们决定坏情况出现时你还能不能继续学习和行动。
             </p>

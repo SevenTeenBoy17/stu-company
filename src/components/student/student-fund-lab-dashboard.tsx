@@ -147,9 +147,9 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div>
             <p className="bz-eyebrow-inverse">Fund / ETF Lab</p>
-            <h1 className="mt-4 max-w-3xl text-display-lg font-semibold tracking-tight md:text-display-xl">
+            <h2 className="mt-4 max-w-3xl text-display-lg font-semibold tracking-tight md:text-display-xl">
               基金/ETF 实验室：用组合理解长期理财
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body leading-8 text-white/70">
               把指数、债券、黄金和主题基金放在一起比较。这里不推荐真实产品，只训练&ldquo;分散、回撤、定投、目标金额&rdquo;这些核心概念。
             </p>

@@ -121,9 +121,9 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
 
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="bz-eyebrow-inverse">Credit Lab</p>
-            <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               先算清利息，再决定要不要借
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
               信用实验室把分期、应急借款和提前还款放进同一张沙盘。借款会增加现金，也会同步增加债务；真正要学的是未来现金流能不能承受。
             </p>

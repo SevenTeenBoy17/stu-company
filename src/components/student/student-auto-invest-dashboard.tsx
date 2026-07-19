@@ -180,7 +180,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div className="max-w-3xl">
                 {/* Eyebrow on dark panel → bz-eyebrow-inverse */}
                 <p className="bz-eyebrow-inverse">Auto Invest Robot</p>
-                <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h1>
+                <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是&ldquo;猜最低点&rdquo;，而是现金安全、平均成本和长期纪律。
                 </p>

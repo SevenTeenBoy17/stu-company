@@ -1282,9 +1282,9 @@ export function StudentQuestDashboard({
           <div className="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="bz-eyebrow-inverse">任务中心</p>
-            <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               任务中心：好习惯闯关
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
               把观察、交易、现金管理和复盘拆成可完成的小关卡。每次打开沙盘，都知道下一步练什么。
             </p>

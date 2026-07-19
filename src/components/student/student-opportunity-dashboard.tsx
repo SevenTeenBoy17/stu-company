@@ -89,9 +89,9 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
           <div>
             <p className="bz-eyebrow-inverse">Opportunity Lab</p>
-            <h1 className="mt-4 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-4 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               机会训练场：先写观察单，再谈模拟配置
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/70">
               把热门板块、资金流和政策主题转成青少年能理解的训练任务。目标不是猜涨跌，而是练习证据链、风险意识和复盘表达。
             </p>

@@ -161,7 +161,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <p className="bz-eyebrow-inverse">Life Ledger</p>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
-                <h1 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h1>
+                <h2 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   把每月收入、必要支出、自动储蓄、保险保费和突发事件放在同一张账本里。
                   真实理财不只是市场涨跌，更是现金流能不能扛住生活。

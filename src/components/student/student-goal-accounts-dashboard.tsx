@@ -96,9 +96,9 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div>
             <p className="bz-eyebrow-inverse">Goal Accounts</p>
-            <h1 className="mt-4 max-w-4xl text-display-lg font-semibold tracking-tight md:text-display-xl">
+            <h2 className="mt-4 max-w-4xl text-display-lg font-semibold tracking-tight md:text-display-xl">
               目标账户：把未来想要的东西拆成今天的小动作
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body leading-8 text-white/68">{payload.overview.learningPrompt}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
