@@ -414,7 +414,10 @@ export function StudentSandbox({
       <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6" data-motion-reveal>
         {/* Eyebrow on light panel → bz-eyebrow (replaces hardcoded text-orange-500 tracking class) */}
         <p className="bz-eyebrow bz-brand-text-on-light">Brown Zone</p>
-        <h1 className="mt-2 text-display-sm font-semibold tracking-tight text-fg-strong sm:text-display-md">学生策略台</h1>
+        {/* LC10h E2E 修复：本页标题「学生策略台」由 PlatformLayout 以 <h1> 渲染（页面唯一 h1）。
+            此处沙盘头部曾用同名 <h1>，与外壳标题构成重复 h1（strict-mode 命中 2 个 heading）。
+            降为视觉标题 <p>（样式不变），保证每页只有一个「学生策略台」heading。 */}
+        <p className="mt-2 text-display-sm font-semibold tracking-tight text-fg-strong sm:text-display-md">学生策略台</p>
       </header>
 
       {/* ── KPI bar: ONE hero (net worth) + 4 secondary metrics ── */}
