@@ -46,8 +46,7 @@ export default async function AdminPage() {
               商业运营与账号权限，总览在这里完成。
             </h2>
             <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">
-              当前采用“双轨商业模式”：个人月卡承接自助体验，学校授权承接批量账号、课堂数据、
-              教师管理和阶段性报告。这里展示的是运营面板与账号管理入口。
+              个人月卡与学校授权双轨并行，这里是运营面板与账号管理入口。
             </p>
           </div>
           <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.06] p-5">

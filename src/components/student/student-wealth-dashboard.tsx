@@ -320,18 +320,26 @@ export function StudentWealthDashboard({
               </div>
             </div>
             <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              {/* Phase 3 信息收敛：slice 只留名称+占比，hint 副文案折进 Disclosure（键盘可达） */}
               {summary.allocation.map((slice) => (
                 <div key={slice.id} data-motion-card className="rounded-2xl bg-white/[0.06] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="h-3 w-3 rounded-full" style={{ background: slice.color }} />
-                      <div className="min-w-0">
-                        <p className="truncate text-body-sm font-semibold text-white">{slice.label}</p>
-                        <p className="mt-1 truncate text-caption text-white/70">{slice.hint}</p>
-                      </div>
+                      <p className="truncate text-body-sm font-semibold text-white">{slice.label}</p>
                     </div>
                     <p className="shrink-0 text-body-sm tabular-nums font-semibold text-white">{slice.weight.toFixed(1)}%</p>
                   </div>
+                  {slice.hint ? (
+                    <Disclosure
+                      summary="作用说明"
+                      className="mt-2"
+                      summaryClassName="text-caption text-white/70 hover:text-white"
+                      panelClassName="text-caption leading-5 text-white/70"
+                    >
+                      {slice.hint}
+                    </Disclosure>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -427,15 +435,30 @@ export function StudentWealthDashboard({
             </div>
             <h3 className="mt-5 text-h3 text-fg-strong">{summary.coaching.title}</h3>
             <p className="mt-3 text-body leading-7 text-fg-muted">{summary.coaching.summary}</p>
-            <div className="mt-5 space-y-3">
-              {summary.coaching.nextSteps.map((step, index) => (
+            <div className="mt-5 grid gap-3">
+              {/* Phase 3 信息收敛：默认只铺开与当前诊断最相关的第 1 条建议，其余折进 Disclosure */}
+              {summary.coaching.nextSteps.slice(0, 1).map((step) => (
                 <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-brand-subtle p-4">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
-                    {index + 1}
+                    1
                   </span>
                   <p className="text-body-sm font-semibold leading-6 text-fg-default">{step}</p>
                 </div>
               ))}
+              {summary.coaching.nextSteps.length > 1 ? (
+                <Disclosure summary={`展开其余 ${summary.coaching.nextSteps.length - 1} 条建议`}>
+                  <div className="grid gap-3">
+                    {summary.coaching.nextSteps.slice(1).map((step, index) => (
+                      <div key={step} className="flex gap-3 rounded-2xl bg-brand-subtle p-4">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
+                          {index + 2}
+                        </span>
+                        <p className="text-body-sm font-semibold leading-6 text-fg-default">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Disclosure>
+              ) : null}
             </div>
           </section>
 

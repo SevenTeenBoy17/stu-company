@@ -25,6 +25,7 @@ import type {
   LifeCashflowApplicationResult,
   LifeCashflowPayload,
 } from "@/lib/life-cashflow";
+import { Disclosure } from "@/components/shared/disclosure";
 import { clamp, cn, formatCurrency } from "@/lib/utils";
 
 gsap.registerPlugin(useGSAP);
@@ -163,8 +164,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
               <div className="max-w-3xl">
                 <h2 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
-                  把每月收入、必要支出、自动储蓄、保险保费和突发事件放在同一张账本里。
-                  真实理财不只是市场涨跌，更是现金流能不能扛住生活。
+                  把收入、支出、储蓄、保费和突发事件放进同一张账本。
                 </p>
               </div>
               {/* Hero stat chip on dark — frosted glass, no .bz-hero-stat which targets light surfaces */}
@@ -178,30 +178,31 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {/* 图形化 KPI：图标 + 纯数字，叙述性 hint 已删（审计 /student/life ③） */}
               {[
                 {
                   label: "模拟月收入",
                   value: formatCurrency(payload.overview.monthlyIncome),
                   icon: CircleDollarSign,
-                  hint: "奖学金、零花钱和兼职式收入合并估算。",
+                  sub: null,
                 },
                 {
                   label: "必要支出",
                   value: formatCurrency(payload.overview.requiredExpense),
                   icon: ReceiptText,
-                  hint: "必须支付的生活成本、债务和保费。",
+                  sub: null,
                 },
                 {
                   label: "计划储蓄",
                   value: formatCurrency(payload.overview.plannedSaving),
                   icon: PiggyBank,
-                  hint: `储蓄率 ${payload.overview.savingsRate}%`,
+                  sub: `储蓄率 ${payload.overview.savingsRate}%`,
                 },
                 {
                   label: "可撑月数",
                   value: `${payload.overview.runwayMonths} 月`,
                   icon: Umbrella,
-                  hint: "现金和储蓄能覆盖几个月必要开销。",
+                  sub: null,
                 },
               ].map((item) => {
                 const Icon = item.icon;
@@ -212,7 +213,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     <p className="text-body-sm font-semibold">{item.label}</p>
                   </div>
                     <p className="mt-3 whitespace-nowrap text-h2 tabular-nums text-white">{item.value}</p>
-                    <p className="mt-2 text-caption leading-5 text-white/70">{item.hint}</p>
+                    {item.sub && <p className="mt-2 text-caption tabular-nums leading-5 text-white/70">{item.sub}</p>}
                   </div>
                 );
               })}
@@ -341,7 +342,8 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                       {active ? <CheckCircle2 className="h-5 w-5 text-brand" /> : <span className="h-5 w-5 rounded-full border border-slate-300" />}
                     </div>
                     <p className="mt-3 text-body leading-7 text-fg-muted">{plan.tagline}</p>
-                    <p className="mt-4 rounded-full bg-white px-3 py-1 text-caption text-fg-muted">{plan.concept}</p>
+                    {/* 折：concept 副段只在选中态显示（审计 /student/life ②，复用 aria-pressed 状态） */}
+                    {active && <p className="mt-4 rounded-full bg-white px-3 py-1 text-caption text-fg-muted">{plan.concept}</p>}
                   </button>
                 );
               })}
@@ -415,7 +417,8 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                       </div>
                       {active && <CheckCircle2 className="h-5 w-5 text-brand" />}
                     </div>
-                    <p className="mt-3 text-caption leading-5 text-fg-muted">{option.concept}</p>
+                    {/* 折：concept 副句只在选中态显示（审计 /student/life ⑤，复用 aria-pressed 状态） */}
+                    {active && <p className="mt-3 text-caption leading-5 text-fg-muted">{option.concept}</p>}
                   </button>
                 );
               })}
@@ -456,7 +459,15 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                       <p className="bz-brand-text-on-light mt-1 text-body-sm font-semibold tabular-nums">{formatCurrency(event.outOfPocket)}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-caption leading-5 text-fg-muted">{event.teachingPoint}</p>
+                  {/* 折：teachingPoint 默认收起，点击展开（审计 /student/life ④）；覆盖/自付数字保留在卡面 */}
+                  <Disclosure
+                    className="mt-2"
+                    summary="教学点"
+                    summaryClassName="text-caption"
+                    panelClassName="text-caption leading-5"
+                  >
+                    {event.teachingPoint}
+                  </Disclosure>
                 </article>
               ))}
             </div>
@@ -470,16 +481,37 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <CalendarDays className="h-5 w-5 text-brand" />
             <h2 className="text-h1 text-fg-strong">4 周生活账本训练</h2>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {payload.weeklyPlan.map((week) => (
-              <article key={week.week} className="rounded-[1.5rem] bg-slate-50 p-5">
-                <p className="bz-eyebrow bz-brand-text-on-light">Week 0{week.week}</p>
-                <h3 className="mt-3 text-h3 text-fg-strong">{week.title}</h3>
-                <p className="mt-3 text-body text-fg-default">本周弹性预算 {formatCurrency(week.budget)}</p>
-                <p className="mt-3 text-body-sm leading-6 text-fg-muted">{week.checkpoint}</p>
-              </article>
-            ))}
+          {/* 移：主视图只留一张进度概览卡，四张周卡（title+checkpoint 解说）整块移入下方折叠详情（审计 /student/life ①） */}
+          <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-5">
+            <p className="text-body font-semibold text-fg-strong">
+              共 4 周 · 弹性预算合计{" "}
+              <span className="bz-brand-text-on-light tabular-nums">
+                {formatCurrency(payload.weeklyPlan.reduce((sum, week) => sum + week.budget, 0))}
+              </span>
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {payload.weeklyPlan.map((week) => (
+                <div key={week.week} className="rounded-2xl bg-white p-3 text-center">
+                  <p className="bz-eyebrow bz-brand-text-on-light">W0{week.week}</p>
+                  <p className="mt-1 text-body-sm font-semibold tabular-nums text-fg-strong">
+                    {formatCurrency(week.budget)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
+          <Disclosure className="mt-4" summary="查看每周训练详情">
+            <div className="grid gap-4 md:grid-cols-2">
+              {payload.weeklyPlan.map((week) => (
+                <article key={week.week} className="rounded-[1.5rem] bg-slate-50 p-5">
+                  <p className="bz-eyebrow bz-brand-text-on-light">Week 0{week.week}</p>
+                  <h3 className="mt-3 text-h3 text-fg-strong">{week.title}</h3>
+                  <p className="mt-3 text-body text-fg-default">本周弹性预算 {formatCurrency(week.budget)}</p>
+                  <p className="mt-3 text-body-sm leading-6 text-fg-muted">{week.checkpoint}</p>
+                </article>
+              ))}
+            </div>
+          </Disclosure>
         </div>
 
         <div className="panel rounded-[2rem] p-5 md:p-6">
