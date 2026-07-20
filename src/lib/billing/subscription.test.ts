@@ -4,8 +4,24 @@ import {
   canAddFamilyMember,
   canUserOperate,
   evaluatePersonalAiAccess,
+  laterExpiry,
   resolveSubscriptionState,
 } from "./subscription";
+
+// itest10 #8: family sharing may only EXTEND a student's Premium — never stamp
+// the owner's earlier expiry over the student's own longer coverage.
+describe("laterExpiry", () => {
+  it("keeps the later of two ISO dates", () => {
+    expect(laterExpiry("2026-08-01T00:00:00Z", "2030-01-01T00:00:00Z")).toBe("2030-01-01T00:00:00Z");
+    expect(laterExpiry("2030-01-01T00:00:00Z", "2026-08-01T00:00:00Z")).toBe("2030-01-01T00:00:00Z");
+  });
+
+  it("treats undefined as no coverage (the real date wins)", () => {
+    expect(laterExpiry(undefined, "2026-08-01T00:00:00Z")).toBe("2026-08-01T00:00:00Z");
+    expect(laterExpiry("2026-08-01T00:00:00Z", undefined)).toBe("2026-08-01T00:00:00Z");
+    expect(laterExpiry(undefined, undefined)).toBeUndefined();
+  });
+});
 
 describe("resolveSubscriptionState", () => {
   const now = new Date("2026-05-27T10:00:00Z");

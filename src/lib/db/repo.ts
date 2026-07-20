@@ -53,6 +53,7 @@ import {
 } from "@/lib/db/schema";
 import {
   canAddFamilyMember,
+  laterExpiry,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
 import { currentSeasonSeed } from "@/lib/season";
@@ -328,7 +329,7 @@ const WRITE_FNS = new Set<string>([
   // wrapper that never enters withDb itself, so the DB-write key is the plural.
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessages",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
-  "getOrCreateGuardianInviteForStudent",
+  "getOrCreateGuardianInviteForStudent", "resetGuardianBindingForStudent",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
   "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
@@ -403,6 +404,16 @@ async function withDb<T>(
     // getDirectFallbackDb() 非空，若不在此拦截，领域错误会误发 fallback SLI 且把整事务
     // 对着跨洋 direct 连接白跑一遍（本地非 pooler 观察不到）。
     if (error instanceof DomainError) {
+      throw error;
+    }
+    // itest10 #4: NEVER retry a write on the direct connection. A client-side
+    // statement timeout (withQueryTimeout) only rejects the awaiting promise —
+    // it does NOT cancel the transaction already in flight on the pooler, which
+    // may still COMMIT. Re-running a non-idempotent write (advance-round, quest
+    // claim, 理财 writes — none carry an idempotency key) on the direct link
+    // would double-apply it and corrupt the run. Writes fail loud (P2); only
+    // reads use the cross-region direct fallback.
+    if (WRITE_FNS.has(fn.replace(/:direct_supabase$/, ""))) {
       throw error;
     }
     const directDb = getDirectFallbackDb();
@@ -1930,7 +1941,14 @@ export async function applyFamilyEntitlement(user: UserRecord): Promise<UserReco
       const subscriptionExpiresAt = maybeIso(row.subscriptionExpiresAt);
       const state = resolveSubscriptionState(tier, maybeIso(row.trialExpiresAt), subscriptionExpiresAt);
       if (state.status === "active" && tier === "premium") {
-        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt };
+        // itest10 #8: family sharing may only EXTEND — never shorten a student's
+        // own longer-running Premium (e.g. admin-granted to 2030) by stamping the
+        // owner's earlier expiry. Keep whichever coverage lasts longer.
+        return {
+          ...user,
+          subscriptionTier: "premium",
+          subscriptionExpiresAt: laterExpiry(user.subscriptionExpiresAt, subscriptionExpiresAt),
+        };
       }
       return user;
     },
@@ -2034,6 +2052,43 @@ export async function removeFamilyMember(ownerUserId: string, studentUserId: str
       return deleted.length > 0;
     },
     () => store.removeFamilyMember(ownerUserId, studentUserId),
+  );
+}
+
+/**
+ * Admin remediation for a mis-claimed guardian binding (itest10 #12). The
+ * 1-student↔1-parent guard refuses a second guardian code once a link is
+ * claimed, so a link claimed by the WRONG account would otherwise lock the
+ * student out forever ("请联系老师或管理员" with no actual admin lever). This
+ * resets the link to an unclaimed placeholder, revokes the mis-bound parent's
+ * family seat + the child's growth report, so the student can mint a fresh code.
+ */
+export async function resetGuardianBindingForStudent(studentUserId: string) {
+  return withDb(
+    "resetGuardianBindingForStudent",
+    async (db) => {
+      return db.transaction(async (tx) => {
+        const [link] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(eq(studentParentLinks.studentUserId, studentUserId))
+          .for("update")
+          .limit(1);
+        if (!link) throw new DomainError("该学生没有家长绑定记录。");
+        if (link.parentUserId === studentUserId) {
+          throw new DomainError("该学生当前没有已绑定的家长，无需解绑。");
+        }
+        const previousParentId = link.parentUserId;
+        await tx
+          .update(studentParentLinks)
+          .set({ parentUserId: studentUserId })
+          .where(eq(studentParentLinks.id, link.id));
+        await tx.delete(familyMembers).where(eq(familyMembers.studentUserId, studentUserId));
+        await tx.delete(growthReports).where(eq(growthReports.studentUserId, studentUserId));
+        return { studentUserId, previousParentId };
+      });
+    },
+    () => store.resetGuardianBindingForStudent(studentUserId),
   );
 }
 

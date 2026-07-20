@@ -59,6 +59,7 @@ import {
 import { buildPeerHeatPayload } from "@/lib/peer-heat";
 import {
   canAddFamilyMember,
+  laterExpiry,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
 import { DomainError } from "@/lib/domain-error";
@@ -643,6 +644,24 @@ export function removeFamilyMember(ownerUserId: string, studentUserId: string): 
   return store.familyMembers.length < before;
 }
 
+/**
+ * Admin remediation for a mis-claimed guardian binding (itest10 #12) — memory
+ * mirror of repo.resetGuardianBindingForStudent.
+ */
+export function resetGuardianBindingForStudent(studentUserId: string) {
+  const store = getStore();
+  const link = store.parentLinks.find((item) => item.studentUserId === studentUserId);
+  if (!link) throw new DomainError("该学生没有家长绑定记录。");
+  if (link.parentUserId === studentUserId) {
+    throw new DomainError("该学生当前没有已绑定的家长，无需解绑。");
+  }
+  const previousParentId = link.parentUserId;
+  link.parentUserId = studentUserId;
+  store.familyMembers = store.familyMembers.filter((m) => m.studentUserId !== studentUserId);
+  store.growthReports = store.growthReports.filter((r) => r.studentUserId !== studentUserId);
+  return { studentUserId, previousParentId };
+}
+
 /** Upgrade a student to Premium while their family owner's subscription is active. */
 export function applyFamilyEntitlement(user: UserRecord): UserRecord {
   if (user.role !== "student") return user;
@@ -653,7 +672,8 @@ export function applyFamilyEntitlement(user: UserRecord): UserRecord {
   return {
     ...user,
     subscriptionTier: "premium",
-    subscriptionExpiresAt: owner.subscriptionExpiresAt,
+    // itest10 #8: extend-only — never shorten the student's own longer Premium.
+    subscriptionExpiresAt: laterExpiry(user.subscriptionExpiresAt, owner.subscriptionExpiresAt),
   };
 }
 
@@ -1435,7 +1455,12 @@ export async function registerUserByInvite(input: {
 
   if (newUser.role === "parent" && inviteStatus.invite.studentLinkId) {
     const studentLink = store.parentLinks.find((item) => item.id === inviteStatus.invite.studentLinkId);
-    if (studentLink) {
+    // itest10 #11: only claim a still-unclaimed placeholder (parentUserId ==
+    // studentUserId), mirroring the DB path (repo.ts registerUserByInvite). The
+    // seeded demo code MRB-PARENT-2026 points at bond-1, which is already bound
+    // to parent-1 — without this guard a stranger registering with that public
+    // code would silently reassign student-1's growth report (hijack + lockout).
+    if (studentLink && studentLink.parentUserId === studentLink.studentUserId) {
       studentLink.parentUserId = newUser.id;
       store.growthReports = store.growthReports.filter((report) => report.parentUserId !== newUser.id);
       const linkedRun = store.runs.find((run) => run.userId === studentLink.studentUserId);
@@ -1519,7 +1544,9 @@ export async function registerUserByEmail(input: {
   // guardian invite must claim the carried link so family linking works.
   if (newUser.role === "parent" && studentLinkId) {
     const studentLink = store.parentLinks.find((item) => item.id === studentLinkId);
-    if (studentLink) {
+    // itest10 #11: only claim a still-unclaimed placeholder — never overwrite an
+    // already-bound link (would hijack the child's unique growth report).
+    if (studentLink && studentLink.parentUserId === studentLink.studentUserId) {
       studentLink.parentUserId = newUser.id;
       store.growthReports = store.growthReports.filter((report) => report.parentUserId !== newUser.id);
       const linkedRun = store.runs.find((run) => run.userId === studentLink.studentUserId);

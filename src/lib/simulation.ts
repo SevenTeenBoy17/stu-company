@@ -565,11 +565,34 @@ export function applyEventChoice(run: ScenarioRun, choiceId: string): ScenarioRu
   const rng = makeRng((nextRun.seed ?? 1) + nextRun.currentRound * 1000);
   const { cashDelta } = resolveEventChoice(netWorth, choice.outcome, rng);
 
-  const cashBefore = nextRun.cash;
-  nextRun.cash = Math.max(0, nextRun.cash + cashDelta);
-  // Log the REALIZED change (cash is floored at 0), so history/AI narratives
-  // don't overstate a loss larger than the student's available cash.
-  const realized = nextRun.cash - cashBefore;
+  // Money integrity (itest10 #9): the stake is measured on NET WORTH
+  // (resolveEventChoice), so the consequence must be settled against the whole
+  // balance sheet — not cash alone. Flooring a loss at `max(0, cash + delta)`
+  // let a student park all cash in savings and take gamble cards with ZERO
+  // downside (loss silently zeroed) but full upside → a risk-free money printer
+  // that inflated net worth and the leaderboard. Realize a shortfall from cash →
+  // savings → debt so a loss is always felt somewhere; gains still land in cash.
+  const worthBefore = nextRun.cash + nextRun.savings - nextRun.debt;
+  if (cashDelta >= 0) {
+    nextRun.cash += cashDelta;
+  } else {
+    let shortfall = -cashDelta;
+    const fromCash = Math.min(nextRun.cash, shortfall);
+    nextRun.cash -= fromCash;
+    shortfall -= fromCash;
+    if (shortfall > 0) {
+      const fromSavings = Math.min(nextRun.savings, shortfall);
+      nextRun.savings -= fromSavings;
+      shortfall -= fromSavings;
+    }
+    if (shortfall > 0) {
+      // Still short after draining liquid assets → carried as debt (teaching cap).
+      nextRun.debt = Math.min(TEACHING_DEBT_CAP, nextRun.debt + shortfall);
+    }
+  }
+  // Log the REALIZED net-worth change, so history/AI narratives reflect the true
+  // consequence regardless of which bucket absorbed it.
+  const realized = nextRun.cash + nextRun.savings - nextRun.debt - worthBefore;
   appendAction(nextRun, {
     round: nextRun.currentRound,
     type: "event",

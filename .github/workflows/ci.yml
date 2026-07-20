@@ -110,7 +110,12 @@ jobs:
   integration:
     name: Integration (Postgres) [non-blocking until DB roles provisioned]
     runs-on: ubuntu-latest
-    continue-on-error: true
+    # itest10 #5: continue-on-error was at JOB level, so a broken migration or a
+    # seed regression on vanilla postgres:16 turned the whole job green — exactly
+    # the class of bug this job exists to catch. Migration + seed now BLOCK
+    # (surface as a red check); only the genuinely RLS-role-dependent steps below
+    # (apply-policies / integration tests, which need the `authenticated` role)
+    # keep continue-on-error until those roles are provisioned in CI.
     services:
       postgres:
         image: postgres:16
@@ -144,8 +149,10 @@ jobs:
       - name: Apply migrations (0000–0012)
         run: npx drizzle-kit migrate
       - name: Apply RLS policies
+        continue-on-error: true
         run: npm run db:apply-policies
       - name: Seed demo data
         run: npm run db:seed
       - name: Run integration tests
+        continue-on-error: true
         run: npm run test:integration

@@ -131,6 +131,7 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                   key={card.id}
                   type="button"
                   data-testid={`opportunity-card-${card.id}`}
+                  aria-pressed={active}
                   onClick={() => setSelectedCardId(card.id)}
                   className={cn(
                     "rounded-[1.6rem] border p-5 text-left transition hover:-translate-y-1",

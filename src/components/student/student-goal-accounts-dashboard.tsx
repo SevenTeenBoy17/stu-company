@@ -21,7 +21,10 @@ const statusLabel: Record<GoalAccountPayload["goals"][number]["status"], string>
 
 const statusClass: Record<GoalAccountPayload["goals"][number]["status"], string> = {
   ahead: "bg-down-soft text-[var(--down-700)]",
-  on_track: "bg-brand-soft text-brand",
+  // itest10 #2: text-brand (amber-500) on bg-brand-soft (amber-100) is ~2.2:1 —
+  // fails WCAG 1.4.3 for this caption-size status text. brand-ink (amber-800) is
+  // ~5.8:1 (see globals.css a11y note; consistent with the opportunity card badge).
+  on_track: "bg-brand-soft text-brand-ink",
   needs_attention: "bg-warning/10 text-warning",
 };
 
