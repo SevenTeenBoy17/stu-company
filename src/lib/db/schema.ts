@@ -147,7 +147,11 @@ export const studentParentLinks = pgTable("student_parent_links", {
   parentUserId: varchar("parent_user_id", { length: 64 }).notNull().references(() => users.id),
   bondCode: varchar("bond_code", { length: 64 }).notNull(),
 }, (table) => [
-  index("student_parent_links_student_user_id_idx").on(table.studentUserId),
+  // A student binds to exactly ONE guardian (growth_reports is unique per student).
+  // UNIQUE (not plain index) is the DB-level floor for that 1:1 model — it makes the
+  // guardian-invite mint idempotent under races and blocks a second parent binding
+  // (migration 0022, review findings #1/#3).
+  uniqueIndex("student_parent_links_student_user_id_key").on(table.studentUserId),
   index("student_parent_links_parent_user_id_idx").on(table.parentUserId),
   index("student_parent_links_bond_code_idx").on(table.bondCode),
 ]);

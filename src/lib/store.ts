@@ -1332,7 +1332,13 @@ export function getOrCreateGuardianInviteForStudent(studentUserId: string) {
   if (!student) throw new Error("用户不存在。");
   if (student.role !== "student") throw new Error("只有学生账号可以生成家长绑定邀请码。");
 
-  let link = store.parentLinks.find((l) => l.studentUserId === studentUserId && l.parentUserId === studentUserId);
+  // Mirror the repo path: a student binds to exactly one guardian. If a real parent
+  // already claimed the link, refuse to mint a second code (review findings #1/#2).
+  const anyLink = store.parentLinks.find((l) => l.studentUserId === studentUserId);
+  if (anyLink && anyLink.parentUserId !== studentUserId) {
+    throw new Error("你已经绑定了家长。如需更换绑定，请联系老师或管理员。");
+  }
+  let link = anyLink;
   if (link) {
     const reusable = store.invites.find(
       (i) => i.studentLinkId === link!.id && i.usesRemaining > 0 && new Date(i.expiresAt).getTime() > Date.now(),

@@ -1207,45 +1207,53 @@ export async function getOrCreateGuardianInviteForStudent(studentUserId: string)
         if (!student) throw new DomainError("用户不存在。");
         if (student.role !== "student") throw new DomainError("只有学生账号可以生成家长绑定邀请码。");
 
-        // Reuse an existing unclaimed link for this student (parent side still open).
-        const [existingLink] = await tx
+        // Ensure exactly one link row exists for this student. `student_user_id` is
+        // UNIQUE (migration 0022), so a concurrent second POST conflicts and is a
+        // no-op — both callers then converge on the same row below. This is what
+        // makes the mint idempotent-per-student under races (review finding #3).
+        await tx
+          .insert(studentParentLinks)
+          .values({
+            id: createId("link"),
+            studentUserId,
+            // Placeholder: parentUserId = studentUserId until a parent claims it.
+            parentUserId: studentUserId,
+            bondCode: createId("bond"),
+          })
+          .onConflictDoNothing();
+
+        // Lock the link row to serialize concurrent minting on it (mirrors the
+        // .for("update") pattern used for scenario_run / family-seat writes), so
+        // two callers can never each mint a distinct still-valid code.
+        const [link] = await tx
           .select()
           .from(studentParentLinks)
+          .where(eq(studentParentLinks.studentUserId, studentUserId))
+          .for("update")
+          .limit(1);
+        if (!link) throw new DomainError("生成家长绑定邀请码失败，请稍后再试。");
+
+        // Review finding #1/#2: a student binds to exactly ONE guardian (growth_reports
+        // is unique per student). Once a real parent has claimed the link, refuse to
+        // mint a second code — otherwise a second parent could bind and silently take
+        // over the child's growth report, locking the first parent out.
+        if (link.parentUserId !== studentUserId) {
+          throw new DomainError("你已经绑定了家长。如需更换绑定，请联系老师或管理员。");
+        }
+        const linkId = link.id;
+
+        const [reusable] = await tx
+          .select()
+          .from(inviteCodes)
           .where(
             and(
-              eq(studentParentLinks.studentUserId, studentUserId),
-              eq(studentParentLinks.parentUserId, studentUserId),
+              eq(inviteCodes.studentLinkId, linkId),
+              sql`${inviteCodes.usesRemaining} > 0`,
+              sql`${inviteCodes.expiresAt} > now()`,
             ),
           )
           .limit(1);
-
-        let linkId = existingLink?.id;
-        if (linkId) {
-          const [reusable] = await tx
-            .select()
-            .from(inviteCodes)
-            .where(
-              and(
-                eq(inviteCodes.studentLinkId, linkId),
-                sql`${inviteCodes.usesRemaining} > 0`,
-                sql`${inviteCodes.expiresAt} > now()`,
-              ),
-            )
-            .limit(1);
-          if (reusable) return { invite: toInvite(reusable), reused: true };
-        }
-
-        if (!linkId) {
-          // Placeholder link: parentUserId = studentUserId until a parent claims it
-          // (the registration flow overwrites parentUserId on bind).
-          linkId = createId("link");
-          await tx.insert(studentParentLinks).values({
-            id: linkId,
-            studentUserId,
-            parentUserId: studentUserId,
-            bondCode: createId("bond"),
-          });
-        }
+        if (reusable) return { invite: toInvite(reusable), reused: true };
 
         const [studentProfile] = await tx
           .select({ name: profiles.name })
@@ -1422,7 +1430,16 @@ export async function registerUserByInvite(input: {
           const [link] = await tx
             .update(studentParentLinks)
             .set({ parentUserId: newUser.id })
-            .where(eq(studentParentLinks.id, invite.studentLinkId))
+            // Only claim a still-unclaimed placeholder (parentUserId == studentUserId).
+            // If another parent already claimed it, this matches no row, so the growth
+            // report below is left untouched — a second parent can never silently
+            // reassign the child's report and lock the first parent out (review #2).
+            .where(
+              and(
+                eq(studentParentLinks.id, invite.studentLinkId),
+                sql`${studentParentLinks.parentUserId} = ${studentParentLinks.studentUserId}`,
+              ),
+            )
             .returning();
           const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
 
@@ -1572,7 +1589,14 @@ export async function registerUserByEmail(input: {
           const [link] = await tx
             .update(studentParentLinks)
             .set({ parentUserId: newUser.id })
-            .where(eq(studentParentLinks.id, studentLinkId))
+            // Defense-in-depth (review #2): only claim an unclaimed placeholder, so a
+            // second parent can never reassign an already-bound child's growth report.
+            .where(
+              and(
+                eq(studentParentLinks.id, studentLinkId),
+                sql`${studentParentLinks.parentUserId} = ${studentParentLinks.studentUserId}`,
+              ),
+            )
             .returning();
           const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
           if (link && linkedRun) {

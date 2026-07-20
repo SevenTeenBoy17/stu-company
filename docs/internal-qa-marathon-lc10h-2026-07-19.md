@@ -94,3 +94,15 @@ npm run build            → exit 0
 
 **结论**：产品在真 DB 生产模式下经受 10.44 小时真实节奏连续使用，修复后的新构建后段 6.4 小时零故障；唯一的失败集中区是人为触发的 DB 灾难窗口，且全部表现为受控 503（fail-loud 不变量成立）。长周期内测**通过**。
 
+## 七、预合并对抗审查（4 维 × 证伪，抓 LC-11 新代码自身的回归）
+
+合并 PR #18 前对高风险新增面（授权/家庭绑定/限流/迁移种子）做 4 维并行深审 + 逐条证伪，确认 **3 条真缺陷，全部落在 LC-11 家长绑定新代码自身**（1 学生↔1 家长模型未强制），其余 4 条被证伪（safe-by-default 代理、misconfig-only env、store 非权威兜底、既有种子口令）。
+
+| # | 级 | 缺陷 | 修复 |
+| --- | --- | --- | --- |
+| 1 | P2 | `getOrCreateGuardianInviteForStudent` 只认占位链接为可复用；家长认领后学生可再铸码 → 1 学生绑 N 家长；`student_user_id` 仅非唯一索引 | migration `0022` 加 `student_user_id` UNIQUE + 铸码前 `FOR UPDATE` 锁行 + 已认领即抛 DomainError 拒绝第二位家长 |
+| 2 | P2 | 家长 B 注册的 `onConflictDoUpdate` 静默把该生唯一成长报告 `parentUserId` 翻给 B → 家长 A 面板/周报永久锁死 | 两处注册认领改为「仅认领未认领的占位链接」(`parentUserId==studentUserId` 条件)，报告永不被第二位家长覆盖 |
+| 3 | P3 | 并发两次 POST parent-invite → 两条占位链接+两个有效码（幂等失效），喂给 #1 | UNIQUE + onConflictDoNothing + `FOR UPDATE` 串行化，并发方复用同一码 |
+
+**复验**：tsc0/lint0/**vitest 703**（+3 store-guardian-invite 守卫用例）/build✓；处女库 `db:migrate` 应用 0022 UNIQUE ✓；真 DB `:8913` 运行时 6/6——铸码幂等复用、家长 A 认领后**学生再铸被拒(400「你已经绑定了家长」)**、家长 A 家庭端点仍可用（未被锁死）。commit `3994566` 后段追加。
+
