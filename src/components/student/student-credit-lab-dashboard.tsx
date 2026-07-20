@@ -16,6 +16,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { CreditLabActionResult, CreditLabPayload, CreditScenarioId } from "@/lib/credit-lab";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -125,7 +126,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               先算清利息，再决定要不要借
             </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
-              信用实验室把分期、应急借款和提前还款放进同一张沙盘。借款会增加现金，也会同步增加债务；真正要学的是未来现金流能不能承受。
+              借款会增加现金，也同步增加债务。
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-4">
@@ -162,17 +163,38 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
             </div>
             <p className="mt-4 text-body leading-8 text-white/68">{payload.coach.summary}</p>
             <div className="mt-6 grid gap-3">
-              {payload.coach.nextSteps.map((step, index) => (
+              {payload.coach.nextSteps.slice(0, 1).map((step) => (
                 <div key={step} className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
                   <div className="flex gap-3">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
-                      {index + 1}
+                      1
                     </span>
                     <p className="text-body-sm leading-6 text-white/72">{step}</p>
                   </div>
                 </div>
               ))}
             </div>
+            {payload.coach.nextSteps.length > 1 && (
+              <Disclosure
+                className="mt-3"
+                summary={`展开其余 ${payload.coach.nextSteps.length - 1} 步建议`}
+                summaryClassName="text-white/76 hover:text-white"
+                panelClassName="text-white/72"
+              >
+                <div className="grid gap-3">
+                  {payload.coach.nextSteps.slice(1).map((step, index) => (
+                    <div key={step} className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-4">
+                      <div className="flex gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
+                          {index + 2}
+                        </span>
+                        <p className="text-body-sm leading-6 text-white/72">{step}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
           </aside>
         </div>
       </section>

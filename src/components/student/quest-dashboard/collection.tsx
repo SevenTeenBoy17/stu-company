@@ -110,8 +110,9 @@ export function QuestCardCollection({ items }: { items: QuestCardCollectionView[
             <Sparkles className="h-5 w-5 text-brand" />
             <h2 className="text-h1 font-semibold text-fg-strong">我的卡库</h2>
           </div>
+          {/* ui-v2 收敛：免责句并入活动权益区统一声明（quest-compliance-statement），此处只留功能信息。 */}
           <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-            卡片只记录学习与复盘轨迹，不改变净值、学习点或学习榜。刷新页面后，已经收藏的卡也会继续保留。
+            收藏过的卡会一直保留在这里，刷新页面也不会丢失。
           </p>
         </div>
         <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold tabular-nums text-white">
@@ -176,7 +177,7 @@ export function QuestCardCollection({ items }: { items: QuestCardCollectionView[
             </span>
             <h3 className="mt-4 text-2xl font-black text-fg-strong">还没有收藏卡片</h3>
             <p className="mt-3 max-w-md text-sm font-semibold leading-7 text-fg-muted">
-              完成任务后点击“领取学习卡”，卡片会像学习战利品一样加入这里。它只记录复盘轨迹，不改变净值和排名。
+              完成任务后点击“领取学习卡”，卡片会像学习战利品一样加入这里。
             </p>
             <Link
               href="#mission-main"
@@ -301,8 +302,9 @@ export function MascotRewardModal({
                 这张卡呼应你刚练的「{questCategoryLabel(questCategoryFromCard(item)!)}」
               </p>
             ) : null}
+            {/* ui-v2 收敛：免责句并入活动权益区统一声明（quest-compliance-statement）。 */}
             <p className="mt-3 text-caption font-semibold text-white/72">
-              来自「{theme.world}」· 卡片只记录学习轨迹，不代表真实收益
+              来自「{theme.world}」
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button

@@ -18,6 +18,7 @@ import {
   Target,
 } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import type { RiskProfileAnswer, RiskProfilePayload } from "@/lib/risk-profile";
 import type { BehaviorPersona } from "@/lib/types";
 import { clamp, cn, formatCurrency } from "@/lib/utils";
@@ -80,6 +81,12 @@ function formatTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** 展示层截断：只保留 lib payload 文案的第一句，长解说交给 Disclosure（不动数据本体）。 */
+function firstSentence(text: string) {
+  const index = text.indexOf("。");
+  return index === -1 ? text : text.slice(0, index + 1);
 }
 
 function behaviorProviderLabel(provider?: string, cached?: boolean) {
@@ -151,12 +158,8 @@ function ScenarioCardBack({
         </div>
       </div>
 
-      <div className="relative z-10 rounded-[1.35rem] border border-white/12 bg-slate-950/55 p-4 shadow-[0_18px_42px_rgba(0,0,0,0.22)] backdrop-blur-md">
-        <p className="text-h2 text-white">点击翻开情境卡</p>
-        <p className="mt-2 text-body-sm font-semibold leading-6 text-white/74">
-          先看场景，再做选择。每一张卡只考察一个投资概念，降低认知负荷。
-        </p>
-        <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-body-sm font-bold text-slate-950 transition group-hover:translate-x-1">
+      <div className="relative z-10 flex justify-center rounded-[1.35rem] border border-white/12 bg-slate-950/55 p-4 shadow-[0_18px_42px_rgba(0,0,0,0.22)] backdrop-blur-md">
+        <span className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-body-sm font-bold text-slate-950 transition group-hover:translate-x-1">
           翻开卡片
           <ArrowRight className="h-4 w-4" />
         </span>
@@ -409,17 +412,22 @@ export function StudentRiskProfileDashboard({
                   <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-slate-950">
                     <Brain className="h-5 w-5" />
                   </span>
-                  <div>
-                    <p className="bz-eyebrow-inverse normal-case tracking-normal">你的投资人格</p>
-                    <h2 className="text-h1 font-semibold text-white md:text-display-md">{payload.label}</h2>
-                  </div>
+                  <p className="bz-eyebrow-inverse normal-case tracking-normal">你的投资人格</p>
                 </div>
-                <p className="mt-5 text-body-lg font-semibold leading-8 text-white">{payload.archetype}</p>
-                <p className="mt-3 text-body leading-8 text-white/66">{payload.summary}</p>
-                <div className="mt-5 rounded-[1.35rem] border border-brand/20 bg-brand/10 p-4">
-                  <p className="bz-eyebrow-inverse">本次核心概念</p>
-                  <p className="mt-2 text-body font-semibold leading-7 text-white/78">{payload.learningConcept}</p>
-                </div>
+                {/* 图形化：人格 label 用大字排版承担视觉主体，archetype 作为副标题一行 */}
+                <h2 className="mt-4 text-display-md font-semibold leading-tight text-white md:text-display-xl">
+                  {payload.label}
+                </h2>
+                <p className="mt-3 text-body-lg font-semibold leading-8 text-brand-warm">{payload.archetype}</p>
+                <p className="mt-3 text-body leading-8 text-white/66">{firstSentence(payload.summary)}</p>
+                <Disclosure
+                  summary="本次核心概念"
+                  className="mt-5 rounded-[1.35rem] border border-brand/20 bg-brand/10 px-3 py-1"
+                  summaryClassName="text-white hover:text-brand-warm"
+                  panelClassName="text-white/78 font-semibold leading-7"
+                >
+                  {payload.learningConcept}
+                </Disclosure>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -685,7 +693,9 @@ export function StudentRiskProfileDashboard({
                         : "低置信"}
                   </span>
                 </div>
-                <p className="text-body font-semibold leading-7 text-fg-strong">{behaviorPersona.summary}</p>
+                <p className="text-body font-semibold leading-7 text-fg-strong">
+                  {firstSentence(behaviorPersona.summary)}
+                </p>
 
                 {/* Intent-vs-behavior comparison block (UX-01) */}
                 <div
@@ -722,30 +732,36 @@ export function StudentRiskProfileDashboard({
                   )}
                 </div>
 
-                <div className="grid gap-3">
-                  <div className="rounded-[1.15rem] bg-slate-50 p-3">
-                    <p className="bz-eyebrow text-fg-muted">行为证据</p>
-                    <ul className="mt-2 space-y-2">
-                      {behaviorPersona.evidence.map((item) => (
-                        <li key={item} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-700">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {/* 信息收敛：行为证据 / 下一步训练 默认收起，键盘可达（Disclosure） */}
+                <Disclosure
+                  summary="查看行为证据与下一步训练"
+                  className="rounded-[1.15rem] border border-slate-200 px-2"
+                >
+                  <div className="grid gap-3">
+                    <div className="rounded-[1.15rem] bg-slate-50 p-3">
+                      <p className="bz-eyebrow text-fg-muted">行为证据</p>
+                      <ul className="mt-2 space-y-2">
+                        {behaviorPersona.evidence.map((item) => (
+                          <li key={item} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-700">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-[1.15rem] bg-brand-soft p-3">
+                      <p className="bz-eyebrow bz-brand-text-on-light">下一步训练</p>
+                      <ol className="mt-2 space-y-2">
+                        {behaviorPersona.nextSteps.map((step, index) => (
+                          <li key={step} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-800">
+                            <span>{index + 1}.</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
-                  <div className="rounded-[1.15rem] bg-brand-soft p-3">
-                    <p className="bz-eyebrow bz-brand-text-on-light">下一步训练</p>
-                    <ol className="mt-2 space-y-2">
-                      {behaviorPersona.nextSteps.map((step, index) => (
-                        <li key={step} className="flex gap-2 text-body-sm font-semibold leading-6 text-slate-800">
-                          <span>{index + 1}.</span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
+                </Disclosure>
                 {behaviorMeta?.analyzedAt && (
                   <p className="text-caption font-semibold text-slate-500">复评时间：{formatTime(behaviorMeta.analyzedAt)}</p>
                 )}

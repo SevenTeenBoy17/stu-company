@@ -1,3 +1,5 @@
+import { KeyRound, MailCheck, ShieldCheck } from "lucide-react";
+
 import { DemoPortal } from "@/components/demo/demo-portal";
 import { getQuickDemoCredentials } from "@/lib/db/repo";
 
@@ -19,18 +21,20 @@ export default async function DemoPage() {
             一个入口，完成登录、注册、游客体验和课堂加入。
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-8 text-white/72">
-            新用户用邮箱注册后进入沙盘体验；已有账号按角色进入对应工作台；游客可先轻量试玩；
-            学校或教师发放的邀请码可用于加入对应班级与角色。
+            按身份选择下方入口，一分钟进入沙盘。
           </p>
           <div className="mt-6 grid gap-3 text-sm text-white/58 sm:grid-cols-3">
-            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              教育模拟，不接真实交易
+            <span className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <ShieldCheck aria-hidden className="h-4 w-4 shrink-0 text-white/70" />
+              教育模拟 · 无真实交易
             </span>
-            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              邮箱唯一，重复注册会提示
+            <span className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <MailCheck aria-hidden className="h-4 w-4 shrink-0 text-white/70" />
+              邮箱唯一注册
             </span>
-            <span className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              登录后按权限进入工作台
+            <span className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <KeyRound aria-hidden className="h-4 w-4 shrink-0 text-white/70" />
+              按权限进入工作台
             </span>
           </div>
         </div>

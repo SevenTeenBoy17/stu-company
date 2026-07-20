@@ -9,6 +9,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 
@@ -138,6 +139,14 @@ export function DemoPortal({
     () => credentials.filter((item) => !item.trial),
     [credentials],
   );
+
+  // UI v2：演示账号配 3D 角色头像（按邮箱身份映射，语义由文字承载，图为装饰）。
+  const roleArtFor = (email: string) => {
+    if (email.includes("teacher")) return "/brand/v2/role-teacher.webp";
+    if (email.includes("parent")) return "/brand/v2/role-parent.webp";
+    if (email.includes("admin")) return "/brand/v2/role-admin.webp";
+    return "/brand/v2/role-student.webp";
+  };
 
   function openModal(mode: AuthMode) {
     setMessage(null);
@@ -402,10 +411,15 @@ export function DemoPortal({
                   data-motion-card
                   onClick={() => void submitCredential(item)}
                   disabled={Boolean(busyAction)}
-                  className="rounded-[1.2rem] border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-200 disabled:opacity-60"
+                  className="flex items-center gap-3 rounded-[1.2rem] border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-200 disabled:opacity-60"
                 >
-                  <p className="text-base font-black text-slate-950">{item.label}</p>
-                  <p className="mt-1 truncate text-sm font-semibold text-slate-500" title={item.email}>{item.email}</p>
+                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[var(--amber-50)]">
+                    <Image src={roleArtFor(item.email)} alt="" fill sizes="40px" className="object-cover" />
+                  </span>
+                  <span className="min-w-0">
+                    <p className="text-base font-black text-slate-950">{item.label}</p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-500" title={item.email}>{item.email}</p>
+                  </span>
                 </button>
               ))}
             </div>

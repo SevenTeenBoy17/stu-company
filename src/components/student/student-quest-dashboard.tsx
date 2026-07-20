@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { QuestCard } from "@/lib/cards";
 import type { CardCollectionItem } from "@/lib/db/repo";
@@ -478,7 +479,8 @@ function QuestMapGallery({
                         {progress}%
                       </span>
                     </div>
-                    <p className="mt-2 line-clamp-2 text-sm font-semibold leading-5 text-fg-muted">{quest.coachNote}</p>
+                    {/* ui-v2 收敛：coachNote 与地图节点信息重复，卡面只留标题+状态章+进度条，
+                        导师提示保留在点击后的 QuestDetailDialog（Mr.Brown 提醒）里。 */}
                     <div className="mt-3 flex items-center gap-2">
                       <span
                         className={cn(
@@ -1377,7 +1379,7 @@ export function StudentQuestDashboard({
                 <>
                   <p className="text-sm font-bold text-brand-warm">奖励已领取</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-white/74">
-                    {claimResult.reward} 已加入成长轨迹。奖励只做装饰，不改变学习点或净值。
+                    {claimResult.reward} 已加入成长轨迹。
                   </p>
                 </>
               ) : null}
@@ -1393,7 +1395,7 @@ export function StudentQuestDashboard({
                 <>
                   <p className="text-sm font-bold text-brand-warm">已加入卡库</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-white/78">
-                    你收藏了 {drawResult.card.name}。这张卡已加入“我的卡库”，只记录学习轨迹，不改变净值、学习点或学习榜。
+                    你收藏了 {drawResult.card.name}，已加入“我的卡库”。
                   </p>
                 </>
               ) : null}
@@ -1427,14 +1429,13 @@ export function StudentQuestDashboard({
               <h2 className="mt-3 text-display-md font-semibold md:text-display-lg">
                 活动权益
               </h2>
-              <p className="mt-4 text-body leading-8 text-white/68">
-                微练习、班级赛和装饰奖励，都只服务学习复盘，不影响真实排名。
-              </p>
+              {/* ui-v2 收敛：全页合规免责句群（主卡/领卡横幅/卡库/图鉴/弹窗/活动架 ≥6 处变体）
+                  统一收敛为下面这一处声明，其余位置只保留动作反馈。 */}
               <div className="mt-6 rounded-[1.4rem] border border-white/10 bg-white/[0.07] p-4">
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-warm" />
-                  <p className="text-sm font-semibold leading-6 text-white/68">
-                    只做学习奖励：不改净值，不制造付费压力。
+                  <p data-testid="quest-compliance-statement" className="text-sm font-semibold leading-6 text-white/68">
+                    本页任务卡、收藏卡、成就与活动权益只记录学习轨迹，不代表真实收益或投资能力，不改变净值、学习点或学习榜，也不制造付费压力。
                   </p>
                 </div>
               </div>
@@ -1443,56 +1444,70 @@ export function StudentQuestDashboard({
 
           {/* §19.7 移动端：权益项改横滑卡组，sm 起还原网格。 */}
           <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto bg-white p-5 [&>*]:w-[85%] [&>*]:shrink-0 [&>*]:snap-start sm:grid sm:snap-none sm:overflow-visible sm:[&>*]:w-auto sm:[&>*]:shrink md:p-6 xl:grid-cols-2 2xl:grid-cols-3">
+            {/* ui-v2 收敛：每项默认只留标题+一行 summary+进度；reward/guardrail 折进 Disclosure。
+                Disclosure 内含 button，不能嵌进 <Link>，故拆为 div 卡片 + Link 主体 + 折叠区。 */}
             {questPayload.benefits.items.map((item) => {
               const meta = benefitKindMeta[item.kind];
               const Icon = meta.icon;
               return (
-                <Link
+                <div
                   data-motion-card
                   key={item.id}
-                  href={item.href}
-                  className="group flex min-h-[220px] flex-col rounded-[1.55rem] border border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f8fafc)] p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:bg-brand-subtle hover:shadow-soft"
+                  className="flex min-h-[220px] flex-col rounded-[1.55rem] border border-slate-200 bg-[linear-gradient(145deg,#ffffff,#f8fafc)] p-4 transition hover:-translate-y-1 hover:border-brand/30 hover:shadow-soft"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", meta.className)}>
-                      <Icon className="h-3.5 w-3.5" />
-                      {meta.label}
-                    </span>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-fg-muted">
-                      {benefitStatusLabel[item.status]}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex flex-1 gap-3">
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[1rem] bg-brand-subtle text-brand-ink transition group-hover:scale-105">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="bz-eyebrow bz-brand-text-on-light">{item.label}</p>
-                      <h3 className="mt-2 line-clamp-2 text-h2 text-fg-strong">{item.title}</h3>
-                      <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-fg-muted">
-                        {item.summary}
-                      </p>
+                  <Link href={item.href} className="group flex flex-1 flex-col rounded-[1rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold", meta.className)}>
+                        <Icon className="h-3.5 w-3.5" />
+                        {meta.label}
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-fg-muted">
+                        {benefitStatusLabel[item.status]}
+                      </span>
                     </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between gap-3 text-xs font-semibold text-fg-muted">
-                      <span>{item.reward}</span>
-                      <span className="tabular-nums">{Math.round(item.progress * 100)}%</span>
+                    <div className="mt-4 flex flex-1 gap-3">
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[1rem] bg-brand-subtle text-brand-ink transition group-hover:scale-105">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="bz-eyebrow bz-brand-text-on-light">{item.label}</p>
+                        <h3 className="mt-2 line-clamp-2 text-h2 text-fg-strong">{item.title}</h3>
+                        <p className="mt-3 line-clamp-1 text-sm font-semibold leading-6 text-fg-muted">
+                          {item.summary}
+                        </p>
+                      </div>
                     </div>
-                    <div {...progressAria(`${item.reward} 进度`, item.progress * 100)} data-motion-viz className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
-                      <div
-                        data-motion-viz-bar
-                        data-motion-origin="left center"
-                        className="h-full rounded-full bg-gradient-to-r from-brand via-warning to-up"
-                        style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
-                      />
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-fg-muted">
+                        <span>完成进度</span>
+                        <span className="tabular-nums">{Math.round(item.progress * 100)}%</span>
+                      </div>
+                      <div {...progressAria(`${item.reward} 进度`, item.progress * 100)} data-motion-viz className="mt-2 h-2.5 overflow-hidden rounded-full bg-white">
+                        <div
+                          data-motion-viz-bar
+                          data-motion-origin="left center"
+                          className="h-full rounded-full bg-gradient-to-r from-brand via-warning to-up"
+                          style={{ width: `${Math.max(item.status === "locked" ? 0 : 8, item.progress * 100)}%` }}
+                        />
+                      </div>
+                      <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink">
+                        {item.actionLabel}
+                        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                      </span>
                     </div>
-                    <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink">
-                      {item.actionLabel}
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
+                  {/* 审查 #5：循环内固定 summary，用任务标题区分可访问名（WCAG 2.4.6） */}
+                  <Disclosure
+                    summary="奖励与边界说明"
+                    srContext={item.title}
+                    className="mt-3 border-t border-slate-200/80 pt-1"
+                    summaryClassName="text-xs text-fg-muted hover:text-brand-ink"
+                    panelClassName="text-xs leading-6"
+                  >
+                    <p className="font-semibold text-fg-strong">{item.reward}</p>
+                    <p className="mt-1">{item.guardrail}</p>
+                  </Disclosure>
+                </div>
               );
             })}
           </div>
@@ -1884,15 +1899,10 @@ export function StudentQuestDashboard({
                           <div>
                             <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">学习收藏卡</p>
                             <p className="mt-2 text-lg font-black text-slate-950">完成后可领取</p>
-                            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                              收藏卡只记录你的任务复盘，不改变净值和排名。
-                            </p>
                           </div>
                         </div>
                       )}
-                      <p className="px-5 text-[11px] font-bold leading-5 text-slate-500">
-                        完成任务即可获得对应卡片 · 仅作学习收藏，不改变净值、学习点或学习榜。
-                      </p>
+                      {/* ui-v2 收敛：免责句并入活动权益区的统一声明（quest-compliance-statement）。 */}
                       <button
                         data-motion-button
                         type="button"
@@ -2090,9 +2100,7 @@ export function StudentQuestDashboard({
             <Trophy className="h-5 w-5 text-brand" />
             <h2 className="text-h1 font-semibold text-fg-strong">成就墙</h2>
           </div>
-          <p className="mt-2 text-body leading-7 text-fg-muted">
-            成就只代表学习轨迹，不代表真实投资能力，也不会直接改变学习榜位置。
-          </p>
+          {/* ui-v2 收敛：免责句并入活动权益区的统一声明（quest-compliance-statement）。 */}
           {/* §19.7 移动端：成就条目改横滑卡组，sm 起还原纵向列表。 */}
           <div
             tabIndex={0}

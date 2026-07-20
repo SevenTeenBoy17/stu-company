@@ -73,10 +73,10 @@ test.describe("student gameflow regression", () => {
     expect(seasonMapBox?.width ?? 0).toBeGreaterThan(300);
     expect(Math.abs((taskMapBox?.x ?? 0) - (seasonMapBox?.x ?? 0))).toBeGreaterThan(520);
     expect(Math.abs((taskMapBox?.y ?? 0) - (seasonMapBox?.y ?? 0))).toBeLessThan(28);
-    // 任务地图应显著高于赛季副卡（主舞台 vs 自然高度副卡）。真实布局稳定为 ~225px 差
-    // （itest5 R1 隔离双跑同值），阈值取 180 留 45px 余量，既守住「主卡明显更高」的意图，
-    // 又不被 15px 眼估误差与跨环境字体度量抖动打挂。
-    expect((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0)).toBeGreaterThan(180);
+    // 任务地图应显著高于赛季副卡（主舞台 vs 自然高度副卡）。ui-v2 Phase 2 文字收敛
+    // （主卡页脚免责行/航线卡 coachNote 删除）后真实差稳定为 ~129px（隔离双跑同值），
+    // 阈值取 100 留 ~29px 余量——继续守住「主卡明显更高」的意图，不锚死收敛前的旧版式。
+    expect((taskMapBox?.height ?? 0) - (seasonMapBox?.height ?? 0)).toBeGreaterThan(100);
     await expect(page.locator('[data-testid^="quest-task-map-node-"]').first()).toBeVisible();
     await expect(page.locator('[data-testid^="quest-season-map-node-"]').first()).toBeVisible();
     const routeNodeStates = await page.locator('[data-testid^="quest-task-map-node-"]').evaluateAll((nodes) =>

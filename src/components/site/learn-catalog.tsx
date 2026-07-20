@@ -1,11 +1,13 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { learningModules } from "@/lib/content";
+import { moduleArt } from "@/lib/module-art";
 import { cn } from "@/lib/utils";
-import { ModuleIllustration } from "@/components/site/module-illustration";
 
 const levelFilters = [
   { label: "全部", value: "all" },
@@ -224,8 +226,14 @@ export function LearnCatalog() {
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {filteredModules.map((module) => (
             <article key={module.key} data-motion-card className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
-              <div className={`p-4 ${levelTints[module.level as string] ?? "bg-[var(--ink-50)]"}`}>
-                <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
+              <div className={`relative h-52 w-full ${levelTints[module.level as string] ?? "bg-[var(--ink-50)]"}`}>
+                <Image
+                  src={moduleArt[module.key]?.src ?? "/brand/v2/learn-market.webp"}
+                  alt={moduleArt[module.key]?.alt ?? module.title}
+                  fill
+                  sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <div className="flex items-center justify-between gap-3">
@@ -237,7 +245,12 @@ export function LearnCatalog() {
                   </span>
                 </div>
                 <h3 className="mt-4 text-2xl font-semibold text-slate-950">{module.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{module.description}</p>
+                {/* UI v2（审计：/learn 卡瘦身）：卡面只留一句 tagline，完整介绍折叠。 */}
+                <p className="mt-3 text-sm leading-7 text-slate-600">{module.tagline}</p>
+                {/* 审查 #5：循环内固定 summary，用模块标题区分可访问名（WCAG 2.4.6） */}
+                <Disclosure summary="完整介绍" srContext={module.title} className="mt-1" summaryClassName="px-0 text-slate-500">
+                  {module.description}
+                </Disclosure>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {module.highlights.map((item) => (
                     <span
@@ -294,9 +307,7 @@ export function LearnCatalog() {
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-ink">Brown Zone Quiz</p>
                 <h2 className="mt-2 text-2xl font-bold text-slate-950">{quizModule.title} · 课后小测</h2>
-                <p className="mt-2 text-sm leading-7 text-slate-500">
-                  答对 80 分及以上才会计入学习分。这里训练的是“先理解再决策”，不是点击刷分。
-                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-500">答对 80 分以上计入学习分。</p>
               </div>
               <button
                 type="button"

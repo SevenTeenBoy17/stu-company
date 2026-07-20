@@ -26,6 +26,8 @@ import {
 
 import Image from "next/image";
 
+import { Disclosure } from "@/components/shared/disclosure";
+import { SectionNav } from "@/components/shared/section-nav";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import type { PeerHeatPayload } from "@/lib/peer-heat";
@@ -272,6 +274,32 @@ function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/**
+ * UI v2 信息收敛：长文案默认折成一行（line-clamp-1），点击展开全文。
+ * 原生 button + aria-expanded，键盘可达；文字样式由调用方传入以适配深浅底。
+ */
+function ExpandableText({
+  text,
+  className,
+  textClassName,
+}: {
+  text: string;
+  className?: string;
+  textClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={() => setOpen((value) => !value)}
+      className={cn("block w-full text-left", className)}
+    >
+      <span className={cn("block", textClassName, !open && "line-clamp-1")}>{text}</span>
+    </button>
+  );
+}
+
 export function StudentMarketBoard({
   initialPayload,
   initialWatchlistPayload,
@@ -300,6 +328,7 @@ export function StudentMarketBoard({
   const [watchlistPending, setWatchlistPending] = useState(false);
   const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [moreNotesOpen, setMoreNotesOpen] = useState(false);
   const deferredSearch = useDeferredValue(search);
 
   // 自选观察 / 同伴热度是美股沙盘专属能力（与 12 轮经济沙盘的美股观察池绑定）。
@@ -587,7 +616,18 @@ export function StudentMarketBoard({
 
   return (
     <div ref={marketBoardRef} className="space-y-6 pb-24">
-      <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+      <SectionNav
+        ariaLabel="本页板块导航"
+        items={[
+          { id: "sec-market-overview", label: "市场总览" },
+          { id: "sec-my-watchlist", label: "我的自选" },
+          { id: "sec-selected-stock", label: "选中标的" },
+          { id: "sec-teaching-radar", label: "教学雷达" },
+          { id: "sec-peer-heat", label: "同学热度" },
+          { id: "sec-content-cards", label: "延伸阅读" },
+        ]}
+      />
+      <section id="sec-market-overview" data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="mb-5">
           <div role="group" aria-label="选择市场分类" className="flex flex-wrap items-center gap-2">
             <span className="bz-eyebrow mr-1 self-center">Markets</span>
@@ -847,7 +887,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
+      <section id="sec-my-watchlist" className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -908,7 +948,7 @@ export function StudentMarketBoard({
                           {item.changePercent.toFixed(2)}%
                         </span>
                       </div>
-                      <p className="mt-3 text-body-sm text-fg-muted">{item.reason}</p>
+                      <ExpandableText text={item.reason} className="mt-3" textClassName="text-body-sm text-fg-muted" />
                     </article>
                   ))}
                 </div>
@@ -916,7 +956,7 @@ export function StudentMarketBoard({
                 <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-5">
                   <p className="text-h3 text-fg-strong">还没有自选标的</p>
                   <p className="mt-2 text-body text-fg-muted">
-                    从右侧当前选中股票开始，写一句观察理由；这会进入历史复盘，不影响模拟资产。
+                    从右侧当前选中股票开始，写一句观察理由。
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {studentWatchlist?.suggested.slice(0, 3).map((item) => (
@@ -1043,7 +1083,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section id="sec-selected-stock" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div data-motion-reveal className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
             <div className="relative min-w-0 overflow-hidden p-5 sm:p-6 lg:p-7">
@@ -1140,10 +1180,9 @@ export function StudentMarketBoard({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-h3 text-white">日 K 线与趋势速写</p>
-                      <p className="mt-1 text-body-sm text-white/70">
-                        实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。
-                        {payload.category !== "us" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
-                      </p>
+                      {payload.category !== "us" ? (
+                        <p className="mt-1 text-body-sm text-white/70">沿用 A 股红涨绿跌配色，与美股相反。</p>
+                      ) : null}
                     </div>
                     <Activity className="h-5 w-5 text-brand-warm" />
                   </div>
@@ -1196,12 +1235,16 @@ export function StudentMarketBoard({
                     ))}
                     <path className="market-trend-line" d={linePath} fill="none" stroke="#fff4e9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <p
-                    data-testid="market-kline-summary"
-                    className="mt-3 rounded-[1.25rem] border border-white/10 bg-white/[0.08] px-4 py-3 text-body-sm leading-6 text-white/75"
+                  <Disclosure
+                    summary="图表解读"
+                    className="mt-3 rounded-[1.25rem] border border-white/10 bg-white/[0.08] px-4 py-1"
+                    summaryClassName="text-white/85 hover:text-white"
+                    panelClassName="text-white/75"
                   >
-                    {klineSummary}
-                  </p>
+                    <p data-testid="market-kline-summary" className="text-body-sm leading-6">
+                      {klineSummary}
+                    </p>
+                  </Disclosure>
                   <div className="mt-4 flex flex-wrap gap-2 text-caption font-semibold text-white/80">
                     {["看实体：红涨绿跌", "看影线：识别波动", "写复盘：说出理由"].map((task) => (
                       <span
@@ -1259,7 +1302,7 @@ export function StudentMarketBoard({
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
+      <section id="sec-teaching-radar" className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -1307,8 +1350,9 @@ export function StudentMarketBoard({
                 <path data-motion-viz-path d={radarPath} fill={`${payload.selected.accentColor}2b`} stroke={payload.selected.accentColor} strokeWidth="3" />
                 <circle data-motion-viz-point cx={RADAR_CENTER} cy={RADAR_CENTER} r="4" fill={payload.selected.accentColor} />
               </svg>
+              {/* UI v2：图注只保「最强/最弱」一句，方法提示不再铺开（builder 原文未动，测试锚定不变） */}
               <p data-testid="market-radar-summary" className="mt-3 text-center text-body-sm leading-6 text-fg-muted">
-                {radarSummary}
+                {`${radarSummary.split("。")[0]}。`}
               </p>
             </div>
             <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-1">
@@ -1318,7 +1362,7 @@ export function StudentMarketBoard({
                     <p className="text-body font-semibold text-fg-strong">{metric.label}</p>
                     <p className="text-h3 tabular-nums text-orange-700">{metric.score}</p>
                   </div>
-                  <p className="mt-2 text-body-sm text-fg-muted">{metric.note}</p>
+                  <ExpandableText text={metric.note} className="mt-2" textClassName="text-body-sm text-fg-muted" />
                 </div>
               ))}
             </div>
@@ -1339,10 +1383,8 @@ export function StudentMarketBoard({
                 <span className="text-caption font-semibold text-fg-muted">观察标的</span>
               </div>
             </div>
-            <p
-              data-testid="market-sector-summary"
-              className="w-full rounded-[1.35rem] bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted"
-            >
+            {/* UI v2：可见 sectorSummary 与甜甜圈/列表重复，视觉层删除；保留 sr-only 作为图形的读屏替代 */}
+            <p data-testid="market-sector-summary" className="sr-only">
               {sectorSummary}
             </p>
             <ul className="w-full space-y-2.5">
@@ -1374,7 +1416,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+      <section id="sec-peer-heat" className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <div data-testid="peer-heat-card" data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <UsersRound className="h-5 w-5 text-brand" />
@@ -1385,7 +1427,7 @@ export function StudentMarketBoard({
               {peerHeat.classroomName} · {peerHeat.totalStudents} 人
             </p>
             <p className="mt-3 text-h3 leading-7 text-white">{peerHeat.headline}</p>
-            <p className="mt-3 text-body-sm leading-6 text-white/70">{peerHeat.summary}</p>
+            <ExpandableText text={peerHeat.summary} className="mt-2" textClassName="text-body-sm leading-6 text-white/70" />
           </div>
           <div className="mt-4 space-y-3">
             {peerHeat.items.length > 0 ? (
@@ -1411,9 +1453,11 @@ export function StudentMarketBoard({
                       style={{ width: `${Math.max(8, item.ratio)}%` }}
                     />
                   </div>
-                  <p className="mt-2 line-clamp-2 text-caption font-normal leading-5 text-fg-muted">
-                    {item.concept} · {item.coachNote}
-                  </p>
+                  <ExpandableText
+                    text={`${item.concept} · ${item.coachNote}`}
+                    className="mt-2"
+                    textClassName="text-caption font-normal leading-5 text-fg-muted"
+                  />
                 </div>
               ))
             ) : (
@@ -1490,16 +1534,35 @@ export function StudentMarketBoard({
             <h3 className="text-h2 text-fg-strong">课堂提示</h3>
           </div>
           <div className="mt-5 space-y-3">
-            {payload.observationNotes.map((note, index) => (
+            {payload.observationNotes.slice(0, 1).map((note, index) => (
               <div key={`note-${index}`} className="rounded-[1.5rem] bg-orange-50 px-4 py-4 text-body text-fg-default">
                 {note}
               </div>
             ))}
+            {payload.observationNotes.length > 1 ? (
+              <>
+                {moreNotesOpen
+                  ? payload.observationNotes.slice(1).map((note, index) => (
+                      <div key={`note-more-${index}`} className="rounded-[1.5rem] bg-orange-50 px-4 py-4 text-body text-fg-default">
+                        {note}
+                      </div>
+                    ))
+                  : null}
+                <button
+                  type="button"
+                  aria-expanded={moreNotesOpen}
+                  onClick={() => setMoreNotesOpen((value) => !value)}
+                  className="w-full rounded-full border border-slate-200 px-4 py-2 text-body-sm font-semibold text-fg-muted transition-colors hover:border-orange-300 hover:text-orange-700"
+                >
+                  {moreNotesOpen ? "收起提示" : `更多提示（${payload.observationNotes.length - 1}）`}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+      <section id="sec-content-cards" className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
         <div
           data-motion-reveal
           className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.12)]"
@@ -1526,7 +1589,7 @@ export function StudentMarketBoard({
                 </p>
               </div>
               <h3 className="mt-3 text-h2 text-fg-strong">{card.title}</h3>
-              <p className="mt-3 text-body text-fg-muted">{card.summary}</p>
+              <ExpandableText text={card.summary} className="mt-3" textClassName="text-body text-fg-muted" />
             </div>
           ))}
         </div>

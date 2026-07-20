@@ -18,6 +18,8 @@ export const premiumMotion = {
     reward: 0.66,
     scene: 0.74,
     viz: 0.95,
+    split: 0.9,
+    magneticReturn: 0.5,
   },
   lift: {
     card: 6,
@@ -45,6 +47,11 @@ export const premiumMotion = {
     vizBar: "[data-motion-viz-bar]",
     vizPath: "[data-motion-viz-path]",
     vizPoint: "[data-motion-viz-point]",
+    // v2 (ui-motion-upgrade): landing.love-tier primitives.
+    split: "[data-motion-split]",
+    magnetic: "[data-motion-magnetic]",
+    story: "[data-motion-story]",
+    storyStep: "[data-motion-story-step]",
   },
 } as const;
 

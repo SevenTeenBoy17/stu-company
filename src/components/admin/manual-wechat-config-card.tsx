@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCircle2, ImageIcon, Save, ShieldAlert, Trash2, UploadCloud } from "lucide-react";
 
 import type { ManualWechatCollectionConfig, ManualWechatReadiness } from "@/lib/billing/manual-wechat";
+import { Disclosure } from "@/components/shared/disclosure";
 
 type SaveResponse = {
   message?: string;
@@ -105,10 +106,6 @@ export function ManualWechatConfigCard({
           <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-3xl font-black text-slate-950">微信收款码配置状态</h2>
-              <p className="mt-2 max-w-3xl text-base font-semibold leading-8 text-slate-600">
-                当前采用“微信收款码 + 用户提交付款凭证 + 超级管理员确认到账”的订阅开通路线。
-                管理员可以直接上传收款码图片，也可以填写公开图片 URL；保存后，新的付款订单会立即读取这份配置。
-              </p>
             </div>
             <span
               className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-black ${
@@ -264,15 +261,23 @@ export function ManualWechatConfigCard({
             </div>
           ) : null}
 
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-black text-slate-950">上线前验证路径</p>
-            <ol className="mt-3 grid gap-2 text-sm font-semibold leading-6 text-slate-600 md:grid-cols-2">
+          <Disclosure
+            className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1"
+            summary="查看上线指引"
+            summaryClassName="text-sm font-black text-slate-950"
+          >
+            <p className="text-sm font-semibold leading-6 text-slate-600">
+              当前采用“微信收款码 + 用户提交付款凭证 + 超级管理员确认到账”的订阅开通路线。
+              管理员可以直接上传收款码图片，也可以填写公开图片 URL；保存后，新的付款订单会立即读取这份配置。
+            </p>
+            <p className="mt-3 text-sm font-black text-slate-950">上线前验证路径</p>
+            <ol className="mt-2 grid gap-2 text-sm font-semibold leading-6 text-slate-600 md:grid-cols-2">
               <li className="rounded-xl bg-white p-3">1. 上传真实微信收款码，保存后确认这里显示“支付上线就绪”。</li>
               <li className="rounded-xl bg-white p-3">2. 打开订阅页创建 15 元/月订单，付款区应展示同一张收款码。</li>
               <li className="rounded-xl bg-white p-3">3. 用户付款后提交备注或截图，后台“人工收款订单”应显示待核验。</li>
               <li className="rounded-xl bg-white p-3">4. 超级管理员确认到账后，用户付款页应出现回执号和有效期。</li>
             </ol>
-          </div>
+          </Disclosure>
         </div>
 
         <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-center">

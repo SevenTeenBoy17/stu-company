@@ -3,11 +3,12 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { SplitText } from "gsap/SplitText";
 import { usePathname } from "next/navigation";
 
 import { formatMotionNumber, premiumMotion, type MotionNumberFormat } from "@/lib/motion-system";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText);
 
 // Scroll-reveal + conditionally-rendered elements legitimately mean some per-page
 // animations target nodes that aren't mounted at run time. GSAP's missing-target
@@ -318,6 +319,158 @@ function addVizTimeline(group: HTMLElement) {
   };
 }
 
+/**
+ * v2 primitive: split-text entrance (data-motion-split="lines" | "chars").
+ * Chinese copy has no word boundaries, so "lines" (default, masked line rise)
+ * and "chars" (short display headings) are the supported modes. SplitText 3.13+
+ * ships aria:"auto" (label on the container, pieces hidden), so screen readers
+ * keep reading the original sentence.
+ */
+function animateSplitTarget(target: HTMLElement) {
+  const mode = target.dataset.motionSplit === "chars" ? "chars" : "lines";
+  const split = SplitText.create(target, {
+    type: mode,
+    ...(mode === "lines" ? { mask: "lines" as const } : {}),
+  });
+  const pieces = mode === "chars" ? split.chars : split.lines;
+  if (!pieces.length) {
+    split.revert();
+    return () => {};
+  }
+
+  gsap.set(target, { visibility: "visible" });
+  const tween = gsap.from(pieces, {
+    yPercent: mode === "lines" ? 112 : 60,
+    autoAlpha: mode === "lines" ? 1 : 0,
+    duration: premiumMotion.duration.split,
+    ease: premiumMotion.ease.standard,
+    delay: motionDelay(target),
+    stagger: mode === "lines" ? 0.09 : 0.02,
+    onComplete: () => split.revert(),
+  });
+
+  return () => {
+    tween.kill();
+    split.revert();
+  };
+}
+
+/**
+ * v2 primitive: magnetic CTA (data-motion-magnetic, optional data-motion-strength).
+ * The element is gently pulled toward the pointer while hovered and springs back
+ * on leave — the landing.love-tier affordance for primary buttons/logos.
+ */
+function addMagneticInteraction(element: HTMLElement) {
+  const strength = motionNumber(element, "motionStrength", 12);
+  const xTo = gsap.quickTo(element, "x", {
+    duration: 0.32,
+    ease: premiumMotion.ease.standard,
+  });
+  const yTo = gsap.quickTo(element, "y", {
+    duration: 0.32,
+    ease: premiumMotion.ease.standard,
+  });
+
+  const move = (event: PointerEvent) => {
+    const rect = element.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5;
+    const py = (event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5;
+    xTo(px * strength * 2);
+    yTo(py * strength * 2);
+  };
+  const leave = () => {
+    gsap.to(element, {
+      x: 0,
+      y: 0,
+      duration: premiumMotion.duration.magneticReturn,
+      ease: premiumMotion.ease.standard,
+      overwrite: "auto",
+    });
+  };
+
+  element.addEventListener("pointermove", move);
+  element.addEventListener("pointerleave", leave);
+  element.addEventListener("pointercancel", leave);
+
+  return () => {
+    element.removeEventListener("pointermove", move);
+    element.removeEventListener("pointerleave", leave);
+    element.removeEventListener("pointercancel", leave);
+    gsap.killTweensOf(element);
+  };
+}
+
+/**
+ * v2 primitive: pinned scroll story (data-motion-story wrapping N
+ * data-motion-story-step children). Desktop (≥1024px): the container pins and
+ * scrubbing crossfades step i → i+1, giving the hero a three-act narrative.
+ * The steps are stacked into the same grid cell for the pin's duration.
+ * Mobile / reduced motion: no pin — steps flow and stay fully visible.
+ */
+function addStoryPin(container: HTMLElement) {
+  const steps = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.storyStep, container);
+  if (steps.length < 2) {
+    return () => {};
+  }
+
+  // 审查 #2：断点判定交给 gsap.matchMedia——桌面宽度进入断点自动建 pin，
+  // 离开断点（平板旋转/窗口缩放）自动执行 context 清理恢复自然平铺，
+  // 双向都可恢复；一次性 matchMedia 快照会把错误模式残留到路由切换。
+  const mm = gsap.matchMedia();
+  mm.add("(min-width: 1024px)", () => {
+    const previousDisplay = container.style.display;
+    try {
+      container.style.display = "grid";
+      steps.forEach((step) => {
+        step.style.gridArea = "1 / 1";
+      });
+      gsap.set(steps.slice(1), { autoAlpha: 0, y: 44 });
+
+      const timeline = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: container,
+          start: "top top",
+          end: `+=${steps.length * 85}%`,
+          pin: true,
+          scrub: 0.6,
+          anticipatePin: 1,
+        },
+      });
+
+      steps.forEach((step, index) => {
+        if (index === 0) return;
+        const at = index - 0.5;
+        timeline
+          .to(steps[index - 1], { autoAlpha: 0, y: -36, duration: 0.5 }, at)
+          .to(step, { autoAlpha: 1, y: 0, duration: 0.5 }, at + 0.18);
+      });
+
+      return () => {
+        timeline.scrollTrigger?.kill();
+        timeline.kill();
+        gsap.killTweensOf(steps);
+        gsap.set(steps, { clearProps: "opacity,visibility,transform" });
+        steps.forEach((step) => {
+          step.style.gridArea = "";
+        });
+        container.style.display = previousDisplay;
+      };
+    } catch {
+      // 审查 #11 兜底：pin 构建异常时绝不让 2/3 幕停留在 autoAlpha:0——
+      // 内容可见性优先于动效（与 revealSafety 同一原则）。
+      gsap.set(steps, { autoAlpha: 1, clearProps: "transform" });
+      steps.forEach((step) => {
+        step.style.gridArea = "";
+      });
+      container.style.display = previousDisplay;
+      return undefined;
+    }
+  });
+
+  return () => mm.revert();
+}
+
 function observeOnce(targets: HTMLElement[], callback: (target: HTMLElement) => void) {
   if (!targets.length) return () => {};
 
@@ -369,6 +522,9 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
       const drawAttached = new WeakSet<SVGGeometryElement>();
       const barAttached = new WeakSet<HTMLElement>();
       const entranceAttached = new WeakSet<HTMLElement>();
+      const splitAttached = new WeakSet<HTMLElement>();
+      const magneticAttached = new WeakSet<HTMLElement>();
+      const storyAttached = new WeakSet<HTMLElement>();
       const revealTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.reveal);
       const cardTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.card);
       const buttonTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.button);
@@ -389,6 +545,10 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
       const vizBarTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.vizBar);
       const vizPathTargets = gsap.utils.toArray<SVGGeometryElement>(premiumMotion.selector.vizPath);
       const vizPointTargets = gsap.utils.toArray<SVGElement>(premiumMotion.selector.vizPoint);
+      const splitTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.split);
+      const magneticTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.magnetic);
+      const storyTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.story);
+      const storyStepTargets = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.storyStep);
 
       if (reduceMotion) {
         gsap.set(
@@ -411,6 +571,11 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
             ...vizBarTargets,
             ...vizPathTargets,
             ...vizPointTargets,
+            // v2: split text never splits, story steps all stay visible (no pin),
+            // magnetic CTAs stay put — reduced motion reads as a static page.
+            ...splitTargets,
+            ...storyTargets,
+            ...storyStepTargets,
           ],
           { autoAlpha: 1, clearProps: "transform,opacity,visibility" },
         );
@@ -471,6 +636,40 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
         if (vizAttached.has(target)) return;
         vizAttached.add(target);
         cleanups.push(addVizTimeline(target));
+      };
+
+      const attachSplitTarget = (target: HTMLElement) => {
+        if (splitAttached.has(target)) return;
+        splitAttached.add(target);
+        // BUNDLE-1 镜像（审查 #1）：公开站的 provider 是 deferred 异步 chunk——
+        // 首屏已可见、用户正在阅读的 split 目标（如 hero LCP 标题）绝不重播入场，
+        // 否则 chunk 到达瞬间标题会消失再重来。只对折下内容做 split 入场。
+        if (deferred && target.getBoundingClientRect().top < window.innerHeight) return;
+        // 审查 #3：内层清理经稳定包装同步注册，才能被 GSAP-1 的逐元素释放
+        // （dynamicCleanups slice 捕获）正确回收——IO 异步回调里产生的清理
+        // 否则只会落进路由级数组，动态卸载的元素带着进行中的 tween 泄漏到路由切换。
+        let innerCleanup: (() => void) | null = null;
+        cleanups.push(() => {
+          innerCleanup?.();
+          innerCleanup = null;
+        });
+        cleanups.push(
+          observeOnce([target], (entry) => {
+            innerCleanup = animateSplitTarget(entry);
+          }),
+        );
+      };
+
+      const attachMagneticTarget = (target: HTMLElement) => {
+        if (magneticAttached.has(target)) return;
+        magneticAttached.add(target);
+        cleanups.push(addMagneticInteraction(target));
+      };
+
+      const attachStoryTarget = (target: HTMLElement) => {
+        if (storyAttached.has(target)) return;
+        storyAttached.add(target);
+        cleanups.push(addStoryPin(target));
       };
 
       const animateOverlayTarget = (target: HTMLElement) => {
@@ -610,6 +809,9 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
       sceneTargets.forEach((target) => cleanups.push(addSceneTimeline(target)));
       parallaxTargets.forEach((target) => cleanups.push(addParallaxScroll(target)));
       vizTargets.forEach((target) => attachVizTarget(target));
+      splitTargets.forEach((target) => attachSplitTarget(target));
+      magneticTargets.forEach((target) => attachMagneticTarget(target));
+      storyTargets.forEach((target) => attachStoryTarget(target));
 
       // GSAP-2: one combined querySelectorAll per node (was 11 separate scans),
       // dispatched by which selector each element matches; mutations are coalesced
@@ -626,6 +828,9 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
         [premiumMotion.selector.modal, animateModalTarget],
         [premiumMotion.selector.drawer, animateDrawerTarget],
         [premiumMotion.selector.reward, animateRewardTarget],
+        [premiumMotion.selector.split, attachSplitTarget],
+        [premiumMotion.selector.magnetic, attachMagneticTarget],
+        [premiumMotion.selector.story, attachStoryTarget],
       ];
       const combinedMotionSelector = motionHandlers.map(([selector]) => selector).join(",");
 
@@ -658,6 +863,9 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
         vizAttached.delete(el);
         barAttached.delete(el);
         entranceAttached.delete(el);
+        splitAttached.delete(el);
+        magneticAttached.delete(el);
+        storyAttached.delete(el);
         drawAttached.delete(el as unknown as SVGGeometryElement);
       };
 
@@ -754,6 +962,10 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
           ...vizBarTargets,
           ...vizPathTargets,
           ...vizPointTargets,
+          ...splitTargets,
+          ...magneticTargets,
+          ...storyTargets,
+          ...storyStepTargets,
         ]);
       };
     },
