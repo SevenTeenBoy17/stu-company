@@ -12,6 +12,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import { SeasonLeaderboard } from "@/components/student/season-leaderboard";
 import { PowerRankTeaser } from "@/components/student/rank/power-rank-teaser";
@@ -336,6 +337,11 @@ export function StudentSandbox({
     .sort((a, b) => b.value - a.value);
   const holdingsValue = holdingsRows.reduce((total, row) => total + row.value, 0);
   const rank = currentRank(state);
+  // v2 信息收敛：事件描述只保第一句，其余与 coachingCue 一起折进「💡提示」（数据不动，仅展示层截断）。
+  const eventDescription = state.market.event.description;
+  const sentenceEnd = eventDescription.indexOf("。");
+  const eventLead = sentenceEnd >= 0 ? eventDescription.slice(0, sentenceEnd + 1) : eventDescription;
+  const eventRest = eventDescription.slice(eventLead.length).trim();
   const recentActions = state.run.actionLog.slice().reverse().slice(0, 7);
   const topLeaderboard = state.leaderboard.slice(0, 5);
 
@@ -493,7 +499,7 @@ export function StudentSandbox({
               <h2 className="mt-3 text-display-sm font-semibold leading-tight text-fg-strong md:text-display-md">
                 {state.market.round.headline}
               </h2>
-              <p className="mt-3 text-body leading-8 text-fg-muted">{state.market.event.description}</p>
+              <p className="mt-3 text-body leading-8 text-fg-muted">{eventLead}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2.5 py-1 text-caption font-semibold ${
@@ -513,7 +519,11 @@ export function StudentSandbox({
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-body-sm leading-7 text-fg-muted">{state.market.event.coachingCue}</p>
+              {/* v2 信息收敛：教练提示默认收起，需要时再展开（Disclosure 键盘可达） */}
+              <Disclosure summary="💡 提示" className="mt-2">
+                {eventRest ? <p>{eventRest}</p> : null}
+                <p className={eventRest ? "mt-1" : undefined}>{state.market.event.coachingCue}</p>
+              </Disclosure>
               {state.market.event.choices?.length ? (
                 (() => {
                   const decided = state.run.actionLog.find(
@@ -615,7 +625,15 @@ export function StudentSandbox({
                   <div key={adaptive.id} className={`rounded-2xl border px-4 py-3 ${tone}`}>
                     <p className="text-body-sm font-semibold text-fg-strong">{adaptive.title}</p>
                     <p className="mt-1 text-body-sm leading-6 text-fg-muted">{adaptive.message}</p>
-                    <p className="mt-1.5 text-caption leading-5 text-fg-muted">💡 {adaptive.teachingPoint}</p>
+                    {/* v2 信息收敛：teachingPoint 默认收起为「💡提示」，展开才读长解说 */}
+                    <Disclosure
+                      summary="💡 提示"
+                      className="mt-1"
+                      summaryClassName="py-1 text-caption"
+                      panelClassName="text-caption leading-5"
+                    >
+                      {adaptive.teachingPoint}
+                    </Disclosure>
                   </div>
                 );
               })}

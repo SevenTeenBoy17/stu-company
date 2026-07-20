@@ -6,6 +6,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Activity, ArrowRight, ThermometerSun } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import type { MarketTemperatureFactor, MarketTemperaturePayload } from "@/lib/market-sentiment";
 import { cn } from "@/lib/utils";
 
@@ -139,9 +140,15 @@ export function MarketThermometer({
               <span className="text-base font-bold text-white">{payload.eventTitle}</span>
             </div>
             <p className="mt-4 text-base font-semibold leading-8 text-white/86">{payload.summary}</p>
-            <p className="mt-4 rounded-2xl bg-orange-100 px-4 py-3 text-base font-bold leading-7 text-slate-950">
+            {/* v2 信息收敛：逆向提示默认收起（深底面板 → 覆写 Disclosure 的浅色文字类保证对比度） */}
+            <Disclosure
+              summary="逆向提示"
+              className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] px-3"
+              summaryClassName="text-white hover:text-orange-200"
+              panelClassName="text-white/86 leading-7"
+            >
               {payload.contrarianHint}
-            </p>
+            </Disclosure>
           </div>
         </div>
 
@@ -156,17 +163,12 @@ export function MarketThermometer({
           ))}
         </div>
 
-        <div
-          data-temp-reveal
-          className="mt-5 flex flex-col gap-3 rounded-[1.45rem] border border-white/10 bg-white/[0.07] p-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <p className="text-sm font-bold leading-6 text-white/84">
-            把温度拆成证据、风险和下一步观察，不直接做买卖判断。
-          </p>
+        {/* v2 信息收敛：底部方法论解说句已删（审计项），只保留行动入口 */}
+        <div data-temp-reveal className="mt-5 flex sm:justify-end">
           <Link
             data-motion-button
             href="/student/market"
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-bold !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
+            className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full sm:w-auto bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-bold !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
           >
             进入市场雷达继续拆解
             <ArrowRight className="h-4 w-4" />

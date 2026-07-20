@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LoaderCircle, Radar, RefreshCw } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import type { InvestorPersona, TutorRadarPayload } from "@/lib/types";
 import { cn, formatDateLabel } from "@/lib/utils";
 
@@ -176,7 +177,14 @@ export function StudentTutorRadar({
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>
-                <p className="mt-2 text-xs leading-5 text-fg-muted">{metric.note}</p>
+                <Disclosure
+                  summary="查看解读"
+                  className="mt-1"
+                  summaryClassName="px-0 py-1 text-xs font-medium text-fg-muted"
+                  panelClassName="pb-1 pt-0 text-xs leading-5 text-fg-muted"
+                >
+                  {metric.note}
+                </Disclosure>
               </div>
             ))}
           </div>

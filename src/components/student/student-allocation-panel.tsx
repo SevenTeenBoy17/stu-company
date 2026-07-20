@@ -2,6 +2,7 @@
 
 import { Bot, Radar, Sparkles, Target } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyInlineText, MoneyText } from "@/components/shared/money-text";
 import { MARKET_REFRESH_INTERVAL_LABEL } from "@/lib/market-refresh";
 import type { AllocationSuggestion, PortfolioIntel } from "@/lib/types";
@@ -30,6 +31,14 @@ function buildConicGradient(intel: PortfolioIntel) {
   });
 
   return `conic-gradient(${segments.join(", ")})`;
+}
+
+/** 展示层收敛：取长评语的首句作为默认可见内容，其余折进「查看完整点评」。 */
+function splitLeadSentence(text: string): { lead: string; rest: string } {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^[\s\S]*?[。！？!?\n]/);
+  if (!match) return { lead: trimmed, rest: "" };
+  return { lead: match[0].trim(), rest: trimmed.slice(match[0].length).trim() };
 }
 
 function toneStyles(tone: AllocationSuggestion["tone"]) {
@@ -61,6 +70,9 @@ export function StudentAllocationPanel({
   loading = false,
   onAskAi,
 }: StudentAllocationPanelProps) {
+  const coachText = stripMarkdown(intel.coachNote);
+  const marketText = stripMarkdown(intel.marketNote);
+  const { lead: coachLead, rest: coachRest } = splitLeadSentence(coachText);
   const providerLabel =
     intel.provider === "tsanghi"
       ? "沧海真实日线"
@@ -179,7 +191,6 @@ export function StudentAllocationPanel({
                           "--"
                         )}
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-white/58">{signal.summary}</p>
                     </div>
                   ))}
                 </div>
@@ -276,12 +287,28 @@ export function StudentAllocationPanel({
                 <span className="text-xs font-medium text-slate-600">正在刷新行情与建议...</span>
               ) : null}
             </div>
-            <p className="mt-4 whitespace-pre-line text-sm leading-8 text-slate-700">
-              <MoneyInlineText text={stripMarkdown(intel.coachNote)} />
+            <p className="mt-4 text-sm leading-8 text-slate-700">
+              <MoneyInlineText text={coachLead} />
             </p>
-            <p className="mt-4 whitespace-pre-line text-xs leading-6 text-slate-600">
-              <MoneyInlineText text={stripMarkdown(intel.marketNote)} />
-            </p>
+            {coachRest || marketText ? (
+              <Disclosure
+                summary="查看完整点评"
+                className="mt-1"
+                summaryClassName="px-0 text-xs text-brand-ink"
+                panelClassName="pb-1 pt-0"
+              >
+                {coachRest ? (
+                  <p className="whitespace-pre-line text-sm leading-7 text-slate-700">
+                    <MoneyInlineText text={coachRest} />
+                  </p>
+                ) : null}
+                {marketText ? (
+                  <p className={cn("whitespace-pre-line text-xs leading-6 text-slate-600", coachRest && "mt-3")}>
+                    <MoneyInlineText text={marketText} />
+                  </p>
+                ) : null}
+              </Disclosure>
+            ) : null}
           </div>
 
           <div className="mt-6 rounded-[1.7rem] bg-slate-950/[0.03] p-5">

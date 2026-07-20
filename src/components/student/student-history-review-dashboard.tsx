@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Clock3,
   Flame,
-  Radar,
   ShieldAlert,
   Sparkles,
   TrendingUp,
@@ -14,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import type { HistoryReviewPayload, HistoryRoundSummary } from "@/lib/types";
@@ -70,7 +70,7 @@ function ChartShell({
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
@@ -79,7 +79,9 @@ function ChartShell({
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-h2 text-fg-strong">{title}</h3>
-          <p className="mt-2 max-w-2xl text-body-sm leading-7 text-fg-muted">{description}</p>
+          {description ? (
+            <p className="mt-2 max-w-2xl text-body-sm leading-7 text-fg-muted">{description}</p>
+          ) : null}
         </div>
       </div>
       <div className="mt-5">{children}</div>
@@ -121,12 +123,7 @@ function NetWorthChart({ timeline }: { timeline: HistoryRoundSummary[] }) {
   return (
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-[#0f1729] p-4 text-white">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-body-sm font-semibold">净值趋势</p>
-          <p className="mt-1 text-caption text-white/70">
-            先看账户走势，再看单笔输赢，复盘会更稳定。
-          </p>
-        </div>
+        <p className="text-body-sm font-semibold">净值趋势</p>
         <TrendingUp className="h-4 w-4 text-[#ffb36d]" />
       </div>
       <div className="mt-4">
@@ -199,12 +196,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
   return (
     <div data-motion-viz className="overflow-hidden rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-body-sm font-semibold text-fg-strong">风险分 / 纪律分</p>
-          <p className="mt-1 text-caption text-fg-muted">
-            两条线一起看，更容易区分&ldquo;赚得快&rdquo;和&ldquo;留得住&rdquo;之间的差别。
-          </p>
-        </div>
+        <p className="text-body-sm font-semibold text-fg-strong">风险分 / 纪律分</p>
         <ShieldAlert className="h-4 w-4 text-[#f08a38]" />
       </div>
       <div className="mt-4">
@@ -258,12 +250,7 @@ function CapitalStructureChart({ timeline }: { timeline: HistoryRoundSummary[] }
   return (
     <div data-motion-viz className="rounded-[1.5rem] bg-slate-950/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-body-sm font-semibold text-fg-strong">现金 / 储蓄 / 债务结构</p>
-          <p className="mt-1 text-caption text-fg-muted">
-            先看资金结构有没有呼吸感，再决定下一轮要不要扩张。
-          </p>
-        </div>
+        <p className="text-body-sm font-semibold text-fg-strong">现金 / 储蓄 / 债务结构</p>
         <Wallet className="h-4 w-4 text-[#f08a38]" />
       </div>
       <div className="mt-5 space-y-4">
@@ -484,12 +471,17 @@ export function StudentHistoryReviewDashboard({
                           <p className="mt-2.5 text-body-sm font-semibold leading-snug text-white">
                             {highlight.title}
                           </p>
-                          <p className="mt-2 line-clamp-3 text-caption leading-6 text-white/64">
-                            {highlight.detail}
-                          </p>
-                          <p className="mt-auto break-words pt-3 text-body-lg font-semibold text-white sm:text-h4">
+                          <p className="mt-2 break-words text-body-lg font-semibold text-white sm:text-h4">
                             <HighlightMetricValue value={highlight.metricValue} />
                           </p>
+                          <Disclosure
+                            summary="查看详情"
+                            className="mt-auto pt-2"
+                            summaryClassName="px-0 py-1 text-caption font-medium text-white/72 hover:text-white"
+                            panelClassName="pb-1 pt-0 text-caption leading-6 text-white/64"
+                          >
+                            {highlight.detail}
+                          </Disclosure>
                         </div>
                       );
                     })}
@@ -517,22 +509,9 @@ export function StudentHistoryReviewDashboard({
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 rounded-[1.5rem] bg-[#fff4e9] p-4">
-                  <div className="flex items-start gap-3">
-                    <Radar className="mt-0.5 h-4 w-4 shrink-0 text-[#f08a38]" />
-                    <p className="text-body-sm leading-7 text-fg-default">
-                      当前历史页默认按&ldquo;回合趋势优先&rdquo;组织。建议先观察净值、风险与纪律的转折，再进入每个回合的动作细节。
-                    </p>
-                  </div>
-                </div>
                 <div className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-body-sm font-semibold text-fg-strong">学习信号已进入复盘</p>
-                      <p className="mt-1 text-caption leading-6 text-fg-muted">
-                        机会观察、基金实验、目标账户和保护伞不会直接改变收益，但会影响你的长期决策质量。
-                      </p>
-                    </div>
+                    <p className="text-body-sm font-semibold text-fg-strong">学习信号已进入复盘</p>
                     <span className="rounded-full bg-slate-950/[0.04] px-3 py-1.5 text-caption font-semibold text-fg-muted">
                       {payload.learningSignals.length > 0 ? `${payload.learningSignals.length} 类信号` : "待点亮"}
                     </span>
@@ -555,7 +534,14 @@ export function StudentHistoryReviewDashboard({
                             </span>
                           </div>
                           {/* contrast fix: was opacity-80 (compounding ~2.88:1) → explicit text-fg-muted */}
-                          <p className="mt-2 text-caption leading-6 text-fg-muted">{signal.detail}</p>
+                          <Disclosure
+                            summary="查看信号说明"
+                            className="mt-1"
+                            summaryClassName="px-0 py-1 text-caption font-medium text-fg-muted"
+                            panelClassName="pb-1 pt-0 text-caption leading-6 text-fg-muted"
+                          >
+                            {signal.detail}
+                          </Disclosure>
                         </div>
                       ))}
                     </div>
@@ -569,11 +555,7 @@ export function StudentHistoryReviewDashboard({
             </div>
           </section>
 
-          <ChartShell
-            eyebrow="Trend Board"
-            title="回合表现可视化"
-            description="把净值路径、风控评分和资金结构放在一起，能更快看出哪些动作在放大波动，哪些动作在帮你稳住节奏。"
-          >
+          <ChartShell eyebrow="Trend Board" title="回合表现可视化">
             <div className="grid gap-4 xl:grid-cols-[1.04fr_0.96fr]">
               <NetWorthChart timeline={payload.timeline} />
               <RiskDisciplineChart timeline={payload.timeline} />
@@ -720,37 +702,55 @@ export function StudentHistoryReviewDashboard({
               </div>
 
               <div className="rounded-[1.6rem] bg-slate-950/[0.03] p-5">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-4 w-4 text-[#f08a38]" />
-                  <p className="text-h3 text-fg-strong">诊断分析</p>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {payload.aiReview.analysis.map((item, index) => (
-                    <div key={`analysis-${index}`} className="rounded-[1.2rem] bg-white px-4 py-3 shadow-sm">
-                      <p className="text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
-                    </div>
-                  ))}
-                </div>
+                <Disclosure
+                  summary={
+                    <span className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-[#f08a38]" />
+                      <span className="text-h3 text-fg-strong">
+                        诊断分析（{payload.aiReview.analysis.length} 条）
+                      </span>
+                    </span>
+                  }
+                  summaryClassName="px-0 py-0"
+                  panelClassName="pb-0 pt-0"
+                >
+                  <div className="mt-3 space-y-3">
+                    {payload.aiReview.analysis.map((item, index) => (
+                      <div key={`analysis-${index}`} className="rounded-[1.2rem] bg-white px-4 py-3 shadow-sm">
+                        <p className="text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Disclosure>
               </div>
 
               <div className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <ChevronRight className="h-4 w-4 text-[#f08a38]" />
-                  <p className="text-h3 text-fg-strong">下一步参考建议</p>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {payload.aiReview.nextSteps.map((item, index) => (
-                    <div
-                      key={`next-step-${index}`}
-                      className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
-                    >
-                      <p className="bz-eyebrow">
-                        Step 0{index + 1}
-                      </p>
-                      <p className="mt-2 text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
-                    </div>
-                  ))}
-                </div>
+                <Disclosure
+                  summary={
+                    <span className="flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4 text-[#f08a38]" />
+                      <span className="text-h3 text-fg-strong">
+                        下一步参考建议（{payload.aiReview.nextSteps.length} 条）
+                      </span>
+                    </span>
+                  }
+                  summaryClassName="px-0 py-0"
+                  panelClassName="pb-0 pt-0"
+                >
+                  <div className="mt-3 space-y-3">
+                    {payload.aiReview.nextSteps.map((item, index) => (
+                      <div
+                        key={`next-step-${index}`}
+                        className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
+                      >
+                        <p className="bz-eyebrow">
+                          Step 0{index + 1}
+                        </p>
+                        <p className="mt-2 text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Disclosure>
               </div>
             </div>
 

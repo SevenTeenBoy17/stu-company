@@ -19,6 +19,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { AutoInvestPayload, AutoInvestStrategy } from "@/lib/auto-invest";
 import { cn, formatCurrency, formatPercent, getMarketMoveClasses } from "@/lib/utils";
@@ -182,7 +183,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 <p className="bz-eyebrow-inverse">Auto Invest Robot</p>
                 <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
-                  让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是&ldquo;猜最低点&rdquo;，而是现金安全、平均成本和长期纪律。
+                  机器人按规则执行小额、分批、可复盘的定投，练的是纪律，不是猜最低点。
                 </p>
               </div>
               <div className="rounded-[1.7rem] border border-white/12 bg-white/[0.08] p-5">
@@ -243,7 +244,16 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <p className="mt-4 text-hero-num tabular-nums text-white">
                 {formatCurrency(selectedOption?.currentPrice ?? 0)}
               </p>
-              <p className="mt-3 text-body leading-7 text-white/58">{selectedOption?.description}</p>
+              {selectedOption?.description ? (
+                <Disclosure
+                  summary="标的简介"
+                  className="mt-2"
+                  summaryClassName="text-white/76 hover:text-white"
+                  panelClassName="text-white/58"
+                >
+                  {selectedOption.description}
+                </Disclosure>
+              ) : null}
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -487,7 +497,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   <h2 className="text-h1 font-semibold text-fg-strong">执行轨迹</h2>
                 </div>
                 <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                  机器人按回合拆单，重点不是每次都赚钱，而是看清价格、份额、平均成本、现金余量如何联动。
+                  机器人按回合拆单，重点是看清成本与现金余量如何联动。
                 </p>
               </div>
               <div className="rounded-full bg-slate-950 px-4 py-2 text-caption font-semibold text-white">
@@ -586,7 +596,16 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                         <span>投入 {formatCurrency(row.invested)}</span>
                         <span>均价 {formatCurrency(row.averageCost)}</span>
                       </div>
-                      <p className="mt-3 text-caption leading-5 text-fg-muted">{row.note}</p>
+                      {row.note ? (
+                        <Disclosure
+                          summary="节点解说"
+                          className="mt-2"
+                          summaryClassName="text-caption"
+                          panelClassName="text-caption leading-5"
+                        >
+                          {row.note}
+                        </Disclosure>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -635,21 +654,31 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 <h2 className="text-h1 font-semibold text-fg-strong">Mr.Brown 训练提示</h2>
               </div>
               <p className="mt-4 text-body leading-7 text-fg-muted">{payload.coach.summary}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {payload.coach.concepts.map((concept) => (
-                  <span key={concept} className="rounded-full bg-slate-100 px-3 py-1.5 text-caption text-fg-muted">
-                    {concept}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-5 space-y-3">
-                {payload.coach.nextSteps.map((step, index) => (
-                  <div key={step} className="rounded-[1.2rem] bg-slate-50 p-4">
-                    <p className="bz-eyebrow bz-brand-text-on-light">STEP {index + 1}</p>
-                    <p className="mt-2 text-body-sm leading-6 text-fg-muted">{step}</p>
+              {payload.coach.nextSteps[0] ? (
+                <div className="mt-5 rounded-[1.2rem] bg-slate-50 p-4">
+                  <p className="bz-eyebrow bz-brand-text-on-light">STEP 1</p>
+                  <p className="mt-2 text-body-sm leading-6 text-fg-muted">{payload.coach.nextSteps[0]}</p>
+                </div>
+              ) : null}
+              {payload.coach.concepts.length > 0 || payload.coach.nextSteps.length > 1 ? (
+                <Disclosure summary="展开全部训练建议" className="mt-3">
+                  <div className="flex flex-wrap gap-2">
+                    {payload.coach.concepts.map((concept) => (
+                      <span key={concept} className="rounded-full bg-slate-100 px-3 py-1.5 text-caption text-fg-muted">
+                        {concept}
+                      </span>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="mt-4 space-y-3">
+                    {payload.coach.nextSteps.slice(1).map((step, index) => (
+                      <div key={step} className="rounded-[1.2rem] bg-slate-50 p-4">
+                        <p className="bz-eyebrow bz-brand-text-on-light">STEP {index + 2}</p>
+                        <p className="mt-2 text-body-sm leading-6 text-fg-muted">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Disclosure>
+              ) : null}
             </article>
           </section>
         </div>

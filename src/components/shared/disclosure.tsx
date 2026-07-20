@@ -55,9 +55,10 @@ export function Disclosure({
           )}
         />
       </button>
+      {/* 标准 WAI-ARIA disclosure 面板：不加 role="region"——同页多个折叠会产生
+          多个无唯一名 landmark（axe landmark-unique，P2-1 auto-invest 实测暴露）。 */}
       <div
         id={panelId}
-        role="region"
         className={cn(
           "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",

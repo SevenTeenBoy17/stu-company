@@ -32,6 +32,7 @@ import type {
 } from "@/lib/student-service-map";
 import { studentServiceGroups } from "@/lib/student-service-map";
 import { cn } from "@/lib/utils";
+import { Disclosure } from "@/components/shared/disclosure";
 import { MarketThermometer } from "@/components/student/market-thermometer";
 
 gsap.registerPlugin(useGSAP);
@@ -170,9 +171,6 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                 <h2 className="mt-3 max-w-2xl text-h1 tracking-tight text-white sm:text-display-lg">
                   今日理财学习服务台
                 </h2>
-                <p className="mt-3 max-w-3xl text-body-lg leading-8 text-white/72">
-                  像真实理财 App 一样组织信息，但所有动作都服务于课堂模拟、概念理解和复盘训练。
-                </p>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-body-sm font-semibold text-white">
                 <Sparkles className="h-4 w-4 text-orange-300" />
@@ -196,7 +194,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                       <ArrowRight className="h-4 w-4 text-white/70 transition group-hover:translate-x-1 group-hover:text-orange-200" />
                     </div>
                     <p className="mt-4 text-h3 text-white">{domain.label}</p>
-                    <p className="mt-2 line-clamp-2 text-body-sm leading-6 text-white/82">{domain.summary}</p>
+                    <p className="mt-2 line-clamp-1 text-body-sm leading-6 text-white/82">{domain.summary}</p>
                     <div className="mt-4 min-w-0 rounded-2xl bg-slate-900/80 px-3 py-2">
                       <p className="text-caption text-white/78">{domain.metricLabel}</p>
                       <p className="mt-1 whitespace-nowrap text-body-sm font-extrabold leading-tight tracking-tight tabular-nums text-orange-200 2xl:text-h3">
@@ -220,8 +218,15 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             </div>
             <Trophy className="h-6 w-6 shrink-0 text-brand" />
           </div>
-          <p className="mt-3 text-body leading-8 text-fg-muted">{season.summary}</p>
-          <div className="mt-5">
+          {/* v2 信息收敛：赛季说明默认折叠，面板首屏只留标题+进度（文案来自 lib payload，不动数据） */}
+          <Disclosure
+            summary="赛季玩法说明"
+            className="mt-2"
+            summaryClassName="text-caption font-semibold text-fg-muted"
+          >
+            {season.summary}
+          </Disclosure>
+          <div className="mt-3">
             <div className="flex items-center justify-between text-body-sm text-fg-muted">
               <span>赛季进度</span>
               <span className="tabular-nums">{season.completedObjectives}/{season.totalObjectives} · {season.progress}%</span>
@@ -235,32 +240,40 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             </div>
           </div>
           <div className="mt-5 space-y-2">
+            {/* v2 信息收敛：objective 只留 label+进度数字，detail 折进 Disclosure（放在 Link 外，避免 a 内嵌 button） */}
             {season.objectives.map((objective) => (
-              <Link
+              <div
                 key={objective.id}
-                href={objective.href}
-                className="group flex items-start gap-3 rounded-[1.15rem] border border-slate-200 bg-slate-50 px-3 py-3 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/70"
+                className="rounded-[1.15rem] border border-slate-200 bg-slate-50 px-3 py-2 transition hover:border-orange-200 hover:bg-orange-50/70"
               >
-                <span
-                  className={cn(
-                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    objective.done ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-600",
-                  )}
+                <Link
+                  href={objective.href}
+                  className="group flex items-center gap-3 py-1 transition hover:-translate-y-0.5"
                 >
-                  {objective.done ? <CheckCircle2 className="h-4 w-4" /> : <ArrowRight className="h-3.5 w-3.5" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                      objective.done ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-600",
+                    )}
+                  >
+                    {objective.done ? <CheckCircle2 className="h-4 w-4" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                     <span className="text-body-sm font-semibold text-fg-strong">{objective.label}</span>
                     <span className="text-caption tabular-nums text-fg-muted">
                       {Math.min(objective.target, Math.round(objective.progress * objective.target))}/{objective.target}
                     </span>
                   </span>
-                  <span className="mt-1 block text-caption leading-5 text-fg-muted">
-                    {objective.detail}
-                  </span>
-                </span>
-              </Link>
+                </Link>
+                <Disclosure
+                  summary="怎么完成"
+                  className="pl-10"
+                  summaryClassName="py-1 text-caption font-medium text-fg-muted"
+                  panelClassName="pb-1 pt-0 text-caption leading-5"
+                >
+                  {objective.detail}
+                </Disclosure>
+              </div>
             ))}
           </div>
           {/* Primary CTA — dark text on amber per AA rule */}
@@ -345,8 +358,8 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                         </span>
                       ) : null}
                     </div>
+                    {/* v2 信息收敛：summary 与 title 语义重复，卡面删除；完整 summary 保留在上方 aria-label 供读屏 */}
                     <p className="mt-3 text-h3 text-fg-strong">{item.title}</p>
-                    <p className="mt-1 text-body-sm leading-6 text-fg-muted">{item.summary}</p>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2">
                       <span className={cn("text-caption font-semibold", item.done ? "text-emerald-700" : "text-fg-muted")}>
                         {item.progressLabel}
@@ -381,8 +394,9 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             <h3 className="mt-3 text-h1 tracking-tight text-fg-strong sm:text-display-lg">
               多元理财学习版图
             </h3>
+            {/* v2 信息收敛：组导语从 ~55 字压成一句 */}
             <p className="mt-2 max-w-3xl text-body leading-7 text-fg-muted">
-              参考真实生活里的理财入口，把&#x201C;市场、持有、生活目标、复盘任务&#x201D;拆成四条训练线。每条线只给一个下一步动作，降低认知负荷，也方便课堂检查。
+              四条训练线，每条只给一个下一步动作。
             </p>
           </div>
           {/* Secondary CTA — outline style */}
@@ -423,7 +437,15 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     </div>
                     <h4 className="mt-4 text-h2 tracking-tight text-fg-strong">{group.label}</h4>
                     <p className="mt-2 text-body-sm font-semibold leading-6 text-brand-ink">{group.concept}</p>
-                    <p className="mt-3 text-body-sm leading-7 text-fg-muted">{group.summary}</p>
+                    {/* v2 信息收敛：组 summary 默认折叠，concept 一句话承担卡面定位（summary 来自 lib payload，不动数据） */}
+                    <Disclosure
+                      summary="这条线练什么"
+                      className="mt-1"
+                      summaryClassName="text-caption font-semibold text-fg-muted"
+                      panelClassName="text-body-sm leading-7"
+                    >
+                      {group.summary}
+                    </Disclosure>
 
                     <div className="mt-4 rounded-2xl bg-slate-50 p-3">
                       <div className="flex items-center justify-between gap-3 text-caption text-fg-muted">
@@ -450,10 +472,14 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                   </div>
 
                   <div className="grid min-w-0 auto-rows-min gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
+                    {/* v2 信息收敛：子卡只留标题+状态徽标；learn 收进 aria-label（读屏完整播报，同九宫格模式） */}
                     {groupServices.slice(0, 4).map((service) => (
                       <Link
                         key={service.id}
                         href={service.href}
+                        aria-label={`${service.title}${
+                          service.status === "new" ? "（新增）" : service.status === "premium" ? "（订阅）" : ""
+                        }：你会学到——${service.learn}`}
                         className="self-start rounded-[1.2rem] border border-slate-200 bg-white/[0.92] p-4 transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50/65"
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -462,9 +488,6 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                             {service.status === "new" ? "新" : service.status === "premium" ? "订阅" : "开"}
                           </span>
                         </div>
-                        <p className="mt-2 line-clamp-3 text-body-sm leading-6 text-fg-muted">
-                          {service.learn}
-                        </p>
                       </Link>
                     ))}
                   </div>
