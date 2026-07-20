@@ -341,6 +341,7 @@ export function AdminUserManager({
           <select
             value={roleFilter}
             onChange={(event) => setRoleFilter(event.target.value as Role | "all")}
+            aria-label="按角色筛选"
             className="w-full bg-transparent text-sm font-black outline-none"
           >
             {roleOptions.map((option) => (
@@ -353,6 +354,7 @@ export function AdminUserManager({
         <select
           value={subscriptionFilter}
           onChange={(event) => setSubscriptionFilter(event.target.value as SubscriptionTier | "trial" | "all")}
+          aria-label="按订阅状态筛选"
           className="min-h-12 rounded-2xl bg-slate-50 px-3 text-sm font-black outline-none"
         >
           {subscriptionOptions.map((option) => (
@@ -630,6 +632,7 @@ export function AdminUserManager({
             value={createDraft.role}
             onChange={(event) => setCreateDraft((current) => ({ ...current, role: event.target.value as Role }))}
             disabled={!canManagePasswords}
+            aria-label="新账号角色"
             className="bz-field min-h-12"
           >
             {roleOptions
@@ -644,6 +647,7 @@ export function AdminUserManager({
             value={createDraft.subscriptionTier}
             onChange={(event) => setCreateDraft((current) => ({ ...current, subscriptionTier: event.target.value as SubscriptionTier }))}
             disabled={!canManagePasswords}
+            aria-label="新账号订阅状态"
             className="bz-field min-h-12"
           >
             {(["free", "standard", "premium"] as SubscriptionTier[]).map((tier) => (
@@ -674,7 +678,10 @@ export function AdminUserManager({
       </div>
 
       {message ? (
-        <p className={`mt-5 rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
+        <p
+          role={message.tone === "error" ? "alert" : "status"}
+          className={`mt-5 rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}
+        >
           {message.text}
         </p>
       ) : null}

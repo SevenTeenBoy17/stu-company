@@ -107,7 +107,7 @@ export function RankBoard({
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-subtle text-brand">
           <Trophy className="h-4 w-4" />
         </span>
-        <h3 className="text-base font-bold text-fg-strong">学习进度榜</h3>
+        <h2 className="text-base font-bold text-fg-strong">学习进度榜</h2>
         {board ? (
           <span className="rounded-full bg-bg-muted px-2 py-0.5 text-xs font-semibold text-fg-default">
             共 {board.total} 人
@@ -178,6 +178,9 @@ export function RankBoard({
         </div>
       ) : null}
 
+      {/* itest9 a11y P2(4.1.3)：榜单加载→结果切换需对 AT 播报。aria-busy 反映骨架态，
+          polite 让新排行在读屏时插播而不打断当前朗读。 */}
+      <div aria-live="polite" aria-busy={showSkeleton}>
       {error ? (
         <div className="mt-4 rounded-2xl border border-[var(--error-100)] bg-[var(--error-50)] px-4 py-4">
           <p className="text-sm font-bold text-[var(--error-600)]">{error}</p>
@@ -263,7 +266,7 @@ export function RankBoard({
                   <span className="block font-mono text-lg font-bold tabular-nums text-[color:var(--up-600)]">
                     {entry.power.toLocaleString("zh-CN")}
                   </span>
-                  <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-subtle">
+                  <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-muted">
                     学习点
                   </span>
                 </span>
@@ -272,6 +275,7 @@ export function RankBoard({
           })}
         </ol>
       )}
+      </div>
 
       <p className="mt-4 text-xs leading-5 text-fg-muted">
         榜单只反映教育模拟中的决策表现，不构成任何投资建议。每周一刷新。

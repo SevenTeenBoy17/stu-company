@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { drawCard, questCardSeries, type QuestCard } from "@/lib/cards";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { questCardDeck } from "@/lib/content";
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     // 不门控，学生可合法挣得学习任务完成却领不到卡，规则自相矛盾。
     const rl = rateLimit(rateLimitKey("quest-draw", auth.user.id, request), 20, 60_000);
     if (!rl.ok) {
-      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const parsed = requestSchema.safeParse(await request.json());

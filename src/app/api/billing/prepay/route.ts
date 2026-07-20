@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
 import { verifyBillingIntent } from "@/lib/billing/billing-intent";
 import { getManualWechatCollectionConfig } from "@/lib/billing/manual-wechat";
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   if (auth.error) return auth.error;
 
   const rl = rateLimit(rateLimitKey("billing-prepay", auth.user.id, request), 10, 60_000);
-  if (!rl.ok) return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+  if (!rl.ok) return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
 
   try {
     const body = prepaySchema.parse(await request.json());

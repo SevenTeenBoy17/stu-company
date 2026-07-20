@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { persistSession } from "@/lib/auth";
 import { INVITE_CODE_FORMAT_MESSAGE, INVITE_CODE_PATTERN } from "@/lib/auth-validation";
 import { registerUserByInvite, roleHomePath } from "@/lib/db/repo";
-import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
+import { buildRateLimitMessage, registerRateLimit } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
   inviteCode: z
@@ -24,9 +24,9 @@ export async function POST(request: Request) {
   if (originBlock) return originBlock;
 
   try {
-    const rl = rateLimit(rateLimitKey("register-invite", undefined, request), 5, 60_000 * 10);
+    const rl = registerRateLimit(request, "register-invite");
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const body = registerSchema.parse(await request.json());

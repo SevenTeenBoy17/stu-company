@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { findUserByEmail } from "@/lib/db/repo";
 import { passwordResetEmail, sendEmail } from "@/lib/email";
 import { createPasswordResetToken } from "@/lib/password-reset";
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   try {
     const rl = rateLimit(rateLimitKey("forgot-password", undefined, request), 5, 60_000 * 10);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const { email } = forgotSchema.parse(await request.json());

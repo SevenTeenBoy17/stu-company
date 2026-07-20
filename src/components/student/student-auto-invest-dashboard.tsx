@@ -79,6 +79,13 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
   const [payload, setPayload] = useState(initialPayload);
   const [assetId, setAssetId] = useState(initialPayload.selected.assetId);
   const [assetListOpen, setAssetListOpen] = useState(false);
+  // itest6 R3 P3：Esc 只在触发按钮聚焦时生效，焦点进入选项后按 Esc 无反应、且关闭后焦点丢失。
+  // 用容器级 keydown（冒泡覆盖触发按钮+全部选项）关闭并把焦点还给触发按钮，符合 listbox 键盘契约。
+  const assetTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeAssetList = () => {
+    setAssetListOpen(false);
+    assetTriggerRef.current?.focus();
+  };
   const [amountPerRound, setAmountPerRound] = useState(initialPayload.selected.amountPerRound);
   const [durationRounds, setDurationRounds] = useState(initialPayload.selected.durationRounds);
   const [strategy, setStrategy] = useState<AutoInvestStrategy>(initialPayload.selected.strategy);
@@ -173,7 +180,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
               <div className="max-w-3xl">
                 {/* Eyebrow on dark panel → bz-eyebrow-inverse */}
                 <p className="bz-eyebrow-inverse">Auto Invest Robot</p>
-                <h1 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h1>
+                <h2 className="mt-3 text-display-lg font-semibold md:text-display-xl">定投机器人训练营</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   让机器人按规则替你执行小额、分批、可复盘的投资计划。学生练的不是&ldquo;猜最低点&rdquo;，而是现金安全、平均成本和长期纪律。
                 </p>
@@ -299,20 +306,26 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   setAssetListOpen(false);
                 }
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && assetListOpen) {
+                  event.preventDefault();
+                  closeAssetList();
+                }
+              }}
             >
               <span id="auto-invest-asset-label" className="text-caption font-semibold text-fg-default">
                 定投标的
               </span>
               <button
+                ref={assetTriggerRef}
                 type="button"
                 data-testid="auto-invest-asset-selector"
-                aria-labelledby="auto-invest-asset-label"
+                // itest9 a11y P2(4.1.2)：去掉 aria-labelledby——它把可及名覆盖成静态「定投标的」、盖掉了
+                // 按钮内已选标的的文本。移除后按钮自身文本(标的名+现价)成为名称，折叠态也能播报当前值。
+                aria-label="定投标的"
                 aria-expanded={assetListOpen}
                 aria-haspopup="listbox"
                 onClick={() => setAssetListOpen((open) => !open)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setAssetListOpen(false);
-                }}
                 className={cn(
                   "mt-2 flex min-h-14 w-full items-center justify-between gap-3 rounded-[1.15rem] border bg-white px-4 py-3 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] outline-none transition",
                   assetListOpen ? "border-brand shadow-glow" : "border-slate-200 hover:border-brand/60",
@@ -364,7 +377,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                             <span className="block truncate text-body-sm font-bold text-fg-strong">
                               {option.name}
                             </span>
-                            <span className="mt-0.5 block text-caption font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            <span className="mt-0.5 block text-caption font-semibold uppercase tracking-[0.12em] text-slate-500">
                               {option.symbol}
                             </span>
                           </span>

@@ -121,9 +121,9 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
 
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="bz-eyebrow-inverse">Credit Lab</p>
-            <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               先算清利息，再决定要不要借
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
               信用实验室把分期、应急借款和提前还款放进同一张沙盘。借款会增加现金，也会同步增加债务；真正要学的是未来现金流能不能承受。
             </p>
@@ -199,6 +199,7 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               <button
                 key={scenario.id}
                 type="button"
+                aria-pressed={scenario.id === scenarioId}
                 data-credit-card
                 data-motion-card
                   onClick={() => {
@@ -249,15 +250,13 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                   <div
                     key={label}
                     data-testid={`credit-scenario-metric-${index}`}
-                    className="min-h-[6.25rem] min-w-0 rounded-[1.25rem] border border-slate-200 bg-slate-950/[0.035] px-4 py-3.5 shadow-sm"
+                    className="grid min-h-[6.25rem] min-w-0 grid-cols-[minmax(0,1fr)_auto] rounded-[1.25rem] border border-slate-200 bg-slate-950/[0.035] px-4 py-3.5 shadow-sm"
                   >
-                    <div className="flex min-w-0 items-start justify-between gap-3">
-                      <dt className="min-w-0 text-body-sm font-semibold leading-6 text-fg-strong">{label}</dt>
-                      <dd className="shrink-0 text-right text-body-lg font-bold tabular-nums text-brand-ink">
-                        {typeof value === "number" ? formatCurrency(value) : value}
-                      </dd>
-                    </div>
-                    <dd className="mt-1.5 text-caption leading-5 text-fg-muted">{hint}</dd>
+                    <dt className="min-w-0 text-body-sm font-semibold leading-6 text-fg-strong">{label}</dt>
+                    <dd className="shrink-0 text-right text-body-lg font-bold tabular-nums text-brand-ink">
+                      {typeof value === "number" ? formatCurrency(value) : value}
+                    </dd>
+                    <dd className="col-span-2 mt-1.5 text-caption leading-5 text-fg-muted">{hint}</dd>
                   </div>
                 ))}
               </dl>

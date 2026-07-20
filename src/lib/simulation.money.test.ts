@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   advanceSimulationRun,
+  applyEventChoice,
   applySimulationAction,
   createInitialRun,
   evaluateRun,
@@ -67,5 +68,40 @@ describe("money rounding invariants (R4 — no float drift over 12 rounds)", () 
       expect(bought.cash).toBe(run.cash - quote!.currentPrice * quantity);
       expect(evaluateRun(bought).netWorth).toBe(before);
     }
+  });
+
+  // itest10 #9: the stake is measured on NET WORTH but was applied to cash and
+  // floored at 0. Parking all cash in savings made a gamble loss vanish while the
+  // win still paid — a risk-free money printer that inflated net worth + the
+  // leaderboard. A loss must now be realized against savings/debt.
+  it("realizes a gamble loss from savings when cash is 0 (no risk-free money printer)", () => {
+    let sawLoss = false;
+    let sawWin = false;
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const run = createInitialRun("student-gamble", "class-gamble", "test", seed);
+      // Park every yuan in savings, then force the liquidity-crisis gamble card.
+      run.cash = 0;
+      run.savings = 120_000;
+      run.debt = 0;
+      run.eventTimeline = run.eventTimeline ? [...run.eventTimeline] : [];
+      run.eventTimeline[run.currentRound - 1] = "event-liquidity-crisis";
+
+      const before = evaluateRun(run).netWorth;
+      const after = applyEventChoice(run, "lc-gamble");
+      const netWorth = evaluateRun(after).netWorth;
+
+      if (netWorth < before) {
+        // Old bug: with cash=0 this branch NEVER happened (loss floored to 0).
+        sawLoss = true;
+        expect(after.savings).toBeLessThan(120_000);
+      }
+      if (netWorth > before) {
+        sawWin = true;
+        expect(after.cash).toBeGreaterThan(0);
+      }
+    }
+    // A real gamble swings both ways; crucially, losses are now felt.
+    expect(sawLoss).toBe(true);
+    expect(sawWin).toBe(true);
   });
 });

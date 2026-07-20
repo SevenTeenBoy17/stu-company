@@ -224,7 +224,7 @@ export function PowerCard({
       <section className="rounded-[1.7rem] border border-border bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.06)]">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 text-brand" />
-          <h3 className="text-sm font-semibold text-fg-default">学习点是怎么算出来的</h3>
+          <h2 className="text-sm font-semibold text-fg-default">学习点是怎么算出来的</h2>
         </div>
         <p className="mt-1.5 text-xs leading-5 text-fg-muted">
           满分 {formula.maxPower}。每项 = 该项表现 × 权重 × 满分。比的是决策质量，运气好乱赌不会更高。

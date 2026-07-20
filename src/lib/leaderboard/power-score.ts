@@ -45,6 +45,10 @@ export const POWER_TUNING = {
   drawdownCapPct: 50, // 回撤达到 50% 记 0 分
   growthCapReturn: 1, // 收益率达到 +100% 记满分
   maxPower: 2000,
+  // itest10 #10（反挂机）：一个从未部署资本的空转局会白拿「满分回撤控制(1.0)+
+  // 中位风险调整收益(0.5)+纪律基线」，raw≈0.555→≈1110 分，直接落进 tier3 精明投资者。
+  // 对这种零决策局按此系数衰减，使其掉回 tier1 理财新手（<400），反 YOLO 定级才成立。
+  inactivityFactor: 0.35,
 } as const;
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
@@ -75,6 +79,22 @@ export interface PowerScoreResult {
   components: PowerComponents;
 }
 
+/**
+ * A run that never deployed capital and completed no learning made zero
+ * decisions — no volatility, no drawdown, net worth unchanged. It must not
+ * inherit the median risk-adjusted-return + perfect-drawdown "freebies" and
+ * rank as a skilled investor (itest10 #10, anti-YOLO). Tight gate: any real
+ * trade/bank/learning breaks at least one condition.
+ */
+export function isInactiveRun(input: PowerScoreInput): boolean {
+  return (
+    input.returnVolatility <= POWER_TUNING.epsilon &&
+    input.maxDrawdownPct <= 0 &&
+    input.netWorth <= input.startCapital &&
+    input.learningCompleted <= 0
+  );
+}
+
 export function computePowerScore(input: PowerScoreInput): PowerScoreResult {
   const components = powerComponents(input);
   const raw =
@@ -84,5 +104,7 @@ export function computePowerScore(input: PowerScoreInput): PowerScoreResult {
     POWER_WEIGHTS.learning * components.learning +
     POWER_WEIGHTS.growth * components.growth;
 
-  return { power: Math.round(clamp01(raw) * POWER_TUNING.maxPower), components };
+  const effective = isInactiveRun(input) ? raw * POWER_TUNING.inactivityFactor : raw;
+
+  return { power: Math.round(clamp01(effective) * POWER_TUNING.maxPower), components };
 }

@@ -122,7 +122,12 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
         </button>
 
         <div
-          className="hidden shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64 lg:flex"
+          // itest8 P3：兜底(fallback)行情是教学示意的假数据，其「教学观察池模式」免责标注必须对未成年人
+          // 【所有视口都可见】——此前 hidden…lg:flex 让移动端看不到标注、假报价形同真实行情。fallback 时强制显示。
+          className={cn(
+            "shrink-0 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/64",
+            payload.provider === "fallback" ? "flex" : "hidden lg:flex",
+          )}
           aria-live="polite"
           aria-atomic="true"
         >

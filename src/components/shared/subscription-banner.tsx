@@ -31,7 +31,7 @@ export function SubscriptionBanner({ state, role }: Props) {
   const bgClass = isExpired
     ? "bg-[var(--error-50)] border-[var(--error-400)]"
     : "bg-[var(--warning-50)] border-[var(--warning-400)]";
-  const textClass = isExpired ? "text-[var(--error-500)]" : "text-[var(--warning-600)]";
+  const textClass = isExpired ? "text-[var(--error-500)]" : "text-[var(--warning-700)]"; // itest9 a11y：600→700 过 AA
 
   return (
     <div className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${bgClass}`}>

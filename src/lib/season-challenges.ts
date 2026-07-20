@@ -1,5 +1,6 @@
 import type { ActionLog, ScenarioRun } from "@/lib/types";
 import { clamp, createId } from "@/lib/utils";
+import { DomainError } from "@/lib/domain-error";
 
 export interface StudentSeasonObjective {
   id: string;
@@ -138,10 +139,10 @@ export function claimSeasonChallengeReward(
 ): { run: ScenarioRun; payload: StudentSeasonChallengePayload; claimed: SeasonClaimResult } {
   const payload = buildStudentSeasonChallengePayload(run, now);
   if (challengeId !== payload.id) {
-    throw new Error("赛季挑战不存在，请刷新后重试。");
+    throw new DomainError("赛季挑战不存在，请刷新后重试。");
   }
   if (!payload.claimable) {
-    throw new Error(payload.claimed ? "这个赛季奖励已经领取过了。" : "赛季挑战还没有完成。");
+    throw new DomainError(payload.claimed ? "这个赛季奖励已经领取过了。" : "赛季挑战还没有完成。");
   }
 
   const claimedAt = now.toISOString();

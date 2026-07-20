@@ -15,6 +15,14 @@ Any coding agent entering this repository must read this file before editing.
   - `parent@brownzone.ai`
   - `admin@brownzone.ai`
 - Demo invite codes: `MRB-STUDENT-2026`, `MRB-PARENT-2026`, `MRB-TEACHER-2026`
+- 参赛团队 / 超级管理员 (competition students who are also product users **and** super-admins;
+  password `Super001!!!`, seeded only in dev/`SEED_DEMO`; authority is centralized in
+  `src/lib/auth-roles.ts` and env-extendable via `SUPERADMIN_EMAILS`):
+  - 白杨晋美 `baiyangjinmei@brownzone.ai`
+  - 罗布朗 `luobulang@brownzone.ai`
+  - 刘煜柯 `liuyuke@brownzone.ai`
+  - 张珺湘 `zhangjunxiang@brownzone.ai`
+  - plus the built-in `superadmin`
 
 ## 2. Architecture Truth
 

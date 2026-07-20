@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { readSession } from "@/lib/auth";
-import { findUserById } from "@/lib/db/repo";
+import { applyFamilyEntitlement, findUserById } from "@/lib/db/repo";
 
 // M2: per-request memo so layout/page/components on the same render share
 // one DB round-trip instead of issuing N findUserById calls. React.cache is
@@ -17,5 +17,9 @@ export const getCurrentUser = cache(async () => {
   // resolving to a valid user even before an API call is made.
   if ((user.tokenVersion ?? 0) !== (session.tv ?? 0)) return null;
 
-  return user;
+  // itest10 #7: mirror requireUser (api-guard.ts) — a student inheriting Premium
+  // from a family owner must resolve as Premium in Server Components too, or the
+  // SSR dashboard shows a paid family student the red "trial expired" banner.
+  // No-op for non-students.
+  return applyFamilyEntitlement(user);
 });

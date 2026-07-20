@@ -163,9 +163,17 @@ async function browserAudit(iteration) {
                 const backStyle = getComputedStyle(back);
                 const frontStyle = getComputedStyle(front);
                 const state = shell.getAttribute("data-flip-state");
-                return state === "back"
-                  ? !(back.getAttribute("aria-hidden") === "false" && front.getAttribute("aria-hidden") === "true" && backStyle.opacity === "1" && frontStyle.opacity === "0")
-                  : false;
+                const hiddenByOpacity = (style) => style.opacity === "0" || style.visibility === "hidden";
+                const hiddenBy3dFlip = (style) => style.backfaceVisibility === "hidden" || style.webkitBackfaceVisibility === "hidden";
+                if (state === "back") {
+                  const ariaStateOk = back.getAttribute("aria-hidden") === "false" && front.getAttribute("aria-hidden") === "true";
+                  return !ariaStateOk || !(hiddenByOpacity(frontStyle) || hiddenBy3dFlip(frontStyle));
+                }
+                if (state === "front") {
+                  const ariaStateOk = back.getAttribute("aria-hidden") === "true" && front.getAttribute("aria-hidden") === "false";
+                  return !ariaStateOk || !(hiddenByOpacity(backStyle) || hiddenBy3dFlip(backStyle));
+                }
+                return true;
               });
               const suspiciousText = [
                 "This page couldn't load",

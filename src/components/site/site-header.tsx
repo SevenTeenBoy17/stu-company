@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Logo } from "@/components/site/logo";
 import { siteNavGroups } from "@/lib/content";
@@ -34,11 +34,30 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState("");
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     document.body.dataset.scrollLocked = drawerOpen ? "true" : "false";
     return () => {
       delete document.body.dataset.scrollLocked;
+    };
+  }, [drawerOpen]);
+
+  // itest9 a11y P3(2.1.2/2.4.3)：移动抽屉此前无 Esc 关闭、无焦点转移/回收，
+  // 键盘用户打开后焦点仍留在页面主体、Tab 会飘到抽屉背后。打开时把焦点移入抽屉，
+  // 监听 Esc 关闭，关闭时把焦点交还触发按钮，形成基本的对话框焦点契约。
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const trigger = drawerTriggerRef.current;
+    drawerRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      trigger?.focus();
     };
   }, [drawerOpen]);
 
@@ -143,10 +162,13 @@ export function SiteHeader() {
 
           <button
             type="button"
+            ref={drawerTriggerRef}
             data-motion-button
             onClick={() => setDrawerOpen(true)}
             className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white transition-colors hover:bg-white/[0.08] xl:hidden"
             aria-label="打开导航菜单"
+            aria-haspopup="dialog"
+            aria-expanded={drawerOpen}
           >
             <Menu className="size-5" />
           </button>
@@ -209,9 +231,14 @@ export function SiteHeader() {
             />
 
             <aside
+              ref={drawerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="导航菜单"
+              tabIndex={-1}
               data-motion-drawer
               data-motion-side="right"
-              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-bg-inverse px-5 pb-5 pt-4 text-white shadow-2xl shadow-slate-950/25 xl:hidden"
+              className="safe-drawer-offset fixed inset-y-0 right-0 z-[61] flex w-[min(420px,100vw)] flex-col overflow-y-auto border-l border-white/10 bg-bg-inverse px-5 pb-5 pt-4 text-white shadow-2xl shadow-slate-950/25 outline-none xl:hidden"
             >
               <div className="flex items-center justify-between gap-3">
                 <Logo />

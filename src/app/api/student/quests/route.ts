@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { claimQuestRewardForUser, getLearningProgress, getSimulationStateForUser } from "@/lib/db/repo";
 import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { buildStudentQuestPayload } from "@/lib/quests";
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // 实质功能（沙盘操作/AI）仍由各自路由的 canUserOperate 把守。
   const rl = rateLimit(rateLimitKey("quest-claim", auth.user.id, request), 20, 60_000);
   if (!rl.ok) {
-    return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+    return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
   }
 
   try {

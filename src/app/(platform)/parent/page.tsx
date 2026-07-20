@@ -45,7 +45,15 @@ export default async function ParentPage() {
                 inside a wrapper without an explicit height → percentage resolved
                 to 0 and the chart looked empty. Wrapper now stretches to h-56
                 so the bar height percentages have something to be relative to. */}
-            <div className="flex h-56 items-end gap-3">
+            {/* itest9 a11y P3(1.1.1)：纯 div 柱状图对读屏只剩「R1 R2…」轴标签、丢了金额。
+                给图容器 role=img + 汇总各回合净资产的 aria-label，把趋势数据补回无障碍树。 */}
+            <div
+              className="flex h-56 items-end gap-3"
+              role="img"
+              aria-label={`学期净资产走势，共 ${overview.report.netWorthTrend.length} 回合：${overview.report.netWorthTrend
+                .map((value, index) => `第${index + 1}回合 ¥${value.toLocaleString("zh-CN")}`)
+                .join("，")}`}
+            >
               {overview.report.netWorthTrend.map((value, index, array) => {
                 const max = Math.max(...array);
                 const min = Math.min(...array);

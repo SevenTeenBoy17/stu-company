@@ -77,15 +77,17 @@ function CompactNavLink({ item, active, index }: { item: NavItem; active: boolea
   return (
     <Link
       href={item.href}
+      // itest7 P3：当前页对 AT 不能只靠背景/字色，补 aria-current 让屏幕阅读器播报「当前页」。
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "shrink-0 rounded-full border px-4 py-3 text-body font-semibold transition-colors",
+        "inline-flex max-w-full items-center rounded-full border px-4 py-3 text-body font-semibold transition-colors",
         active
           ? "border-border-brand bg-brand-soft text-slate-950"
           : "border-transparent bg-slate-950/[0.04] text-slate-600 hover:bg-slate-950/[0.07]",
       )}
     >
-      <span>{item.label}</span>
-      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-400")}>
+      <span className="min-w-0 truncate">{item.label}</span>
+      <span className={cn("ml-2 text-xs", active ? "text-brand-ink" : "text-slate-500")}>
         {navIndexLabel(index)}
       </span>
     </Link>
@@ -96,6 +98,7 @@ function SidebarNavLink({ item, active, index }: { item: NavItem; active: boolea
   return (
     <Link
       href={item.href}
+      aria-current={active ? "page" : undefined} // itest7 P3
       className={cn(
         "flex min-w-0 items-center justify-between rounded-2xl px-4 py-3.5 text-body font-semibold transition-colors hover:bg-white/12",
         active ? "bg-white/14 text-white" : "bg-white/[0.05] text-white/70",
@@ -144,13 +147,14 @@ export function PlatformLayout({
               />
               <div className="min-w-0">
                 <p className="bz-eyebrow-inverse">Brown Zone</p>
-                <p className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</p>
+                {/* itest9 a11y P2(1.3.1/2.4.6)：页面主标题须是 h1（此前用 p，导致各平台页无 h1、标题层级跳级）。 */}
+                <h1 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h1>
                 <p className="mt-3 text-body leading-8 text-white/60 sm:text-body-lg">{summary}</p>
               </div>
             </div>
           </div>
 
-          <div className="bz-surface-panel mt-4 rounded-3xl p-3">
+          <div className="bz-surface-panel mt-4 rounded-3xl p-3" role="navigation" aria-label="主导航">
             {role === "student" ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -158,6 +162,7 @@ export function PlatformLayout({
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={isActiveNav(item, activeHref) ? "page" : undefined}
                       className={cn(
                         "rounded-2xl border p-3 transition-colors",
                         isActiveNav(item, activeHref)
@@ -173,7 +178,7 @@ export function PlatformLayout({
                     </Link>
                   ))}
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex flex-wrap gap-2 pb-1">
                   {studentSecondaryItems.map((item, index) => (
                     <CompactNavLink
                       key={item.href}
@@ -209,11 +214,11 @@ export function PlatformLayout({
               className="h-20 w-20 rounded-3xl shadow-glow"
             />
             <p className="bz-eyebrow-inverse mt-5">Brown Zone</p>
-            <p className="mt-3 text-h1 font-semibold">{heading}</p>
+            <h1 className="mt-3 text-h1 font-semibold">{heading}</h1>
             <p className="mt-3 text-body leading-8 text-white/60">{summary}</p>
 
             {role === "student" ? (
-              <div className="mt-8 space-y-6">
+              <div className="mt-8 space-y-6" role="navigation" aria-label="主导航">
                 <div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-warm">四大主域</p>
@@ -228,6 +233,7 @@ export function PlatformLayout({
                         <Link
                           key={item.href}
                           href={item.href}
+                          aria-current={active ? "page" : undefined}
                           className={cn(
                             "rounded-3xl border px-4 py-4 transition-colors hover:bg-white/12",
                             active
@@ -277,7 +283,7 @@ export function PlatformLayout({
                 </div>
               </div>
             ) : (
-              <div className="mt-8 space-y-2">
+              <div className="mt-8 space-y-2" role="navigation" aria-label="主导航">
                 {navItems.map((item, index) => (
                   <SidebarNavLink
                     key={item.href}

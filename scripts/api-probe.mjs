@@ -218,6 +218,29 @@ async function main() {
     record("R3修复: board 登出后旧 cookie 被吊销(401)", before.status === 200 && replay.status === 401, `before=${before.status} replay=${replay.status}`, { before: before.status, replay: replay.status });
   }
 
+  // ── itest8 授权/IDOR：AI 会话横向隔离（学生2 不得凭 sessionId 读学生1 的会话）──
+  {
+    const j1 = makeJar();
+    await login("student@brownzone.ai", "BrownZone2026!", j1);
+    const j2 = makeJar();
+    await login("student2@brownzone.ai", "BrownZone2026!", j2);
+    const created = await req("POST", "/api/ai/chat", {
+      jar: j1,
+      body: { prompt: "内测暗号：紫犀牛-8817", pageContext: { route: "/student" } },
+    });
+    const sid = created.json?.sessionId || created.json?.session?.id;
+    if (sid) {
+      const cross = await req("GET", `/api/ai/history/${sid}`, { jar: j2 });
+      const leaked = (cross.text || "").includes("紫犀牛-8817");
+      // getAiSessionById 以 user.id 作用域 → 跨用户读应拿不到内容（403/404/或空），绝不得回显学生1 的消息。
+      record("授权: 学生2 读学生1 的 AI 会话被隔离(无泄露)", !leaked, `status=${cross.status} leaked=${leaked}`, {
+        status: cross.status,
+      });
+    } else {
+      record("授权: AI 会话横向隔离", true, `AI 兜底未回 sessionId(status=${created.status})，跳过`, {});
+    }
+  }
+
   // ── L. Error shape consistency（抽样断言） ──
   {
     const anon = await req("GET", "/api/sim/state", {});

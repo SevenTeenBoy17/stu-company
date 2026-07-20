@@ -35,6 +35,7 @@ Configure these variables for Production and Preview:
 - `ITICK_STOCK_WS_URL`
 - `ALLTICK_API_KEY`
 - `ALLTICK_STOCK_BASE_URL`
+- `TRUSTED_PROXY`
 
 Transactional email + verification + cron (optional, but required to activate those features):
 
@@ -43,8 +44,12 @@ Transactional email + verification + cron (optional, but required to activate th
 - `EMAIL_FROM` — verified Resend sender, e.g. `Mr.Brown 经济沙盘 <noreply@yourdomain.com>`.
 - `REQUIRE_EMAIL_VERIFICATION` — gray-launch gate. Keep `false` until Resend delivery is
   confirmed in production; set `true` to block unverified trial users from the AI assessment.
-- `CRON_SECRET` — **required in Production** so `/api/cron/weekly-report` rejects
-  unauthenticated calls; Vercel Cron sends it as `Authorization: Bearer $CRON_SECRET`.
+- `CRON_SECRET` — **required in Production** so `/api/cron/weekly-report` and
+  `/api/cron/recompute-leaderboard` reject unauthenticated calls; Vercel Cron sends it as
+  `Authorization: Bearer $CRON_SECRET` and the routes compare it with `crypto.timingSafeEqual`.
+  **Recommended ≥ 32 characters**: a shorter value logs a startup **warning** (does **not** block
+  boot — a weak cron token is minor and shouldn't take the app down). Rotate to a ≥32-char random
+  string (`openssl rand -hex 24`) when convenient and update the Vercel Cron config.
 
 If real WeChat Pay is enabled, also configure these variables for Production:
 
@@ -71,6 +76,7 @@ style and keep it consistent across Production and Preview.
 
 - `APP_URL`: the final Vercel production URL, for example `https://brown-zone-web.vercel.app`
 - `SESSION_SECRET`: a long random string, at least 32 characters
+- `CRON_SECRET`: a long random string, **at least 32 characters** (enforced in production; see above)
 - `DATABASE_URL`: Supabase Postgres pooled connection string
 - `AI_BASE_URL_PRIMARY`: your operator-supplied Anthropic-compatible endpoint. Leave empty to disable remote AI (local fallback narratives still work).
   国内用户推荐 `https://api.llm-token.cn/v1`（延迟更低）；旧 `https://gpt-agent.cc/v1` 可配为 SECONDARY 作 failover。
@@ -78,6 +84,7 @@ style and keep it consistent across Production and Preview.
 - `ITICK_REST_BASE_URL`: `https://api0.itick.org`
 - `ITICK_STOCK_WS_URL`: `wss://api.itick.org/stock`
 - `ALLTICK_STOCK_BASE_URL`: `https://quote.alltick.co/quote-stock-b-api`
+- `TRUSTED_PROXY`: `vercel` for Vercel deployments. Use `none` for bare self-hosting without a trusted reverse proxy; use `xff-rightmost` only when your proxy reliably owns the rightmost `X-Forwarded-For` hop.
 - `WECHAT_NOTIFY_URL`: the public HTTPS callback URL, for example `https://brown-zone-web.vercel.app/api/billing/notify`.
 - `WECHAT_PRIVATE_KEY`: merchant private key in PEM format. Keep line breaks intact in the Vercel secret value.
 - `WECHAT_PLATFORM_PUBLIC_KEY`: WeChat Pay platform public key used for APIv3 callback signature verification.

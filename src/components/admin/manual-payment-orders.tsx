@@ -117,7 +117,7 @@ export function ManualPaymentOrders({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="break-all text-sm font-black text-slate-950">{item.order.outTradeNo}</p>
-                    <p className="mt-1 text-xs font-bold text-slate-400">创建于 {formatDate(item.order.createdAt)}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-600">创建于 {formatDate(item.order.createdAt)}</p>
                   </div>
                   <strong className="rounded-full bg-orange-50 px-3 py-1 text-sm font-black text-orange-700">
                     {formatCurrency(item.order.amountFen / 100)}
@@ -125,12 +125,12 @@ export function ManualPaymentOrders({
                 </div>
                 <div className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                   <div>
-                    <p className="text-xs font-bold text-slate-400">付款账号</p>
+                    <p className="text-xs font-bold text-slate-600">付款账号</p>
                     <p className="mt-1 break-all font-black text-slate-900">{item.payer.name}</p>
                     <p className="break-all text-xs font-semibold text-slate-500">{item.payer.email}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400">开通账号</p>
+                    <p className="text-xs font-bold text-slate-600">开通账号</p>
                     <p className="mt-1 break-all font-black text-slate-900">{item.target.name}</p>
                     <p className="break-all text-xs font-semibold text-slate-500">{item.target.email}</p>
                   </div>
@@ -156,7 +156,7 @@ export function ManualPaymentOrders({
                       </p>
                     </>
                   ) : (
-                    <div className="mt-2 flex min-h-24 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-bold text-slate-400">
+                    <div className="mt-2 flex min-h-24 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-bold text-slate-600">
                       <ImageIcon className="mr-2 h-4 w-4" />
                       用户未上传付款截图
                     </div>

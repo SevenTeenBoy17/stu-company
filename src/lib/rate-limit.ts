@@ -7,6 +7,8 @@
  * same.
  */
 
+import { env } from "@/lib/env";
+
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
@@ -73,18 +75,19 @@ export function peekRateLimit(key: string, rawLimit: number): boolean {
 /**
  * Best-effort trusted client IP for anonymous rate-limit keys.
  *
- * SECURITY: the *leftmost* `X-Forwarded-For` segment is CLIENT-CONTROLLED — an
- * attacker can rotate it every request to mint a fresh bucket, defeating the
- * anonymous spray/flood limits (login-ip-fail, register, forgot/reset password,
- * demo-login). Prefer the platform-injected `x-real-ip` (Vercel overwrites this
- * with the true TCP peer and it cannot be forged through the proxy); fall back
- * to the RIGHTMOST XFF segment (the hop appended by our trusted proxy), never the
- * leftmost. Last resort `"anon"` (local/no-proxy) is a single shared bucket —
- * still bounded, just coarse.
+ * SECURITY: X-Forwarded-For is safe only when a trusted proxy owns the hop. The
+ * default Vercel mode trusts only x-real-ip. Bare self-hosted deployments can
+ * set TRUSTED_PROXY=none so forged IP headers collapse to one coarse but bounded
+ * "anon" bucket.
  */
 export function clientIpFrom(request: Request): string {
+  // TRUSTED_PROXY gates whether forwarded IP headers are trusted at all.
+  if (env.TRUSTED_PROXY === "none") return "anon";
+
   const realIp = request.headers.get("x-real-ip")?.trim();
+  if (env.TRUSTED_PROXY === "vercel") return realIp || "anon";
   if (realIp) return realIp;
+
   const xff = request.headers.get("x-forwarded-for");
   if (xff) {
     const parts = xff.split(",").map((segment) => segment.trim()).filter(Boolean);
@@ -102,4 +105,22 @@ export function rateLimitKey(scope: string, sessionUserId: string | undefined, r
 export function buildRateLimitMessage(result: RateLimitResult) {
   const seconds = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
   return `请求过于频繁，请 ${seconds} 秒后再试。`;
+}
+
+/**
+ * LC10h P2 (LC-02): registration is IP-keyed, so a whole classroom / dorm behind
+ * one NAT hits the shared cap when signing up together. The default (5 / 10 min)
+ * is unchanged, but an operator can widen it for a supervised sign-up session via
+ * REGISTER_RATE_LIMIT_MAX (count) and REGISTER_RATE_LIMIT_WINDOW_MS (window).
+ * The E2E multiplier still applies on top, as with every other limit.
+ */
+function positiveIntEnv(name: string, fallback: number): number {
+  const raw = Number.parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(raw) && raw >= 1 ? raw : fallback;
+}
+
+export function registerRateLimit(request: Request, scope = "register"): RateLimitResult {
+  const max = positiveIntEnv("REGISTER_RATE_LIMIT_MAX", 5);
+  const windowMs = positiveIntEnv("REGISTER_RATE_LIMIT_WINDOW_MS", 10 * 60_000);
+  return rateLimit(rateLimitKey(scope, undefined, request), max, windowMs);
 }

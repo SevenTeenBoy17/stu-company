@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { requestChatReply } from "@/lib/ai";
 import { buildAiSessionTitle } from "@/lib/assistant-config";
 import { buildAssistantContextBundle } from "@/lib/assistant-context";
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     // generous for legitimate use but caps abuse / cost-bomb risk.
     const rl = rateLimit(rateLimitKey("ai-chat", user?.id, request), 20, 60_000);
     if (!rl.ok) {
-      return apiError("service_unavailable", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const contextBundle = await buildAssistantContextBundle({

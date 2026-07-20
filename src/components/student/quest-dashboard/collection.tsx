@@ -171,7 +171,7 @@ export function QuestCardCollection({ items }: { items: QuestCardCollectionView[
       ) : (
         <div className="mt-6 grid gap-5 overflow-hidden rounded-[1.8rem] border border-dashed border-amber-200 bg-[linear-gradient(135deg,#fffaf0,#f8fafc_55%,#eef6ff)] p-5 md:grid-cols-[minmax(0,0.9fr)_minmax(18rem,1fr)] md:p-6">
           <div className="flex min-h-56 flex-col justify-center">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/78 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-brand shadow-sm">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/78 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-brand-ink shadow-sm">
               Card Library
             </span>
             <h3 className="mt-4 text-2xl font-black text-fg-strong">还没有收藏卡片</h3>
@@ -454,7 +454,7 @@ export function CompanionAlbum({
               <span
                 className={cn(
                   "mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-wider",
-                  isUnlocked ? "bg-white/88 text-slate-950" : "bg-slate-200 text-slate-600",
+                  isUnlocked ? "bg-white/88 text-slate-950" : "bg-slate-900 text-white",
                 )}
               >
                 {isUnlocked ? (

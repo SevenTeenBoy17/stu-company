@@ -9,6 +9,7 @@ type ApiErrorCode =
   | "forbidden"
   | "not_found"
   | "conflict"
+  | "rate_limited"
   | "db_unavailable"
   | "service_unavailable";
 
@@ -16,9 +17,30 @@ export function apiError(error: ApiErrorCode, message: string, status: number) {
   return NextResponse.json({ error, message }, { status });
 }
 
+/**
+ * LC10h P3 (LC-01): a 429 must carry the stable `rate_limited` code (not
+ * `invalid_input`) so clients can programmatically detect throttling and back
+ * off, instead of parsing the Chinese message. `Retry-After` (seconds) is
+ * surfaced from the limiter's `retryAfterMs` when known.
+ */
+export function rateLimitedError(message: string, retryAfterMs?: number) {
+  const res = apiError("rate_limited", message, 429);
+  if (retryAfterMs && retryAfterMs > 0) {
+    res.headers.set("Retry-After", String(Math.ceil(retryAfterMs / 1000)));
+  }
+  return res;
+}
+
 export function handleRouteError(error: unknown, fallbackMessage: string) {
   if (error instanceof ZodError) {
     return apiError("invalid_input", "请求参数格式不正确，请检查后重试。", 400);
+  }
+
+  // itest8 P2：畸形请求体 request.json() 抛 V8 原生 SyntaxError（"Unexpected token ... is not
+  // valid JSON"）。不能把英文原生错误+回显的原始输入直接返给用户——既违反「中文错误文案」不变量、
+  // 又属轻度信息泄露。统一收成中文 invalid_input，一处修全部走 handleRouteError 的路由。
+  if (error instanceof SyntaxError) {
+    return apiError("invalid_input", "请求格式不正确，请检查后重试。", 400);
   }
 
   const message = error instanceof Error ? error.message : fallbackMessage;

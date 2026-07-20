@@ -307,7 +307,12 @@ export function StudentMarketBoard({
   // 切分类/标的后、新数据到达前，当前 payload 仍是旧分类的数据 → 用于过渡态降透明 + aria-busy。
   const boardLoading = isPending || payload.category !== category;
 
+  // itest7 P3：请求时序令牌。快速切换分类/标的时多个 board 请求并发，若较早发出的慢响应晚于
+  // 较新的返回，会覆盖已到达的新数据 → payload.category 卡在旧值、boardLoading 恒 true（骨架卡住）。
+  // 只有「最新」一次请求才允许写入可见 payload / error；缓存按响应自身 key 写入可无条件保留。
+  const loadBoardSeq = useRef(0);
   const loadBoard = useCallback(async (cat: MarketCategoryId, symbol: string) => {
+    const seq = ++loadBoardSeq.current;
     try {
       const response = await fetch(
         `/api/market/board?category=${cat}&symbol=${encodeURIComponent(symbol)}`,
@@ -319,13 +324,16 @@ export function StudentMarketBoard({
         throw new Error("市场信息刷新失败，请稍后重试。");
       }
 
-      setPayload(nextPayload);
+      // 缓存写入用响应自身的 (category:symbol) key，不会串味，可保留。
       setPayloadCache((current) => ({
         ...current,
         [`${nextPayload.category}:${nextPayload.selected.symbol}`]: nextPayload,
       }));
+      if (seq !== loadBoardSeq.current) return; // 已有更新请求发出，丢弃这次陈旧响应
+      setPayload(nextPayload);
       setError(null);
     } catch (nextError) {
+      if (seq !== loadBoardSeq.current) return;
       setError(nextError instanceof Error ? nextError.message : "市场信息刷新失败。");
     }
   }, []);
@@ -680,7 +688,7 @@ export function StudentMarketBoard({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-h3 text-fg-strong">全部</span>
-                    <span className="mt-1 block truncate text-body-sm font-semibold text-fg-muted">
+                    <span className="mt-1 block text-body-sm font-semibold leading-5 text-fg-muted">
                       当前：{activeThemeFilter?.label ?? "全部"} · {activeThemeFilter?.count ?? payload.watchlist.length} 个样本
                     </span>
                   </span>
@@ -771,6 +779,7 @@ export function StudentMarketBoard({
                     <button
                       key={item.symbol}
                       type="button"
+                      aria-pressed={active}
                       onPointerEnter={handleMotionEnter}
                       onPointerLeave={handleMotionLeave}
                       onClick={() => selectSymbol(item.symbol)}
@@ -1133,7 +1142,7 @@ export function StudentMarketBoard({
                       <p className="text-h3 text-white">日 K 线与趋势速写</p>
                       <p className="mt-1 text-body-sm text-white/70">
                         实体看多空拉扯，影线看情绪波动；用于课堂复盘，不作为真实交易信号。
-                        {payload.selected.source === "tsanghi" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
+                        {payload.category !== "us" ? "（沿用 A 股红涨绿跌配色，与美股相反）" : ""}
                       </p>
                     </div>
                     <Activity className="h-5 w-5 text-brand-warm" />

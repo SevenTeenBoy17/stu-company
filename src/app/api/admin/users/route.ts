@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { createAdminManagedUser, listAdminUsers } from "@/lib/db/repo";
 
 const roleSchema = z.enum(["student", "teacher", "parent", "admin"]);
@@ -19,9 +20,6 @@ const createUserSchema = z.object({
   subscriptionDays: z.number().int().min(0).max(730).nullable().optional(),
 });
 
-function isSuperAdmin(user: { id: string; email: string }) {
-  return user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
-}
 
 export async function GET(request: Request) {
   const auth = await requireUser("admin");

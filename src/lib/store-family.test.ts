@@ -51,4 +51,29 @@ describe("family store (Option B)", () => {
     expect(applyFamilyEntitlement(student).subscriptionTier).not.toBe("premium");
     removeFamilyMember("parent-1", "student-1");
   });
+
+  // itest10 #8: family sharing extends, never shortens. A student with their own
+  // longer Premium must keep their own later expiry, not inherit the owner's earlier one.
+  it("never downgrades a student's own longer Premium expiry to the owner's earlier one", () => {
+    setOwnerTier("premium"); // owner expires in ~30 days
+    addFamilyMember("parent-1", "student-1");
+    const owner = findUserById("parent-1")!;
+    const student = findUserById("student-1")!;
+    const studentOwnExpiry = new Date(Date.now() + 720 * 86_400_000).toISOString(); // ~2 years out
+    student.subscriptionTier = "premium";
+    student.subscriptionExpiresAt = studentOwnExpiry;
+
+    const resolved = applyFamilyEntitlement(student);
+    expect(resolved.subscriptionTier).toBe("premium");
+    // Keeps the student's own later coverage, not the owner's ~30-day one.
+    expect(resolved.subscriptionExpiresAt).toBe(studentOwnExpiry);
+    expect(new Date(resolved.subscriptionExpiresAt!).getTime()).toBeGreaterThan(
+      new Date(owner.subscriptionExpiresAt!).getTime(),
+    );
+
+    // cleanup so later files/tests see the seed student untouched
+    student.subscriptionTier = "free";
+    student.subscriptionExpiresAt = undefined;
+    removeFamilyMember("parent-1", "student-1");
+  });
 });

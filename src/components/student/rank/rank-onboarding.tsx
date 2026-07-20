@@ -13,7 +13,9 @@ interface Option {
 const VISIBILITY_OPTIONS: { value: RankVisibility; label: string; hint: string }[] = [
   { value: "public", label: "公开", hint: "全国/省/市/校都可见你的昵称与学习点" },
   { value: "school_only", label: "仅校内", hint: "只在本校榜单出现，对外不显示" },
-  { value: "hidden", label: "隐身", hint: "只自己可见学习点，不进入任何榜单" },
+  // itest8 P3：文案不能承诺「不进入任何榜单」——班级赛季记分牌(同班本就互知真名)不受该设置管辖。
+  // 收窄为准确承诺：只影响跨校的财商战力榜。
+  { value: "hidden", label: "隐身", hint: "只自己可见学习点，不进入财商战力榜（跨校/省/市排名）" },
 ];
 
 export interface RankOnboardingInitial {
@@ -167,6 +169,7 @@ export function RankOnboarding({
             onChange={(e) => setSchoolName(e.target.value)}
             list="rank-school-suggestions"
             aria-label="学校全称"
+            aria-required="true"
             placeholder="例如：成都市第七中学"
             maxLength={40}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -189,6 +192,7 @@ export function RankOnboarding({
             value={alias}
             onChange={(e) => setAlias(e.target.value)}
             aria-label="榜单昵称"
+            aria-required="true"
             placeholder="例如：稳健小能手"
             maxLength={20}
             className="mt-1 w-full rounded-xl border border-border bg-bg-muted px-3 py-2 text-sm text-fg-default outline-none focus:border-brand"
@@ -198,11 +202,40 @@ export function RankOnboarding({
 
       <fieldset className="mt-5">
         <legend className="text-xs font-medium text-fg-muted">谁可以看到我</legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+        {/* itest6 R3 P3：隐私可见性是单选，此前选中态仅靠颜色（无 role=radio/aria-checked），
+            屏幕阅读器/色觉障碍用户在加入榜单前无法确认选的是「隐身」还是「公开」。补 radiogroup 语义。
+            itest7 P3：再补 WAI-ARIA radiogroup 键盘契约——方向键切换 + roving tabindex（整组只占一个
+            Tab 停靠、选中项 tabIndex=0 其余 -1），与原生 radio 组一致。 */}
+        <div
+          className="mt-2 grid gap-2 sm:grid-cols-3"
+          role="radiogroup"
+          aria-label="谁可以看到我"
+          onKeyDown={(event) => {
+            const dir =
+              event.key === "ArrowRight" || event.key === "ArrowDown"
+                ? 1
+                : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                  ? -1
+                  : 0;
+            if (dir === 0) return;
+            event.preventDefault();
+            const current = Math.max(
+              0,
+              VISIBILITY_OPTIONS.findIndex((opt) => opt.value === visibility),
+            );
+            const next = (current + dir + VISIBILITY_OPTIONS.length) % VISIBILITY_OPTIONS.length;
+            setVisibility(VISIBILITY_OPTIONS[next].value);
+            const radios = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
+            radios[next]?.focus();
+          }}
+        >
           {VISIBILITY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
+              role="radio"
+              aria-checked={visibility === opt.value}
+              tabIndex={visibility === opt.value ? 0 : -1}
               onClick={() => setVisibility(opt.value)}
               className={`rounded-xl border px-3 py-2 text-left transition ${
                 visibility === opt.value
@@ -231,7 +264,12 @@ export function RankOnboarding({
         </span>
       </label>
 
-      {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}
+      {/* itest9 a11y P2(4.1.3)：校验失败提示须对读屏播报，否则用户点保存无反应无从知错。 */}
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-error">
+          {error}
+        </p>
+      ) : null}
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
         <button

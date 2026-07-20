@@ -148,6 +148,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
     100,
   );
   const busy = state === "loading" || applyState === "loading";
+  const alreadyAppliedThisRound = payload.alreadyAppliedThisRound || lastApplied !== null;
 
   return (
     <div ref={rootRef} className="space-y-6" data-testid="life-cashflow-dashboard">
@@ -160,7 +161,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <p className="bz-eyebrow-inverse">Life Ledger</p>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-5">
               <div className="max-w-3xl">
-                <h1 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h1>
+                <h2 className="text-display-lg font-semibold md:text-display-xl">生活现金流实验室</h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
                   把每月收入、必要支出、自动储蓄、保险保费和突发事件放在同一张账本里。
                   真实理财不只是市场涨跌，更是现金流能不能扛住生活。
@@ -249,11 +250,17 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
               <button
                 type="button"
                 data-testid="life-cashflow-apply"
+                aria-label={alreadyAppliedThisRound ? "本回合已完成预算挑战" : "执行本月预算挑战"}
                 onClick={() => void applyChallenge()}
-                disabled={busy}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-slate-950 shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={busy || alreadyAppliedThisRound}
+                title={alreadyAppliedThisRound ? "本回合生活账本已经写入沙盘，推进到下一回合后可以再次执行。" : undefined}
+                className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-transparent shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {applyState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 text-slate-950">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {alreadyAppliedThisRound ? "本回合已完成预算挑战" : "执行本月预算挑战"}
+                </span>
                 执行本月预算挑战
               </button>
             </div>
@@ -318,6 +325,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <button
                     key={plan.id}
                     type="button"
+                    aria-pressed={active}
                     data-testid={`budget-plan-${plan.id}`}
                     onClick={() => {
                       setPlanId(plan.id);
@@ -387,6 +395,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <button
                     key={option.id}
                     type="button"
+                    aria-pressed={active}
                     data-testid={`insurance-plan-${option.id}`}
                     onClick={() => {
                       setInsuranceId(option.id);

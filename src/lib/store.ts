@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { hashPassword, verifyPassword } from "@/lib/password";
 
+import { SUPERADMIN_TEAM } from "@/lib/auth-roles";
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
@@ -58,8 +59,10 @@ import {
 import { buildPeerHeatPayload } from "@/lib/peer-heat";
 import {
   canAddFamilyMember,
+  laterExpiry,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
+import { DomainError } from "@/lib/domain-error";
 import type {
   AiChatMessage,
   AiChatMode,
@@ -197,6 +200,16 @@ function createSeedUsers() {
       name: "超级管理员",
       title: "账号与权限总控",
     },
+    // 参赛团队成员（本公司参赛学生），既是产品用户，也是超级管理员。名单与
+    // src/lib/auth-roles.ts 的 SUPERADMIN_TEAM 同源，账号与授权名单永不漂移。
+    ...SUPERADMIN_TEAM.map((member) => ({
+      id: member.id,
+      email: member.email,
+      passwordHash: superPassword,
+      role: "admin" as Role,
+      name: member.name,
+      title: "参赛队员 · 超级管理员",
+    })),
   ] satisfies UserRecord[];
 
   return users.map((user) => {
@@ -291,6 +304,16 @@ function createSeedProfiles() {
         { label: "账号", value: "superadmin" },
       ],
     },
+    // 参赛团队成员画像（与 SUPERADMIN_TEAM 同源）。
+    ...SUPERADMIN_TEAM.map((member) => ({
+      userId: member.id,
+      headline: `${member.name} · 参赛团队成员，兼产品用户与超级管理员。`,
+      bio: "参加公司竞赛的学生，既在产品内体验完整学习旅程，也拥有后台账号与权限的最高维护权。",
+      metrics: [
+        { label: "身份", value: "参赛队员" },
+        { label: "权限级别", value: "超级管理员" },
+      ],
+    })),
   ] satisfies ProfileRecord[];
 }
 
@@ -586,20 +609,20 @@ export function addFamilyMember(ownerUserId: string, studentUserId: string): Fam
   const store = getStore();
   const owner = findUserById(ownerUserId);
   const student = findUserById(studentUserId);
-  if (!owner || !student) throw new Error("用户不存在。");
-  if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+  if (!owner || !student) throw new DomainError("用户不存在。");
+  if (student.role !== "student") throw new DomainError("只能把学生加入家庭组。");
 
   const ownerState = isOwnerPremiumActive(owner);
-  if (!ownerState) throw new Error("只有高级版家长才能创建家庭组。");
+  if (!ownerState) throw new DomainError("只有高级版家长才能创建家庭组。");
   if (!canUserPayForTarget(ownerUserId, studentUserId)) {
-    throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+    throw new DomainError("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
   }
   if (store.familyMembers.some((m) => m.studentUserId === studentUserId)) {
-    throw new Error("该学生已在一个家庭组中。");
+    throw new DomainError("该学生已在一个家庭组中。");
   }
   const currentCount = store.familyMembers.filter((m) => m.ownerUserId === ownerUserId).length;
   if (!canAddFamilyMember(currentCount, ownerState.features.maxStudents)) {
-    throw new Error(`家庭名额已满（上限 ${ownerState.features.maxStudents} 名）。`);
+    throw new DomainError(`家庭名额已满（上限 ${ownerState.features.maxStudents} 名）。`);
   }
 
   const member: FamilyMember = {
@@ -621,6 +644,24 @@ export function removeFamilyMember(ownerUserId: string, studentUserId: string): 
   return store.familyMembers.length < before;
 }
 
+/**
+ * Admin remediation for a mis-claimed guardian binding (itest10 #12) — memory
+ * mirror of repo.resetGuardianBindingForStudent.
+ */
+export function resetGuardianBindingForStudent(studentUserId: string) {
+  const store = getStore();
+  const link = store.parentLinks.find((item) => item.studentUserId === studentUserId);
+  if (!link) throw new DomainError("该学生没有家长绑定记录。");
+  if (link.parentUserId === studentUserId) {
+    throw new DomainError("该学生当前没有已绑定的家长，无需解绑。");
+  }
+  const previousParentId = link.parentUserId;
+  link.parentUserId = studentUserId;
+  store.familyMembers = store.familyMembers.filter((m) => m.studentUserId !== studentUserId);
+  store.growthReports = store.growthReports.filter((r) => r.studentUserId !== studentUserId);
+  return { studentUserId, previousParentId };
+}
+
 /** Upgrade a student to Premium while their family owner's subscription is active. */
 export function applyFamilyEntitlement(user: UserRecord): UserRecord {
   if (user.role !== "student") return user;
@@ -631,14 +672,15 @@ export function applyFamilyEntitlement(user: UserRecord): UserRecord {
   return {
     ...user,
     subscriptionTier: "premium",
-    subscriptionExpiresAt: owner.subscriptionExpiresAt,
+    // itest10 #8: extend-only — never shorten the student's own longer Premium.
+    subscriptionExpiresAt: laterExpiry(user.subscriptionExpiresAt, owner.subscriptionExpiresAt),
   };
 }
 
 /** Global weekly season leaderboard across all runs that used this week's seed. */
-export function getSeasonLeaderboard() {
+export function getSeasonLeaderboard(classroomId?: string) {
   const store = getStore();
-  return buildSeasonLeaderboard(store.runs, store.users);
+  return buildSeasonLeaderboard(store.runs, store.users, new Date(), classroomId);
 }
 
 // ── Financial Power leaderboard (V1) ────────────────────────────────────────
@@ -922,7 +964,7 @@ export function listPremiumFamilyDigests(): FamilyDigest[] {
 
 export async function updateUserPassword(userId: string, password: string) {
   const user = getStore().users.find((candidate) => candidate.id === userId);
-  if (!user) throw new Error("用户不存在。");
+  if (!user) throw new DomainError("用户不存在。");
   user.passwordHash = await hashPassword(password);
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   return user;
@@ -931,13 +973,13 @@ export async function updateUserPassword(userId: string, password: string) {
 export async function updateUserEmail(userId: string, email: string) {
   const normalizedEmail = email.trim().toLowerCase();
   const user = getStore().users.find((candidate) => candidate.id === userId);
-  if (!user) throw new Error("用户不存在。");
+  if (!user) throw new DomainError("用户不存在。");
 
   const duplicate = getStore().users.find(
     (candidate) =>
       candidate.id !== userId && candidate.email.toLowerCase() === normalizedEmail,
   );
-  if (duplicate) throw new Error("这个邮箱已经被注册过了。");
+  if (duplicate) throw new DomainError("这个邮箱已经被注册过了。");
 
   user.email = normalizedEmail;
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
@@ -1016,7 +1058,7 @@ export async function createAdminManagedUser(input: {
   const store = getStore();
   const normalizedEmail = input.email.trim().toLowerCase();
   if (findUserByEmail(normalizedEmail)) {
-    throw new Error("这个邮箱已经注册过了。");
+    throw new DomainError("这个邮箱已经注册过了。");
   }
 
   const now = new Date();
@@ -1073,7 +1115,7 @@ export async function updateAdminManagedUser(
 ) {
   const store = getStore();
   const user = store.users.find((candidate) => candidate.id === userId);
-  if (!user) throw new Error("用户不存在。");
+  if (!user) throw new DomainError("用户不存在。");
 
   if (input.name !== undefined) user.name = input.name.trim();
   if (input.title !== undefined) user.title = input.title.trim();
@@ -1189,7 +1231,7 @@ export async function updatePaymentOrderProviderFields(
   fields: { codeUrl?: string; prepayId?: string },
 ) {
   const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
-  if (!order) throw new Error("支付订单不存在。");
+  if (!order) throw new DomainError("支付订单不存在。");
   order.codeUrl = fields.codeUrl ?? order.codeUrl;
   order.prepayId = fields.prepayId ?? order.prepayId;
   order.updatedAt = new Date().toISOString();
@@ -1201,9 +1243,9 @@ export async function attachManualPaymentProof(
   input: { note: string; submittedBy: string; proofImageDataUrl?: string },
 ) {
   const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
-  if (!order) throw new Error("支付订单不存在。");
-  if (order.channel !== "manual") throw new Error("该订单不是人工核验订单。");
-  if (order.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+  if (!order) throw new DomainError("支付订单不存在。");
+  if (order.channel !== "manual") throw new DomainError("该订单不是人工核验订单。");
+  if (order.status !== "pending") throw new DomainError("该订单已处理，不能重复提交凭证。");
   order.rawNotify = {
     manualProof: {
       note: input.note,
@@ -1229,7 +1271,7 @@ export async function fulfillPaymentOrder(input: {
 }) {
   const store = getStore();
   const order = store.paymentOrders.find((candidate) => candidate.outTradeNo === input.outTradeNo);
-  if (!order) throw new Error("支付订单不存在。");
+  if (!order) throw new DomainError("支付订单不存在。");
 
   // Defense-in-depth: the callback amount must match what we charged.
   if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
@@ -1249,7 +1291,7 @@ export async function fulfillPaymentOrder(input: {
   }
 
   const user = store.users.find((candidate) => candidate.id === order.targetUserId);
-  if (!user) throw new Error("订阅目标账号不存在。");
+  if (!user) throw new DomainError("订阅目标账号不存在。");
 
   const now = input.paidAt ? new Date(input.paidAt) : new Date();
   const currentExpiry = user.subscriptionExpiresAt
@@ -1288,7 +1330,7 @@ export async function markPaymentOrderStatus(
   status: Exclude<PaymentStatus, "pending" | "paid">,
 ) {
   const order = getStore().paymentOrders.find((candidate) => candidate.outTradeNo === outTradeNo);
-  if (!order) throw new Error("支付订单不存在。");
+  if (!order) throw new DomainError("支付订单不存在。");
   order.status = status;
   order.updatedAt = new Date().toISOString();
   return order;
@@ -1300,6 +1342,48 @@ export function findProfileByUserId(userId: string) {
 
 export function findInviteByCode(code: string) {
   return getStore().invites.find((invite) => invite.code.toUpperCase() === code.toUpperCase()) ?? null;
+}
+
+// LC10h P1 (LC-11) in-memory mirror of the guardian-invite mint. Idempotent per
+// student: reuse a still-valid unclaimed guardian code, else create link + code.
+export function getOrCreateGuardianInviteForStudent(studentUserId: string) {
+  const store = getStore();
+  const student = store.users.find((u) => u.id === studentUserId);
+  if (!student) throw new Error("用户不存在。");
+  if (student.role !== "student") throw new Error("只有学生账号可以生成家长绑定邀请码。");
+
+  // Mirror the repo path: a student binds to exactly one guardian. If a real parent
+  // already claimed the link, refuse to mint a second code (review findings #1/#2).
+  const anyLink = store.parentLinks.find((l) => l.studentUserId === studentUserId);
+  if (anyLink && anyLink.parentUserId !== studentUserId) {
+    throw new Error("你已经绑定了家长。如需更换绑定，请联系老师或管理员。");
+  }
+  let link = anyLink;
+  if (link) {
+    const reusable = store.invites.find(
+      (i) => i.studentLinkId === link!.id && i.usesRemaining > 0 && new Date(i.expiresAt).getTime() > Date.now(),
+    );
+    if (reusable) return { invite: reusable, reused: true };
+  }
+  if (!link) {
+    link = { id: createId("link"), studentUserId, parentUserId: studentUserId, bondCode: createId("bond") };
+    store.parentLinks.push(link);
+  }
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+  const invite: InviteCode = {
+    id: createId("invite"),
+    code: `MRB-P-${createId("g").slice(-8).toUpperCase()}`,
+    role: "parent",
+    label: `家长绑定码 · ${student.name ?? "学生"}`,
+    classroomId: student.classroomId,
+    studentLinkId: link.id,
+    createdBy: studentUserId,
+    usesRemaining: 1,
+    expiresAt: expiresAt.toISOString(),
+  };
+  store.invites.push(invite);
+  return { invite, reused: false };
 }
 
 export function validateInviteCode(code: string) {
@@ -1327,13 +1411,13 @@ export async function registerUserByInvite(input: {
   const inviteStatus = validateInviteCode(input.inviteCode);
 
   if (!inviteStatus.valid || !inviteStatus.invite) {
-    throw new Error(inviteStatus.reason ?? "邀请码无效。");
+    throw new DomainError(inviteStatus.reason ?? "邀请码无效。");
   }
 
   const normalizedEmail = input.email.trim().toLowerCase();
 
   if (findUserByEmail(normalizedEmail)) {
-    throw new Error("这个邮箱已经被注册过了。");
+    throw new DomainError("这个邮箱已经被注册过了。");
   }
 
   const newUser: UserRecord = {
@@ -1371,7 +1455,12 @@ export async function registerUserByInvite(input: {
 
   if (newUser.role === "parent" && inviteStatus.invite.studentLinkId) {
     const studentLink = store.parentLinks.find((item) => item.id === inviteStatus.invite.studentLinkId);
-    if (studentLink) {
+    // itest10 #11: only claim a still-unclaimed placeholder (parentUserId ==
+    // studentUserId), mirroring the DB path (repo.ts registerUserByInvite). The
+    // seeded demo code MRB-PARENT-2026 points at bond-1, which is already bound
+    // to parent-1 — without this guard a stranger registering with that public
+    // code would silently reassign student-1's growth report (hijack + lockout).
+    if (studentLink && studentLink.parentUserId === studentLink.studentUserId) {
       studentLink.parentUserId = newUser.id;
       store.growthReports = store.growthReports.filter((report) => report.parentUserId !== newUser.id);
       const linkedRun = store.runs.find((run) => run.userId === studentLink.studentUserId);
@@ -1396,20 +1485,22 @@ export async function registerUserByEmail(input: {
   const normalizedEmail = input.email.trim().toLowerCase();
 
   if (findUserByEmail(normalizedEmail)) {
-    throw new Error("这个邮箱已经被注册过了。");
+    throw new DomainError("这个邮箱已经被注册过了。");
   }
 
   let role: UserRecord["role"] = "student";
   let classroomId: string | undefined;
+  let studentLinkId: string | undefined;
 
   if (input.inviteCode) {
     const inviteStatus = validateInviteCode(input.inviteCode);
     if (inviteStatus.valid && inviteStatus.invite) {
       role = inviteStatus.invite.role;
       classroomId = inviteStatus.invite.classroomId;
+      studentLinkId = inviteStatus.invite.studentLinkId;
       inviteStatus.invite.usesRemaining -= 1;
     } else {
-      throw new Error("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
+      throw new DomainError("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
     }
   }
 
@@ -1449,6 +1540,22 @@ export async function registerUserByEmail(input: {
     store.runs.push(createInitialRun(newUser.id, newUser.classroomId));
   }
 
+  // LC10h P1 (LC-11): mirror registerUserByInvite — a parent registering with a
+  // guardian invite must claim the carried link so family linking works.
+  if (newUser.role === "parent" && studentLinkId) {
+    const studentLink = store.parentLinks.find((item) => item.id === studentLinkId);
+    // itest10 #11: only claim a still-unclaimed placeholder — never overwrite an
+    // already-bound link (would hijack the child's unique growth report).
+    if (studentLink && studentLink.parentUserId === studentLink.studentUserId) {
+      studentLink.parentUserId = newUser.id;
+      store.growthReports = store.growthReports.filter((report) => report.parentUserId !== newUser.id);
+      const linkedRun = store.runs.find((run) => run.userId === studentLink.studentUserId);
+      if (linkedRun) {
+        store.growthReports.push(buildGrowthReport(linkedRun, studentLink.studentUserId, newUser.id));
+      }
+    }
+  }
+
   return newUser;
 }
 
@@ -1464,13 +1571,13 @@ export function getSimulationStateForUser(userId: string) {
   const store = getStore();
   const user = findUserById(userId);
   if (!user || user.role !== "student" || !user.classroomId) {
-    throw new Error("当前账号没有可用的学生沙盘。");
+    throw new DomainError("当前账号没有可用的学生沙盘。");
   }
 
   const classroom = getClassroomById(user.classroomId);
   const run = getRunForUser(userId);
   if (!classroom || !run) {
-    throw new Error("未找到对应的班级或沙盘进度。");
+    throw new DomainError("未找到对应的班级或沙盘进度。");
   }
 
   const relatedRuns = store.runs.filter((item) => item.classroomId === user.classroomId);
@@ -1482,13 +1589,13 @@ export function getPeerHeatForStudent(userId: string) {
   const store = getStore();
   const user = findUserById(userId);
   if (!user || user.role !== "student" || !user.classroomId) {
-    throw new Error("当前账号没有可用的学生沙盘。");
+    throw new DomainError("当前账号没有可用的学生沙盘。");
   }
 
   const classroom = getClassroomById(user.classroomId);
   const run = getRunForUser(userId);
   if (!classroom || !run) {
-    throw new Error("未找到对应的班级或沙盘进度。");
+    throw new DomainError("未找到对应的班级或沙盘进度。");
   }
 
   const relatedRuns = store.runs.filter((item) => item.classroomId === user.classroomId);
@@ -1499,7 +1606,7 @@ export function applyActionForUser(userId: string, input: Parameters<typeof appl
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const updated = applySimulationAction(run, input);
@@ -1513,7 +1620,7 @@ export function applyEventChoiceForUser(userId: string, choiceId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const updated = applyEventChoice(run, choiceId);
@@ -1527,7 +1634,7 @@ export function replayRunForUser(userId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const fresh = createInitialRun(
@@ -1547,7 +1654,7 @@ export function advanceRunForUser(userId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const updated = executeAutoInvestForRound(advanceSimulationRun(run));
@@ -1561,7 +1668,7 @@ export function createAutoInvestPlanForUser(userId: string, input: Partial<AutoI
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const updated = createAutoInvestPlan(run, input);
@@ -1575,7 +1682,7 @@ export function cancelAutoInvestPlanForUser(userId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const updated = cancelAutoInvestPlan(run);
@@ -1589,7 +1696,7 @@ export function applyLifeCashflowChallengeForUser(userId: string, input: LifeCas
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = applyLifeCashflowChallenge(run, input);
@@ -1603,7 +1710,7 @@ export function applyCreditLabActionForUser(userId: string, input: CreditLabActi
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = applyCreditLabAction(run, input);
@@ -1617,7 +1724,7 @@ export function claimQuestRewardForUser(userId: string, questId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = claimQuestReward(run, getLearningProgress(userId), questId);
@@ -1631,7 +1738,7 @@ export function claimSeasonRewardForUser(userId: string, challengeId: string) {
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = claimSeasonChallengeReward(run, challengeId);
@@ -1645,7 +1752,7 @@ export function createOpportunityNoteForUser(userId: string, input: OpportunityN
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createOpportunityNote(run, input);
@@ -1659,7 +1766,7 @@ export function createFundLabActionForUser(userId: string, input: FundLabActionI
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createFundLabAction(run, input);
@@ -1673,7 +1780,7 @@ export function createGoalAccountActionForUser(userId: string, input: GoalAccoun
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createGoalAccountAction(run, input);
@@ -1687,7 +1794,7 @@ export function createProtectionUmbrellaActionForUser(userId: string, input: Pro
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createProtectionUmbrellaAction(run, input);
@@ -1701,7 +1808,7 @@ export function createStudentWatchlistActionForUser(userId: string, input: Stude
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createStudentWatchlistAction(run, input);
@@ -1715,7 +1822,7 @@ export function createWealthReviewForUser(userId: string, input: WealthReviewInp
   const store = getStore();
   const run = getRunForUser(userId);
   if (!run) {
-    throw new Error("未找到对应的学生沙盘。");
+    throw new DomainError("未找到对应的学生沙盘。");
   }
 
   const outcome = createWealthReview(run, input);
@@ -1741,7 +1848,7 @@ export function createAssignmentForTeacher(
   const store = getStore();
   const teacher = findUserById(teacherId);
   if (!teacher?.classroomId) {
-    throw new Error("当前教师账号没有绑定班级。");
+    throw new DomainError("当前教师账号没有绑定班级。");
   }
 
   const assignment: Assignment = {
@@ -1763,7 +1870,7 @@ export function getTeacherOverview(userId: string) {
   const store = getStore();
   const teacher = findUserById(userId);
   if (!teacher?.classroomId) {
-    throw new Error("当前账号没有教师权限或未绑定班级。");
+    throw new DomainError("当前账号没有教师权限或未绑定班级。");
   }
 
   const classroom = getClassroomById(teacher.classroomId);
@@ -1798,7 +1905,7 @@ export function getParentOverview(userId: string) {
   const parent = findUserById(userId);
   const link = store.parentLinks.find((item) => item.parentUserId === parent?.id);
   if (!parent || !link) {
-    throw new Error("当前账号还没有绑定学生。");
+    throw new DomainError("当前账号还没有绑定学生。");
   }
 
   const student = findUserById(link.studentUserId);
@@ -1970,7 +2077,7 @@ export function appendAiMessage(sessionId: string, userId: string, message: AiCh
   const store = getStore();
   const session = store.aiSessions.find((candidate) => candidate.id === sessionId && candidate.userId === userId);
   if (!session) {
-    throw new Error("未找到对应的 AI 会话。");
+    throw new DomainError("未找到对应的 AI 会话。");
   }
 
   session.messages = [...session.messages, message].slice(-20);

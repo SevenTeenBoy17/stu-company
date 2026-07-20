@@ -147,9 +147,9 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div>
             <p className="bz-eyebrow-inverse">Fund / ETF Lab</p>
-            <h1 className="mt-4 max-w-3xl text-display-lg font-semibold tracking-tight md:text-display-xl">
+            <h2 className="mt-4 max-w-3xl text-display-lg font-semibold tracking-tight md:text-display-xl">
               基金/ETF 实验室：用组合理解长期理财
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body leading-8 text-white/70">
               把指数、债券、黄金和主题基金放在一起比较。这里不推荐真实产品，只训练&ldquo;分散、回撤、定投、目标金额&rdquo;这些核心概念。
             </p>
@@ -193,7 +193,13 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                     风险 {fund.risk}
                   </span>
                 </div>
-                <svg viewBox="0 0 320 110" className="mt-4 h-28 w-full overflow-visible rounded-2xl bg-slate-50 p-3">
+                {/* itest9 a11y P3(1.1.1)：走势 sparkline 为装饰图，年化/回撤已在下方文本呈现，
+                    对读屏隐藏避免朗读无意义的坐标点。 */}
+                <svg
+                  viewBox="0 0 320 110"
+                  className="mt-4 h-28 w-full overflow-visible rounded-2xl bg-slate-50 p-3"
+                  aria-hidden="true"
+                >
                   <polyline
                     points={sparkline(fund.series)}
                     fill="none"
@@ -225,6 +231,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
                   data-motion-button
                   key={item.id}
                   type="button"
+                  aria-pressed={plan === item.id}
                   data-testid={`fund-plan-${item.id}`}
                   disabled={previewPending || pending}
                   onClick={() => void previewCombination(item.id)}
@@ -287,6 +294,7 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
             </div>
             {message ? (
               <p
+                role={message.tone === "success" ? "status" : "alert"}
                 className={cn(
                   "mt-4 rounded-2xl px-4 py-3 text-body-sm font-semibold",
                   message.tone === "success" ? "bg-down-soft text-[var(--down-700)]" : "bg-error-soft text-error",

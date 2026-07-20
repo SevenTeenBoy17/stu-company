@@ -429,7 +429,7 @@ export function MiniQuestCreatureCard({
             <span className="text-xs font-bold tabular-nums text-white/70">{Math.round(quest.progress * 100)}%</span>
           </div>
           <p className="mt-2 line-clamp-1 text-lg font-black text-white">{profile.visualTitle}</p>
-          <p className="mt-1 line-clamp-1 text-xs font-bold text-white/58">{profile.conceptTag} · {profile.shortAction}</p>
+          <p className="mt-1 line-clamp-1 text-xs font-bold text-white/74">{profile.conceptTag} · {profile.shortAction}</p>
           <div {...progressAria(`${profile.visualTitle} 进度`, quest.progress * 100)} className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full" style={{ width: `${Math.max(quest.status === "locked" ? 0 : 8, quest.progress * 100)}%`, background: profile.accent }} />
           </div>

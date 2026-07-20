@@ -47,6 +47,8 @@
   --warning-400: #facc15;
   --warning-500: #eab308;
   --warning-600: #ca8a04;
+  /* itest9 a11y P2 (WCAG 1.4.3)：warning-600 于 warning-50 浅底仅 ~3:1，不达正文 4.5:1；补更深一档。 */
+  --warning-700: #a16207;
   --error-50: #fdf2f8;
   --error-100: #fce7f3;
   --error-400: #f472b6;
@@ -118,7 +120,9 @@
   --color-border: rgba(16, 23, 38, 0.10);
   --color-border-strong: rgba(16, 23, 38, 0.18);
   --color-border-brand: var(--amber-300);
-  --color-ring: rgba(240, 138, 56, 0.45);
+  /* itest9 a11y P2 (WCAG 1.4.11)：焦点环必须 ≥3:1。旧值 rgba(…,0.45) 半透明叠白仅 ~1.5:1。
+     改为不透明琥珀 #d9660f（亮度≈0.20）：叠白 ~3.6:1、叠深色侧栏 ~4:1，两种底都达标。 */
+  --color-ring: #d9660f;
 
   /* === Fonts ===
      The next/font/local faces (`--font-inter` / `--font-noto-sans-sc` /

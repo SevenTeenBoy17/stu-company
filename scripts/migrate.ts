@@ -44,8 +44,37 @@ if (!databaseUrl) {
 
 const client = postgres(databaseUrl, { prepare: false, max: 1 });
 
+/**
+ * LC10h P1 (LC-05/LC-06): migration 0002 (RLS) defines `app_private.*` helpers
+ * that call Supabase's `auth.jwt()`. On a vanilla Postgres (self-host, CI,
+ * local WSL, DR rebuild) that function does not exist, so the whole migration
+ * batch fails and rolls back — a virgin DB can never be migrated. Supabase ships
+ * a real `auth.jwt()`, so we ONLY create a compatibility stub when it is absent
+ * (reading `request.jwt.claims`, the GUC `withRls()` already sets). This makes
+ * `npm run db:migrate` self-sufficient everywhere without editing any applied
+ * migration file (which would break hash tracking on the live database).
+ */
+async function ensureAuthJwtStub() {
+  const [{ exists }] = await client<{ exists: boolean }[]>`
+    select exists (
+      select 1 from pg_proc p join pg_namespace n on p.pronamespace = n.oid
+      where n.nspname = 'auth' and p.proname = 'jwt'
+    ) as exists
+  `;
+  if (exists) return;
+  await client.unsafe(`
+    create schema if not exists auth;
+    create or replace function auth.jwt() returns jsonb
+    language sql stable as $$
+      select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+    $$;
+  `);
+  console.log("Vanilla Postgres detected: created auth.jwt() compatibility stub.");
+}
+
 async function main() {
   try {
+    await ensureAuthJwtStub();
     await migrate(drizzle(client), { migrationsFolder: "drizzle" });
     console.log("Migrations up to date");
   } finally {

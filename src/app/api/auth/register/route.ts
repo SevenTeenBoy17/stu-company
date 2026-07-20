@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
+import { apiError, checkOrigin, handleRouteError, rateLimitedError } from "@/lib/api-response";
 import { registerSchema } from "@/lib/auth-validation";
 import { persistSession } from "@/lib/auth";
 import { registerUserByEmail, roleHomePath } from "@/lib/db/repo";
 import { sendEmail, verificationEmail } from "@/lib/email";
 import { createEmailVerificationToken } from "@/lib/email-verification";
-import { buildRateLimitMessage, rateLimit, rateLimitKey } from "@/lib/rate-limit";
+import { buildRateLimitMessage, registerRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const originBlock = checkOrigin(request);
   if (originBlock) return originBlock;
 
   try {
-    const rlKey = rateLimitKey("register", undefined, request);
-    const rl = rateLimit(rlKey, 5, 60_000 * 10);
+    const rl = registerRateLimit(request);
     if (!rl.ok) {
-      return apiError("invalid_input", buildRateLimitMessage(rl), 429);
+      return rateLimitedError(buildRateLimitMessage(rl), rl.retryAfterMs);
     }
 
     const parsed = registerSchema.safeParse(await request.json());

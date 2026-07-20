@@ -220,6 +220,8 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
               strokeDasharray="4 8"
             />
           ))}
+          {/* itest9 a11y P3(1.4.1)：两条线此前仅靠颜色区分，色觉障碍用户无法分辨。
+              风险分=实线、纪律分=虚线，颜色之外再加线型冗余编码；图例同步用实/虚线示意。 */}
           <path data-motion-viz-path d={riskPath} fill="none" stroke="#f08a38" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
           <path
             data-motion-viz-path
@@ -227,6 +229,7 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
             fill="none"
             stroke="#6f7ef7"
             strokeWidth="4"
+            strokeDasharray="10 7"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -234,12 +237,15 @@ function RiskDisciplineChart({ timeline }: { timeline: HistoryRoundSummary[] }) 
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-2 rounded-full bg-[#f08a38]/10 px-3 py-2 text-caption font-semibold text-[#944314]">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#f08a38]" />
-          风险分
+          <span className="h-1 w-5 rounded-full bg-[#f08a38]" aria-hidden="true" />
+          风险分（实线）
         </span>
         <span className="inline-flex items-center gap-2 rounded-full bg-[#6f7ef7]/10 px-3 py-2 text-caption font-semibold text-[#4657d4]">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#6f7ef7]" />
-          纪律分
+          <span
+            aria-hidden="true"
+            className="h-0 w-5 border-t-[3px] border-dashed border-[#6f7ef7]"
+          />
+          纪律分（虚线）
         </span>
       </div>
     </div>

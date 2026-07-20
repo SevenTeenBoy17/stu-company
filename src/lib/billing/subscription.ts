@@ -82,6 +82,21 @@ function expiredState(message: string, subscriptionExpiresAt?: string): Subscrip
   };
 }
 
+/**
+ * Pick the later of two subscription expiry timestamps (ISO strings), treating
+ * `undefined` as "no coverage" (loses to any real date). Used so family sharing
+ * only ever EXTENDS a student's Premium, never shortens their own longer one
+ * (itest10 #8).
+ */
+export function laterExpiry(
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
 export function resolveSubscriptionState(
   tier: SubscriptionTier | undefined,
   trialExpiresAt: string | undefined,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/api-guard";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import {
   getManualWechatCollectionConfig,
@@ -9,9 +10,6 @@ import {
   saveManualWechatCollectionConfig,
 } from "@/lib/billing/manual-wechat";
 
-function isSuperAdmin(user: { id: string; email: string }) {
-  return user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
-}
 
 function optionalHttpUrl(value: string | undefined) {
   if (!value) return true;

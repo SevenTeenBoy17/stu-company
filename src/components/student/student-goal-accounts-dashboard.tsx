@@ -21,7 +21,10 @@ const statusLabel: Record<GoalAccountPayload["goals"][number]["status"], string>
 
 const statusClass: Record<GoalAccountPayload["goals"][number]["status"], string> = {
   ahead: "bg-down-soft text-[var(--down-700)]",
-  on_track: "bg-brand-soft text-brand",
+  // itest10 #2: text-brand (amber-500) on bg-brand-soft (amber-100) is ~2.2:1 —
+  // fails WCAG 1.4.3 for this caption-size status text. brand-ink (amber-800) is
+  // ~5.8:1 (see globals.css a11y note; consistent with the opportunity card badge).
+  on_track: "bg-brand-soft text-brand-ink",
   needs_attention: "bg-warning/10 text-warning",
 };
 
@@ -96,9 +99,9 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
         <div className="relative z-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px]">
           <div>
             <p className="bz-eyebrow-inverse">Goal Accounts</p>
-            <h1 className="mt-4 max-w-4xl text-display-lg font-semibold tracking-tight md:text-display-xl">
+            <h2 className="mt-4 max-w-4xl text-display-lg font-semibold tracking-tight md:text-display-xl">
               目标账户：把未来想要的东西拆成今天的小动作
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body leading-8 text-white/68">{payload.overview.learningPrompt}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -134,6 +137,7 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
                 data-motion-card
                 key={goal.id}
                 type="button"
+                aria-pressed={goal.id === goalId}
                 onClick={() => selectGoal(goal.id)}
                 className={cn(
                   "rounded-[1.6rem] border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg",

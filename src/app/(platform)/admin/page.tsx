@@ -4,6 +4,7 @@ import { AdminUserManager } from "@/components/admin/admin-user-manager";
 import { ManualWechatConfigCard } from "@/components/admin/manual-wechat-config-card";
 import { ManualPaymentOrders } from "@/components/admin/manual-payment-orders";
 import { PlatformLayout } from "@/components/platform/platform-layout";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { getManualWechatCollectionConfig, getManualWechatReadiness } from "@/lib/billing/manual-wechat";
 import { MoneyText } from "@/components/shared/money-text";
 import { getAdminOverview, roleHomePath } from "@/lib/db/repo";
@@ -20,7 +21,7 @@ export default async function AdminPage() {
   if (user.role !== "admin") redirect(roleHomePath(user.role));
 
   const overview = await getAdminOverview();
-  const canManagePasswords = user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
+  const canManagePasswords = isSuperAdmin(user);
   const manualWechatConfig = await getManualWechatCollectionConfig();
   const manualWechatReadiness = getManualWechatReadiness(manualWechatConfig);
 
@@ -41,9 +42,9 @@ export default async function AdminPage() {
         <p className="bz-eyebrow-inverse">Brown Zone / Admin</p>
         <div className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div>
-            <h1 className="font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">
+            <h2 className="font-display text-4xl font-semibold leading-tight text-white sm:text-5xl">
               商业运营与账号权限，总览在这里完成。
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-base leading-8 text-white/68">
               当前采用“双轨商业模式”：个人月卡承接自助体验，学校授权承接批量账号、课堂数据、
               教师管理和阶段性报告。这里展示的是运营面板与账号管理入口。

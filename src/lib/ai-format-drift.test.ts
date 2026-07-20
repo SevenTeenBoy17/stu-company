@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai";
 import { buildHistoryReviewAiContext, buildHistoryReviewPayload } from "@/lib/history-review";
 import { getSimulationStateForUser, resetStoreForTests } from "@/lib/store";
+import { eventCards } from "@/lib/market-data";
 
 import { AI_PRIMARY_BASE, AI_PRIMARY_ENDPOINT } from "../../tests/msw/handlers";
 import { server } from "../../tests/msw/server";
@@ -114,6 +115,17 @@ describe("AI tutor teaching-spec compliance (fallback content we control)", () =
     expect(tutor.provider).toBe("fallback");
     expect(tutor.text).not.toMatch(FORBIDDEN);
     expect(chat.text).not.toMatch(FORBIDDEN);
+  });
+
+  // 上面的 fallback 用例依赖当周种子选中的事件（title/coachingCue 会被 ai.ts 逐字回显），
+  // 因此对「哪个事件出现」是不确定的——某些周会撞上带禁用词的事件而周期性红灯。这里加一条
+  // 确定性守卫：遍历全部事件卡，凡被 AI 兑底回显的字段（title + coachingCue）都不得含禁用词，
+  // 从根上杜绝「AI 说出保证/稳赚」并防未来新增事件带词回归。诈骗原话保留在 description（不进兑底）。
+  it("no market event title/coachingCue can leak guarantee wording into AI echoes", () => {
+    const offenders = eventCards.filter(
+      (card) => FORBIDDEN.test(card.title) || FORBIDDEN.test(card.coachingCue),
+    );
+    expect(offenders.map((card) => `${card.id}: ${card.title} / ${card.coachingCue}`)).toEqual([]);
   });
 });
 

@@ -708,7 +708,10 @@ export function DemoPortal({
               ) : null}
 
               {message ? (
-                <p className={`relative mt-6 break-all rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}>
+                <p
+                  role={message.tone === "error" ? "alert" : "status"}
+                  className={`relative mt-6 break-all rounded-2xl border px-5 py-4 text-sm font-bold leading-6 ${messageClass(message.tone)}`}
+                >
                   {message.text}
                 </p>
               ) : null}

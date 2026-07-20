@@ -344,7 +344,10 @@ function QuestMapGallery({
           </div>
 
           <div className="relative z-10 flex min-h-[25rem] flex-col justify-between gap-8 p-5 sm:min-h-[30rem] sm:p-7 lg:min-h-[34rem]">
-            <div className="relative z-30 flex flex-wrap items-start justify-between gap-4">
+            {/* itest6 R3 P2：此头部块 z-30 盖在 z-20 节点层之上，非 pointer-events-none 时其包围盒
+                会拦截落到上半区节点按钮的点击（爬虫实证 top≤51% 的节点点不到）。头部整体透传点击，
+                仅「放大查看」按钮重新开启命中，标题/当前航线卡为纯展示。 */}
+            <div className="pointer-events-none relative z-30 flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-xl">
                 <p className="bz-eyebrow text-amber-200">Route Map</p>
                 <h2 className="mt-3 text-[clamp(2rem,4vw,4.6rem)] font-black leading-[0.95] tracking-[-0.08em] text-white">
@@ -383,7 +386,7 @@ function QuestMapGallery({
                   type="button"
                   onClick={() => setMapExpanded(true)}
                   data-testid="quest-map-expand-button"
-                  className="inline-flex items-center gap-2 rounded-full border border-amber-100/70 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 shadow-[0_16px_36px_rgba(251,191,36,0.28)] transition hover:-translate-y-0.5 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100"
+                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-amber-100/70 bg-amber-200 px-4 py-2 text-xs font-black text-slate-950 shadow-[0_16px_36px_rgba(251,191,36,0.28)] transition hover:-translate-y-0.5 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100"
                 >
                   <Maximize2 className="h-4 w-4" />
                   放大查看
@@ -466,7 +469,7 @@ function QuestMapGallery({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-brand">
+                        <p className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-brand-ink">
                           航线 {String(index + 1).padStart(2, "0")}
                         </p>
                         <h3 className="mt-1 line-clamp-1 text-base font-black text-fg-strong">{profile.visualTitle}</h3>
@@ -484,7 +487,7 @@ function QuestMapGallery({
                             ? "bg-emerald-50 text-emerald-700"
                             : quest.status === "active"
                               ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-500",
+                              : "bg-slate-100 text-slate-600", // itest7 P3：slate-500(4.36:1)→slate-600(≥5.5:1) 过 AA
                         )}
                       >
                         {routeState}
@@ -1279,16 +1282,16 @@ export function StudentQuestDashboard({
           <div className="pointer-events-none absolute -left-16 top-0 h-64 w-64 rounded-full bg-brand/20 blur-3xl" />
           <div className="relative z-10 px-6 py-7 md:px-8 md:py-9">
             <p className="bz-eyebrow-inverse">任务中心</p>
-            <h1 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
+            <h2 className="mt-3 max-w-3xl text-display-lg font-semibold md:text-display-xl">
               任务中心：好习惯闯关
-            </h1>
+            </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
               把观察、交易、现金管理和复盘拆成可完成的小关卡。每次打开沙盘，都知道下一步练什么。
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
-                <p className="text-sm font-semibold text-white/56">任务完成度</p>
+                <p className="text-sm font-semibold text-white/72">任务完成度</p>
                 <p className="mt-3 text-hero-num tabular-nums text-white">
                   {questPayload.overview.completed}/{questPayload.overview.total}
                 </p>
@@ -1300,7 +1303,7 @@ export function StudentQuestDashboard({
                 </div>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
-                <p className="text-sm font-semibold text-white/56">连续学习</p>
+                <p className="text-sm font-semibold text-white/72">连续学习</p>
                 {/* streak 断裂时不把 0 当失败信号裸展示（评审会 P2·羞耻感暴露）：
                     改为 — + 可立即行动的重启文案，归因指向行动而非能力。 */}
                 <p className="mt-3 text-h2 tabular-nums text-white">
@@ -1308,7 +1311,7 @@ export function StudentQuestDashboard({
                   <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.streakBest}
                 </p>
-                <p className="mt-3 text-sm text-white/58">
+                <p className="mt-3 text-sm text-white/72">
                   {questPayload.overview.streakCurrent > 0
                     ? "当前 / 历史最佳连续学习回合"
                     : questPayload.overview.streakBest > 0
@@ -1317,13 +1320,13 @@ export function StudentQuestDashboard({
                 </p>
               </div>
               <div data-motion-card className="rounded-[1.6rem] border border-white/10 bg-white/[0.07] p-5">
-                <p className="text-sm font-semibold text-white/56">学习进度</p>
+                <p className="text-sm font-semibold text-white/72">学习进度</p>
                 <p className="mt-3 text-h2 tabular-nums text-white">
                   {questPayload.overview.learningCompleted}
                   <span className="mx-2 text-h3 text-white/70">/</span>
                   {questPayload.overview.learningTotal}
                 </p>
-                <p className="mt-3 text-sm text-white/58">课程模块完成数</p>
+                <p className="mt-3 text-sm text-white/72">课程模块完成数</p>
               </div>
             </div>
           </div>
@@ -1947,7 +1950,7 @@ export function StudentQuestDashboard({
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-warm">Mission Dock</p>
                   <h3 className="mt-2 text-h2 font-bold text-white">任务队列</h3>
-                  <p className="mt-1 text-xs font-semibold text-white/58">先选航线，再翻牌执行。</p>
+                  <p className="mt-1 text-xs font-semibold text-white/72">先选航线，再翻牌执行。</p>
                 </div>
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tabular-nums text-white/76">
                   {visibleQuests.length} 个锦囊
@@ -2091,7 +2094,11 @@ export function StudentQuestDashboard({
             成就只代表学习轨迹，不代表真实投资能力，也不会直接改变学习榜位置。
           </p>
           {/* §19.7 移动端：成就条目改横滑卡组，sm 起还原纵向列表。 */}
-          <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [&>*]:w-[88%] [&>*]:shrink-0 [&>*]:snap-start sm:block sm:snap-none sm:space-y-3 sm:overflow-visible sm:pb-0 sm:[&>*]:w-auto">
+          <div
+            tabIndex={0}
+            aria-label="成就墙横向滚动列表"
+            className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-[1.5rem] pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand [&>*]:w-[88%] [&>*]:shrink-0 [&>*]:snap-start sm:block sm:snap-none sm:space-y-3 sm:overflow-visible sm:pb-0 sm:focus-visible:ring-0 sm:[&>*]:w-auto"
+          >
             {questPayload.achievements.map((achievement) => (
               <article
                 key={achievement.id}
@@ -2110,7 +2117,7 @@ export function StudentQuestDashboard({
                       <span
                         className={cn(
                           "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                          achievement.unlocked ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-600",
+                          achievement.unlocked ? "bg-amber-100 text-amber-800" : "bg-slate-900 text-white",
                         )}
                       >
                         {achievement.unlocked ? "已点亮" : "待解锁"}

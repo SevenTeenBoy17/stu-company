@@ -18,6 +18,7 @@ import {
   PortfolioSnapshotSchema,
 } from "@/lib/db/payload-schemas";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { DomainError } from "@/lib/domain-error";
 
 import { learningModules } from "@/lib/content";
 import {
@@ -52,6 +53,7 @@ import {
 } from "@/lib/db/schema";
 import {
   canAddFamilyMember,
+  laterExpiry,
   resolveSubscriptionState,
 } from "@/lib/billing/subscription";
 import { currentSeasonSeed } from "@/lib/season";
@@ -327,6 +329,7 @@ const WRITE_FNS = new Set<string>([
   // wrapper that never enters withDb itself, so the DB-write key is the plural.
   "markOnboardingCompleted", "markEmailVerified", "createAiSession", "appendAiMessages",
   "registerUserByInvite", "registerUserByEmail", "addFamilyMember", "removeFamilyMember",
+  "getOrCreateGuardianInviteForStudent", "resetGuardianBindingForStudent",
   "createAssignmentForTeacher", "bumpTokenVersion", "updateUserPassword", "updateUserEmail",
   "createAdminManagedUser", "updateAdminManagedUser", "createPaymentOrder",
   "updatePaymentOrderProviderFields", "attachManualPaymentProof", "markPaymentOrderStatus", "fulfillPaymentOrder",
@@ -337,6 +340,11 @@ const WRITE_FNS = new Set<string>([
   "createOpportunityNoteForUser", "createFundLabActionForUser", "createGoalAccountActionForUser",
   "createProtectionUmbrellaActionForUser", "createStudentWatchlistActionForUser", "createWealthReviewForUser",
 ]);
+
+// 从零依赖模块 @/lib/domain-error 引入并【再导出】DomainError：既供本文件 catch 守卫使用，
+// 也让历史 `import { DomainError } from "@/lib/db/repo"`（路由/测试）继续可用。领域拒绝的抛出点
+// 分布在 repo.ts 与被其事务调用的纯教学模块两侧，故类型定义须放在共享模块以免循环依赖。
+export { DomainError };
 
 async function withDbExecutor<T>(
   fn: string,
@@ -363,6 +371,11 @@ async function withDbExecutor<T>(
   try {
     return await withQueryTimeout(fn, dbFn(executor));
   } catch (err) {
+    // 领域校验错误（业务规则拒绝）不是 DB 故障：直接冒泡，不记 query_failed、不发
+    // [repo.fallback] SLI、不走内存兜底（itest6 R3 P3：消除虚假 DB 故障告警）。
+    if (err instanceof DomainError) {
+      throw err;
+    }
     logFallback(fn, "query_failed", err);
     // Writes never silently fall back (P2): a failed persist must surface as an
     // error, not pretend success in memory. Reads fall back only when allowed.
@@ -386,6 +399,23 @@ async function withDb<T>(
   try {
     return await withDbExecutor(fn, primaryDb, executor, fallback);
   } catch (error) {
+    // 与内层 withDbExecutor 守卫对称（itest7 P2）：领域拒绝不是 DB 故障，绝不参与
+    // direct_supabase 二次重试、绝不打印 [repo.fallback] SLI。生产(Supabase pooler)下
+    // getDirectFallbackDb() 非空，若不在此拦截，领域错误会误发 fallback SLI 且把整事务
+    // 对着跨洋 direct 连接白跑一遍（本地非 pooler 观察不到）。
+    if (error instanceof DomainError) {
+      throw error;
+    }
+    // itest10 #4: NEVER retry a write on the direct connection. A client-side
+    // statement timeout (withQueryTimeout) only rejects the awaiting promise —
+    // it does NOT cancel the transaction already in flight on the pooler, which
+    // may still COMMIT. Re-running a non-idempotent write (advance-round, quest
+    // claim, 理财 writes — none carry an idempotency key) on the direct link
+    // would double-apply it and corrupt the run. Writes fail loud (P2); only
+    // reads use the cross-region direct fallback.
+    if (WRITE_FNS.has(fn.replace(/:direct_supabase$/, ""))) {
+      throw error;
+    }
     const directDb = getDirectFallbackDb();
     if (!primaryDb || !directDb || directDb === primaryDb) {
       throw error;
@@ -873,7 +903,7 @@ async function selectDefaultClassroomId(executor: DbExecutor, fallbackTeacherId:
 
 async function ensureStudentSandbox(executor: DbExecutor, user: UserRecord) {
   if (user.role !== "student") {
-    throw new Error("当前账号不是学生账号。");
+    throw new DomainError("当前账号不是学生账号。");
   }
 
   let classroomId = user.classroomId;
@@ -898,8 +928,15 @@ async function ensureStudentSandbox(executor: DbExecutor, user: UserRecord) {
 
   let run = await selectRunForUser(executor, user.id);
   if (!run) {
+    // itest8 P1：并发首屏(Promise.all[getSimulationStateForUser, getPeerHeatForStudent])会让两个独立
+    // 事务都读到 null 再各自 insert。冲突目标必须是 user_id 唯一约束——空目标的 onConflictDoNothing
+    // 只对主键(随机 id)生效、两条永不冲突=建出重复 run。指定 target=userId 后并发方 DoNothing，再 re-select
+    // 拿到胜出者的唯一 run。
     const initialRun = createInitialRun(user.id, classroomId);
-    await executor.insert(scenarioRuns).values(toRunInsert(initialRun)).onConflictDoNothing();
+    await executor
+      .insert(scenarioRuns)
+      .values(toRunInsert(initialRun))
+      .onConflictDoNothing({ target: scenarioRuns.userId });
     run = (await selectRunForUser(executor, user.id)) ?? initialRun;
   }
 
@@ -1159,6 +1196,105 @@ function normalizeInviteCode(code: string) {
   return code.trim().toUpperCase();
 }
 
+/**
+ * LC10h P1 (LC-11): a student mints their own guardian invite code so a
+ * self-registered parent can bind to them. Without this the family-linking chain
+ * (Premium sharing, adult-proxy purchase, weekly parent report) was unreachable
+ * for any organically-registered user — the only `studentLinkId`-carrying codes
+ * came from the seed.
+ *
+ * Idempotent per student: if a still-valid, unused guardian code already exists
+ * for this student's link, it is returned as-is rather than minting a duplicate.
+ * The code carries a `studentParentLinks` row (student side filled, parent side
+ * left for the parent's registration to claim), mirroring the seed path so the
+ * existing registration binding logic lights up unchanged.
+ */
+export async function getOrCreateGuardianInviteForStudent(studentUserId: string) {
+  return withDb(
+    "getOrCreateGuardianInviteForStudent",
+    async (db) => {
+      return db.transaction(async (tx) => {
+        const [student] = await tx.select().from(users).where(eq(users.id, studentUserId)).limit(1);
+        if (!student) throw new DomainError("用户不存在。");
+        if (student.role !== "student") throw new DomainError("只有学生账号可以生成家长绑定邀请码。");
+
+        // Ensure exactly one link row exists for this student. `student_user_id` is
+        // UNIQUE (migration 0022), so a concurrent second POST conflicts and is a
+        // no-op — both callers then converge on the same row below. This is what
+        // makes the mint idempotent-per-student under races (review finding #3).
+        await tx
+          .insert(studentParentLinks)
+          .values({
+            id: createId("link"),
+            studentUserId,
+            // Placeholder: parentUserId = studentUserId until a parent claims it.
+            parentUserId: studentUserId,
+            bondCode: createId("bond"),
+          })
+          .onConflictDoNothing();
+
+        // Lock the link row to serialize concurrent minting on it (mirrors the
+        // .for("update") pattern used for scenario_run / family-seat writes), so
+        // two callers can never each mint a distinct still-valid code.
+        const [link] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(eq(studentParentLinks.studentUserId, studentUserId))
+          .for("update")
+          .limit(1);
+        if (!link) throw new DomainError("生成家长绑定邀请码失败，请稍后再试。");
+
+        // Review finding #1/#2: a student binds to exactly ONE guardian (growth_reports
+        // is unique per student). Once a real parent has claimed the link, refuse to
+        // mint a second code — otherwise a second parent could bind and silently take
+        // over the child's growth report, locking the first parent out.
+        if (link.parentUserId !== studentUserId) {
+          throw new DomainError("你已经绑定了家长。如需更换绑定，请联系老师或管理员。");
+        }
+        const linkId = link.id;
+
+        const [reusable] = await tx
+          .select()
+          .from(inviteCodes)
+          .where(
+            and(
+              eq(inviteCodes.studentLinkId, linkId),
+              sql`${inviteCodes.usesRemaining} > 0`,
+              sql`${inviteCodes.expiresAt} > now()`,
+            ),
+          )
+          .limit(1);
+        if (reusable) return { invite: toInvite(reusable), reused: true };
+
+        const [studentProfile] = await tx
+          .select({ name: profiles.name })
+          .from(profiles)
+          .where(eq(profiles.userId, studentUserId))
+          .limit(1);
+        const code = `MRB-P-${createId("g").slice(-8).toUpperCase()}`;
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        const [row] = await tx
+          .insert(inviteCodes)
+          .values({
+            id: createId("invite"),
+            code,
+            role: "parent",
+            label: `家长绑定码 · ${studentProfile?.name ?? "学生"}`,
+            classroomId: student.classroomId ?? null,
+            studentLinkId: linkId,
+            createdBy: studentUserId,
+            usesRemaining: 1,
+            expiresAt,
+          })
+          .returning();
+        return { invite: toInvite(row), reused: false };
+      });
+    },
+    () => store.getOrCreateGuardianInviteForStudent(studentUserId),
+  );
+}
+
 export async function findInviteByCode(code: string) {
   const normalizedCode = normalizeInviteCode(code);
   return withDb(
@@ -1246,17 +1382,17 @@ export async function registerUserByInvite(input: {
 
         if (reservedRows.length === 0) {
           const probe = await findInviteByCodeWithExecutor(tx, normalizedInviteCode);
-          if (!probe) throw new Error("邀请码不存在。");
+          if (!probe) throw new DomainError("邀请码不存在。");
           if (new Date(probe.expiresAt).getTime() < Date.now()) {
-            throw new Error("邀请码已过期。");
+            throw new DomainError("邀请码已过期。");
           }
-          throw new Error("邀请码已达到使用上限。");
+          throw new DomainError("邀请码已达到使用上限。");
         }
 
         const invite = toInvite(reservedRows[0]);
 
         const existingUser = await selectUserByEmail(tx, normalizedEmail);
-        if (existingUser) throw new Error("这个邮箱已经被注册过了。");
+        if (existingUser) throw new DomainError("这个邮箱已经被注册过了。");
 
         const newUser: UserRecord = {
           id: createId("user"),
@@ -1305,7 +1441,16 @@ export async function registerUserByInvite(input: {
           const [link] = await tx
             .update(studentParentLinks)
             .set({ parentUserId: newUser.id })
-            .where(eq(studentParentLinks.id, invite.studentLinkId))
+            // Only claim a still-unclaimed placeholder (parentUserId == studentUserId).
+            // If another parent already claimed it, this matches no row, so the growth
+            // report below is left untouched — a second parent can never silently
+            // reassign the child's report and lock the first parent out (review #2).
+            .where(
+              and(
+                eq(studentParentLinks.id, invite.studentLinkId),
+                sql`${studentParentLinks.parentUserId} = ${studentParentLinks.studentUserId}`,
+              ),
+            )
             .returning();
           const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
 
@@ -1354,7 +1499,7 @@ export async function registerUserByEmail(input: {
     async (db) =>
       db.transaction(async (tx) => {
         const existingUser = await selectUserByEmail(tx, normalizedEmail);
-        if (existingUser) throw new Error("这个邮箱已经被注册过了。");
+        if (existingUser) throw new DomainError("这个邮箱已经被注册过了。");
 
         let role: UserRecord["role"] = "student";
         let classroomId: string | undefined;
@@ -1379,7 +1524,7 @@ export async function registerUserByEmail(input: {
             classroomId = invite.classroomId;
             studentLinkId = invite.studentLinkId;
           } else {
-            throw new Error("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
+            throw new DomainError("邀请码无效、已过期或已用完。如不需要邀请码，请留空后重试。");
           }
         }
 
@@ -1446,6 +1591,42 @@ export async function registerUserByEmail(input: {
           await tx.insert(scenarioRuns).values(toRunInsert(createInitialRun(newUser.id, SANDBOX_CLASSROOM_ID)));
         }
 
+        // LC10h P1 (LC-11): a parent registering here with a guardian invite must
+        // claim the carried link (parentUserId) so the family-linking chain works —
+        // registerUserByInvite already did this, but the public email-register path
+        // (used by the student-minted guardian code) skipped it, leaving the bond
+        // half-open and blocking addFamilyMember / adult-proxy purchase.
+        if (newUser.role === "parent" && studentLinkId) {
+          const [link] = await tx
+            .update(studentParentLinks)
+            .set({ parentUserId: newUser.id })
+            // Defense-in-depth (review #2): only claim an unclaimed placeholder, so a
+            // second parent can never reassign an already-bound child's growth report.
+            .where(
+              and(
+                eq(studentParentLinks.id, studentLinkId),
+                sql`${studentParentLinks.parentUserId} = ${studentParentLinks.studentUserId}`,
+              ),
+            )
+            .returning();
+          const linkedRun = link ? await selectRunForUserForUpdate(tx, link.studentUserId) : null;
+          if (link && linkedRun) {
+            const report = buildGrowthReport(linkedRun, link.studentUserId, newUser.id);
+            await tx
+              .insert(growthReports)
+              .values({
+                id: createId("growth-report"),
+                studentUserId: link.studentUserId,
+                parentUserId: newUser.id,
+                payload: report,
+              })
+              .onConflictDoUpdate({
+                target: growthReports.studentUserId,
+                set: { parentUserId: newUser.id, payload: report },
+              });
+          }
+        }
+
         return newUser;
       }),
     () => store.registerUserByEmail({ ...input, email: normalizedEmail, inviteCode: normalizedInviteCode }),
@@ -1501,9 +1682,9 @@ export async function createRoundPredictionForUser(
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
         if (run.currentRound >= run.totalRounds) {
-          throw new Error("本局已经结束，不能继续提交涨跌预测。");
+          throw new DomainError("本局已经结束，不能继续提交涨跌预测。");
         }
 
         const [existing] = await tx
@@ -1518,7 +1699,7 @@ export async function createRoundPredictionForUser(
           )
           .limit(1);
         if (existing) {
-          throw new Error("本回合已经提交过预测。");
+          throw new DomainError("本回合已经提交过预测。");
         }
 
         const [row] = await tx
@@ -1535,16 +1716,16 @@ export async function createRoundPredictionForUser(
       }),
     () => {
       const run = store.getRunForUser(userId);
-      if (!run) throw new Error("未找到对应的学生沙盘。");
+      if (!run) throw new DomainError("未找到对应的学生沙盘。");
       if (run.currentRound >= run.totalRounds) {
-        throw new Error("本局已经结束，不能继续提交涨跌预测。");
+        throw new DomainError("本局已经结束，不能继续提交涨跌预测。");
       }
 
       const existing = listFallbackRoundPredictionsForRun(run.id).find(
         (prediction) => prediction.userId === userId && prediction.round === run.currentRound,
       );
       if (existing) {
-        throw new Error("本回合已经提交过预测。");
+        throw new DomainError("本回合已经提交过预测。");
       }
 
       const record: RoundPrediction = {
@@ -1637,7 +1818,7 @@ export async function getSimulationStateForUser(userId: string) {
     async (db) => {
       const user = await selectUserById(db, userId);
       if (!user || user.role !== "student") {
-        throw new Error("当前账号没有可用的学生沙盘。");
+        throw new DomainError("当前账号没有可用的学生沙盘。");
       }
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
@@ -1668,7 +1849,7 @@ export async function getPeerHeatForStudent(userId: string) {
     async (db) => {
       const user = await selectUserById(db, userId);
       if (!user || user.role !== "student") {
-        throw new Error("当前账号没有可用的学生沙盘。");
+        throw new DomainError("当前账号没有可用的学生沙盘。");
       }
 
       const ready = await db.transaction((tx) => ensureStudentSandbox(tx, user));
@@ -1692,7 +1873,7 @@ export async function applyActionForUser(
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = applySimulationAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -1709,7 +1890,7 @@ export async function applyEventChoiceForUser(userId: string, choiceId: string) 
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = applyEventChoice(run, choiceId);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -1760,7 +1941,14 @@ export async function applyFamilyEntitlement(user: UserRecord): Promise<UserReco
       const subscriptionExpiresAt = maybeIso(row.subscriptionExpiresAt);
       const state = resolveSubscriptionState(tier, maybeIso(row.trialExpiresAt), subscriptionExpiresAt);
       if (state.status === "active" && tier === "premium") {
-        return { ...user, subscriptionTier: "premium", subscriptionExpiresAt };
+        // itest10 #8: family sharing may only EXTEND — never shorten a student's
+        // own longer-running Premium (e.g. admin-granted to 2030) by stamping the
+        // owner's earlier expiry. Keep whichever coverage lasts longer.
+        return {
+          ...user,
+          subscriptionTier: "premium",
+          subscriptionExpiresAt: laterExpiry(user.subscriptionExpiresAt, subscriptionExpiresAt),
+        };
       }
       return user;
     },
@@ -1798,8 +1986,8 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
       db.transaction(async (tx) => {
         const owner = await selectUserById(tx, ownerUserId);
         const student = await selectUserById(tx, studentUserId);
-        if (!owner || !student) throw new Error("用户不存在。");
-        if (student.role !== "student") throw new Error("只能把学生加入家庭组。");
+        if (!owner || !student) throw new DomainError("用户不存在。");
+        if (student.role !== "student") throw new DomainError("只能把学生加入家庭组。");
 
         const state = resolveSubscriptionState(
           owner.subscriptionTier,
@@ -1807,7 +1995,7 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
           owner.subscriptionExpiresAt,
         );
         if (!(state.status === "active" && owner.subscriptionTier === "premium")) {
-          throw new Error("只有高级版家长才能创建家庭组。");
+          throw new DomainError("只有高级版家长才能创建家庭组。");
         }
 
         const [link] = await tx
@@ -1820,14 +2008,14 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
             ),
           )
           .limit(1);
-        if (!link) throw new Error("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
+        if (!link) throw new DomainError("你没有权限把该学生加入家庭组（需先与孩子绑定）。");
 
         const [existing] = await tx
           .select()
           .from(familyMembers)
           .where(eq(familyMembers.studentUserId, studentUserId))
           .limit(1);
-        if (existing) throw new Error("该学生已在一个家庭组中。");
+        if (existing) throw new DomainError("该学生已在一个家庭组中。");
 
         // Lock this owner's existing family rows so concurrent adds serialize and
         // cannot both pass the seat-cap check (TOCTOU over-subscription).
@@ -1837,7 +2025,7 @@ export async function addFamilyMember(ownerUserId: string, studentUserId: string
           .where(eq(familyMembers.ownerUserId, ownerUserId))
           .for("update");
         if (!canAddFamilyMember(current.length, state.features.maxStudents)) {
-          throw new Error(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
+          throw new DomainError(`家庭名额已满（上限 ${state.features.maxStudents} 名）。`);
         }
 
         const id = createId("fam");
@@ -1867,20 +2055,62 @@ export async function removeFamilyMember(ownerUserId: string, studentUserId: str
   );
 }
 
+/**
+ * Admin remediation for a mis-claimed guardian binding (itest10 #12). The
+ * 1-student↔1-parent guard refuses a second guardian code once a link is
+ * claimed, so a link claimed by the WRONG account would otherwise lock the
+ * student out forever ("请联系老师或管理员" with no actual admin lever). This
+ * resets the link to an unclaimed placeholder, revokes the mis-bound parent's
+ * family seat + the child's growth report, so the student can mint a fresh code.
+ */
+export async function resetGuardianBindingForStudent(studentUserId: string) {
+  return withDb(
+    "resetGuardianBindingForStudent",
+    async (db) => {
+      return db.transaction(async (tx) => {
+        const [link] = await tx
+          .select()
+          .from(studentParentLinks)
+          .where(eq(studentParentLinks.studentUserId, studentUserId))
+          .for("update")
+          .limit(1);
+        if (!link) throw new DomainError("该学生没有家长绑定记录。");
+        if (link.parentUserId === studentUserId) {
+          throw new DomainError("该学生当前没有已绑定的家长，无需解绑。");
+        }
+        const previousParentId = link.parentUserId;
+        await tx
+          .update(studentParentLinks)
+          .set({ parentUserId: studentUserId })
+          .where(eq(studentParentLinks.id, link.id));
+        await tx.delete(familyMembers).where(eq(familyMembers.studentUserId, studentUserId));
+        await tx.delete(growthReports).where(eq(growthReports.studentUserId, studentUserId));
+        return { studentUserId, previousParentId };
+      });
+    },
+    () => store.resetGuardianBindingForStudent(studentUserId),
+  );
+}
+
 /** Global weekly season leaderboard across all runs that used this week's seed. */
-export async function getSeasonLeaderboard() {
+export async function getSeasonLeaderboard(classroomId: string) {
+  // itest7 P1：赛季榜必须限定在 viewer 的班级内，避免把跨班/跨校陌生未成年人的真名与内部
+  // userId/classroomId 全局暴露。无班级则无榜（学生正常都有 classroomId）。
+  if (!classroomId) return [];
   return withDb(
     "getSeasonLeaderboard",
     async (db) => {
       // Filter to the current season's runs in SQL (indexed) instead of scanning
       // every historical run, then only load the users who own those runs.
       const seed = currentSeasonSeed();
-      // Rank in SQL (composite index seed, net_worth) and take only the top N,
-      // instead of loading every season run and sorting in the app.
+      // Rank in SQL (composite index seed, net_worth) and take only the top N，
+      // 按班级作用域过滤（itest7 P1）：直接用 scenario_runs.classroom_id（notNull + 索引
+      // scenario_runs_classroom_id_idx），无需 join users——且与 store 兜底路径(run.classroomId)
+      // 语义一致（itest7 自审：此前 join users.classroomId 与兜底不一致且未走该列索引）。
       const runRows = await db
         .select()
         .from(scenarioRuns)
-        .where(eq(scenarioRuns.seed, seed))
+        .where(and(eq(scenarioRuns.seed, seed), eq(scenarioRuns.classroomId, classroomId)))
         .orderBy(sql`${scenarioRuns.netWorth} desc nulls last`)
         .limit(20);
       const runs = runRows.map(toRun);
@@ -1895,7 +2125,8 @@ export async function getSeasonLeaderboard() {
       const userRecords = userRows.map((row) => toUserRecord(row.user, row.profile));
       return buildLeaderboard(runs, userRecords);
     },
-    () => store.getSeasonLeaderboard(),
+    // itest7 自审：兜底也必须传 classroomId，否则读兜底路径会退回【全局】赛季榜，重新泄露跨班真名。
+    () => store.getSeasonLeaderboard(classroomId),
   );
 }
 
@@ -1964,7 +2195,7 @@ export async function replayRunForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         // Off-season practice seed (random) so a replay gives fresh variety and
         // does not collide with the fair weekly-season leaderboard.
@@ -1989,7 +2220,7 @@ export async function advanceRunForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = executeAutoInvestForRound(advanceSimulationRun(run));
         await settleRoundPredictionsForRun(tx, run, updated);
@@ -2012,7 +2243,7 @@ export async function createAutoInvestPlanForUser(userId: string, input: Partial
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = createAutoInvestPlan(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -2029,7 +2260,7 @@ export async function cancelAutoInvestPlanForUser(userId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const updated = cancelAutoInvestPlan(run);
         await tx.update(scenarioRuns).set(toRunUpdate(updated)).where(eq(scenarioRuns.id, updated.id));
@@ -2046,7 +2277,7 @@ export async function applyLifeCashflowChallengeForUser(userId: string, input: L
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = applyLifeCashflowChallenge(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2063,7 +2294,7 @@ export async function applyCreditLabActionForUser(userId: string, input: CreditL
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = applyCreditLabAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2080,7 +2311,7 @@ export async function claimQuestRewardForUser(userId: string, questId: string) {
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const rows = await tx
           .select({ moduleKey: learningProgress.moduleKey })
@@ -2105,7 +2336,7 @@ export async function claimSeasonRewardForUser(userId: string, challengeId: stri
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = claimSeasonChallengeReward(run, challengeId);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2122,7 +2353,7 @@ export async function createOpportunityNoteForUser(userId: string, input: Opport
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createOpportunityNote(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2139,7 +2370,7 @@ export async function createFundLabActionForUser(userId: string, input: FundLabA
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createFundLabAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2156,7 +2387,7 @@ export async function createGoalAccountActionForUser(userId: string, input: Goal
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createGoalAccountAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2173,7 +2404,7 @@ export async function createProtectionUmbrellaActionForUser(userId: string, inpu
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createProtectionUmbrellaAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2190,7 +2421,7 @@ export async function createStudentWatchlistActionForUser(userId: string, input:
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createStudentWatchlistAction(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2207,7 +2438,7 @@ export async function createWealthReviewForUser(userId: string, input: WealthRev
     async (db) =>
       db.transaction(async (tx) => {
         const run = await selectRunForUserForUpdate(tx, userId);
-        if (!run) throw new Error("未找到对应的学生沙盘。");
+        if (!run) throw new DomainError("未找到对应的学生沙盘。");
 
         const outcome = createWealthReview(run, input);
         await tx.update(scenarioRuns).set(toRunUpdate(outcome.run)).where(eq(scenarioRuns.id, outcome.run.id));
@@ -2231,7 +2462,7 @@ export async function createAssignmentForTeacher(
     async (db) => {
       const teacher = await selectUserById(db, teacherId);
       if (!teacher?.classroomId) {
-        throw new Error("当前教师账号没有绑定班级。");
+        throw new DomainError("当前教师账号没有绑定班级。");
       }
 
       const assignment: Assignment = {
@@ -2262,10 +2493,12 @@ export async function getTeacherOverview(userId: string) {
     async (db) => {
       const teacher = await selectUserById(db, userId);
       if (!teacher?.classroomId) {
-        throw new Error("当前账号没有教师权限或未绑定班级。");
+        throw new DomainError("当前账号没有教师权限或未绑定班级。");
       }
 
       const classroom = await selectClassroomById(db, teacher.classroomId);
+      // 保持普通 Error（非 DomainError）：教师 classroomId 有值却查不到班级 = 潜在 FK 漂移/
+      // 数据不一致，应继续记 [repo.fallback] 告警可见（itest6 R3 P3-5 监工复核结论）。
       if (!classroom) throw new Error("班级不存在。");
 
       // DB-2: scope every query to this classroom in SQL (the assignments query
@@ -2324,7 +2557,7 @@ export async function getParentOverview(userId: string) {
         .where(eq(studentParentLinks.parentUserId, userId))
         .limit(1);
       if (!parent || !linkRow) {
-        throw new Error("当前账号还没有绑定学生。");
+        throw new DomainError("当前账号还没有绑定学生。");
       }
 
       const student = await selectUserById(db, linkRow.studentUserId);
@@ -2335,7 +2568,7 @@ export async function getParentOverview(userId: string) {
         .limit(1);
       const run = await selectRunForUser(db, linkRow.studentUserId);
       if (!student || !reportRow || !run) {
-        throw new Error("成长报告数据暂不可用。");
+        throw new DomainError("成长报告数据暂不可用。");
       }
 
       return {
@@ -2609,7 +2842,7 @@ export async function appendAiMessages(sessionId: string, userId: string, messag
       db.transaction(async (tx) => {
         const session = await getAiSessionByIdWithExecutor(tx, sessionId, userId);
         if (!session) {
-          throw new Error("未找到对应的 AI 会话。");
+          throw new DomainError("未找到对应的 AI 会话。");
         }
 
         const latestAt = messages[messages.length - 1]?.createdAt ?? new Date().toISOString();
@@ -2711,7 +2944,7 @@ export async function updateUserPassword(userId: string, password: string) {
         .where(eq(users.id, userId))
         .returning();
 
-      if (!updated) throw new Error("用户不存在。");
+      if (!updated) throw new DomainError("用户不存在。");
       const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
       return toUserRecord(updated, profile[0]);
     },
@@ -2726,7 +2959,7 @@ export async function updateUserEmail(userId: string, email: string) {
     async (db) => {
       const existing = await selectUserByEmail(db, normalizedEmail);
       if (existing && existing.id !== userId) {
-        throw new Error("这个邮箱已经被注册过了。");
+        throw new DomainError("这个邮箱已经被注册过了。");
       }
 
       const [updated] = await db
@@ -2738,7 +2971,7 @@ export async function updateUserEmail(userId: string, email: string) {
         .where(eq(users.id, userId))
         .returning();
 
-      if (!updated) throw new Error("用户不存在。");
+      if (!updated) throw new DomainError("用户不存在。");
       const profile = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1);
       return toUserRecord(updated, profile[0]);
     },
@@ -2798,7 +3031,7 @@ export async function createAdminManagedUser(input: {
     async (db) =>
       db.transaction(async (tx) => {
         const existing = await selectUserByEmail(tx, normalizedEmail);
-        if (existing) throw new Error("这个邮箱已经注册过了。");
+        if (existing) throw new DomainError("这个邮箱已经注册过了。");
 
         const now = new Date();
         const trialExpiresAt =
@@ -2888,7 +3121,7 @@ export async function updateAdminManagedUser(
     async (db) =>
       db.transaction(async (tx) => {
         const current = await selectUserById(tx, userId);
-        if (!current) throw new Error("用户不存在。");
+        if (!current) throw new DomainError("用户不存在。");
 
         const nextRole = input.role ?? current.role;
         const classroomId =
@@ -2898,8 +3131,18 @@ export async function updateAdminManagedUser(
         const patch: Partial<typeof users.$inferInsert> = {
           role: nextRole,
           classroomId,
-          tokenVersion: sql`${users.tokenVersion} + 1` as unknown as number,
         };
+
+        // LC10h P3 (LC-07): only bump tokenVersion (which force-logs-out the user)
+        // when a JWT-embedded claim actually changes. The session JWT carries only
+        // role + classroomId; subscription/trial state is read from the DB on every
+        // request, so adjusting a trial/subscription must NOT kick the user offline.
+        // Revoking on role/classroom change is still required to prevent a
+        // downgraded user reusing a higher-privilege token.
+        const jwtClaimChanged = nextRole !== current.role || classroomId !== (current.classroomId ?? null);
+        if (jwtClaimChanged) {
+          patch.tokenVersion = sql`${users.tokenVersion} + 1` as unknown as number;
+        }
 
         if (input.trialDays !== undefined) {
           patch.trialExpiresAt =
@@ -2930,7 +3173,7 @@ export async function updateAdminManagedUser(
         }
 
         const [updated] = await tx.update(users).set(patch).where(eq(users.id, userId)).returning();
-        if (!updated) throw new Error("用户不存在。");
+        if (!updated) throw new DomainError("用户不存在。");
 
         const profilePatch: Partial<typeof profiles.$inferInsert> = {};
         if (input.name !== undefined) profilePatch.name = input.name.trim();
@@ -3054,7 +3297,7 @@ export async function updatePaymentOrderProviderFields(
         })
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .returning();
-      if (!order) throw new Error("支付订单不存在。");
+      if (!order) throw new DomainError("支付订单不存在。");
       return toPaymentOrder(order);
     },
     () => store.updatePaymentOrderProviderFields(outTradeNo, fields),
@@ -3073,9 +3316,9 @@ export async function attachManualPaymentProof(
         .from(paymentOrders)
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .limit(1);
-      if (!existing) throw new Error("支付订单不存在。");
-      if (existing.channel !== "manual") throw new Error("该订单不是人工核验订单。");
-      if (existing.status !== "pending") throw new Error("该订单已处理，不能重复提交凭证。");
+      if (!existing) throw new DomainError("支付订单不存在。");
+      if (existing.channel !== "manual") throw new DomainError("该订单不是人工核验订单。");
+      if (existing.status !== "pending") throw new DomainError("该订单已处理，不能重复提交凭证。");
 
       const [order] = await db
         .update(paymentOrders)
@@ -3134,12 +3377,14 @@ export async function fulfillPaymentOrder(input: {
           .where(eq(paymentOrders.outTradeNo, input.outTradeNo))
           .limit(1)
           .for("update");
-        if (!order) throw new Error("支付订单不存在。");
+        if (!order) throw new DomainError("支付订单不存在。");
 
         // Defense-in-depth: a SUCCESS callback must report the amount we charged.
         // Tier is server-set from order.tier (not the payload), so this only guards
         // against an under/over-paid amount fulfilling the full subscription.
         if (input.paidAmountFen != null && input.paidAmountFen !== order.amountFen) {
+          // 保持普通 Error（非 DomainError）：支付金额与订单不符=反欺诈信号，必须保持
+          // [repo.fallback] 可见/可告警，不能因静音领域错误而丢失（itest6 R3 P3-5 监工复核结论）。
           throw new Error(
             `支付金额不一致（订单 ${order.amountFen} 分，回调 ${input.paidAmountFen} 分），已拒绝履约。`,
           );
@@ -3161,7 +3406,7 @@ export async function fulfillPaymentOrder(input: {
         }
 
         const [targetUser] = await tx.select().from(users).where(eq(users.id, order.targetUserId)).limit(1);
-        if (!targetUser) throw new Error("订阅目标账号不存在。");
+        if (!targetUser) throw new DomainError("订阅目标账号不存在。");
 
         const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
         const currentExpiry = targetUser.subscriptionExpiresAt ?? paidAt;
@@ -3228,7 +3473,7 @@ export async function markPaymentOrderStatus(
         .set({ status, updatedAt: new Date() })
         .where(eq(paymentOrders.outTradeNo, outTradeNo))
         .returning();
-      if (!order) throw new Error("支付订单不存在。");
+      if (!order) throw new DomainError("支付订单不存在。");
       return toPaymentOrder(order);
     },
     () => store.markPaymentOrderStatus(outTradeNo, status),
@@ -3592,6 +3837,17 @@ export async function listLeaderboardSnapshots(
  * Snapshots joined to rank profiles + schools for a period — the rows the pure
  * ranker (ranking.ts) consumes. Only consented users (decision 3) are eligible;
  * visibility filtering happens in ranking.ts at read time.
+ */
+/**
+ * 加载某 period+periodKey 下所有【已同意】的战力快照，交给纯核 rankLeaderboard 在内存里做
+ * scope 过滤 + RANK() + 分页（pure-core，可测，镜像 SQL 的 RANK() OVER）。
+ *
+ * 性能画像（itest8 perf 审计实测）：WHERE (period, period_key) 走 leaderboard_snapshots_rank_idx
+ * (period, period_key, power) 的前导列 → Index Scan 非全表扫。当前载入量 = 该周期【全国已同意】
+ * 快照数，在试点规模（数所学校）完全可接受。
+ * ⚠️ 扩量红线：当单周期已同意用户达数千+时，此处按 scope（school/city/province）在 SQL 侧过滤 +
+ * `RANK() OVER (PARTITION BY scope ORDER BY power DESC)` + LIMIT 分页，避免把全国快照拉进内存。
+ * 届时保留 ranking.ts 纯核作为 school 内小集合的排序与可见性裁剪。
  */
 export async function listRankSnapshots(
   period: RankPeriod,

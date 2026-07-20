@@ -25,6 +25,41 @@ describe("POWER_WEIGHTS", () => {
   });
 });
 
+// itest10 #10: a zero-decision run (no volatility, no drawdown, net worth
+// unchanged, no learning) inherited the median risk-adjusted-return (0.5) +
+// perfect drawdown (1.0) + discipline baseline and scored ~1110 → tier3 精明投资者.
+// Anti-YOLO requires idling to rank LOW.
+describe("computePowerScore anti-idle (itest10 #10)", () => {
+  const idle: PowerScoreInput = {
+    startCapital: 120_000,
+    netWorth: 120_000, // never deployed capital
+    returnVolatility: 0, // no positions
+    disciplineScore: 82, // baseline discipline
+    maxDrawdownPct: 0, // nothing to draw down
+    learningCompleted: 0,
+    learningTotal: 6,
+  };
+
+  it("damps a pure idle run into tier 1 (below the tier-3 800 threshold)", () => {
+    const { power } = computePowerScore(idle);
+    expect(power).toBeLessThan(400);
+  });
+
+  it("does NOT damp a run that took real risk and made returns", () => {
+    const active: PowerScoreInput = {
+      ...idle,
+      netWorth: 138_000,
+      returnVolatility: 0.08,
+      maxDrawdownPct: 6,
+      learningCompleted: 4,
+    };
+    const activePower = computePowerScore(active).power;
+    expect(activePower).toBeGreaterThan(computePowerScore(idle).power);
+    // The idle penalty is not applied to an engaged run.
+    expect(activePower).toBeGreaterThan(800);
+  });
+});
+
 describe("powerComponents", () => {
   it("returns all five components within [0,1]", () => {
     const c = powerComponents({
