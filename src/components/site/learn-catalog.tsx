@@ -247,7 +247,8 @@ export function LearnCatalog() {
                 <h3 className="mt-4 text-2xl font-semibold text-slate-950">{module.title}</h3>
                 {/* UI v2（审计：/learn 卡瘦身）：卡面只留一句 tagline，完整介绍折叠。 */}
                 <p className="mt-3 text-sm leading-7 text-slate-600">{module.tagline}</p>
-                <Disclosure summary="完整介绍" className="mt-1" summaryClassName="px-0 text-slate-500">
+                {/* 审查 #5：循环内固定 summary，用模块标题区分可访问名（WCAG 2.4.6） */}
+                <Disclosure summary="完整介绍" srContext={module.title} className="mt-1" summaryClassName="px-0 text-slate-500">
                   {module.description}
                 </Disclosure>
                 <div className="mt-4 flex flex-wrap gap-2">

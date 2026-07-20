@@ -1,5 +1,29 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// ui-v2 审查 #4：tailwind-merge 默认只认 t-shirt 字号，项目的 --text-* 类型阶梯
+// （text-caption/text-body-sm/text-h1…）会被归入 text-color 组，与 text-fg-* 等
+// 颜色类誤判冲突后被静默吞掉（twMerge("text-body-sm text-fg-strong") 丢字号）。
+// 把自定义字号注册进 font-size classGroup，字号与颜色才能正确共存/各自归并。
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        "text-caption",
+        "text-body-sm",
+        "text-body",
+        "text-body-lg",
+        "text-h1",
+        "text-h2",
+        "text-h3",
+        "text-display-lg",
+        "text-display-xl",
+        "text-display-2xl",
+        "text-hero-num",
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

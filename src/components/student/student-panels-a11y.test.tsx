@@ -3,9 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
 
+import { buildWealthSummary } from "@/lib/allocation";
 import { buildAutoInvestPayload } from "@/lib/auto-invest";
 import { buildCreditLabPayload } from "@/lib/credit-lab";
 import { buildFundLabPayload } from "@/lib/fund-lab";
+import { buildHistoryReviewPayload } from "@/lib/history-review";
 import { buildLifeCashflowPayload } from "@/lib/life-cashflow";
 import { buildMarketBoardPayload } from "@/lib/market-watchlist";
 import { buildPeerHeatPayload } from "@/lib/peer-heat";
@@ -14,17 +16,21 @@ import { buildRiskProfilePayload } from "@/lib/risk-profile";
 import type { StudentQuestPayload } from "@/lib/quests";
 import type { StudentSeasonChallengePayload } from "@/lib/season-challenges";
 import { createInitialRun } from "@/lib/simulation";
+import { getSimulationStateForUser, resetStoreForTests } from "@/lib/store";
 import { buildStudentWatchlistPayload } from "@/lib/student-watchlist";
+import { buildWealthReviewPayload } from "@/lib/wealth-review";
 
 import { server } from "../../../tests/msw/server";
 import { StudentAutoInvestDashboard } from "./student-auto-invest-dashboard";
 import { StudentCreditLabDashboard } from "./student-credit-lab-dashboard";
 import { StudentFundLabDashboard } from "./student-fund-lab-dashboard";
+import { StudentHistoryReviewDashboard } from "./student-history-review-dashboard";
 import { StudentLifeCashflowDashboard } from "./student-life-cashflow-dashboard";
 import { StudentMarketBoard } from "./student-market-board";
 import { StudentProtectionUmbrellaDashboard } from "./student-protection-umbrella-dashboard";
 import { StudentQuestDashboard } from "./student-quest-dashboard";
 import { StudentRiskProfileDashboard } from "./student-risk-profile-dashboard";
+import { StudentWealthDashboard } from "./student-wealth-dashboard";
 
 const COMPONENT_AXE_OPTIONS = {
   rules: {
@@ -250,4 +256,53 @@ describe("student high-traffic panels accessibility smoke", () => {
     const results = await axe(container, COMPONENT_AXE_OPTIONS);
     expect(results).toHaveNoViolations();
   });
+
+  // 审查 #13：本轮 ui-motion 改动最重的两个仪表盘补 axe 护栏——
+  // wealth（配置环 Disclosure/持有计划表单）+ history（趋势图/AI 复盘折叠）。
+  it("renders the wealth dashboard without axe-core violations and a focusable hint disclosure", async () => {
+    mockReducedMotion();
+    mockSvgPathLength();
+    const run = makeRun();
+    const summary = buildWealthSummary(run);
+    const { container } = render(
+      <StudentWealthDashboard summary={summary} review={buildWealthReviewPayload(run, summary)} />,
+    );
+
+    await screen.findByTestId("wealth-review-submit");
+
+    // 审查 #13：配置环 slice 的「作用说明」折叠触发器必须存在且键盘可聚焦。
+    const [hintDisclosure] = screen.getAllByRole("button", { name: /作用说明/ });
+    expect(hintDisclosure).toBeDefined();
+    hintDisclosure.focus();
+    expect(document.activeElement).toBe(hintDisclosure);
+
+    const results = await axe(container, COMPONENT_AXE_OPTIONS);
+    expect(results).toHaveNoViolations();
+  }, 15_000);
+
+  it("renders the history review dashboard without axe-core violations", async () => {
+    mockReducedMotion();
+    mockSvgPathLength();
+    resetStoreForTests();
+    const state = getSimulationStateForUser("student-1");
+    const initialPayload = buildHistoryReviewPayload(state);
+    // 挂载后组件会自动拉取最新复盘：给 MSW 一份带独有标记的刷新载荷，等它上屏再跑 axe，
+    // 保证扫描的是 fetch 完成后的最终 DOM（也避免 act 警告）。
+    const refreshedPayload = buildHistoryReviewPayload(state, {
+      summary: "刷新后的 AI 总结：先看净值曲线，再回看动作节奏。",
+      analysis: ["净值曲线整体平稳，回撤控制在教学区间内。"],
+      nextSteps: ["下一回合先写一句观察理由，再决定是否调仓。"],
+      provider: "fallback",
+    });
+
+    server.use(
+      http.get("/api/student/history-review", () => HttpResponse.json(refreshedPayload)),
+    );
+
+    const { container } = render(<StudentHistoryReviewDashboard initialPayload={initialPayload} />);
+
+    await screen.findByText(/刷新后的 AI 总结/);
+    const results = await axe(container, COMPONENT_AXE_OPTIONS);
+    expect(results).toHaveNoViolations();
+  }, 15_000);
 });

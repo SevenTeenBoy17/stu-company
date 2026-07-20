@@ -20,6 +20,7 @@ export function Disclosure({
   className,
   summaryClassName,
   panelClassName,
+  srContext,
 }: {
   /** 收起态可见的那行「一句话」——按钮内容 */
   summary: ReactNode;
@@ -29,6 +30,12 @@ export function Disclosure({
   className?: string;
   summaryClassName?: string;
   panelClassName?: string;
+  /**
+   * 读屏上下文（审查 #5 / WCAG 2.4.6）：循环里复用固定 summary（如「查看详情」）
+   * 会让同页出现成批同名按钮，读屏按钮列表无法区分。传所属条目名（如卡片标题），
+   * 以 sr-only 追加进可访问名，视觉不变。
+   */
+  srContext?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
@@ -46,7 +53,10 @@ export function Disclosure({
           summaryClassName,
         )}
       >
-        <span className="min-w-0 flex-1">{summary}</span>
+        <span className="min-w-0 flex-1">
+          {summary}
+          {srContext ? <span className="sr-only">（{srContext}）</span> : null}
+        </span>
         <ChevronDown
           aria-hidden
           className={cn(

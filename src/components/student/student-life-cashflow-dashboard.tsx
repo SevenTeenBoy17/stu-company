@@ -460,9 +460,11 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     </div>
                   </div>
                   {/* 折：teachingPoint 默认收起，点击展开（审计 /student/life ④）；覆盖/自付数字保留在卡面 */}
+                  {/* 审查 #5：循环内固定 summary，用事件标题区分可访问名（WCAG 2.4.6） */}
                   <Disclosure
                     className="mt-2"
                     summary="教学点"
+                    srContext={event.title}
                     summaryClassName="text-caption"
                     panelClassName="text-caption leading-5"
                   >

@@ -26,6 +26,7 @@ import {
 
 import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
+import { SectionNav } from "@/components/shared/section-nav";
 import type { WealthSummary } from "@/lib/allocation";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { WealthReviewAction, WealthReviewFocus, WealthReviewPayload } from "@/lib/wealth-review";
@@ -208,7 +209,19 @@ export function StudentWealthDashboard({
 
   return (
     <div ref={rootRef} data-testid="wealth-dashboard" className="space-y-6">
+      <SectionNav
+        ariaLabel="本页板块导航"
+        items={[
+          { id: "sec-wealth-hero", label: "财富总览" },
+          { id: "sec-allocation-ring", label: "资产配置" },
+          { id: "sec-holding-gateway", label: "持有入口" },
+          { id: "sec-life-map", label: "理财地图" },
+          { id: "sec-brown-advice", label: "布朗建议" },
+          { id: "sec-holding-plan", label: "持有复盘" },
+        ]}
+      />
       <section
+        id="sec-wealth-hero"
         data-wealth-reveal
         data-motion-reveal
         className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft"
@@ -296,7 +309,7 @@ export function StudentWealthDashboard({
             </div>
           </div>
 
-          <div className="relative border-t border-white/10 bg-white/[0.04] px-6 py-7 md:px-8 xl:border-l xl:border-t-0">
+          <div id="sec-allocation-ring" className="relative border-t border-white/10 bg-white/[0.04] px-6 py-7 md:px-8 xl:border-l xl:border-t-0">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="bz-eyebrow-inverse">Allocation Ring</p>
@@ -333,6 +346,8 @@ export function StudentWealthDashboard({
                   {slice.hint ? (
                     <Disclosure
                       summary="作用说明"
+                      // 审查 #5：循环内固定 summary，用资产类别名区分可访问名（WCAG 2.4.6）
+                      srContext={slice.label}
                       className="mt-2"
                       summaryClassName="text-caption text-white/70 hover:text-white"
                       panelClassName="text-caption leading-5 text-white/70"
@@ -347,7 +362,7 @@ export function StudentWealthDashboard({
         </div>
       </section>
 
-      <section data-wealth-reveal data-motion-reveal data-testid="wealth-total-gateway" className="panel rounded-[2rem] p-5 md:p-6">
+      <section id="sec-holding-gateway" data-wealth-reveal data-motion-reveal data-testid="wealth-total-gateway" className="panel rounded-[2rem] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="bz-eyebrow">Holding Gateway</p>
@@ -364,7 +379,7 @@ export function StudentWealthDashboard({
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-        <section data-wealth-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
+        <section id="sec-life-map" data-wealth-reveal data-motion-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="bz-eyebrow">Life Finance Map</p>
@@ -427,7 +442,7 @@ export function StudentWealthDashboard({
           </div>
         </section>
 
-        <aside data-wealth-reveal data-motion-reveal className="space-y-6">
+        <aside id="sec-brown-advice" data-wealth-reveal data-motion-reveal className="space-y-6">
           <section className="panel rounded-[2rem] p-5 md:p-6">
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-brand" />
@@ -490,7 +505,7 @@ export function StudentWealthDashboard({
         </aside>
       </div>
 
-      <section data-wealth-reveal data-motion-reveal className="panel overflow-hidden rounded-[2rem] p-0">
+      <section id="sec-holding-plan" data-wealth-reveal data-motion-reveal className="panel overflow-hidden rounded-[2rem] p-0">
         <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
           <form onSubmit={submitReview} className="min-w-0 p-5 md:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">

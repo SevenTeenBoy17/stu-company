@@ -177,8 +177,10 @@ export function StudentTutorRadar({
                     style={{ width: `${Math.max(6, metric.score)}%` }}
                   />
                 </div>
+                {/* 审查 #5：循环内固定 summary，用指标名区分可访问名（WCAG 2.4.6） */}
                 <Disclosure
                   summary="查看解读"
+                  srContext={metric.label}
                   className="mt-1"
                   summaryClassName="px-0 py-1 text-xs font-medium text-fg-muted"
                   panelClassName="pb-1 pt-0 text-xs leading-5 text-fg-muted"

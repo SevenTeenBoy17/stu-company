@@ -265,8 +265,10 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     </span>
                   </span>
                 </Link>
+                {/* 审查 #5：循环内固定 summary，用目标名区分可访问名（WCAG 2.4.6） */}
                 <Disclosure
                   summary="怎么完成"
+                  srContext={objective.label}
                   className="pl-10"
                   summaryClassName="py-1 text-caption font-medium text-fg-muted"
                   panelClassName="pb-1 pt-0 text-caption leading-5"
@@ -438,8 +440,10 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     <h4 className="mt-4 text-h2 tracking-tight text-fg-strong">{group.label}</h4>
                     <p className="mt-2 text-body-sm font-semibold leading-6 text-brand-ink">{group.concept}</p>
                     {/* v2 信息收敛：组 summary 默认折叠，concept 一句话承担卡面定位（summary 来自 lib payload，不动数据） */}
+                    {/* 审查 #5：循环内固定 summary，用分组名区分可访问名（WCAG 2.4.6） */}
                     <Disclosure
                       summary="这条线练什么"
+                      srContext={group.label}
                       className="mt-1"
                       summaryClassName="text-caption font-semibold text-fg-muted"
                       panelClassName="text-body-sm leading-7"

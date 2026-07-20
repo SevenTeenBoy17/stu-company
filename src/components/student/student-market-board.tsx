@@ -27,6 +27,7 @@ import {
 import Image from "next/image";
 
 import { Disclosure } from "@/components/shared/disclosure";
+import { SectionNav } from "@/components/shared/section-nav";
 import { dispatchAssistantOpen } from "@/lib/assistant-config";
 import { MARKET_REFRESH_INTERVAL_MS } from "@/lib/market-refresh";
 import type { PeerHeatPayload } from "@/lib/peer-heat";
@@ -615,7 +616,18 @@ export function StudentMarketBoard({
 
   return (
     <div ref={marketBoardRef} className="space-y-6 pb-24">
-      <section data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
+      <SectionNav
+        ariaLabel="本页板块导航"
+        items={[
+          { id: "sec-market-overview", label: "市场总览" },
+          { id: "sec-my-watchlist", label: "我的自选" },
+          { id: "sec-selected-stock", label: "选中标的" },
+          { id: "sec-teaching-radar", label: "教学雷达" },
+          { id: "sec-peer-heat", label: "同学热度" },
+          { id: "sec-content-cards", label: "延伸阅读" },
+        ]}
+      />
+      <section id="sec-market-overview" data-motion-reveal className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
         <div className="mb-5">
           <div role="group" aria-label="选择市场分类" className="flex flex-wrap items-center gap-2">
             <span className="bz-eyebrow mr-1 self-center">Markets</span>
@@ -875,7 +887,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
+      <section id="sec-my-watchlist" className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -1071,7 +1083,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section id="sec-selected-stock" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div data-motion-reveal className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.14)]">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
             <div className="relative min-w-0 overflow-hidden p-5 sm:p-6 lg:p-7">
@@ -1290,7 +1302,7 @@ export function StudentMarketBoard({
         </aside>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
+      <section id="sec-teaching-radar" className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(420px,0.65fr)]">
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -1404,7 +1416,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+      <section id="sec-peer-heat" className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <div data-testid="peer-heat-card" data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <UsersRound className="h-5 w-5 text-brand" />
@@ -1550,7 +1562,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
+      <section id="sec-content-cards" className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
         <div
           data-motion-reveal
           className="market-motion-panel overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.12)]"

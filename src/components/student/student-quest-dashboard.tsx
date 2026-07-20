@@ -1435,7 +1435,7 @@ export function StudentQuestDashboard({
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-warm" />
                   <p data-testid="quest-compliance-statement" className="text-sm font-semibold leading-6 text-white/68">
-                    本页任务卡、收藏卡与活动权益只记录学习轨迹，不改变净值、学习点或学习榜，也不制造付费压力。
+                    本页任务卡、收藏卡、成就与活动权益只记录学习轨迹，不代表真实收益或投资能力，不改变净值、学习点或学习榜，也不制造付费压力。
                   </p>
                 </div>
               </div>
@@ -1496,8 +1496,10 @@ export function StudentQuestDashboard({
                       </span>
                     </div>
                   </Link>
+                  {/* 审查 #5：循环内固定 summary，用任务标题区分可访问名（WCAG 2.4.6） */}
                   <Disclosure
                     summary="奖励与边界说明"
+                    srContext={item.title}
                     className="mt-3 border-t border-slate-200/80 pt-1"
                     summaryClassName="text-xs text-fg-muted hover:text-brand-ink"
                     panelClassName="text-xs leading-6"

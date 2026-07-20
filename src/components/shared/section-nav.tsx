@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,11 @@ export function SectionNav({
   sticky?: boolean;
 }) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
+  // 点击锚点后的平滑滚动途中，scrollspy 会以「视口带内最靠上者」覆盖点击意图
+  // （实测 market 页点「同学热度」落点正确却高亮上一板块）。点击后短暂抑制
+  // observer，让用户的显式选择赢过滚动过程的中间态。
+  const suppressSpyRef = useRef(false);
+  const suppressTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
@@ -39,6 +44,7 @@ export function SectionNav({
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (suppressSpyRef.current) return;
         // 取视口内最靠上的可见板块作为当前项，避免多板块同屏时高亮抖动。
         const visible = entries
           .filter((entry) => entry.isIntersecting)
@@ -57,6 +63,14 @@ export function SectionNav({
     const reduce =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    suppressSpyRef.current = true;
+    window.clearTimeout(suppressTimerRef.current);
+    suppressTimerRef.current = window.setTimeout(
+      () => {
+        suppressSpyRef.current = false;
+      },
+      reduce ? 400 : 1200,
+    );
     target.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
     setActiveId(id);
   };

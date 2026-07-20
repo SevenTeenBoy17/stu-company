@@ -626,8 +626,10 @@ export function StudentSandbox({
                     <p className="text-body-sm font-semibold text-fg-strong">{adaptive.title}</p>
                     <p className="mt-1 text-body-sm leading-6 text-fg-muted">{adaptive.message}</p>
                     {/* v2 信息收敛：teachingPoint 默认收起为「💡提示」，展开才读长解说 */}
+                    {/* 审查 #5：循环内固定 summary，用干预事件标题区分可访问名（WCAG 2.4.6） */}
                     <Disclosure
                       summary="💡 提示"
+                      srContext={adaptive.title}
                       className="mt-1"
                       summaryClassName="py-1 text-caption"
                       panelClassName="text-caption leading-5"

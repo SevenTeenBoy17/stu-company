@@ -409,47 +409,66 @@ function addMagneticInteraction(element: HTMLElement) {
  */
 function addStoryPin(container: HTMLElement) {
   const steps = gsap.utils.toArray<HTMLElement>(premiumMotion.selector.storyStep, container);
-  if (steps.length < 2 || !window.matchMedia("(min-width: 1024px)").matches) {
+  if (steps.length < 2) {
     return () => {};
   }
 
-  const previousDisplay = container.style.display;
-  container.style.display = "grid";
-  steps.forEach((step) => {
-    step.style.gridArea = "1 / 1";
-  });
-  gsap.set(steps.slice(1), { autoAlpha: 0, y: 44 });
+  // 审查 #2：断点判定交给 gsap.matchMedia——桌面宽度进入断点自动建 pin，
+  // 离开断点（平板旋转/窗口缩放）自动执行 context 清理恢复自然平铺，
+  // 双向都可恢复；一次性 matchMedia 快照会把错误模式残留到路由切换。
+  const mm = gsap.matchMedia();
+  mm.add("(min-width: 1024px)", () => {
+    const previousDisplay = container.style.display;
+    try {
+      container.style.display = "grid";
+      steps.forEach((step) => {
+        step.style.gridArea = "1 / 1";
+      });
+      gsap.set(steps.slice(1), { autoAlpha: 0, y: 44 });
 
-  const timeline = gsap.timeline({
-    defaults: { ease: "none" },
-    scrollTrigger: {
-      trigger: container,
-      start: "top top",
-      end: `+=${steps.length * 85}%`,
-      pin: true,
-      scrub: 0.6,
-      anticipatePin: 1,
-    },
+      const timeline = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: container,
+          start: "top top",
+          end: `+=${steps.length * 85}%`,
+          pin: true,
+          scrub: 0.6,
+          anticipatePin: 1,
+        },
+      });
+
+      steps.forEach((step, index) => {
+        if (index === 0) return;
+        const at = index - 0.5;
+        timeline
+          .to(steps[index - 1], { autoAlpha: 0, y: -36, duration: 0.5 }, at)
+          .to(step, { autoAlpha: 1, y: 0, duration: 0.5 }, at + 0.18);
+      });
+
+      return () => {
+        timeline.scrollTrigger?.kill();
+        timeline.kill();
+        gsap.killTweensOf(steps);
+        gsap.set(steps, { clearProps: "opacity,visibility,transform" });
+        steps.forEach((step) => {
+          step.style.gridArea = "";
+        });
+        container.style.display = previousDisplay;
+      };
+    } catch {
+      // 审查 #11 兜底：pin 构建异常时绝不让 2/3 幕停留在 autoAlpha:0——
+      // 内容可见性优先于动效（与 revealSafety 同一原则）。
+      gsap.set(steps, { autoAlpha: 1, clearProps: "transform" });
+      steps.forEach((step) => {
+        step.style.gridArea = "";
+      });
+      container.style.display = previousDisplay;
+      return undefined;
+    }
   });
 
-  steps.forEach((step, index) => {
-    if (index === 0) return;
-    const at = index - 0.5;
-    timeline
-      .to(steps[index - 1], { autoAlpha: 0, y: -36, duration: 0.5 }, at)
-      .to(step, { autoAlpha: 1, y: 0, duration: 0.5 }, at + 0.18);
-  });
-
-  return () => {
-    timeline.scrollTrigger?.kill();
-    timeline.kill();
-    gsap.killTweensOf(steps);
-    gsap.set(steps, { clearProps: "opacity,visibility,transform" });
-    steps.forEach((step) => {
-      step.style.gridArea = "";
-    });
-    container.style.display = previousDisplay;
-  };
+  return () => mm.revert();
 }
 
 function observeOnce(targets: HTMLElement[], callback: (target: HTMLElement) => void) {
@@ -622,9 +641,21 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
       const attachSplitTarget = (target: HTMLElement) => {
         if (splitAttached.has(target)) return;
         splitAttached.add(target);
+        // BUNDLE-1 镜像（审查 #1）：公开站的 provider 是 deferred 异步 chunk——
+        // 首屏已可见、用户正在阅读的 split 目标（如 hero LCP 标题）绝不重播入场，
+        // 否则 chunk 到达瞬间标题会消失再重来。只对折下内容做 split 入场。
+        if (deferred && target.getBoundingClientRect().top < window.innerHeight) return;
+        // 审查 #3：内层清理经稳定包装同步注册，才能被 GSAP-1 的逐元素释放
+        // （dynamicCleanups slice 捕获）正确回收——IO 异步回调里产生的清理
+        // 否则只会落进路由级数组，动态卸载的元素带着进行中的 tween 泄漏到路由切换。
+        let innerCleanup: (() => void) | null = null;
+        cleanups.push(() => {
+          innerCleanup?.();
+          innerCleanup = null;
+        });
         cleanups.push(
           observeOnce([target], (entry) => {
-            cleanups.push(animateSplitTarget(entry));
+            innerCleanup = animateSplitTarget(entry);
           }),
         );
       };

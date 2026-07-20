@@ -186,6 +186,8 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               {plan.features.length > FEATURES_VISIBLE ? (
                 <Disclosure
                   summary={`展开全部 ${plan.features.length} 项能力`}
+                  // 审查 #5：循环内 summary 仅含数量，档位间可能重名 → 用套餐名区分可访问名（WCAG 2.4.6）
+                  srContext={plan.name}
                   className="mt-2"
                   summaryClassName="px-0 text-[var(--ink-500)]"
                 >

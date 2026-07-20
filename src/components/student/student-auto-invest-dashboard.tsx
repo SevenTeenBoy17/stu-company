@@ -599,6 +599,8 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                       {row.note ? (
                         <Disclosure
                           summary="节点解说"
+                          // 审查 #5：循环内固定 summary，用回合号区分可访问名（WCAG 2.4.6）
+                          srContext={`第 ${row.round} 回合`}
                           className="mt-2"
                           summaryClassName="text-caption"
                           panelClassName="text-caption leading-5"

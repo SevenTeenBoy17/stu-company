@@ -474,8 +474,10 @@ export function StudentHistoryReviewDashboard({
                           <p className="mt-2 break-words text-body-lg font-semibold text-white sm:text-h4">
                             <HighlightMetricValue value={highlight.metricValue} />
                           </p>
+                          {/* 审查 #5：循环内固定 summary，用高亮标题区分可访问名（WCAG 2.4.6） */}
                           <Disclosure
                             summary="查看详情"
+                            srContext={highlight.title}
                             className="mt-auto pt-2"
                             summaryClassName="px-0 py-1 text-caption font-medium text-white/72 hover:text-white"
                             panelClassName="pb-1 pt-0 text-caption leading-6 text-white/64"
@@ -534,8 +536,10 @@ export function StudentHistoryReviewDashboard({
                             </span>
                           </div>
                           {/* contrast fix: was opacity-80 (compounding ~2.88:1) → explicit text-fg-muted */}
+                          {/* 审查 #5：循环内固定 summary，用信号名区分可访问名（WCAG 2.4.6） */}
                           <Disclosure
                             summary="查看信号说明"
+                            srContext={signal.label}
                             className="mt-1"
                             summaryClassName="px-0 py-1 text-caption font-medium text-fg-muted"
                             panelClassName="pb-1 pt-0 text-caption leading-6 text-fg-muted"
