@@ -1,9 +1,22 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { WechatCheckoutButton } from "@/components/billing/wechat-checkout-button";
+import { Disclosure } from "@/components/shared/disclosure";
 import { StudentParentLinkCTA } from "@/components/shared/student-parent-link-cta";
 import { SectionReveal } from "@/components/site/section-reveal";
 import { getCurrentUser } from "@/lib/session-user";
+
+// UI v2：套餐配图（3D 萌宠体系）。premium 用亲子图呼应「家庭版」。
+const planArt: Record<string, { src: string; alt: string }> = {
+  free: { src: "/brand/v2/plan-trial.webp", alt: "Mr.Brown 萌宠捧着一株刚发芽的盆栽" },
+  standard: { src: "/brand/v2/plan-standard.webp", alt: "Mr.Brown 萌宠展示一箱发光的理财工具" },
+  premium: { src: "/brand/v2/role-parent.webp", alt: "大熊和小熊一起看着一份温暖发光的成长报告" },
+  school: { src: "/brand/v2/plan-school.webp", alt: "三只萌宠组成的小小课堂团队举着班旗" },
+};
+
+// UI v2（审计：/pricing 折叠）：卡面默认只显示前 4 条能力，其余收进 Disclosure。
+const FEATURES_VISIBLE = 4;
 
 const plans = [
   {
@@ -11,7 +24,7 @@ const plans = [
     name: "游客体验",
     price: "免费",
     period: "",
-    description: "适合第一次了解 Mr.Brown 经济沙盘，先体验核心叙事与基础 AI 反馈。",
+    description: "第一次了解沙盘的起点。",
     features: [
       "2 天完整 AI 评定",
       "最后 1 天基础 AI 提示",
@@ -27,7 +40,7 @@ const plans = [
     name: "标准版 · 个人",
     price: "¥15",
     period: "/月",
-    description: "适合单个学生自学，开通后恢复完整 AI 财商教练能力。",
+    description: "单个学生的完整 AI 教练。",
     features: [
       "12 回合完整沙盘",
       "AI 个性化行为评定 + 6 维雷达",
@@ -45,7 +58,7 @@ const plans = [
     name: "高级版 · 家庭",
     price: "¥30",
     period: "/月",
-    description: "适合家庭或进阶学习，多孩子、深度 AI 复盘与每周家长报告。",
+    description: "全家共享的深度陪伴。",
     features: [
       "标准版全部能力",
       "家庭多账号（最多 3 名学生）",
@@ -63,7 +76,7 @@ const plans = [
     name: "学校授权",
     price: "按班级",
     period: "/学期",
-    description: "适合学校和教育机构，包含批量账号、教师后台、课堂数据和阶段报告。",
+    description: "班级规模化的课堂方案。",
     features: [
       "个人月卡全部能力",
       "教师任务与班级管理",
@@ -140,6 +153,15 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   推荐体验
                 </span>
               ) : null}
+              <div className="relative mb-5 h-28 w-full overflow-hidden rounded-2xl bg-[var(--amber-50)]">
+                <Image
+                  src={planArt[plan.id].src}
+                  alt={planArt[plan.id].alt}
+                  fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
+              </div>
               <h2 className="text-xl font-semibold text-[var(--ink-900)]">{plan.name}</h2>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="font-display text-5xl font-bold text-[var(--ink-900)] tabular-nums">
@@ -152,7 +174,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
               <div className="my-6 h-px bg-[var(--ink-100)]" />
 
               <ul className="space-y-3">
-                {plan.features.map((feature) => (
+                {plan.features.slice(0, FEATURES_VISIBLE).map((feature) => (
                   <li key={feature} className="flex items-start gap-2.5 text-sm text-[var(--ink-700)]">
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--amber-100)] text-xs text-[var(--amber-700)]">
                       ✓
@@ -161,6 +183,24 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
                   </li>
                 ))}
               </ul>
+              {plan.features.length > FEATURES_VISIBLE ? (
+                <Disclosure
+                  summary={`展开全部 ${plan.features.length} 项能力`}
+                  className="mt-2"
+                  summaryClassName="px-0 text-[var(--ink-500)]"
+                >
+                  <ul className="space-y-3">
+                    {plan.features.slice(FEATURES_VISIBLE).map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5 text-sm text-[var(--ink-700)]">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--amber-100)] text-xs text-[var(--amber-700)]">
+                          ✓
+                        </span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </Disclosure>
+              ) : null}
 
               {hasUpgradeToken && plan.id === "premium" && !isStudent ? (
                 <div className="mt-8 rounded-2xl border border-[var(--ink-200)] bg-[var(--ink-50)] p-4 text-left">
@@ -202,16 +242,18 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
           <p className="bz-eyebrow">常见问题</p>
           <h2 className="font-display mt-4 text-3xl font-semibold text-[var(--ink-900)]">家长和老师常问的问题</h2>
         </SectionReveal>
+        {/* UI v2（审计：FAQ 手风琴）：问题常显，答案默认收起。 */}
         <div className="mx-auto mt-8 max-w-2xl space-y-4">
           {faqs.map((faq, index) => (
             <SectionReveal
               key={faq.q}
               delay={index * 0.05}
               motionCard
-              className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-5"
+              className="rounded-2xl border border-[var(--ink-200)] bg-[var(--surface)] px-6 py-2"
             >
-              <p className="text-sm font-semibold text-[var(--ink-900)]">{faq.q}</p>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--ink-500)]">{faq.a}</p>
+              <Disclosure summary={faq.q} summaryClassName="px-0">
+                {faq.a}
+              </Disclosure>
             </SectionReveal>
           ))}
         </div>

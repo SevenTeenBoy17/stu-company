@@ -1,8 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
-import { HeroStageArt } from "@/components/site/hero-stage-art";
-import { ModuleIllustration } from "@/components/site/module-illustration";
 import { SectionReveal } from "@/components/site/section-reveal";
 import { StockTickerTape } from "@/components/site/stock-ticker-tape";
 import {
@@ -13,6 +12,33 @@ import {
   teamProfiles,
 } from "@/lib/content";
 import { getTickerTapePayload } from "@/lib/market-data";
+import { moduleArt } from "@/lib/module-art";
+
+// UI v2 三幕叙事（学 → 练 → 看见成长）：桌面端 data-motion-story pin 滚动
+// 交叉淡切，移动端/减动效自然平铺。文案按 Phase 0 审计压缩成一句话主张。
+const STORY_ACTS = [
+  {
+    act: "01",
+    title: "学",
+    line: "把经济学考点拆成剧情式微任务",
+    image: "/brand/v2/story-learn.webp",
+    alt: "Mr.Brown 萌宠在发光的大书前学习，身边漂浮着金币、幼苗与盾牌图标",
+  },
+  {
+    act: "02",
+    title: "练",
+    line: "12 回合真实节奏市场，低成本试错",
+    image: "/brand/v2/story-practice.webp",
+    alt: "Mr.Brown 萌宠坐在迷你交易台前，三块彩色屏幕上显示上升的简洁图表",
+  },
+  {
+    act: "03",
+    title: "看见成长",
+    line: "AI 导师点评 + 成长报告，看见习惯变化",
+    image: "/brand/v2/story-growth.webp",
+    alt: "Mr.Brown 萌宠站在金币阶梯讲台上举着小奖杯，周围飘着彩带",
+  },
+] as const;
 
 export default async function HomePage() {
   const tickerPayload = await getTickerTapePayload();
@@ -24,14 +50,22 @@ export default async function HomePage() {
       <section className="page-shell grid gap-6 pt-6 md:gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pt-10">
         <SectionReveal className="bz-ink-panel rounded-3xl px-5 py-7 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
           <p className="bz-eyebrow-inverse">AI 驱动决策 · 沉浸式市场模拟</p>
-          <h1 className="font-display mt-5 max-w-3xl text-display-lg font-semibold leading-tight sm:mt-6 sm:text-display-xl lg:text-display-2xl">
+          <h1
+            data-motion-split="lines"
+            className="font-display mt-5 max-w-3xl text-display-lg font-semibold leading-tight sm:mt-6 sm:text-display-xl lg:text-display-2xl"
+          >
             用 AI 把经济学装进游戏里，让课堂真正进入决策现场。
           </h1>
           <p className="mt-5 max-w-2xl text-body leading-7 text-white/70 sm:mt-6 sm:text-body-lg sm:leading-8">
-            Brown Zone 以 Mr.Brown AI 经济沙盘为核心，把经济学考点、资产配置、家校共育和排行榜挑战做成一体化网页端体验。
+            以 Mr.Brown AI 经济沙盘为核心的一体化网页端财商课堂。
           </p>
           <div className="mt-7 flex flex-wrap gap-3 sm:mt-8">
-            <Link href="/demo" data-motion-button className="bz-primary-action px-6 py-3 text-sm">
+            <Link
+              href="/demo"
+              data-motion-button
+              data-motion-magnetic
+              className="bz-primary-action px-6 py-3 text-sm"
+            >
               进入试玩入口
             </Link>
             <Link
@@ -58,36 +92,56 @@ export default async function HomePage() {
           delay={0.08}
           className="bz-ink-panel relative min-h-[440px] overflow-hidden rounded-3xl sm:min-h-[560px] lg:min-h-[620px]"
         >
-          <HeroStageArt className="absolute inset-0" />
+          <Image
+            src="/brand/v2/hero-classroom-market.webp"
+            alt="晨光教室的课桌上，一座微缩全息金融城从翻开的课本里升起，Mr.Brown 萌宠举着教鞭站在旁边"
+            fill
+            priority
+            sizes="(min-width: 1024px) 46vw, 100vw"
+            className="object-cover"
+          />
           <div
             data-motion-card
-            className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5"
+            className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-lg sm:inset-x-8 sm:bottom-8 sm:rounded-3xl sm:p-5"
           >
-            <p className="bz-eyebrow-inverse">Product Promise</p>
-            <p className="mt-3 text-lg font-semibold text-white">展示优先版首发聚焦</p>
-            <p className="mt-2 text-sm leading-7 text-white/62">
-              官网叙事、课程模块、试玩入口、家校协同和邀请制闭环全部可跑通；内部工作台需登录后按账号权限进入。
-            </p>
+            <p className="bz-eyebrow-inverse">Mr.Brown 经济沙盘</p>
+            <p className="mt-2 text-lg font-semibold text-white">课堂即市场，决策即成长。</p>
           </div>
         </SectionReveal>
       </section>
 
-      <section
-        id="method"
-        data-motion-scene
-        className="page-shell mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-      >
-        {[
-          ["学", "把 AP / 国标经济学拆成剧情式微任务，降低理解门槛。"],
-          ["用", "在 12 回合市场中交易、储蓄、买房和创业，低成本试错。"],
-          ["评", "AI 导师与成长报告同步给出行为偏差与下一回合建议。"],
-        ].map(([title, text], index) => (
-          <SectionReveal key={title} reveal={false} sceneItem className="panel rounded-3xl p-6">
-            <p className="bz-eyebrow">0{index + 1}</p>
-            <h2 className="mt-4 text-3xl font-semibold text-slate-950">{title}</h2>
-            <p className="mt-3 text-base leading-8 text-slate-600">{text}</p>
-          </SectionReveal>
-        ))}
+      <section id="method" className="page-shell mt-14 sm:mt-16">
+        <SectionReveal className="flex flex-col gap-3">
+          <p className="bz-eyebrow">学 · 练 · 看见成长</p>
+          <h2 className="font-display text-4xl font-semibold text-slate-950">一套沙盘，三幕成长</h2>
+        </SectionReveal>
+
+        <div data-motion-story className="mt-6">
+          {STORY_ACTS.map((act) => (
+            <div
+              key={act.act}
+              data-motion-story-step
+              className="grid items-center gap-8 py-10 lg:min-h-[68vh] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-0"
+            >
+              <div>
+                <p className="text-8xl font-black leading-none text-brand/25 [font-variant-numeric:tabular-nums]">
+                  {act.act}
+                </p>
+                <h3 className="mt-4 text-4xl font-semibold text-slate-950 sm:text-5xl">{act.title}</h3>
+                <p className="mt-4 max-w-md text-lg leading-8 text-slate-600">{act.line}</p>
+              </div>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-black/5 bg-bg-muted lg:aspect-auto lg:h-[52vh]">
+                <Image
+                  src={act.image}
+                  alt={act.alt}
+                  fill
+                  sizes="(min-width: 1024px) 52vw, 100vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="page-shell mt-14 sm:mt-16">
@@ -96,9 +150,6 @@ export default async function HomePage() {
           <h2 className="font-display text-4xl font-semibold text-slate-950">
             8 大模块围绕一套完整沙盘协同运转
           </h2>
-          <p className="max-w-3xl text-base leading-8 text-slate-600">
-            从资产配置到家校后台，每一块都按可展示、可试玩、可扩展的方式重新组织，避免只停留在静态介绍。
-          </p>
         </SectionReveal>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -116,8 +167,14 @@ export default async function HomePage() {
                 aria-label={`深入学习「${module.title}」— 前往${module.hrefLabel}（在新标签页打开）`}
                 className="group flex flex-1 flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
-                <div className="bg-bg-muted p-4">
-                  <ModuleIllustration moduleKey={module.key} className="h-52 w-full" />
+                <div className="relative h-52 w-full bg-bg-muted">
+                  <Image
+                    src={moduleArt[module.key]?.src ?? "/brand/v2/learn-market.webp"}
+                    alt={moduleArt[module.key]?.alt ?? module.title}
+                    fill
+                    sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
+                    className="object-cover"
+                  />
                 </div>
                 <div className="flex flex-1 flex-col p-6">
                   <div className="bz-brand-chip inline-flex self-start rounded-full px-3 py-1 text-xs font-semibold">
@@ -126,7 +183,6 @@ export default async function HomePage() {
                   <h3 className="mt-4 text-2xl font-semibold text-slate-950 transition-colors group-hover:text-brand-ink">
                     {module.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-600">{module.description}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {module.highlights.map((item) => (
                       <span

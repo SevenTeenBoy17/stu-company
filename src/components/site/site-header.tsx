@@ -181,15 +181,12 @@ export function SiteHeader() {
             data-motion-side="none"
             className="hidden border-t border-white/8 bg-bg-inverse/95 xl:block"
           >
-            <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 lg:grid-cols-[280px_1fr] lg:px-8">
+            {/* UI v2（Phase 0 审计）：纯导航菜单原有 ~600 字说明文案（组 summary +
+                每项 description）整体删除——菜单只做「去哪」，「是什么」由目标页承载。 */}
+            <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-8 lg:grid-cols-[220px_1fr] lg:px-8">
               <div className="max-w-sm">
                 <p className="text-sm uppercase tracking-[0.24em] text-brand">Product Matrix</p>
-                <p className="mt-3 text-2xl font-semibold text-white">
-                  登录后按账号权限进入对应工作台，公共站点只保留课程、试玩和产品能力说明。
-                </p>
-                <p className="mt-3 text-sm leading-7 text-white/60">
-                  从官网叙事到沙盘体验、教师组织、家长报告和运营管理，能力都收在同一套账号体系里。
-                </p>
+                <p className="mt-3 text-xl font-semibold text-white">登录后按账号权限进入对应工作台。</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -199,17 +196,15 @@ export function SiteHeader() {
                     className="rounded-[1.8rem] border border-white/8 bg-white/[0.04] p-5"
                   >
                     <p className="text-sm uppercase tracking-[0.24em] text-brand">{group.title}</p>
-                    <p className="mt-3 text-sm leading-7 text-white/60">{group.summary}</p>
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-4 space-y-2">
                       {group.items.map((item) => (
                         <Link
                           key={`${item.href}-${item.label}`}
                           href={item.href}
                           data-motion-card
-                          className="group block rounded-2xl bg-white/[0.04] px-4 py-3 transition-colors hover:bg-white/[0.08]"
+                          className="block rounded-2xl bg-white/[0.04] px-4 py-2.5 font-semibold text-white transition-colors hover:bg-white/[0.08]"
                         >
-                          <p className="font-semibold text-white">{item.label}</p>
-                          <p className="mt-1 text-sm leading-6 text-white/70">{item.description}</p>
+                          {item.label}
                         </Link>
                       ))}
                     </div>
