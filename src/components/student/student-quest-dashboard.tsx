@@ -166,7 +166,10 @@ function QuestCommanderPanel({
           <div className="relative z-10 flex min-h-[260px] flex-col justify-between p-5 sm:min-h-[320px] md:p-7">
             <div>
               <p className="bz-eyebrow-inverse">指挥官简报</p>
-              <h2 className="mt-3 max-w-lg text-display-md font-semibold md:text-display-lg">先和指挥官对话，再打开任务锦囊</h2>
+              {/* itest11 追修：幽灵字号补 token 后 display-md 在 390px 撑破 §19.7
+                  移动紧凑度守卫（commander 面板 <1300px）——移动档改紧凑 h2，
+                  md+ 维持 display-lg 与修复前渲染一致。 */}
+              <h2 className="mt-3 max-w-lg text-h2 font-semibold md:text-display-lg">先和指挥官对话，再打开任务锦囊</h2>
               <p className="mt-4 max-w-xl text-body leading-8 text-white/74">
                 任务不会一股脑摊开。先选择一条训练航线，打开锦囊后再查看任务目标、复盘提示和学习卡片。
               </p>

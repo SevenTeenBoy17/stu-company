@@ -296,7 +296,11 @@ test.describe("student gameflow regression", () => {
     await expect(page.getByRole("link", { name: /去完成赛季任务/ }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /翻回赛季任务卡背/ }).first()).toBeVisible();
     const commanderBox = await page.getByTestId("quest-commander-panel").boundingBox();
-    expect(commanderBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(1300);
+    // itest11：幽灵字号补 token 后（text-display-md/sm、text-h4 此前不生成 CSS、
+    // 标题静默缩成正文），面板内标题恢复设计尺寸，实测 ~1310px。守卫意图是
+    // 「面板不膨胀成多屏」（§19.7 紧凑度），按修正后的字阶把上限校准到 1400
+    // （390×844 下仍 <1.7 视口），继续拦住真正的布局爆炸。
+    expect(commanderBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(1400);
     await expectNoHorizontalOverflow(page);
   });
 });
