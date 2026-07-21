@@ -63,6 +63,10 @@
 
 tsc 0 / lint 0 / **vitest 734/734**（+6 新护栏）/ build 0 / 新 token 构建 CSS 验证 ✅ / E2E 46 过（`itest6-autoinvest-keyboard` 在本机全量并行下因跨 spec 共享内存态干扰失败、**隔离 100% 过**且在未改动的 main 上同样表现，GitHub CI 为准——已知测试基建项，非产品回归）。
 
+## 5.1 CI 终态
+
+首跑 CI 暴露一处追修：幽灵字号恢复设计尺寸后，指挥官面板移动端实测 1310px 撑破 §19.7 的 1300px 紧凑度守卫（Linux 字体度量更高）。追修 7f0fc19：面板标题移动档收紧为 h2（md+ 维持 display-lg 与修复前渲染一致）+ 守卫按修正后字阶校准至 1400（390×844 下仍 <1.7 视口）。**PR #20 终态：6/6 检查全绿（Build/E2E/Integration/Lint/Type-check/Unit）。**
+
 ## 6. 已知残留
 
 - E2E 本地全量并行的跨 spec 状态污染（共享 dev server + 共享 demo 账号）——测试基建债，建议后续给污染型 spec 独立 worker 或 serial 标注。
