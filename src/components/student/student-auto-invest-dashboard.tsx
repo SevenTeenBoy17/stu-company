@@ -439,6 +439,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                 <button
                   key={item.id}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => setStrategy(item.id)}
                   className={cn(
                     "w-full rounded-[1.35rem] border p-4 text-left transition hover:-translate-y-0.5",
@@ -478,6 +479,8 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
           </div>
           {message ? (
             <p
+              role={state === "error" ? "alert" : "status"}
+              aria-live={state === "error" ? undefined : "polite"}
               className={cn(
                 "mt-4 rounded-2xl px-4 py-3 text-body-sm font-semibold",
                 state === "error" ? "bg-error-soft text-error" : "bg-info/10 text-info",

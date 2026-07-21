@@ -27,7 +27,7 @@ gsap.registerPlugin(useGSAP);
 
 type SubmitState = "idle" | "loading" | "success" | "error";
 type BehaviorState = "idle" | "loading" | "success" | "error";
-const SCENARIO_CARD_BACK_SRC = "/brand/quest-cards/risk-scenario-card-back-v2.png";
+const SCENARIO_CARD_BACK_SRC = "/brand/quest-cards/risk-scenario-card-back-v2.webp";
 
 type BehaviorPersonaResponse = {
   persona?: BehaviorPersona;

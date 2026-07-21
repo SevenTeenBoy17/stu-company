@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChevronDown,
   Globe,
   LaptopMinimal,
   Menu,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 const primaryLinks = [
   { label: "首页", href: "/" },
   { label: "投资课程", href: "/learn" },
+  { label: "订阅方案", href: "/pricing" },
   { label: "试玩入口", href: "/demo" },
 ];
 
@@ -127,6 +129,8 @@ export function SiteHeader() {
             onMouseEnter={() => setMenuOpen(true)}
             onFocus={() => setMenuOpen(true)}
             onClick={() => setMenuOpen((current) => !current)}
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
             className={cn(
               menuButtonClasses,
               menuOpen &&
@@ -134,14 +138,15 @@ export function SiteHeader() {
             )}
           >
             产品矩阵
+            <ChevronDown
+              aria-hidden
+              className={cn("ml-1.5 size-4 transition-transform duration-200", menuOpen && "rotate-180")}
+            />
           </button>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 text-white/74 md:gap-3">
           <div className="hidden items-center gap-3 md:flex">
-            <MoonStar className="size-4" aria-hidden />
-            <LaptopMinimal className="size-4" aria-hidden />
-            <Globe className="size-4" aria-hidden />
             <Link
               href="/demo?auth=login"
               data-motion-button
@@ -202,6 +207,7 @@ export function SiteHeader() {
                           key={`${item.href}-${item.label}`}
                           href={item.href}
                           data-motion-card
+                          onClick={() => setMenuOpen(false)}
                           className="block rounded-2xl bg-white/[0.04] px-4 py-2.5 font-semibold text-white transition-colors hover:bg-white/[0.08]"
                         >
                           {item.label}

@@ -53,10 +53,14 @@ export function StockTickerTape({ initialPayload }: { initialPayload: TickerTape
 
   return (
     // ui-v2 polish：深色行情带铺一层极低对比的琥珀 K 线质感底纹（texture-market-dark，
-    // 13KB WebP），文字对比不受影响（底纹本身近黑）。
+    // 13KB WebP）。交付门审计：底纹上再叠一层压暗 scrim，保证右侧 provider 标注小字
+    // 落在底纹局部亮块上时对比度仍 ≥4.5:1。
     <section
       className="border-b border-white/8 bg-bg-inverse bg-cover bg-center text-white"
-      style={{ backgroundImage: "url(/brand/v2/texture-market-dark.webp)" }}
+      style={{
+        backgroundImage:
+          "linear-gradient(rgba(2,6,23,0.55), rgba(2,6,23,0.55)), url(/brand/v2/texture-market-dark.webp)",
+      }}
     >
       <div className="page-shell flex items-center gap-3 py-2.5 sm:gap-4 sm:py-3">
         <div className="hidden shrink-0 xl:block">

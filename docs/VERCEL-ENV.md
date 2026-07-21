@@ -1,18 +1,28 @@
 # Vercel Environment Checklist
 
-`vercel.json` declares the Next.js framework and the weekly parent-report cron:
+`vercel.json` declares the Next.js framework and the two production crons:
 
 ```json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "crons": [{ "path": "/api/cron/weekly-report", "schedule": "0 9 * * 1" }]
+  "crons": [
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/recompute-leaderboard",
+      "schedule": "30 0 * * *"
+    }
+  ]
 }
 ```
 
-The cron runs `/api/cron/weekly-report` every Monday 09:00 UTC. Vercel sends it as
-`Authorization: Bearer $CRON_SECRET` — **`CRON_SECRET` must be set in Production**
-or the endpoint refuses to run (503) in production.
+`/api/cron/weekly-report` runs every Monday 09:00 UTC (parent weekly report);
+`/api/cron/recompute-leaderboard` runs daily 00:30 UTC (财商战力 snapshot refresh).
+Vercel sends both as `Authorization: Bearer $CRON_SECRET` — **`CRON_SECRET` must be
+set in Production** or the endpoints refuse to run (503) in production.
 
 All secrets must be configured in Vercel Dashboard -> Project Settings -> Environment Variables.
 
@@ -50,6 +60,27 @@ Transactional email + verification + cron (optional, but required to activate th
   **Recommended ≥ 32 characters**: a shorter value logs a startup **warning** (does **not** block
   boot — a weak cron token is minor and shouldn't take the app down). Rotate to a ≥32-char random
   string (`openssl rand -hex 24`) when convenient and update the Vercel Cron config.
+
+## Production Ops Variables (生产运维)
+
+Operational knobs that make a fresh production deployment actually administrable:
+
+- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — production `npm run db:seed` creates **no**
+  demo accounts; the only admin it can create comes from this pair. Without them the seed
+  prints a warning and the deployment has no admin login at all.
+- `SUPERADMIN_EMAILS` — comma-separated allowlist that grants **super-admin write authority**
+  (`src/lib/auth-roles.ts`). 链路：生产种子用 `SEED_ADMIN_EMAIL` 建出 admin 账号 → 把同一邮箱
+  写进 `SUPERADMIN_EMAILS` 才拥有超管写权限（改密/改邮箱、人工收款配置与确认等）。否则该
+  admin 只有只读后台，`/api/admin/billing/manual-confirm` 等会返回 403，人工核验开通走不通。
+  参赛队四邮箱与内置 `superadmin` 已内置在名单里，无需重复配置。
+- `TSANGHI_API_TOKEN` / `TSANGHI_REST_BASE_URL` — 沧海数据（行情主源，真实日线）。
+  `TSANGHI_REST_BASE_URL` 缺省为 `https://www.tsanghi.com/api/fin`（注意不是 `api.tsanghi.com`）。
+  未配置 token 时行情层依次回退 iTick → AllTick → 教学 fallback。
+- `ALLOW_MEMORY_FALLBACK` — set `false` in Production. 生产里 DB 故障必须显式报错
+  （`db_unavailable`），绝不能静默退回内存种子数据；`true` 仅用于离线课堂 demo。
+- `REGISTER_RATE_LIMIT_MAX` / `REGISTER_RATE_LIMIT_WINDOW_MS` — registration rate limit
+  (default 5 次 / 10 分钟 per IP)。整班课堂同网出口集中注册时临时调大（如 `40` / `600000`），
+  活动结束后调回。
 
 If real WeChat Pay is enabled, also configure these variables for Production:
 

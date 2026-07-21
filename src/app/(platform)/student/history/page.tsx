@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/session-user";
 // UI-DEBT: History page still needs a component-token pass plus richer loading/error states; see docs/ui-spec/audit-2026-05-25.md.
 export default async function StudentHistoryPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/student/history")}`);
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const initialState = await getSimulationStateForUser(user.id);

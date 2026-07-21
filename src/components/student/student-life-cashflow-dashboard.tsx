@@ -257,9 +257,10 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                 title={alreadyAppliedThisRound ? "本回合生活账本已经写入沙盘，推进到下一回合后可以再次执行。" : undefined}
                 className="relative mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-brand px-5 text-body-sm font-semibold text-transparent shadow-glow transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {applyState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                <CheckCircle2 className="h-4 w-4" />
+                {/* 审查项 3：Loader2 必须在可见覆盖层（text-slate-950）里转，底层 text-transparent 只做占位 */}
                 <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 text-slate-950">
-                  <CheckCircle2 className="h-4 w-4" />
+                  {applyState === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   {alreadyAppliedThisRound ? "本回合已完成预算挑战" : "执行本月预算挑战"}
                 </span>
                 执行本月预算挑战

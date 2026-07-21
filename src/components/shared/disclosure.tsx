@@ -74,7 +74,16 @@ export function Disclosure({
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
       >
-        <div className={cn("min-h-0 overflow-hidden", !open && "invisible")}>
+        {/* 交付审查：visibility 参与过渡——CSS 规范里 visible→hidden 的离散插值
+            在过渡末帧才翻转、hidden→visible 在首帧即翻转，于是收起时内容随
+            300ms 塌缩全程可见、结束后才隐藏（保住 tab 序防护），展开时立即可见。
+            此前 invisible 与 grid-rows 过渡不同步，收起瞬间内容闪没、空盒塌缩。 */}
+        <div
+          className={cn(
+            "min-h-0 overflow-hidden transition-[visibility] duration-300 motion-reduce:transition-none",
+            !open && "invisible",
+          )}
+        >
           <div className={cn("pb-2 pt-1 text-body-sm leading-7 text-fg-muted", panelClassName)}>
             {children}
           </div>

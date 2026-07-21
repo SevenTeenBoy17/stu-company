@@ -76,36 +76,40 @@ export function SectionNav({
   };
 
   return (
+    // itest11：nav 本体做统一底轨（药丸带贴一层圆角浮底），横向滚动交给内层
+    // 容器，右缘恒挂 mask 渐隐提示「还能横滑」（不可滚动时 92% 处才开始淡出，视觉影响极小）。
     <nav
       aria-label={ariaLabel}
       className={cn(
-        "flex gap-1 overflow-x-auto",
+        "rounded-full bg-white/85 px-1.5 py-1 shadow-sm backdrop-blur",
         sticky && "sticky top-2 z-20",
         className,
       )}
     >
-      {items.map((item) => {
-        const active = item.id === activeId;
-        return (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            aria-current={active ? "location" : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              scrollTo(item.id);
-            }}
-            className={cn(
-              "whitespace-nowrap rounded-full px-3 py-1.5 text-caption font-semibold transition-colors",
-              active
-                ? "bg-fg-strong text-white"
-                : "bg-white/70 text-fg-muted hover:bg-white hover:text-fg-strong",
-            )}
-          >
-            {item.label}
-          </a>
-        );
-      })}
+      <div className="flex gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_92%,transparent)]">
+        {items.map((item) => {
+          const active = item.id === activeId;
+          return (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              aria-current={active ? "location" : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                scrollTo(item.id);
+              }}
+              className={cn(
+                "whitespace-nowrap rounded-full px-3 py-1.5 text-caption font-semibold transition-colors",
+                active
+                  ? "bg-fg-strong text-white"
+                  : "bg-white/70 text-fg-muted hover:bg-white hover:text-fg-strong",
+              )}
+            >
+              {item.label}
+            </a>
+          );
+        })}
+      </div>
     </nav>
   );
 }

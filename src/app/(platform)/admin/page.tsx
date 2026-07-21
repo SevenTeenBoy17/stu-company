@@ -17,7 +17,7 @@ function formatFen(value: number) {
 
 export default async function AdminPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/admin")}`);
   if (user.role !== "admin") redirect(roleHomePath(user.role));
 
   const overview = await getAdminOverview();

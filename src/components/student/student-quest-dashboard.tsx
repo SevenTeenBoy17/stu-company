@@ -10,7 +10,6 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarDays,
-  CircleDot,
   Eye,
   Gift,
   Gamepad2,
@@ -29,6 +28,7 @@ import {
 
 import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
+import { SectionNav } from "@/components/shared/section-nav";
 import type { QuestCard } from "@/lib/cards";
 import type { CardCollectionItem } from "@/lib/db/repo";
 import type { QuestClaimResult, StudentBenefitKind, StudentBenefitStatus, StudentQuestPayload } from "@/lib/quests";
@@ -324,6 +324,7 @@ function QuestMapGallery({
 
   return (
     <section
+      id="sec-quest-map"
       data-quest-reveal
       data-motion-reveal
       data-testid="quest-map-gallery"
@@ -333,7 +334,7 @@ function QuestMapGallery({
         <div className="relative overflow-hidden bg-slate-950 text-white">
           <div className="absolute inset-0">
             <Image
-              src="/brand/quest-world/mission-route-map-v2.png"
+              src="/brand/quest-world/mission-route-map-v2.webp"
               alt=""
               fill
               priority
@@ -645,7 +646,7 @@ function QuestMapFullscreenDialog({
         data-testid="quest-map-fullscreen-dialog"
       >
       <Image
-        src="/brand/quest-world/mission-route-map-v2.png"
+        src="/brand/quest-world/mission-route-map-v2.webp"
         alt=""
         fill
         priority
@@ -658,7 +659,7 @@ function QuestMapFullscreenDialog({
         className="relative flex h-[100svh] w-screen overflow-hidden bg-slate-950 text-white shadow-[0_32px_110px_rgba(0,0,0,0.58)]"
       >
         <Image
-          src="/brand/quest-world/mission-route-map-v2.png"
+          src="/brand/quest-world/mission-route-map-v2.webp"
           alt=""
           fill
           priority
@@ -798,7 +799,7 @@ function QuestDetailDialogInner({ quest, onClose }: { quest: QuestItem; onClose:
         </div>
         <div className="relative min-h-[22rem] overflow-hidden bg-slate-950 p-6 text-white sm:p-7">
           <Image
-            src="/brand/quest-world/mission-route-map-v2.png"
+            src="/brand/quest-world/mission-route-map-v2.webp"
             alt=""
             fill
             sizes="(min-width: 1024px) 42vw, 100vw"
@@ -1256,28 +1257,18 @@ export function StudentQuestDashboard({
 
   return (
     <div ref={rootRef} className="space-y-6">
-      {/* §19.7 顶部小图标锚点导航（仅手机）：目标 / 主卡 / 队列 / 图鉴 —— 长页快速跳转。 */}
-      <nav
-        aria-label="任务中心快捷导航"
-        data-testid="quest-anchor-nav"
-        className="relative z-10 flex gap-1.5 overflow-x-auto rounded-full border border-slate-200/80 bg-white/92 p-1.5 shadow-soft backdrop-blur md:hidden"
-      >
-        {[
-          { href: "#season-goals", label: "目标", Icon: Target },
-          { href: "#mission-main", label: "主卡", Icon: PackageOpen },
-          { href: "#mission-queue", label: "队列", Icon: CircleDot },
-          { href: "#companion-album", label: "图鉴", Icon: Sparkles },
-        ].map(({ href, label, Icon }) => (
-          <a
-            key={href}
-            href={href}
-            className="bz-press inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-black text-slate-700 transition hover:bg-brand-subtle hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <Icon className="h-4 w-4 text-brand" />
-            {label}
-          </a>
-        ))}
-      </nav>
+      {/* 审查项 5：自制 md:hidden 锚点条换成共享 SectionNav（全断点 + scrollspy 高亮），与 wealth/market 长页统一。 */}
+      <SectionNav
+        ariaLabel="任务中心快捷导航"
+        items={[
+          { id: "season-goals", label: "赛季目标" },
+          { id: "sec-quest-map", label: "任务地图" },
+          { id: "mission-main", label: "任务锦囊" },
+          { id: "mission-queue", label: "任务队列" },
+          { id: "companion-album", label: "伙伴图鉴" },
+          { id: "sec-quest-progress", label: "收益与成就" },
+        ]}
+      />
       <section data-quest-reveal data-motion-reveal className="overflow-hidden rounded-[2rem] bg-bg-inverse text-white shadow-soft">
         <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid-strokes pointer-events-none absolute inset-0 opacity-18" />
@@ -2051,7 +2042,7 @@ export function StudentQuestDashboard({
 
       <CompanionAlbum collection={cardCollection} quests={questPayload.quests} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div id="sec-quest-progress" className="grid scroll-mt-24 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section data-quest-reveal className="panel rounded-[2rem] p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">

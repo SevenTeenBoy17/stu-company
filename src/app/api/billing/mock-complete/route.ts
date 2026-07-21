@@ -3,16 +3,13 @@ import { z } from "zod";
 
 import { apiError, checkOrigin, handleRouteError } from "@/lib/api-response";
 import { requireUser } from "@/lib/api-guard";
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { isWechatMockAllowed } from "@/lib/billing/wechat-pay";
 import { fulfillPaymentOrder, getPaymentOrderByOutTradeNo } from "@/lib/db/repo";
 
 const mockCompleteSchema = z.object({
   outTradeNo: z.string().min(8),
 });
-
-function isSuperAdmin(user: { id: string; email: string }) {
-  return user.id === "superadmin" || user.email.toLowerCase() === "superadmin";
-}
 
 export async function POST(request: Request) {
   const originBlock = checkOrigin(request);

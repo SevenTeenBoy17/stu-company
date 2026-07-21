@@ -20,6 +20,7 @@ import {
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { DomainError } from "@/lib/domain-error";
 
+import { isSuperAdmin } from "@/lib/auth-roles";
 import { learningModules } from "@/lib/content";
 import {
   getDb,
@@ -2589,8 +2590,9 @@ export async function getParentOverview(userId: string) {
   };
 }
 
+// 统一走 auth-roles 集中判定：内置 superadmin + 参赛队四邮箱 + SUPERADMIN_EMAILS env。
 function isSuperAdminUser(user?: UserRecord | null) {
-  return user?.id === "superadmin" || user?.email.toLowerCase() === "superadmin";
+  return user != null && isSuperAdmin(user);
 }
 
 export async function canUserPayForTarget(payerId: string, targetUserId: string) {

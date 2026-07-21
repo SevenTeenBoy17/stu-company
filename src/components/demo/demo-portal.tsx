@@ -108,6 +108,11 @@ export function DemoPortal({
     }
     const next = sanitizeAuthNextPath(params.get("next"));
     if (next) setNextPath(next);
+    // itest11：从受保护页被踢回来时给出原因提示；auth=login 已在上方打开登录窗，
+    // 登录成功后由 redirectAfterLogin 沿 nextPath 回跳原页面。
+    if (params.get("reason") === "login_required") {
+      setMessage({ tone: "info", text: "请先登录后再访问该页面。" });
+    }
     const verify = params.get("verify");
     if (verify === "success") {
       setMessage({ tone: "success", text: "邮箱验证成功，已激活完整功能。" });

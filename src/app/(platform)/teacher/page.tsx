@@ -9,7 +9,7 @@ import { getTeacherOverview, roleHomePath } from "@/lib/db/repo";
 export default async function TeacherPage() {
   // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/teacher")}`);
   if (user.role !== "teacher") redirect(roleHomePath(user.role));
 
   const overview = await getTeacherOverview(user.id);

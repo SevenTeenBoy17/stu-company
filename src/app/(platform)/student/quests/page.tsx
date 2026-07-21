@@ -18,7 +18,7 @@ export const metadata = {
 
 export default async function StudentQuestsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/student/quests")}`);
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const [state, learning, collection] = await Promise.all([
