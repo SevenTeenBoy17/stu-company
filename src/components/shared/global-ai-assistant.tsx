@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Image from "next/image";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { usePathname } from "next/navigation";
 import {
@@ -472,17 +473,21 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               void refreshAuthHistory();
             }
           }}
-          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--ink-700)] text-white shadow-2xl shadow-slate-950/30 sm:h-16 sm:w-16"
+          className="group pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--ink-700)] text-white shadow-2xl shadow-slate-950/30 sm:h-16 sm:w-16"
           data-allow-overflow="true"
           aria-label="打开 KeyAI"
         >
-          <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,var(--brand)_0%,transparent_62%)] opacity-30" />
-          <span className="absolute -inset-2 rounded-full border border-white/10" />
-          <span className="relative flex h-8 w-8 items-center justify-center rounded-[0.95rem] border border-white/12 bg-white/6 sm:h-11 sm:w-11 sm:rounded-[1.2rem]">
-            <span className="absolute left-1 h-2.5 w-1 rounded-full bg-brand sm:left-1.5 sm:h-3" />
-            <span className="absolute right-1 h-2.5 w-1 rounded-full bg-brand sm:right-1.5 sm:h-3" />
-            <span className="text-xs font-bold tracking-tight sm:text-sm">AI</span>
-          </span>
+          {/* 悬浮球换装：Brown Zone 吉祥物；圆形裁切由按钮 overflow-hidden rounded-full 完成。
+              图片纯装饰（alt=""），可访问名由按钮 aria-label 承载。hover 轻微放大。 */}
+          <Image
+            src="/brand/v3/ai-assistant-mascot.webp"
+            alt=""
+            width={64}
+            height={64}
+            sizes="64px"
+            priority
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
         </button>
       </div>
 

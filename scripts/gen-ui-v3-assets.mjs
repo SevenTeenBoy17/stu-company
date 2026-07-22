@@ -74,6 +74,9 @@ const ASSETS = [
     "3D brown bear mascot holding a magnifying glass over a glowing rising-then-dipping net-worth line on a dark chart, calm analytical mood, warm amber highlight on the line, realistic soft-toy render, wide composition"],
   ["autoinvest-dca-vs-lump", "1536x1024", 900, 500,
     "3D brown bear mascot beside two side-by-side glowing stacks of coins, one built gradually in small steps and one dropped in a single pile, neutral comparison mood, warm amber and slate palette, realistic toy render"],
+  // 全局 AI 助手悬浮球吉祥物：圆形构图、半身特写、贴近圆边（供圆形按钮裁切），512×512。
+  ["ai-assistant-mascot", "1024x1024", 512, 512,
+    "3D rendered friendly cute Mr.Brown brown bear mascot, upper-body bust close-up portrait centered in a tight circular composition, wearing a cozy warm amber-orange hoodie and a customer-support headset with boom mic, a small glowing round AI emblem badge on its chest (icon only, no letters), one shiny gold coin resting beside a paw and a small softly upward-rising golden mini curve line at its side, clean deep navy background, full composition filling close to the circular edge for a round floating-button crop, cute but restrained expression, soft studio key light"],
 ];
 
 // 自适应质量编码：从 q82 起步，若超过 MAX_KB 逐级降质，保证 ≤80KB。

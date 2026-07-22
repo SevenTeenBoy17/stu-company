@@ -355,7 +355,6 @@ export function StudentSandbox({
       meta: netWorthDelta === 0 ? "本回合保持观察" : `较上回合 ${formatCurrency(netWorthDelta)}`,
       icon: WalletCards,
       money: true,
-      isHero: true,
     },
     {
       label: "可用现金",
@@ -366,7 +365,6 @@ export function StudentSandbox({
       meta: "行动前先留安全垫",
       icon: Landmark,
       money: true,
-      isHero: false,
     },
     {
       label: "持仓市值",
@@ -377,7 +375,6 @@ export function StudentSandbox({
       meta: `${holdingsRows.length} 个资产正在观察`,
       icon: LineChart,
       money: true,
-      isHero: false,
     },
     {
       label: "班级排名",
@@ -388,7 +385,6 @@ export function StudentSandbox({
       meta: state.classroom.name,
       icon: Trophy,
       money: false,
-      isHero: false,
     },
     {
       label: "风险评分",
@@ -399,7 +395,6 @@ export function StudentSandbox({
       meta: `纪律分 ${latestSnapshot?.disciplineScore ?? "--"}`,
       icon: ShieldCheck,
       money: false,
-      isHero: false,
     },
   ];
 
@@ -426,7 +421,7 @@ export function StudentSandbox({
         <p className="mt-2 text-display-sm font-semibold tracking-tight text-fg-strong sm:text-display-md">学生策略台</p>
       </header>
 
-      {/* ── KPI bar: ONE hero (net worth) + 4 secondary metrics ── */}
+      {/* ── KPI bar: 5 uniform metric cards (all text-h2) ── */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {heroMetrics.map((item) => {
           const Icon = item.icon;
@@ -443,15 +438,15 @@ export function StudentSandbox({
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              {/* Net worth card → ONE hero number; others → text-h2 */}
+              {/* 五卡数字统一为 text-h2：原净值 hero 档（bz-hero-stat 琥珀底衬 + text-hero-num）
+                  取消——用户裁决五卡大小需一致、且底衬没包住数字。 */}
               {/* 交付审查 P1：money 卡不再嵌 <MoneyText>——count-up 以 textContent
                   覆写子树会摘除元素子节点，此后 React 更新失联、数字冻结在首帧。
                   改为纯文本子节点（React 单文本子节点路径可自愈）+ 在 <p> 上
                   复刻 MoneyText 的字重与红涨绿跌色。 */}
               <p
                 className={cn(
-                  "mt-3 max-w-full leading-none tracking-tight tabular-nums",
-                  item.isHero ? "bz-hero-stat text-hero-num" : "text-h2",
+                  "mt-3 max-w-full text-h2 leading-none tracking-tight tabular-nums",
                   item.money
                     ? cn(
                         "font-extrabold whitespace-nowrap",
