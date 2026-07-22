@@ -1395,6 +1395,14 @@ export async function registerUserByInvite(input: {
         const existingUser = await selectUserByEmail(tx, normalizedEmail);
         if (existingUser) throw new DomainError("这个邮箱已经被注册过了。");
 
+        // itest12 P1: invite-code registration must grant the SAME 3-day trial as
+        // registerUserByEmail. Without a trialExpiresAt, resolveSubscriptionState
+        // treats the new free user as already expired, so their first sim/actions
+        // call is rejected 403「试用已结束，请升级…」 — a new student invited by
+        // code could never take a single action. Mirror the email path exactly.
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 3);
+
         const newUser: UserRecord = {
           id: createId("user"),
           email: normalizedEmail,
@@ -1411,6 +1419,9 @@ export async function registerUserByInvite(input: {
                   : "新加入的管理员",
           classroomId: invite.classroomId,
           studentLinkId: invite.studentLinkId,
+          trialExpiresAt: trialEnd.toISOString(),
+          subscriptionTier: "free",
+          onboardingCompleted: 0,
         };
 
         await tx.insert(users).values({
@@ -1420,6 +1431,9 @@ export async function registerUserByInvite(input: {
           role: newUser.role,
           classroomId: newUser.classroomId,
           studentLinkId: newUser.studentLinkId,
+          trialExpiresAt: trialEnd,
+          subscriptionTier: "free",
+          onboardingCompleted: 0,
         });
 
         await tx.insert(profiles).values({

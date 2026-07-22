@@ -6,6 +6,7 @@ import {
   requestHistoryReviewInsight,
   requestTutorInsight,
   requestTutorRadarPayload,
+  stripThinkBlocks,
 } from "@/lib/ai";
 import { buildHistoryReviewAiContext, buildHistoryReviewPayload } from "@/lib/history-review";
 import { getSimulationStateForUser, resetStoreForTests } from "@/lib/store";
@@ -126,6 +127,75 @@ describe("AI tutor teaching-spec compliance (fallback content we control)", () =
       (card) => FORBIDDEN.test(card.title) || FORBIDDEN.test(card.coachingCue),
     );
     expect(offenders.map((card) => `${card.id}: ${card.title} / ${card.coachingCue}`)).toEqual([]);
+  });
+});
+
+// itest12 P2: the model's chain-of-thought (<think>…</think>) must never reach an
+// underage student. stripThinkBlocks is the single sanitizer every AI outlet runs
+// through in requestRemoteText — cover its three states as a pure function, then
+// prove the real chat pipeline scrubs a think-prefixed remote reply end-to-end.
+describe("AI chain-of-thought stripping (stripThinkBlocks, itest12 P2)", () => {
+  it("strips a closed <think>…</think> block and keeps the real answer", () => {
+    const raw = "<think>\n用户是新手学生，我该温和一些。\n</think>\n你好！先看现金缓冲。";
+    expect(stripThinkBlocks(raw)).toBe("你好！先看现金缓冲。");
+  });
+
+  it("strips multiple closed think blocks anywhere in the text", () => {
+    const raw = "<think>reasoning A</think>答案一。<THINK>reasoning B</THINK>答案二。";
+    expect(stripThinkBlocks(raw)).toBe("答案一。答案二。");
+  });
+
+  it("unclosed <think> with no closing tag and no real answer strips to empty (→ fallback)", () => {
+    const raw = "<think>\n用户是新手学生，我先分析一下他的持仓集中度……";
+    expect(stripThinkBlocks(raw)).toBe("");
+  });
+
+  it("unclosed <think> keeps the real answer that follows the first blank line", () => {
+    const raw = "<think>\n先想一想该怎么回答\n\n你好，建议先分散持仓。";
+    expect(stripThinkBlocks(raw)).toBe("你好，建议先分散持仓。");
+  });
+
+  it("passes through text with no think tags unchanged", () => {
+    expect(stripThinkBlocks("直接给出的正常回答，无思维链。")).toBe("直接给出的正常回答，无思维链。");
+  });
+
+  it("returns empty string for null/undefined/blank input", () => {
+    expect(stripThinkBlocks(null)).toBe("");
+    expect(stripThinkBlocks(undefined)).toBe("");
+    expect(stripThinkBlocks("   \n  ")).toBe("");
+  });
+
+  it("scrubs a think-prefixed remote reply through the real chat pipeline", async () => {
+    enableRemote();
+    remoteReturns("<think>\n用户是新手学生，我该怎么回答……\n</think>\n你好，先确认你的现金缓冲。");
+    const chat = await requestChatReply({
+      mode: "student-context",
+      prompt: "我该怎么调仓？",
+      contextBlock: "",
+      history: [],
+    });
+
+    expect(chat.provider).toBe("remote"); // it DID reach the remote...
+    expect(chat.text).toBe("你好，先确认你的现金缓冲。"); // ...but the CoT was scrubbed.
+    expect(chat.text).not.toMatch(/<think/i);
+    expect(chat.text).not.toContain("用户是新手学生");
+  });
+
+  it("an all-reasoning remote reply falls back to the safe local narrative", async () => {
+    enableRemote();
+    remoteReturns("<think>\n只有思维链，没有给学生的正文……");
+    const chat = await requestChatReply({
+      mode: "guest",
+      prompt: "介绍一下",
+      contextBlock: "",
+      history: [],
+    });
+
+    // Stripping empties the reply, so requestRemoteText falls back to the local
+    // teaching narrative — the student never sees the reasoning.
+    expect(chat.provider).toBe("fallback");
+    expect(chat.text).not.toMatch(/<think/i);
+    expect(chat.text.length).toBeGreaterThan(0);
   });
 });
 

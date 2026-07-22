@@ -7,6 +7,7 @@ import {
   resetGuardianBindingForStudent,
   resetStoreForTests,
 } from "@/lib/store";
+import { canUserOperate, resolveSubscriptionState } from "@/lib/billing/subscription";
 
 // Pre-merge review findings #1/#2/#3: the guardian-invite flow must enforce the
 // system's 1-student -> 1-guardian model (growth_reports is unique per student).
@@ -88,5 +89,64 @@ describe("resetGuardianBindingForStudent remediation (itest10 #12)", () => {
   it("refuses to reset a student who has no bound guardian", () => {
     getOrCreateGuardianInviteForStudent("student-3"); // placeholder only, unclaimed
     expect(() => resetGuardianBindingForStudent("student-3")).toThrow(/没有已绑定的家长/);
+  });
+});
+
+// itest12 P1: invite-code registration must grant the SAME 3-day trial as email
+// registration. The real repro: a new student registered by MRB-STUDENT-2026 had
+// no trialExpiresAt, so resolveSubscriptionState judged them expired and their
+// first sim/actions call 403'd「试用已结束」. Guard the two paths stay symmetric.
+describe("trial parity between invite-code and email registration (itest12 P1)", () => {
+  beforeEach(() => resetStoreForTests());
+
+  it("registerUserByInvite grants an operable 3-day trial (not expired)", async () => {
+    const student = await registerUserByInvite({
+      name: "邀请码新生",
+      email: "invite-trial@example.com",
+      password: "Passw0rd1",
+      inviteCode: "MRB-STUDENT-2026",
+    });
+    expect(student.role).toBe("student");
+    // The account carries a trial + free tier, mirroring the email path.
+    expect(student.subscriptionTier).toBe("free");
+    expect(student.trialExpiresAt).toBeTruthy();
+
+    const state = resolveSubscriptionState(
+      student.subscriptionTier,
+      student.trialExpiresAt,
+      student.subscriptionExpiresAt,
+    );
+    expect(state.status).toBe("trial");
+    expect(state.canOperate).toBe(true);
+    // canUserOperate is the exact gate /api/sim/actions uses — it must pass.
+    expect(canUserOperate(student.subscriptionTier, student.trialExpiresAt, student.subscriptionExpiresAt)).toBe(true);
+  });
+
+  it("invite-code and email registrations reach the same operable trial state", async () => {
+    const viaInvite = await registerUserByInvite({
+      name: "邀请码生",
+      email: "parity-invite@example.com",
+      password: "Passw0rd1",
+      inviteCode: "MRB-STUDENT-2026",
+    });
+    const viaEmail = await registerUserByEmail({
+      name: "邮箱生",
+      email: "parity-email@example.com",
+      password: "Passw0rd1",
+    });
+
+    const inviteState = resolveSubscriptionState(
+      viaInvite.subscriptionTier,
+      viaInvite.trialExpiresAt,
+      viaInvite.subscriptionExpiresAt,
+    );
+    const emailState = resolveSubscriptionState(
+      viaEmail.subscriptionTier,
+      viaEmail.trialExpiresAt,
+      viaEmail.subscriptionExpiresAt,
+    );
+    expect(inviteState.status).toBe(emailState.status);
+    expect(inviteState.canOperate).toBe(emailState.canOperate);
+    expect(inviteState.canOperate).toBe(true);
   });
 });

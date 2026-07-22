@@ -393,6 +393,49 @@ function normalizeRadarPayload(
   }
 }
 
+/**
+ * itest12 P2: some providers (llm-token gateway, "remote") leak the model's
+ * chain-of-thought as a `<think>…</think>` preamble in the reply body — the real
+ * repro was a chat answer beginning "<think>\n用户是新手学生…". That reasoning must
+ * never reach an underage student. This is the single sanitizer every AI outlet
+ * (chat / tutor / onboarding / radar / persona / history-review) passes through,
+ * because they all build their text inside requestRemoteText below.
+ *
+ * Behavior:
+ *  - closed: strip every well-formed <think>…</think> block (case-insensitive,
+ *    spans newlines), keeping the real answer around it.
+ *  - unclosed (truncated) with a stray </think> still present: keep only what
+ *    follows the close.
+ *  - unclosed with no </think> at all: drop the opener and its reasoning up to the
+ *    first blank line; if nothing real remains, return "" so requestRemoteText's
+ *    empty-check falls back to the safe local narrative.
+ */
+export function stripThinkBlocks(raw: string | null | undefined): string {
+  if (!raw) return "";
+
+  // 1) Remove every fully-formed <think>…</think> block.
+  let text = raw.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "");
+
+  // 2) Fault tolerance for a dangling, unclosed <think> the provider truncated.
+  const open = /<think\b[^>]*>/i.exec(text);
+  if (open) {
+    const beforeOpen = text.slice(0, open.index);
+    const afterOpen = text.slice(open.index + open[0].length);
+    const close = /<\/think>/i.exec(afterOpen);
+    if (close) {
+      // A stray close still exists further along — keep only what follows it.
+      text = beforeOpen + afterOpen.slice(close.index + close[0].length);
+    } else {
+      // No close at all: drop the opener and its chain-of-thought up to the first
+      // blank line; if nothing real remains, return "" so callers fall back.
+      const blankLine = /\n\s*\n/.exec(afterOpen);
+      text = blankLine ? beforeOpen + afterOpen.slice(blankLine.index) : beforeOpen;
+    }
+  }
+
+  return text.trim();
+}
+
 async function requestRemoteText(input: {
   system: string;
   messages: Array<{ role: "user" | "assistant"; content: Array<{ type: "text"; text: string }> }>;
@@ -433,11 +476,16 @@ async function requestRemoteText(input: {
       const data = (await response.json()) as {
         content?: Array<{ type: string; text?: string }>;
       };
-      const text = data.content
+      const rawText = data.content
         ?.map((item) => item.text?.trim())
         .filter(Boolean)
         .join("\n")
         .trim();
+
+      // itest12 P2: strip any leaked <think>…</think> chain-of-thought before the
+      // reply leaves the gateway, so no AI outlet can show reasoning to a student.
+      // An all-reasoning reply strips to "" and correctly falls back below.
+      const text = stripThinkBlocks(rawText);
 
       if (!text) {
         throw new Error("AI 响应为空");

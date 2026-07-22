@@ -1420,6 +1420,12 @@ export async function registerUserByInvite(input: {
     throw new DomainError("这个邮箱已经被注册过了。");
   }
 
+  // itest12 P1: mirror registerUserByEmail — invite-code registration must grant
+  // the same 3-day trial. Without trialExpiresAt, resolveSubscriptionState treats
+  // the new free user as expired and blocks their first sim action (403).
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 3);
+
   const newUser: UserRecord = {
     id: createId("user"),
     email: normalizedEmail,
@@ -1436,6 +1442,9 @@ export async function registerUserByInvite(input: {
             : "新加入的管理员",
     classroomId: inviteStatus.invite.classroomId,
     studentLinkId: inviteStatus.invite.studentLinkId,
+    trialExpiresAt: trialEnd.toISOString(),
+    subscriptionTier: "free",
+    onboardingCompleted: 0,
   };
 
   store.users.push(newUser);
