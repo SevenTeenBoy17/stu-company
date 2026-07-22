@@ -313,11 +313,12 @@ function highlightToneClasses(tone: HistoryReviewPayload["highlights"][number]["
 }
 
 function eventSignalClasses(signal: string) {
+  // itest12-P2 #18：利好/利空徽章统一到 up/down token（红涨绿跌），与 sandbox 决策结果块同口径。
   if (signal === "利好") {
-    return "bg-[#fff1f0] text-[#bf2419]";
+    return "bg-up-soft text-[var(--up-700)]";
   }
   if (signal === "利空") {
-    return "bg-[#eefbf3] text-[#0f7038]";
+    return "bg-down-soft text-[var(--down-700)]";
   }
   return "bg-slate-100 text-slate-600";
 }
@@ -742,17 +743,37 @@ export function StudentHistoryReviewDashboard({
                   panelClassName="pb-0 pt-0"
                 >
                   <div className="mt-3 space-y-3">
-                    {payload.aiReview.nextSteps.map((item, index) => (
+                    {payload.aiReview.nextSteps.slice(0, 3).map((item, index) => (
                       <div
                         key={`next-step-${index}`}
                         className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
                       >
                         <p className="bz-eyebrow">
-                          Step 0{index + 1}
+                          Step {String(index + 1).padStart(2, "0")}
                         </p>
                         <p className="mt-2 text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
                       </div>
                     ))}
+                    {payload.aiReview.nextSteps.length > 3 && (
+                      <Disclosure
+                        summary={`查看更多（其余 ${payload.aiReview.nextSteps.length - 3} 条）`}
+                        summaryClassName="px-0 py-1 text-body-sm font-semibold text-fg-muted"
+                      >
+                        <div className="mt-2 space-y-3">
+                          {payload.aiReview.nextSteps.slice(3).map((item, index) => (
+                            <div
+                              key={`next-step-extra-${index}`}
+                              className="rounded-[1.2rem] border border-slate-200 bg-slate-950/[0.02] px-4 py-3"
+                            >
+                              <p className="bz-eyebrow">
+                                Step {String(index + 4).padStart(2, "0")}
+                              </p>
+                              <p className="mt-2 text-body-sm leading-7 text-fg-default">{stripMarkdown(item)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </Disclosure>
+                    )}
                   </div>
                 </Disclosure>
               </div>

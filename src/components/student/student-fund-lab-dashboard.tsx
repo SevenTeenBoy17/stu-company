@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Bot, CheckCircle2, Layers3, Loader2, PieChart, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { FundLabPayload, FundLabPlan } from "@/lib/fund-lab";
 import { cn, formatPercent } from "@/lib/utils";
@@ -335,15 +336,30 @@ export function StudentFundLabDashboard({ initialPayload }: { initialPayload: Fu
           <Bot className="h-5 w-5 text-brand" />
           <h2 className="text-h1 text-fg-strong">{payload.coach.title}</h2>
         </div>
-        <p className="mt-4 text-body leading-8 text-fg-muted">{payload.coach.summary}</p>
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          {payload.coach.nextSteps.map((step) => (
+        <div className="mt-5 grid gap-3">
+          {payload.coach.nextSteps.slice(0, 1).map((step) => (
             <p key={step} data-motion-card className="flex gap-3 rounded-[1.4rem] bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted">
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
               {step}
             </p>
           ))}
         </div>
+        {payload.coach.nextSteps.length > 1 && (
+          <Disclosure
+            className="mt-3"
+            summary={`展开其余 ${payload.coach.nextSteps.length - 1} 步建议`}
+            summaryClassName="text-caption font-semibold text-fg-muted"
+          >
+            <div className="grid gap-3">
+              {payload.coach.nextSteps.slice(1).map((step) => (
+                <p key={step} className="flex gap-3 rounded-[1.4rem] bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                  {step}
+                </p>
+              ))}
+            </div>
+          </Disclosure>
+        )}
         <div className="mt-5 grid gap-3 lg:grid-cols-3" data-testid="fund-history">
           {payload.history.length > 0 ? (
             payload.history.slice(0, 3).map((entry) => (

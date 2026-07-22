@@ -96,7 +96,7 @@ export function MarketThermometer({
         <div data-temp-reveal className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="bz-eyebrow-inverse">Market Thermometer</p>
-            <h3 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">市场温度计</h3>
+            <h3 className="mt-3 text-h2 font-bold tracking-tight text-white sm:text-display-sm">市场温度计</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-white/84">{payload.roundLabel}</p>
           </div>
           <span className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold", tone.chip)}>
@@ -168,7 +168,7 @@ export function MarketThermometer({
           <Link
             data-motion-button
             href="/student/market"
-            className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full sm:w-auto bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500 px-6 text-base font-bold !text-white shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:!text-white hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
+            className="inline-flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full sm:w-auto bg-brand px-6 text-base font-bold text-fg-default shadow-[0_18px_44px_rgba(240,138,56,0.30)] transition hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-[0_22px_54px_rgba(240,138,56,0.38)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200"
           >
             进入市场雷达继续拆解
             <ArrowRight className="h-4 w-4" />

@@ -36,7 +36,7 @@ export default async function AdminPage() {
     <PlatformLayout
       role="admin"
       heading="运营控制台"
-      summary="统一管理账号、试用、订阅和课堂授权。超级管理员拥有写权限，普通管理员只读查看运营概览。"
+      summary="统一管理账号、试用、订阅和课堂授权。"
     >
       <section data-motion-reveal className="bz-ink-panel overflow-hidden rounded-[2rem] p-6 sm:p-8">
         <p className="bz-eyebrow-inverse">Brown Zone / Admin</p>

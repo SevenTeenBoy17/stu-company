@@ -339,26 +339,46 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
               <ShieldCheck className="h-5 w-5 text-brand" />
               <h2 className="text-h2 text-fg-strong">还款雷达</h2>
             </div>
-            <div className="mt-5 grid gap-3">
-              {payload.repaymentOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={cn(
-                    "rounded-[1.35rem] border p-4",
-                    option.disabled ? "border-slate-200 bg-slate-50 opacity-60" : "border-border-brand bg-brand-subtle",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-body-sm font-semibold text-fg-strong">{option.label}</p>
-                    <p className="text-body-sm font-semibold tabular-nums text-brand-ink">{formatCurrency(option.amount)}</p>
+            {payload.overview.debt > 0 ? (
+              <div className="mt-5 grid gap-3">
+                {payload.repaymentOptions.map((option) => (
+                  <div
+                    key={option.id}
+                    className={cn(
+                      "rounded-[1.35rem] border p-4",
+                      option.disabled ? "border-slate-200 bg-slate-50 opacity-60" : "border-border-brand bg-brand-subtle",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-body-sm font-semibold text-fg-strong">{option.label}</p>
+                      <p className="text-body-sm font-semibold tabular-nums text-brand-ink">{formatCurrency(option.amount)}</p>
+                    </div>
+                    <p className="mt-2 text-caption leading-5 text-fg-muted">
+                      预计少付利息约 {formatCurrency(option.interestSavedEstimate)}，还款后债务{" "}
+                      {formatCurrency(option.afterDebt)}。
+                    </p>
                   </div>
-                  <p className="mt-2 text-caption leading-5 text-fg-muted">
-                    预计少付利息约 {formatCurrency(option.interestSavedEstimate)}，还款后债务{" "}
-                    {formatCurrency(option.afterDebt)}。
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              // itest12 P2：零债务下三张假还款选项都显示虚构的「少付利息 ¥45」，是误导性数字。
+              // 债务为 0 时换成空态引导，指向「先模拟一笔借款」。
+              <div className="mt-5 rounded-[1.35rem] border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
+                <p className="text-body-sm font-semibold text-fg-strong">当前无债务</p>
+                <p className="mt-2 text-caption leading-5 text-fg-muted">
+                  还没有借款，暂时不需要还款计划。先模拟一笔借款，观察月供、总利息和债务率的变化。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void submit("simulate")}
+                  disabled={pendingIntent !== null}
+                  className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-body-sm font-semibold text-fg-default transition hover:border-brand disabled:opacity-60"
+                >
+                  <Calculator className="h-4 w-4" />
+                  先模拟一笔借款
+                </button>
+              </div>
+            )}
           </div>
 
           {(message || result) && (

@@ -321,6 +321,17 @@ function parseBulletLines(block: string | undefined, minimum: string[]) {
   return lines.length > 0 ? lines : minimum;
 }
 
+// itest12 P2: the remote model sometimes echoes the prompt's format instruction
+// ("用一段 2-3 句的文字总结…") or returns a near-empty capture like "2-3句 -".
+// Neither is a real summary — fall back to the local teaching narrative so the AI
+// card never surfaces a template residue to a student.
+function sanitizeReviewSummary(raw: string | undefined, fallback: string): string {
+  const text = (raw ?? "").trim();
+  if (text.length < 10) return fallback;
+  if (text.includes("用一段") || /\d\s*[-–—]\s*\d\s*句/.test(text)) return fallback;
+  return text;
+}
+
 function parseHistoryReviewText(
   text: string,
   fallbackReview: HistoryReviewInsight,
@@ -329,7 +340,7 @@ function parseHistoryReviewText(
   const analysisMatch = text.match(/【诊断】([\s\S]*?)(?=【建议】|$)/);
   const nextStepsMatch = text.match(/【建议】([\s\S]*?)$/);
 
-  const summary = summaryMatch?.[1]?.trim() || fallbackReview.summary;
+  const summary = sanitizeReviewSummary(summaryMatch?.[1], fallbackReview.summary);
   const analysis = parseBulletLines(analysisMatch?.[1], fallbackReview.analysis);
   const nextSteps = parseBulletLines(nextStepsMatch?.[1], fallbackReview.nextSteps);
 

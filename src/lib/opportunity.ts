@@ -52,7 +52,6 @@ export interface OpportunityPayload {
   reasonOptions: Array<{ id: OpportunityReason; label: string; hint: string }>;
   coach: {
     title: string;
-    summary: string;
     nextSteps: string[];
   };
 }
@@ -198,8 +197,6 @@ export function buildOpportunityPayload(run: ScenarioRun): OpportunityPayload {
     reasonOptions: opportunityReasonOptions,
     coach: {
       title: "Mr.Brown 的机会训练提示",
-      summary:
-        "机会不是“立刻行动”的同义词。对 14-19 岁学生来说，更重要的是练习看见证据、说清风险、写下验证动作。",
       nextSteps: [
         "选择一个主题，写下至少 20 个字的观察理由。",
         "给信心打分时保留一点余地，避免把热度当确定性。",

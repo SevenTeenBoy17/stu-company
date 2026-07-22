@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { Mail, ScrollText, Sparkles, Users } from "lucide-react";
 
 type Member = {
   id: string;
@@ -174,9 +175,22 @@ export function FamilyManager() {
         </div>
       ) : !isPremium ? (
         <div className="mt-4">
-          <p className="text-sm leading-7 text-fg-muted">
-            开通家庭高级版（¥30/月），最多可让 3 个孩子继承完整 AI 评定、投资人格报告、赛季重玩，并自动收到每周成长邮件。
-          </p>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { Icon: Users, label: "多孩继承" },
+              { Icon: Sparkles, label: "AI 评定" },
+              { Icon: ScrollText, label: "人格报告" },
+              { Icon: Mail, label: "每周成长邮件" },
+            ].map(({ Icon, label }) => (
+              <li
+                key={label}
+                className="flex items-center gap-2 rounded-2xl bg-bg-muted px-3 py-2.5 text-sm font-semibold text-fg-default"
+              >
+                <Icon className="h-4 w-4 shrink-0 text-brand-ink" aria-hidden="true" />
+                {label}
+              </li>
+            ))}
+          </ul>
           <button
             type="button"
             data-motion-button

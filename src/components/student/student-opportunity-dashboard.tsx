@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Bot, CheckCircle2, ClipboardPenLine, Loader2, Radar, Sparkles } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import type { OpportunityPayload, OpportunityReason, OpportunityThemeId } from "@/lib/opportunity";
 import { cn } from "@/lib/utils";
 
@@ -149,7 +150,6 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
                       热度 {card.heat}
                     </span>
                   </div>
-                  <p className="mt-4 text-body-sm leading-7 text-fg-muted">{card.summary}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {card.evidence.map((item) => (
                       <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-caption text-fg-muted">
@@ -256,15 +256,30 @@ export function StudentOpportunityDashboard({ initialPayload }: { initialPayload
               <Bot className="h-5 w-5 text-brand" />
               <h2 className="text-h2 text-fg-strong">{payload.coach.title}</h2>
             </div>
-            <p className="mt-4 text-body leading-8 text-fg-muted">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
-              {payload.coach.nextSteps.map((step) => (
+              {payload.coach.nextSteps.slice(0, 1).map((step) => (
                 <p key={step} data-motion-card className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted">
                   <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                   {step}
                 </p>
               ))}
             </div>
+            {payload.coach.nextSteps.length > 1 && (
+              <Disclosure
+                className="mt-3"
+                summary={`展开其余 ${payload.coach.nextSteps.length - 1} 步建议`}
+                summaryClassName="text-caption font-semibold text-fg-muted"
+              >
+                <div className="space-y-3">
+                  {payload.coach.nextSteps.slice(1).map((step) => (
+                    <p key={step} className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-body-sm leading-6 text-fg-muted">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                      {step}
+                    </p>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
           </section>
         </aside>
       </div>

@@ -257,7 +257,7 @@ export function RankBoard({
                     {champion ? <Crown className="h-3.5 w-3.5 shrink-0 text-amber-500" /> : null}
                   </span>
                   {scope !== "school" ? (
-                    <span className="block truncate text-[0.7rem] text-fg-muted">
+                    <span className="block truncate text-caption text-fg-muted">
                       {aliasInfo(entry.schoolName).anonymous ? "未公开学校" : entry.schoolName}
                     </span>
                   ) : null}
@@ -266,7 +266,7 @@ export function RankBoard({
                   <span className="block font-mono text-lg font-bold tabular-nums text-[color:var(--up-600)]">
                     {entry.power.toLocaleString("zh-CN")}
                   </span>
-                  <span className="block text-[0.6rem] font-bold uppercase tracking-wider text-fg-muted">
+                  <span className="block text-caption font-bold uppercase tracking-wider text-fg-muted">
                     学习点
                   </span>
                 </span>

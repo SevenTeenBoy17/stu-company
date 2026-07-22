@@ -98,10 +98,10 @@ export function StudentAllocationPanel({
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-warm">
                   AI 配置中枢
                 </p>
-                <h2 className="mt-3 text-[2rem] font-semibold md:text-[2.2rem]">
+                <h2 className="mt-3 text-h2 font-semibold md:text-display-sm">
                   策略总览下的实时配置面板
                 </h2>
-                <p className="mt-3 max-w-2xl text-[15px] leading-8 text-white/74 md:text-base">
+                <p className="mt-3 max-w-2xl text-body leading-8 text-white/74 md:text-base">
                   {intel.regimeSummary}
                 </p>
               </div>
@@ -116,7 +116,7 @@ export function StudentAllocationPanel({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-white/70">配置倾向</p>
-                    <p className="mt-2 text-[1.65rem] font-semibold">{intel.regimeLabel}</p>
+                    <p className="mt-2 text-h2 font-semibold">{intel.regimeLabel}</p>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-white/72">
                     评分 {intel.score}
@@ -199,7 +199,7 @@ export function StudentAllocationPanel({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-white/70">当前持有热区</p>
-                      <p className="mt-2 text-[1.35rem] font-semibold text-white">重点持有与仓位温度</p>
+                      <p className="mt-2 text-h3 font-semibold text-white">重点持有与仓位温度</p>
                     </div>
                     <Sparkles className="h-4 w-4 text-brand-warm" />
                   </div>
@@ -253,7 +253,7 @@ export function StudentAllocationPanel({
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">
                 KeyAI / 再平衡建议
               </p>
-              <h3 className="mt-3 text-[2rem] font-semibold text-slate-950 xl:text-xl">
+              <h3 className="mt-3 text-h3 font-semibold text-slate-950 md:text-h2">
                 基于行情与当前持有的 AI 配置判断
               </h3>
             </div>
@@ -314,7 +314,7 @@ export function StudentAllocationPanel({
           <div className="mt-6 rounded-[1.7rem] bg-slate-950/[0.03] p-5">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-brand" />
-              <p className="text-[1.35rem] font-semibold text-slate-950">当前配置 vs 建议区间</p>
+              <p className="text-h3 font-semibold text-slate-950">当前配置 vs 建议区间</p>
             </div>
             <div className="mt-4 space-y-4">
               {intel.allocation.map((slice) => {

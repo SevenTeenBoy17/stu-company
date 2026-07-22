@@ -343,11 +343,8 @@ export function DemoPortal({
           <div className="absolute right-6 top-6 hidden h-24 w-24 rounded-full bg-orange-200/40 blur-3xl md:block" />
           <p className="bz-eyebrow">Access Center</p>
           <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            一个清爽入口，按你的身份进入 Brown Zone。
+            按身份进入 Brown Zone。
           </h2>
-          <p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-            登录窗口会单独弹出，页面本身保持轻盈。已有账号直接进入工作台，新用户可注册体验，游客可先轻量试玩。
-          </p>
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             <button
               type="button"

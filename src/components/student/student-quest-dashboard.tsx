@@ -439,7 +439,7 @@ function QuestMapGallery({
           </div>
         </div>
 
-        <div className="grid gap-4 bg-[linear-gradient(180deg,#fffaf6,#ffffff)] p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 bg-[linear-gradient(180deg,#fffaf6,#ffffff)] p-5 sm:grid-cols-2 xl:grid-cols-2">
           {taskNodes.map((quest, index) => {
             const active = quest.id === selectedQuestId;
             const profile = questVisualProfileFor(quest, index);

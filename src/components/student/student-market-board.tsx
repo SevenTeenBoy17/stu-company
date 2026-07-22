@@ -8,7 +8,6 @@ import {
   Activity,
   BookmarkCheck,
   Bot,
-  Layers3,
   LoaderCircle,
   Newspaper,
   PieChart,
@@ -1430,7 +1429,7 @@ export function StudentMarketBoard({
         </div>
       </section>
 
-      <section id="sec-peer-heat" className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+      <section id="sec-peer-heat" className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-3">
         <div data-testid="peer-heat-card" data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <UsersRound className="h-5 w-5 text-brand" />
@@ -1468,7 +1467,7 @@ export function StudentMarketBoard({
                     />
                   </div>
                   <ExpandableText
-                    text={`${item.concept} · ${item.coachNote}`}
+                    text={item.concept}
                     className="mt-2"
                     textClassName="text-caption font-normal leading-5 text-fg-muted"
                   />
@@ -1512,33 +1511,6 @@ export function StudentMarketBoard({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
-          <div className="flex items-center gap-2">
-            <Layers3 className="h-5 w-5 text-brand" />
-            <h3 className="text-h2 text-fg-strong">板块热度条</h3>
-          </div>
-          <div className="mt-5 space-y-5">
-            {payload.sectorPerformance.map((item) => {
-              const width = `${Math.min(Math.max(Math.abs(item.changePercent) * 18, 12), 100)}%`;
-              return (
-                <div key={item.id}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-body font-semibold text-fg-strong">{item.label}</p>
-                    <p className={cn("text-body-sm font-semibold tabular-nums", getMarketMoveClasses(item.changePercent).text)}>
-                      {item.changePercent >= 0 ? "+" : ""}
-                      {item.changePercent.toFixed(2)}%
-                    </p>
-                  </div>
-                  <div className="mt-2 h-3 rounded-full bg-slate-100">
-                    <div className={cn("h-full rounded-full", getMarketMoveClasses(item.changePercent).bar)} style={{ width }} />
-                  </div>
-                  <p className="mt-2 text-caption font-normal text-fg-muted">领跑观察：{item.leadSymbol}</p>
-                </div>
-              );
-            })}
           </div>
         </div>
 

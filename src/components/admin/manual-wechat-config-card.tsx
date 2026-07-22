@@ -254,10 +254,6 @@ export function ManualWechatConfigCard({
                   <li key={step}>{step}</li>
                 ))}
               </ul>
-              <p className="mt-2">
-                如果后台配置为空，系统仍会尝试读取 Vercel 环境变量
-                <code className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-xs">WECHAT_MANUAL_QR_URL</code>。
-              </p>
             </div>
           ) : null}
 
@@ -277,6 +273,10 @@ export function ManualWechatConfigCard({
               <li className="rounded-xl bg-white p-3">3. 用户付款后提交备注或截图，后台“人工收款订单”应显示待核验。</li>
               <li className="rounded-xl bg-white p-3">4. 超级管理员确认到账后，用户付款页应出现回执号和有效期。</li>
             </ol>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+              如果后台配置为空，系统仍会尝试读取 Vercel 环境变量
+              <code className="mx-1 rounded bg-white px-1.5 py-0.5 font-mono text-xs">WECHAT_MANUAL_QR_URL</code>。
+            </p>
           </Disclosure>
         </div>
 

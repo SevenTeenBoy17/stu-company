@@ -46,7 +46,6 @@ export interface GoalAccountPayload {
   }>;
   coach: {
     title: string;
-    summary: string;
     nextSteps: string[];
   };
 }
@@ -66,7 +65,7 @@ export const goalAccountTemplates: GoalAccountTemplate[] = [
     horizonRounds: 4,
     category: "safety",
     concept: "应急金",
-    whyItMatters: "先能扛住突发支出，再谈更高波动的投资训练。",
+    whyItMatters: "先扛住突发支出",
   },
   {
     id: "laptop",
@@ -75,7 +74,7 @@ export const goalAccountTemplates: GoalAccountTemplate[] = [
     horizonRounds: 5,
     category: "learning",
     concept: "目标储蓄",
-    whyItMatters: "把未来学习工具拆成每回合的小额行动，降低一次性压力。",
+    whyItMatters: "小额攒够工具钱",
   },
   {
     id: "study-trip",
@@ -84,7 +83,7 @@ export const goalAccountTemplates: GoalAccountTemplate[] = [
     horizonRounds: 3,
     category: "experience",
     concept: "机会成本",
-    whyItMatters: "体验型消费可以存在，但需要和储蓄、投资试错一起排序。",
+    whyItMatters: "和储蓄一起排序",
   },
   {
     id: "startup",
@@ -93,7 +92,7 @@ export const goalAccountTemplates: GoalAccountTemplate[] = [
     horizonRounds: 6,
     category: "venture",
     concept: "风险预算",
-    whyItMatters: "创业不是把钱一次押上，而是先留出可承受失败的试验金。",
+    whyItMatters: "先留可输的试验金",
   },
 ];
 
@@ -144,10 +143,11 @@ function buildCoach(goals: GoalAccountView[], availableCash: number): GoalAccoun
   }
 
   nextSteps.push("每次只记录一个目标和一句理由，避免把目标账户变成新的认知负担。");
+  // 尾句唯一新信息并入 bullet（首条可见），summary 与 hero 副标题重复已删。
+  nextSteps.unshift("目标账户不会神奇增加财富，但能帮你减少冲动和拖延。");
 
   return {
     title: "Mr.Brown 的目标账户建议",
-    summary: "目标账户把“我想买什么”变成“每回合怎么安排现金流”。它不会神奇增加财富，但能减少冲动和拖延。",
     nextSteps,
   };
 }

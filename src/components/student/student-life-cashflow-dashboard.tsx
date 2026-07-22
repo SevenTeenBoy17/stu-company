@@ -247,7 +247,6 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <div className="mt-5 rounded-[1.7rem] border border-brand/20 bg-brand/10 p-5">
               <p className="bz-eyebrow-inverse">Mr.Brown</p>
               <h2 className="mt-3 text-h2 text-white">{payload.coach.title}</h2>
-              <p className="mt-3 text-body leading-7 text-white/66">{payload.coach.summary}</p>
               <button
                 type="button"
                 data-testid="life-cashflow-apply"

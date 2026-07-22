@@ -149,7 +149,8 @@ export function PlatformLayout({
                 <p className="bz-eyebrow-inverse">Brown Zone</p>
                 {/* itest9 a11y P2(1.3.1/2.4.6)：页面主标题须是 h1（此前用 p，导致各平台页无 h1、标题层级跳级）。 */}
                 <h1 className="mt-3 text-h1 font-semibold sm:text-display-lg">{heading}</h1>
-                <p className="mt-3 text-body leading-8 text-white/60 sm:text-body-lg">{summary}</p>
+                {/* itest12-P2 #42：移动/平板 header 不再渲染 summary（应用内不放产品说明，首屏让位给
+                    KPI/任务）。summary 仍保留在桌面侧栏（下方 aside）。 */}
               </div>
             </div>
           </div>

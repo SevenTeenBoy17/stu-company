@@ -543,7 +543,7 @@ function buildTeachingMetrics(
 }
 
 function buildFacts(metadata: CatalogInstrument, staticInfo?: StaticInfoInput) {
-  return [
+  const facts = [
     {
       label: "行业板块",
       value: staticInfo?.board || metadata.sector,
@@ -560,15 +560,16 @@ function buildFacts(metadata: CatalogInstrument, staticInfo?: StaticInfoInput) {
       label: "每手股数",
       value: staticInfo?.lotSize || "1",
     },
-    {
-      label: "总股本",
-      value: formatShares(staticInfo?.totalShares),
-    },
-    {
-      label: "流通股本",
-      value: formatShares(staticInfo?.circulatingShares),
-    },
   ];
+
+  // itest12 P2：无 staticInfo 时 formatShares 回退占位词「教学观察」，作为股本数值对学生是
+  // 纯噪声甚至误导 —— 仅在拿到真实值时才展示总股本/流通股本（Stripe 无数据字段隐藏）。
+  const totalShares = formatShares(staticInfo?.totalShares);
+  if (totalShares !== "教学观察") facts.push({ label: "总股本", value: totalShares });
+  const circulatingShares = formatShares(staticInfo?.circulatingShares);
+  if (circulatingShares !== "教学观察") facts.push({ label: "流通股本", value: circulatingShares });
+
+  return facts;
 }
 
 function buildOverallScore(metrics: MarketBoardMetric[]) {
