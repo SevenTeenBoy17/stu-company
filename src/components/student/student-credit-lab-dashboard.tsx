@@ -207,9 +207,11 @@ export function StudentCreditLabDashboard({ initialPayload }: { initialPayload: 
                 <CreditCard className="h-5 w-5 text-brand" />
                 <h2 className="text-h1 text-fg-strong">信用场景卡</h2>
               </div>
-              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                先模拟，再执行。执行借款或还款会写入沙盘历史，但不会凭空提高净值。
-              </p>
+              {/* C1 折：合规内核压成一行灰字，操作说明折入 Disclosure */}
+              <p className="mt-2 text-caption font-semibold text-slate-500">执行不会凭空提高净值。</p>
+              <Disclosure summary="怎么用" className="mt-1" summaryClassName="text-caption text-fg-muted">
+                先模拟，再执行；借款或还款会写入沙盘历史。
+              </Disclosure>
             </div>
             <span className={cn("rounded-full border px-4 py-2 text-caption font-semibold", statusClass[selected.status])}>
               {selected.stressLabel}

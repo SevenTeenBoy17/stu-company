@@ -2,6 +2,7 @@
 
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
@@ -91,11 +92,14 @@ function GatewayCard({
   title,
   summary,
   label,
+  icon,
 }: {
   href: string;
   title: string;
   summary: string;
   label: string;
+  /** W2 图形化：复用 service-icons，summary 压成关键词 */
+  icon: string;
 }) {
   return (
     <Link
@@ -105,12 +109,21 @@ function GatewayCard({
       className="group rounded-[1.45rem] border border-slate-200 bg-white p-4 transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_18px_44px_rgba(15,23,42,0.08)]"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <span className="bz-brand-chip rounded-full px-2.5 py-1 text-caption font-semibold">
-            {label}
-          </span>
-          <h3 className="mt-3 text-h3 text-fg-strong">{title}</h3>
-          <p className="mt-2 text-body-sm leading-6 text-fg-muted">{summary}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <Image
+            src={icon}
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 shrink-0 rounded-[1rem] object-cover shadow-sm transition group-hover:scale-105"
+          />
+          <div className="min-w-0">
+            <span className="bz-brand-chip rounded-full px-2.5 py-1 text-caption font-semibold">
+              {label}
+            </span>
+            <h3 className="mt-3 text-h3 text-fg-strong">{title}</h3>
+            <p className="mt-2 text-body-sm leading-6 text-fg-muted">{summary}</p>
+          </div>
         </div>
         <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-orange-500" />
       </div>
@@ -378,11 +391,12 @@ export function StudentWealthDashboard({
           </div>
           <Sparkles className="h-6 w-6 text-brand" />
         </div>
+        {/* W2 图形化：4 卡接 service-icons + summary 压成关键词 */}
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <GatewayCard href="/student/history" label="复盘" title="查看历史操作" summary="把交易、观察单、基金实验和保护伞串成行为故事。" />
-          <GatewayCard href="/student/fund-lab" label="组合" title="基金/ETF 实验" summary="比较分散配置、回撤和风险评分，训练长期持有意识。" />
-          <GatewayCard href="/student/goal-accounts" label="生活" title="目标账户" summary="把电脑、研学、备用金和创业启动金拆成可执行目标。" />
-          <GatewayCard href="/student/protection" label="防守" title="风险保护伞" summary="用应急金、保险、债务和分散度做突发事件压力测试。" />
+          <GatewayCard href="/student/history" label="复盘" title="查看历史操作" summary="交易与观察复盘" icon="/brand/service-icons/history-scroll.webp" />
+          <GatewayCard href="/student/fund-lab" label="组合" title="基金/ETF 实验" summary="分散配置与回撤" icon="/brand/service-icons/fund-basket.webp" />
+          <GatewayCard href="/student/goal-accounts" label="生活" title="目标账户" summary="目标储蓄拆解" icon="/brand/service-icons/goal-piggy.webp" />
+          <GatewayCard href="/student/protection" label="防守" title="风险保护伞" summary="突发压力测试" icon="/brand/service-icons/protection-umbrella.webp" />
         </div>
       </section>
 
@@ -392,11 +406,21 @@ export function StudentWealthDashboard({
             <div>
               <p className="bz-eyebrow">Life Finance Map</p>
               <h2 className="mt-3 text-h1 text-fg-strong">多元理财地图</h2>
-              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                真实理财不只看一只资产涨跌，而是在安全垫、成长资产、生活目标和负债之间保持可持续的节奏。
-              </p>
+              {/* W1 图文卡：四区平衡示意图承载 concept，长解说压成一句 */}
+              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">四区平衡，别只看一只涨跌。</p>
             </div>
             <Target className="h-6 w-6 text-brand" />
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-[1.6rem] bg-bg-muted">
+            <Image
+              src="/brand/v3/wealth-life-map.webp"
+              alt="多元理财：安全垫·成长·生活·负债四区平衡"
+              width={900}
+              height={500}
+              sizes="(min-width: 1280px) 620px, 100vw"
+              className="h-auto w-full object-cover"
+            />
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">

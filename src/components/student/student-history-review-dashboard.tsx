@@ -96,13 +96,15 @@ function MetricCard({
 }: {
   label: string;
   value: ReactNode;
-  hint: ReactNode;
+  // HI2：hint 改可选——纯方法论 hint（如最大回撤）删除后不渲染空行，
+  // 内嵌数据的 hint（累计回合 / 纪律趋势）继续传入保留。
+  hint?: ReactNode;
 }) {
   return (
     <div className="rounded-[1.7rem] border border-slate-200/80 bg-white/88 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.05)]">
       <p className="text-body-sm text-fg-muted">{label}</p>
       <p className="mt-3 text-h2 tabular-nums text-fg-strong">{value}</p>
-      <p className="mt-3 text-body-sm leading-6 text-fg-muted">{hint}</p>
+      {hint ? <p className="mt-3 text-body-sm leading-6 text-fg-muted">{hint}</p> : null}
     </div>
   );
 }
@@ -402,10 +404,10 @@ export function StudentHistoryReviewDashboard({
             历史峰值 <MoneyText>{formatCurrency(payload.metrics.peakNetWorth)}</MoneyText>
           </p>
         </div>
+        {/* HI2 删：最大回撤 hint 为纯方法论（无数据），Apple 数字大标签小 */}
         <MetricCard
           label="最大回撤"
           value={`${payload.metrics.maxDrawdown.toFixed(1)}%`}
-          hint="这项越稳，说明你越能把收益留在账户里。"
         />
         <MetricCard
           label="纪律趋势"
@@ -434,9 +436,7 @@ export function StudentHistoryReviewDashboard({
                       <h2 className="mt-3 text-h1 md:text-display-sm">
                         历史操作下的趋势复盘面板
                       </h2>
-                      <p className="mt-3 max-w-2xl text-body leading-7 text-white/72">
-                        把每一回合的净值、风险、纪律和资金结构放在同一条线上看，更容易识别&ldquo;做对了什么&rdquo;。
-                      </p>
+                      {/* HI1 删：KPI 行 + 三张趋势图已承载「同一条线上看」的语义 */}
                     </div>
                     <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-caption font-semibold text-white/78">
                       <Clock3 className="h-3.5 w-3.5" />
@@ -569,10 +569,10 @@ export function StudentHistoryReviewDashboard({
             </div>
           </ChartShell>
 
+          {/* HI3 删：下方 <details> 每回合自解释（摘要→展开动作），description 冗余 */}
           <ChartShell
             eyebrow="Timeline"
             title="按回合展开的历史操作"
-            description="每个回合都保留了主题、事件和动作分组。先看摘要，再展开动作，会比从流水里硬找问题更高效。"
           >
             <div className="space-y-4">
               {payload.actionGroups.map((group, index) => (

@@ -668,9 +668,11 @@ export function StudentMarketBoard({
           <div>
             <p className="bz-eyebrow">Market Radar</p>
             <h2 className="mt-3 text-h1 text-fg-strong">市场信息</h2>
-            <p className="mt-3 text-body-lg text-fg-default">
-              这里是只读观察台，先看主线，再看结构，最后再去问 AI。
-            </p>
+            {/* M1：纯操作说明压成 chip「只读观察台」（原「先看主线…问 AI」删） */}
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-caption font-semibold text-fg-muted">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              只读观察台
+            </span>
             <label className="mt-5 flex min-h-12 items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4">
               <Search className="h-4 w-4 text-fg-muted" />
               <input
@@ -891,12 +893,23 @@ export function StudentMarketBoard({
       <section id="sec-my-watchlist" className="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(380px,0.72fr)]">
         <div data-motion-card className="market-motion-panel panel rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="bz-eyebrow">My Watchlist</p>
-              <h3 className="mt-3 text-h2 text-fg-strong">我的自选观察</h3>
-              <p className="mt-2 max-w-2xl text-body text-fg-muted">
-                先把“为什么值得看”写下来，再观察下一次行情是否验证你的判断。
-              </p>
+            {/* M2 图文卡：棕熊贴便签小图 + 一句收敛（原两句自我说明压成一句） */}
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="hidden h-14 w-14 shrink-0 overflow-hidden rounded-[1rem] bg-bg-muted sm:block">
+                <Image
+                  src="/brand/v3/watchlist-why.webp"
+                  alt="自选观察：先写为什么，再看是否验证"
+                  width={640}
+                  height={640}
+                  sizes="56px"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="bz-eyebrow">My Watchlist</p>
+                <h3 className="mt-3 text-h2 text-fg-strong">我的自选观察</h3>
+                <p className="mt-2 max-w-2xl text-body text-fg-muted">先写为什么，再看是否验证。</p>
+              </div>
             </div>
             <div className="rounded-full bg-slate-50 px-4 py-2 text-body-sm font-semibold tabular-nums text-fg-muted">
               已记录 {studentWatchlist?.historyCount ?? 0} 次
@@ -1310,7 +1323,7 @@ export function StudentMarketBoard({
               <Radar className="h-5 w-5 text-brand" />
               <h3 className="text-h2 text-fg-strong">6维教学观察雷达</h3>
             </div>
-            <p className="text-body-sm text-fg-muted">文字说明移到右侧，避免图内拥挤。</p>
+            {/* M3 删：口播式布局自述（文字说明移到右侧…）对学生零价值 */}
           </div>
           <div className="mt-5 grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[260px_minmax(0,1fr)]">
             <div data-motion-viz className="flex flex-col items-center justify-center rounded-[2rem] bg-slate-50 p-4">

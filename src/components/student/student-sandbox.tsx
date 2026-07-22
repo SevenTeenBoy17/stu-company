@@ -1045,8 +1045,8 @@ export function StudentSandbox({
           </div>
           {topLeaderboard.every((entry) => entry.userId !== state.user.id) ? (
             <div className="mt-4 rounded-[1.5rem] border border-orange-400 bg-orange-50 p-4">
+              {/* H4 删：鼓励语（无数据）删，保留带 rank 数据的当前位置 */}
               <p className="text-body font-semibold text-fg-strong">我的当前位置：#{rank}</p>
-              <p className="mt-1 text-body-sm text-fg-muted">继续提高纪律分和现金垫，排名会更稳。</p>
             </div>
           ) : null}
         </section>

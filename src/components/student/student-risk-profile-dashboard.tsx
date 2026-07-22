@@ -393,8 +393,7 @@ export function StudentRiskProfileDashboard({
                   投资人格实验室
                 </h2>
                 <p className="mt-4 text-body-lg leading-8 text-white/68">
-                  通过真实生活情境测一测你的风险承受方式，再把结果映射到当前沙盘资产配置。
-                  它不是买卖建议，而是一张帮助你“认识自己”的训练地图。
+                  测一测你的风险承受方式，映射到当前沙盘资产配置。
                 </p>
               </div>
               <div data-risk-score data-motion-card className="rounded-[1.75rem] border border-white/12 bg-white/[0.08] p-5 text-right">
@@ -463,11 +462,19 @@ export function StudentRiskProfileDashboard({
           data-motion-reveal
           className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center"
         >
+          {/* RP8 图文卡：空态插画卡 + 一句解锁引导（原三句自我说明段落删） */}
+          <div className="mx-auto mb-5 w-full max-w-xs overflow-hidden rounded-[1.5rem] bg-bg-muted">
+            <Image
+              src="/brand/v3/rp-empty-persona.webp"
+              alt="投资人格待生成：答完 6 题即可解锁"
+              width={800}
+              height={600}
+              sizes="(max-width: 768px) 80vw, 320px"
+              className="h-auto w-full object-cover"
+            />
+          </div>
           <p className="bz-eyebrow">Risk Lab</p>
-          <h2 className="mt-3 text-h1 text-fg-strong">先完成下方 6 个情境测评</h2>
-          <p className="mx-auto mt-3 max-w-xl text-body-sm leading-7 text-fg-muted">
-            还没有生成投资人格。答完下面 6 题后点击「生成我的投资人格」，这里会显示你的人格分、雷达图与配置地图——答案没有对错，请凭真实直觉选择。
-          </p>
+          <h2 className="mt-3 text-h1 text-fg-strong">答完 6 题，解锁你的投资人格</h2>
         </section>
       )}
 
@@ -479,9 +486,7 @@ export function StudentRiskProfileDashboard({
                 <Compass className="h-5 w-5 text-brand" />
                 <h2 className="text-h1 text-fg-strong">6 个情境选择</h2>
               </div>
-              <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                每题只测一个概念，降低认知负荷。答案没有对错，关键是看见自己的决策倾向。
-              </p>
+              {/* RP5 删：进度语义已由右上「已翻开 / 已选择」计数承担 */}
             </div>
             <div className="flex flex-wrap gap-2">
               <span data-testid="risk-reveal-counter" className="rounded-full bg-brand-soft px-4 py-2 text-body-sm font-semibold text-brand-ink">
@@ -621,9 +626,10 @@ export function StudentRiskProfileDashboard({
                   <Brain className="h-5 w-5 text-brand" />
                   <h2 className="text-h1 text-fg-strong">用真实行为复评</h2>
                 </div>
-                <p className="mt-2 text-body leading-7 text-fg-muted">
+                {/* RP6 折：行为复评说明收进「这是什么」 */}
+                <Disclosure summary="这是什么" className="mt-2">
                   结合你的回合记录、仓位纪律、学习进度和风险信号，生成一张更贴近真实操作的行为画像。
-                </p>
+                </Disclosure>
               </div>
               {behaviorState === "success" && (
                 <span className="bz-brand-chip rounded-full px-3 py-1 text-caption font-semibold">
@@ -659,13 +665,7 @@ export function StudentRiskProfileDashboard({
               </p>
             )}
 
-            {behaviorState === "idle" && (
-              <div className="mt-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-body-sm font-semibold leading-6 text-slate-600">
-                  建议完成几次交易、储蓄或学习任务后再复评，结果会比单次问卷更接近你的真实决策节奏。
-                </p>
-              </div>
-            )}
+            {/* RP7 删：idle 提示与上句语义叠加，按钮文案已表意 */}
 
             {behaviorState === "error" && (
               <p role="alert" className="mt-4 flex gap-2 rounded-[1.35rem] border border-error/20 bg-error-soft p-4 text-body-sm font-semibold leading-6 text-error">
@@ -774,8 +774,9 @@ export function StudentRiskProfileDashboard({
               <Target className="h-5 w-5 text-brand" />
               <h2 className="text-h1 text-fg-strong">当前配置 vs 人格区间</h2>
             </div>
-            <p className="mt-2 text-body leading-7 text-fg-muted">
-              建议区间来自你的测评倾向和当前沙盘风险，不代表真实投资建议。
+            {/* RP9 折：合规内核压成一行灰字免责 */}
+            <p className="mt-2 text-caption font-semibold text-slate-500">
+              建议区间源自测评倾向，不代表真实投资建议。
             </p>
 
             <div className="mt-6 space-y-4">
@@ -786,8 +787,8 @@ export function StudentRiskProfileDashboard({
                   <div key={item.id} data-motion-card className="rounded-[1.45rem] bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
+                        {/* RP1 图形化：hint 三句删，双进度条 + 高于/低于徽章已足够表意 */}
                         <p className="text-body font-semibold text-fg-strong">{item.label}</p>
-                        <p className="mt-1 text-body-sm font-semibold leading-6 text-slate-600">{item.hint}</p>
                       </div>
                       <span className={cn("rounded-full px-3 py-1 text-caption font-semibold", allocationTone[item.tone])}>
                         {item.gap > 0 ? "高于" : item.gap < 0 ? "低于" : "贴近"}
@@ -820,15 +821,33 @@ export function StudentRiskProfileDashboard({
               <h2 className="text-h1 text-fg-strong">{payload.coach.title}</h2>
             </div>
             <p className="mt-3 text-body leading-7 text-fg-muted">{payload.coach.summary}</p>
+            {/* RP3 折：默认展开第 1 步，其余收进 Disclosure */}
             <div className="mt-5 space-y-3">
-              {payload.coach.nextSteps.map((step, index) => (
+              {payload.coach.nextSteps.slice(0, 1).map((step) => (
                 <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
-                    {index + 1}
+                    1
                   </span>
                   <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>
                 </div>
               ))}
+              {payload.coach.nextSteps.length > 1 && (
+                <Disclosure
+                  summary={`查看其余 ${payload.coach.nextSteps.length - 1} 步`}
+                  className="rounded-[1.35rem] border border-slate-200 px-2"
+                >
+                  <div className="space-y-3">
+                    {payload.coach.nextSteps.slice(1).map((step, index) => (
+                      <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
+                          {index + 2}
+                        </span>
+                        <p className="text-body font-semibold leading-7 text-slate-700">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Disclosure>
+              )}
             </div>
             <div className="mt-5 rounded-[1.35rem] bg-slate-950 p-4 text-white">
               <p className="bz-eyebrow-inverse normal-case tracking-normal text-white/58">下一站推荐</p>
@@ -847,6 +866,7 @@ export function StudentRiskProfileDashboard({
               <ShieldCheck className="h-5 w-5 text-brand" />
               <h2 className="text-h1 text-fg-strong">雷达维度解释</h2>
             </div>
+            {/* RP2 折：label+value 卡保留（雷达数据等价物），6 条 hint 收进单条 Disclosure */}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {payload.radar.map((metric) => (
                 <div key={metric.id} className="rounded-[1.25rem] bg-slate-50 p-4">
@@ -854,10 +874,22 @@ export function StudentRiskProfileDashboard({
                     <p className="text-body-sm font-semibold text-fg-strong">{metric.label}</p>
                     <span className="bz-brand-text-on-light text-h2 tabular-nums">{metric.value}</span>
                   </div>
-                  <p className="mt-2 text-caption font-semibold leading-5 text-slate-600">{metric.hint}</p>
                 </div>
               ))}
             </div>
+            <Disclosure
+              summary="查看维度说明"
+              className="mt-4 rounded-[1.25rem] border border-slate-200 px-2"
+            >
+              <dl className="grid gap-2">
+                {payload.radar.map((metric) => (
+                  <div key={metric.id}>
+                    <dt className="text-body-sm font-semibold text-fg-strong">{metric.label}</dt>
+                    <dd className="mt-0.5 text-caption font-semibold leading-5 text-slate-600">{metric.hint}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Disclosure>
           </section>
         </aside>
       </section>

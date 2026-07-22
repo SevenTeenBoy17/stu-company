@@ -325,8 +325,8 @@ export function StudentAllocationPanel({
                   <div key={slice.id}>
                     <div className="flex items-end justify-between gap-3">
                       <div>
+                        {/* H2 删：slice.hint 已在左侧暗环图例显示，此处副本删（双进度条+高于/低于徽章已够） */}
                         <p className="text-sm font-semibold text-slate-900">{slice.label}</p>
-                        <p className="mt-1 text-xs text-slate-600">{slice.hint}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-900">
@@ -360,8 +360,9 @@ export function StudentAllocationPanel({
             </div>
           </div>
 
+          {/* H3 折：默认铺开第 1 条建议，其余进 Disclosure（与 wealth 同口径） */}
           <div className="mt-6 space-y-3">
-            {intel.suggestions.map((suggestion) => {
+            {intel.suggestions.slice(0, 1).map((suggestion) => {
               const tone = toneStyles(suggestion.tone);
               return (
                 <div key={suggestion.id} className={cn("rounded-[1.5rem] p-4", tone.surface)}>
@@ -375,6 +376,29 @@ export function StudentAllocationPanel({
                 </div>
               );
             })}
+            {intel.suggestions.length > 1 ? (
+              <Disclosure
+                summary={`查看其余 ${intel.suggestions.length - 1} 条建议`}
+                className="rounded-[1.5rem] border border-slate-200 px-2"
+              >
+                <div className="space-y-3">
+                  {intel.suggestions.slice(1).map((suggestion) => {
+                    const tone = toneStyles(suggestion.tone);
+                    return (
+                      <div key={suggestion.id} className={cn("rounded-[1.5rem] p-4", tone.surface)}>
+                        <div className="flex items-center gap-3">
+                          <span className={cn("h-2.5 w-2.5 rounded-full", tone.dot)} />
+                          <p className={cn("text-sm font-semibold", tone.text)}>{suggestion.label}</p>
+                        </div>
+                        <p className="mt-2 text-sm leading-7 text-slate-700">
+                          <MoneyInlineText text={stripMarkdown(suggestion.detail)} />
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Disclosure>
+            ) : null}
           </div>
         </div>
       </div>

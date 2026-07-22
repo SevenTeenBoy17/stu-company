@@ -510,7 +510,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
             <BookOpenCheck className="h-5 w-5 text-brand" />
             <h3 className="text-h2 text-fg-strong">服务九宫格</h3>
           </div>
-          <p className="text-body-sm text-fg-muted">12 个训练入口，点击即进。</p>
+          {/* H1 删：自我说明副标题删（九宫格图标+标题自明） */}
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {payload.services.map((service) => (
