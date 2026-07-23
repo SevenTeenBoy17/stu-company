@@ -92,10 +92,11 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 12_0
  * shapes; all are .optional() so it adds no protection here.
  */
 function getAiConfig() {
-  const apiKey = process.env.AI_API_KEY ?? process.env.BROWN_AGENT_API_KEY;
-  const primary = process.env.AI_BASE_URL_PRIMARY ?? process.env.BROWN_AGENT_BASE_URL;
-  const secondary =
-    process.env.AI_BASE_URL_SECONDARY ?? process.env.BROWN_AGENT_FALLBACK_BASE_URL;
+  const apiKey = (process.env.AI_API_KEY ?? process.env.BROWN_AGENT_API_KEY)?.trim();
+  const primary = (process.env.AI_BASE_URL_PRIMARY ?? process.env.BROWN_AGENT_BASE_URL)?.trim();
+  const secondary = (
+    process.env.AI_BASE_URL_SECONDARY ?? process.env.BROWN_AGENT_FALLBACK_BASE_URL
+  )?.trim();
   if (!apiKey || !primary) return null;
   return {
     apiKey,
@@ -507,7 +508,15 @@ async function requestRemoteText(input: {
         provider: "remote",
         baseUrl,
       };
-    } catch {
+    } catch (error) {
+      // 运维观测：远程网关失败降级必须留痕（状态码/网络错误名），否则生产上
+      // provider=fallback 无法定位根因。此处绝不记录密钥或请求体。
+      console.warn("[ai-gateway] remote attempt failed", {
+        baseUrl,
+        reason: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        cause:
+          error instanceof Error && error.cause instanceof Error ? error.cause.message : undefined,
+      });
       continue;
     }
   }
