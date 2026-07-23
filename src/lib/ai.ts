@@ -68,7 +68,15 @@ function endpointForBase(baseUrl: string) {
   return normalized.endsWith("/v1") ? `${normalized}/messages` : `${normalized}/v1/messages`;
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 12_000) {
+// 生产实测（2026-07-23 运行时日志）：gpt-agent.cc 从 Vercel 美东出流的完成耗时在
+// 7–15s 波动，12s 上限会把慢响应掐成 AbortError→fallback。提到 25s：两个 base URL
+// 最坏 50s，仍在 Hobby 函数 60s 上限内。AI_TIMEOUT_MS 可按网关实情覆盖。
+function aiTimeoutMs() {
+  const parsed = Number(process.env.AI_TIMEOUT_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 25_000;
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = aiTimeoutMs()) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
