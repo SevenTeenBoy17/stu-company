@@ -98,10 +98,10 @@ export function StudentAllocationPanel({
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-warm">
                   AI 配置中枢
                 </p>
-                <h2 className="mt-3 text-[2rem] font-semibold md:text-[2.2rem]">
+                <h2 className="mt-3 text-h2 font-semibold md:text-display-sm">
                   策略总览下的实时配置面板
                 </h2>
-                <p className="mt-3 max-w-2xl text-[15px] leading-8 text-white/74 md:text-base">
+                <p className="mt-3 max-w-2xl text-body leading-8 text-white/74 md:text-base">
                   {intel.regimeSummary}
                 </p>
               </div>
@@ -116,7 +116,7 @@ export function StudentAllocationPanel({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-white/70">配置倾向</p>
-                    <p className="mt-2 text-[1.65rem] font-semibold">{intel.regimeLabel}</p>
+                    <p className="mt-2 text-h2 font-semibold">{intel.regimeLabel}</p>
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs text-white/72">
                     评分 {intel.score}
@@ -199,7 +199,7 @@ export function StudentAllocationPanel({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-white/70">当前持有热区</p>
-                      <p className="mt-2 text-[1.35rem] font-semibold text-white">重点持有与仓位温度</p>
+                      <p className="mt-2 text-h3 font-semibold text-white">重点持有与仓位温度</p>
                     </div>
                     <Sparkles className="h-4 w-4 text-brand-warm" />
                   </div>
@@ -253,7 +253,7 @@ export function StudentAllocationPanel({
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">
                 KeyAI / 再平衡建议
               </p>
-              <h3 className="mt-3 text-[2rem] font-semibold text-slate-950 xl:text-xl">
+              <h3 className="mt-3 text-h3 font-semibold text-slate-950 md:text-h2">
                 基于行情与当前持有的 AI 配置判断
               </h3>
             </div>
@@ -314,7 +314,7 @@ export function StudentAllocationPanel({
           <div className="mt-6 rounded-[1.7rem] bg-slate-950/[0.03] p-5">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-brand" />
-              <p className="text-[1.35rem] font-semibold text-slate-950">当前配置 vs 建议区间</p>
+              <p className="text-h3 font-semibold text-slate-950">当前配置 vs 建议区间</p>
             </div>
             <div className="mt-4 space-y-4">
               {intel.allocation.map((slice) => {
@@ -325,8 +325,8 @@ export function StudentAllocationPanel({
                   <div key={slice.id}>
                     <div className="flex items-end justify-between gap-3">
                       <div>
+                        {/* H2 删：slice.hint 已在左侧暗环图例显示，此处副本删（双进度条+高于/低于徽章已够） */}
                         <p className="text-sm font-semibold text-slate-900">{slice.label}</p>
-                        <p className="mt-1 text-xs text-slate-600">{slice.hint}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-slate-900">
@@ -360,8 +360,9 @@ export function StudentAllocationPanel({
             </div>
           </div>
 
+          {/* H3 折：默认铺开第 1 条建议，其余进 Disclosure（与 wealth 同口径） */}
           <div className="mt-6 space-y-3">
-            {intel.suggestions.map((suggestion) => {
+            {intel.suggestions.slice(0, 1).map((suggestion) => {
               const tone = toneStyles(suggestion.tone);
               return (
                 <div key={suggestion.id} className={cn("rounded-[1.5rem] p-4", tone.surface)}>
@@ -375,6 +376,29 @@ export function StudentAllocationPanel({
                 </div>
               );
             })}
+            {intel.suggestions.length > 1 ? (
+              <Disclosure
+                summary={`查看其余 ${intel.suggestions.length - 1} 条建议`}
+                className="rounded-[1.5rem] border border-slate-200 px-2"
+              >
+                <div className="space-y-3">
+                  {intel.suggestions.slice(1).map((suggestion) => {
+                    const tone = toneStyles(suggestion.tone);
+                    return (
+                      <div key={suggestion.id} className={cn("rounded-[1.5rem] p-4", tone.surface)}>
+                        <div className="flex items-center gap-3">
+                          <span className={cn("h-2.5 w-2.5 rounded-full", tone.dot)} />
+                          <p className={cn("text-sm font-semibold", tone.text)}>{suggestion.label}</p>
+                        </div>
+                        <p className="mt-2 text-sm leading-7 text-slate-700">
+                          <MoneyInlineText text={stripMarkdown(suggestion.detail)} />
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Disclosure>
+            ) : null}
           </div>
         </div>
       </div>

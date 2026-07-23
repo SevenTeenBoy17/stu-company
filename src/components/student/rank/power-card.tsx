@@ -192,7 +192,7 @@ export function PowerCard({
                 {isTop ? (
                   <Crown className="absolute right-1.5 top-1.5 h-3 w-3 text-amber-200" />
                 ) : null}
-                <p className="text-[0.68rem] font-semibold text-white/90">{SCOPE_LABELS[scopeKey]}</p>
+                <p className="text-caption font-semibold text-white/90">{SCOPE_LABELS[scopeKey]}</p>
                 <p className="mt-0.5 font-mono text-base font-bold tabular-nums">
                   {rank ? `#${rank}` : "—"}
                 </p>
@@ -202,19 +202,19 @@ export function PowerCard({
         </div>
 
         {!card.ranked ? (
-          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+          <p className="mt-3 text-caption leading-5 text-white/75">
             完成一局沙盘即可生成学习记录，并查看自己的复盘区间。
           </p>
         ) : card.consent !== 1 ? (
-          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+          <p className="mt-3 text-caption leading-5 text-white/75">
             获得家长 / 监护人同意后即可登上公开榜单。以上名次仅你自己可见。
           </p>
         ) : card.visibility === "hidden" ? (
-          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+          <p className="mt-3 text-caption leading-5 text-white/75">
             你已开启「隐身」，以下名次仅自己可见，不会出现在公开榜单。
           </p>
         ) : card.visibility === "school_only" ? (
-          <p className="mt-3 text-[0.7rem] leading-4 text-white/75">
+          <p className="mt-3 text-caption leading-5 text-white/75">
             你当前「仅校内」可见，校外榜单不显示你的昵称。
           </p>
         ) : null}
@@ -236,7 +236,7 @@ export function PowerCard({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-fg-default">
                   {row.label}
-                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-fg-default">
+                  <span className="ml-1.5 rounded-full bg-bg-muted px-1.5 py-0.5 text-caption font-semibold text-fg-default">
                     权重 {row.weightPct}%
                   </span>
                 </span>

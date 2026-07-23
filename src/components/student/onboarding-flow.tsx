@@ -355,23 +355,23 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
 
         <div className="grid gap-0 md:grid-cols-[0.95fr_1.35fr]">
           <aside className="bg-[var(--ink-900)] px-6 py-7 text-white md:px-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[var(--brand)]">
+            <p className="text-caption font-semibold uppercase tracking-[0.34em] text-[var(--brand)]">
               Brown Zone 新手村
             </p>
-            <h2 id="student-onboarding-title" className="mt-4 text-2xl font-semibold leading-tight">{current.title}</h2>
-            <p className="mt-3 text-sm leading-7 text-white/68">
+            <h2 id="student-onboarding-title" className="mt-4 text-h2 font-semibold leading-tight">{current.title}</h2>
+            <p className="mt-3 text-body-sm leading-7 text-white/68">
               每一步只学习一个概念，先做轻量选择，再进入正式沙盘。
             </p>
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/8 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/70">本步概念</p>
-              <p className="mt-2 text-xl font-semibold">{current.concept}</p>
-              <p className="mt-2 text-xs leading-6 text-white/58">进度 {step + 1}/{STEPS.length}</p>
+              <p className="text-caption uppercase tracking-[0.24em] text-white/70">本步概念</p>
+              <p className="mt-2 text-h3 font-semibold">{current.concept}</p>
+              <p className="mt-2 text-caption leading-6 text-white/58">进度 {step + 1}/{STEPS.length}</p>
             </div>
           </aside>
 
           <main className="px-6 pb-7 pt-6 sm:px-8">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ink-400)]">
+              <p className="text-caption font-semibold uppercase tracking-widest text-fg-subtle">
                 Mr.Brown AI 教学
               </p>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -379,7 +379,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                   <button
                     type="button"
                     onClick={jumpToUpgrade}
-                    className="rounded-full border border-[var(--amber-200)] bg-[var(--amber-50)] px-3 py-1.5 text-xs font-semibold text-[var(--amber-700)] transition hover:bg-[var(--amber-100)]"
+                    className="rounded-full border border-[var(--amber-200)] bg-[var(--amber-50)] px-3 py-1.5 text-caption font-semibold text-[var(--amber-700)] transition hover:bg-[var(--amber-100)]"
                   >
                     先开通完整 AI
                   </button>
@@ -387,7 +387,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 <button
                   type="button"
                   onClick={completeOnboarding}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
+                  className="rounded-full px-3 py-1.5 text-caption font-semibold text-fg-muted transition hover:bg-[var(--ink-50)] hover:text-fg-default"
                 >
                   跳过引导
                 </button>
@@ -404,8 +404,8 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                       AI
                     </div>
                     <div>
-                      <p className="text-sm leading-7 text-[var(--ink-700)]">{aiText}</p>
-                      <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--ink-400)]">
+                      <p className="text-body-sm leading-7 text-fg-default">{aiText}</p>
+                      <p className="mt-3 text-caption font-medium uppercase tracking-[0.18em] text-fg-subtle">
                         {aiProvider === "remote" ? "AI 已参与生成" : "本地教学脚本兜底"}
                       </p>
                     </div>
@@ -419,8 +419,8 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                         key={concept.term}
                         className="rounded-2xl border border-[var(--ink-200)] bg-white px-4 py-3"
                       >
-                        <p className="text-sm font-semibold text-[var(--ink-900)]">{concept.term}</p>
-                        <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">{concept.desc}</p>
+                        <p className="text-body-sm font-semibold text-fg-default">{concept.term}</p>
+                        <p className="mt-1 text-caption leading-6 text-fg-muted">{concept.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -429,13 +429,13 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 {current.interactive === "capital" && (
                   <div className="mt-4 space-y-3">
                     <div className="rounded-2xl bg-[var(--amber-50)] px-5 py-4">
-                      <p className="text-xs font-medium text-[var(--ink-500)]">初始模拟本金</p>
-                      <p className="mt-1 font-mono text-3xl font-bold text-[var(--amber-700)]">
+                      <p className="text-caption font-medium text-fg-muted">初始模拟本金</p>
+                      <p className="mt-1 font-mono text-hero-num tabular-nums font-bold text-[var(--amber-700)]">
                         ￥120,000
                       </p>
                     </div>
                     <div className="rounded-2xl border border-[var(--ink-200)] px-4 py-3">
-                      <p className="text-xs text-[var(--ink-500)]">你希望 12 回合后净值到哪里？</p>
+                      <p className="text-caption text-fg-muted">你希望 12 回合后净值到哪里？</p>
                       <input
                         type="range"
                         min={80_000}
@@ -445,7 +445,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                         onChange={(event) => setTargetGuess(Number(event.target.value))}
                         className="mt-3 w-full accent-[var(--brand)]"
                       />
-                      <p className="mt-2 text-center font-mono text-lg font-bold text-[var(--amber-700)]">
+                      <p className="mt-2 text-center font-mono text-lg font-bold tabular-nums text-[var(--amber-700)]">
                         ￥{targetGuess.toLocaleString("zh-CN")}
                       </p>
                     </div>
@@ -457,10 +457,10 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                     data-onboarding-event
                     className="mt-4 rounded-2xl border border-[var(--up-200)] bg-[var(--up-50)] px-4 py-3"
                   >
-                    <p className="text-sm font-semibold text-[var(--up-700)]">
+                    <p className="text-body-sm font-semibold text-[var(--up-700)]">
                       模拟交易成功：买入 10 股“智造先锋股票”，现金减少 ￥1,120。
                     </p>
-                    <p className="mt-1 text-xs leading-6 text-[var(--ink-500)]">
+                    <p className="mt-1 text-caption leading-6 text-fg-muted">
                       这不是投资建议，只是帮助你看懂下单后资产和现金如何变化。
                     </p>
                   </div>
@@ -479,10 +479,10 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                             : "border-[var(--ink-200)] bg-white"
                         }`}
                       >
-                        <span className="text-sm font-semibold text-[var(--ink-900)]">
+                        <span className="text-body-sm font-semibold text-fg-default">
                           {choice === "up" ? "我猜会上涨" : "我猜会下跌"}
                         </span>
-                        <p className="mt-1 text-xs leading-5 text-[var(--ink-500)]">
+                        <p className="mt-1 text-caption leading-5 text-fg-muted">
                           先形成判断，再看结果。
                         </p>
                       </button>
@@ -495,13 +495,13 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                     data-onboarding-event
                     className="mt-4 rounded-2xl bg-[var(--down-50)] px-5 py-4"
                   >
-                    <p className="font-mono text-2xl font-bold text-[var(--down-700)]">
+                    <p className="font-mono text-hero-num tabular-nums font-bold text-[var(--down-700)]">
                       ￥{MARKET_REVEAL.netWorth.toLocaleString("zh-CN")}
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--down-600)]">
+                    <p className="mt-1 text-body-sm font-semibold text-[var(--down-600)]">
                       {MARKET_REVEAL.changePct}%
                     </p>
-                    <p className="mt-2 text-xs leading-6 text-[var(--ink-500)]">
+                    <p className="mt-2 text-caption leading-6 text-fg-muted">
                       {marketGuess === MARKET_REVEAL.direction
                         ? "这次市场确实下跌了，你猜对了方向。但请记住：猜对方向不代表你的理由一定对 —— 真正的高手复盘看的是逻辑，而不是这一次的输赢。"
                         : marketGuess === "up"
@@ -514,14 +514,14 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 {current.interactive === "event" && (
                   <div className="mt-4 rounded-2xl border border-[var(--ink-200)] bg-white px-4 py-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-[var(--up-100)] px-2.5 py-1 text-xs font-semibold text-[var(--up-700)]">
+                      <span className="rounded-full bg-[var(--up-100)] px-2.5 py-1 text-caption font-semibold text-[var(--up-700)]">
                         利好
                       </span>
-                      <span className="text-sm font-semibold text-[var(--ink-900)]">
+                      <span className="text-body-sm font-semibold text-fg-default">
                         消费与科技订单回暖
                       </span>
                     </div>
-                    <p className="mt-2 text-xs leading-6 text-[var(--ink-500)]">
+                    <p className="mt-2 text-caption leading-6 text-fg-muted">
                       企业补库存与居民消费恢复同步出现，成长资产的风险偏好上升。先观察，不要一次性满仓。
                     </p>
                   </div>
@@ -533,7 +533,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
                 <button
                   type="button"
                   onClick={() => setStep((value) => Math.max(0, value - 1))}
-                  className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--ink-500)] transition hover:bg-[var(--ink-50)] hover:text-[var(--ink-700)]"
+                  className="rounded-full px-4 py-2 text-body-sm font-semibold text-fg-muted transition hover:bg-[var(--ink-50)] hover:text-fg-default"
                 >
                   上一步
                 </button>
@@ -543,7 +543,7 @@ export function OnboardingFlow({ userName, showUpgradeShortcut = false, onComple
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-full bg-[var(--brand)] px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm transition-colors hover:bg-[var(--amber-600)]"
+                className="rounded-full bg-[var(--brand)] px-6 py-3 text-body-sm font-semibold text-fg-default shadow-sm transition-colors hover:bg-[var(--amber-600)]"
               >
                 {current.interactive === "trade" && !tradeExecuted ? "确认买入 10 股" : current.action}
               </button>

@@ -84,10 +84,14 @@ export function MissionRouteNode({
             </div>
             <div className="flex flex-1 items-end p-4 pt-8">
               <div className="w-full rounded-[1.1rem] border border-white/12 bg-slate-950/58 p-3 shadow-inner backdrop-blur-md">
-                <p className="text-base font-black text-white sm:text-lg">任务锦囊</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-white/78">
-                  先翻开卡片，再查看目标、进度和下一步行动。
-                </p>
+                <p className="line-clamp-1 text-base font-black text-white sm:text-lg">{profile.visualTitle}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-0.5 text-caption font-black text-white/85">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: profile.accent }} aria-hidden />
+                    {profile.conceptTag}
+                  </span>
+                  <span className="text-caption font-bold tabular-nums text-white/80">{progress}%</span>
+                </div>
               </div>
             </div>
           </MissionCardBackArtwork>
@@ -236,10 +240,14 @@ export function SeasonObjectiveCreatureCard({
             </div>
             <div className="flex flex-1 items-end p-4 pt-8">
               <div className="w-full rounded-[1.1rem] border border-white/12 bg-slate-950/58 p-3 shadow-inner backdrop-blur-md">
-                <p className="text-base font-black text-white sm:text-lg">赛季任务卡背</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-white/78">
-                  翻开后再查看任务目标、进度和完成入口。
-                </p>
+                <p className="line-clamp-1 text-base font-black text-white sm:text-lg">{profile.visualTitle}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-0.5 text-caption font-black text-white/85">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: profile.accent }} aria-hidden />
+                    {profile.conceptTag}
+                  </span>
+                  <span className="text-caption font-bold tabular-nums text-white/80">{progressText}</span>
+                </div>
               </div>
             </div>
           </MissionCardBackArtwork>
@@ -336,13 +344,13 @@ export function MissionHabitatShelf({
         <p className="text-sm font-bold text-slate-700">成长栖息地</p>
         <div className="flex items-center gap-1.5">
           <span
-            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-800"
+            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-caption font-black text-emerald-800"
             aria-label={`赛季植物：${plantStage.label}`}
           >
             <span aria-hidden>{plantStage.emoji}</span> {plantStage.label}
           </span>
           <span
-            className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-1 text-[11px] font-bold text-white"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-2.5 py-1 text-caption font-bold text-white"
             aria-label={`栖息地心情：${mood.label}`}
           >
             <span aria-hidden>{mood.emoji}</span> {mood.label}
@@ -373,17 +381,17 @@ export function MissionHabitatShelf({
                   </span>
                 ) : null}
               </div>
-              <p className="mt-2 line-clamp-1 text-[11px] font-black text-slate-800">
+              <p className="mt-2 line-clamp-1 text-caption font-black text-slate-800">
                 {profile.visualTitle}
               </p>
-              <p className="mt-0.5 text-[10px] font-bold tabular-nums text-slate-500">{Math.round(quest.progress * 100)}%</p>
+              <p className="mt-0.5 text-caption font-bold tabular-nums text-slate-500">{Math.round(quest.progress * 100)}%</p>
             </div>
           );
         })}
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold text-emerald-700">赛季植物成长</span>
-        <span className="text-[10px] font-bold tabular-nums text-emerald-700">
+        <span className="text-caption font-bold text-emerald-700">赛季植物成长</span>
+        <span className="text-caption font-bold tabular-nums text-emerald-700">
           已点亮 {unlockedCount} 位伙伴
         </span>
       </div>

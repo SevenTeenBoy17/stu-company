@@ -256,12 +256,14 @@ export function buildStudentHomeHubPayload(run: ScenarioRun): StudentHomeHubPayl
   return {
     domains: [
       {
+        // itest12-P2 #29：/student 上的「首页」域卡是自指链接（点击等效回顶，零信息增量）。
+        // 改为把页面唯一核心动作提到首屏——锚点滚动到回合行动区（sandbox 的 #student-action-panel）。
         key: "home",
-        label: "首页",
-        href: "/student",
-        summary: "今日任务、财富快照、服务台与 AI 教练。",
-        metricLabel: "本轮净值",
-        metricValue: `¥${netWorth.toLocaleString("zh-CN")}`,
+        label: "推进回合",
+        href: "#student-action-panel",
+        summary: "跳到回合行动区，提交本回合的下单、储蓄与决策。",
+        metricLabel: "回合进度",
+        metricValue: `${run.currentRound}/${run.totalRounds}`,
       },
       {
         key: "market",

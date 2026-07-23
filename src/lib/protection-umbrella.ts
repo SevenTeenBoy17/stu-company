@@ -47,7 +47,6 @@ export interface ProtectionUmbrellaPayload {
   }>;
   coach: {
     title: string;
-    summary: string;
     nextSteps: string[];
   };
 }
@@ -159,7 +158,6 @@ function buildCoach(score: number, dimensions: ProtectionDimension[]): Protectio
   ];
   return {
     title: score >= 82 ? "保护伞比较稳" : score >= 64 ? "保护伞正在成形" : "先补安全底座",
-    summary: "这张图把应急金、保险、债务和分散度放在一起，帮助你理解真实理财里的“防守”。",
     nextSteps,
   };
 }

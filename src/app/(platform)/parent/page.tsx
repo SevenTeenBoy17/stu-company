@@ -18,7 +18,7 @@ export default async function ParentPage() {
     <PlatformLayout
       role="parent"
       heading="家长成长报告"
-      summary="家长端关注的不是短线收益，而是孩子面对不确定性时是否更理性、更有计划，也更愿意复盘。"
+      summary="看见孩子的理性决策与复盘习惯。"
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section data-motion-reveal className="panel rounded-3xl p-6">

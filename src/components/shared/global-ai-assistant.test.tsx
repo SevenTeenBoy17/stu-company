@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
@@ -51,6 +51,8 @@ describe("GlobalAiAssistant (guest)", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    // 气泡的“本会话已打开面板”标记存在 sessionStorage；逐用例清空避免相互污染。
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -236,6 +238,58 @@ describe("GlobalAiAssistant (guest)", () => {
     const user = await openPanel();
     await user.click(await screen.findByRole("button", { name: guestStarters[0] }));
     expect(await screen.findByText(`回答：${guestStarters[0]}`)).toBeInTheDocument();
+  });
+
+  it("pops the marketing bubble after 8s, then silences it for the session once the panel opens", () => {
+    // The bubble is aria-hidden marketing (no accessible role to query), so its
+    // visibility is asserted via the fade/slide class it toggles. Fake timers drive
+    // the 8s debut; fireEvent keeps the click synchronous under vi's fake clock.
+    vi.useFakeTimers();
+    try {
+      render(<GlobalAiAssistant viewer={null} />);
+
+      // Hidden on mount — the element is present but collapsed (opacity-0) pre-debut.
+      const bubble = screen.getByText("这笔交易值不值？问我");
+      expect(bubble).toHaveClass("opacity-0");
+
+      // First debut fires at 8s.
+      act(() => {
+        vi.advanceTimersByTime(8_000);
+      });
+      expect(screen.getByText("这笔交易值不值？问我")).toHaveClass("opacity-100");
+
+      // Clicking the bubble opens the panel and flags the session as engaged.
+      act(() => {
+        fireEvent.click(screen.getByText("这笔交易值不值？问我"));
+      });
+      expect(window.sessionStorage.getItem("brown-zone-ai-bubble-dismissed")).toBe("1");
+      expect(screen.getByText("这笔交易值不值？问我")).toHaveClass("opacity-0");
+
+      // No further pops after engagement, even across later 60s cycles.
+      act(() => {
+        vi.advanceTimersByTime(200_000);
+      });
+      expect(screen.getByText("这笔交易值不值？问我")).toHaveClass("opacity-0");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never pops the bubble when the session is already flagged as engaged", () => {
+    // Static guard: if the user already opened the panel this session, the debut
+    // timer must not schedule — the bubble stays collapsed for the whole session.
+    vi.useFakeTimers();
+    try {
+      window.sessionStorage.setItem("brown-zone-ai-bubble-dismissed", "1");
+      render(<GlobalAiAssistant viewer={null} />);
+
+      act(() => {
+        vi.advanceTimersByTime(200_000);
+      });
+      expect(screen.getByText("这笔交易值不值？问我")).toHaveClass("opacity-0");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("has no axe-core violations when the panel is open", async () => {

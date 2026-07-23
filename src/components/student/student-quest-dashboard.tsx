@@ -16,7 +16,6 @@ import {
   Loader2,
   Maximize2,
   MessageCircle,
-  Orbit,
   PackageOpen,
   ShieldCheck,
   Sparkles,
@@ -170,9 +169,7 @@ function QuestCommanderPanel({
                   移动紧凑度守卫（commander 面板 <1300px）——移动档改紧凑 h2，
                   md+ 维持 display-lg 与修复前渲染一致。 */}
               <h2 className="mt-3 max-w-lg text-h2 font-semibold md:text-display-lg">先和指挥官对话，再打开任务锦囊</h2>
-              <p className="mt-4 max-w-xl text-body leading-8 text-white/74">
-                任务不会一股脑摊开。先选择一条训练航线，打开锦囊后再查看任务目标、复盘提示和学习卡片。
-              </p>
+              {/* Q1 删：口播式元说明删，保留下方指挥官对话气泡承载引导 */}
             </div>
             <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.08] p-4 backdrop-blur">
               <div className="flex items-start gap-3">
@@ -218,14 +215,7 @@ function QuestCommanderPanel({
               ))}
             </div>
           </div>
-          <div className="mt-5 rounded-[1.35rem] border border-brand/25 bg-brand-subtle p-4">
-            <div className="flex items-start gap-3">
-              <Orbit className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-              <p className="text-sm font-bold leading-6 text-brand-ink">
-                页面默认只展示关键信息。任务细节、奖励解释和导师建议会在打开任务锦囊或点击详情后展开。
-              </p>
-            </div>
-          </div>
+          {/* Q1 删：口播式元说明删——任务细节本就随打开锦囊/点击详情展开，无需前置口播 */}
         </div>
       </div>
     </section>
@@ -358,9 +348,7 @@ function QuestMapGallery({
                 <h2 className="mt-3 text-[clamp(2rem,4vw,4.6rem)] font-black leading-[0.95] tracking-[-0.08em] text-white">
                   任务地图
                 </h2>
-                <p className="mt-4 max-w-md text-sm font-semibold leading-7 text-white/72 sm:text-base">
-                  像闯关地图一样选择今日航线：先观察节点，再翻开任务卡，最后把学习行动落到沙盘里。
-                </p>
+                {/* Q2 删：地图节点 +「点击节点切换航线」徽章已表意 */}
                 {selectedTask && selectedProfile ? (
                   <div className="mt-4 inline-flex max-w-full items-center gap-3 rounded-[1.35rem] border border-white/14 bg-slate-950/66 p-3 pr-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] backdrop-blur-xl">
                     <CreaturePortrait profile={selectedProfile} className="h-11 w-11 shrink-0" />
@@ -451,7 +439,7 @@ function QuestMapGallery({
           </div>
         </div>
 
-        <div className="grid gap-4 bg-[linear-gradient(180deg,#fffaf6,#ffffff)] p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 bg-[linear-gradient(180deg,#fffaf6,#ffffff)] p-5 sm:grid-cols-2 xl:grid-cols-2">
           {taskNodes.map((quest, index) => {
             const active = quest.id === selectedQuestId;
             const profile = questVisualProfileFor(quest, index);
@@ -525,7 +513,7 @@ function QuestMapGallery({
           <div>
             <p className="bz-eyebrow bz-brand-text-on-light">Season Map</p>
             <h2 className="mt-2 text-h2 font-semibold text-fg-strong">本赛季地图</h2>
-            <p className="mt-1 text-sm font-semibold text-fg-muted">卡通航线图把目标拆成四座小岛，每完成一座就点亮一段路线。</p>
+            {/* Q3 删：下方 SVG 路线图已图形化表达四岛点亮 */}
           </div>
           <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold text-white">
             {season.completedObjectives}/{season.totalObjectives}
@@ -1282,7 +1270,7 @@ export function StudentQuestDashboard({
               任务中心：好习惯闯关
             </h2>
             <p className="mt-4 max-w-3xl text-body-lg leading-8 text-white/68">
-              把观察、交易、现金管理和复盘拆成可完成的小关卡。每次打开沙盘，都知道下一步练什么。
+              把观察、交易、现金管理和复盘拆成可完成的小关卡。
             </p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">

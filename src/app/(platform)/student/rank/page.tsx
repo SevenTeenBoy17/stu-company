@@ -21,7 +21,7 @@ export default async function StudentRankPage() {
     <PlatformLayout
       role="student"
       heading="学习进度榜"
-      summary="学习进度 = 风险控制 + 纪律 + 回撤管理 + 课程学习 + 复盘成长。它记录决策质量，不代表真实投资能力。每周一刷新。"
+      summary="记录决策质量，不代表真实投资能力。"
     >
       <RankDashboard />
     </PlatformLayout>

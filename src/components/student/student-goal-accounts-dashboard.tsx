@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { CheckCircle2, Flag, Loader2, PiggyBank, Target, WalletCards } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { GoalAccountId, GoalAccountPayload } from "@/lib/goal-accounts";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -233,15 +234,31 @@ export function StudentGoalAccountsDashboard({ initialPayload }: { initialPayloa
               <Flag className="h-5 w-5 text-brand-warm" />
               <h2 className="text-h2 text-white">{payload.coach.title}</h2>
             </div>
-            <p className="mt-3 text-body-sm leading-7 text-white/68">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
-              {payload.coach.nextSteps.map((step) => (
+              {payload.coach.nextSteps.slice(0, 1).map((step) => (
                 <div key={step} className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-warm" />
                   <span>{step}</span>
                 </div>
               ))}
             </div>
+            {payload.coach.nextSteps.length > 1 && (
+              <Disclosure
+                className="mt-3"
+                summary={`展开其余 ${payload.coach.nextSteps.length - 1} 步建议`}
+                summaryClassName="text-white/76 hover:text-white"
+                panelClassName="text-white/72"
+              >
+                <div className="space-y-3">
+                  {payload.coach.nextSteps.slice(1).map((step) => (
+                    <div key={step} className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-brand-warm" />
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
           </section>
         </aside>
       </div>

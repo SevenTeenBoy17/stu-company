@@ -154,8 +154,8 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
   }
 
   return (
-    <section ref={rootRef} className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.22fr)_minmax(360px,0.78fr)]">
+    <section ref={rootRef} className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.22fr)_minmax(360px,0.78fr)]">
         {/* Dark hero panel — Finance OS overview */}
         <div
           data-hub-item
@@ -318,7 +318,7 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
         </div>
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
         <div data-hub-item>
           <MarketThermometer payload={payload.marketTemperature} className="h-full" />
         </div>
@@ -503,14 +503,15 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
         </div>
       </div>
 
-      {/* 服务九宫格 */}
-      <div data-hub-item className="panel rounded-[2rem] p-5 sm:p-6">
+      {/* 服务九宫格 — 桌面端 xl 隐藏整卡（版图子卡 + 侧栏 16 项已全覆盖 12 入口，
+          消除三层重复导航）；移动/平板保留（版图子卡在此断点隐藏，九宫格独家承担） */}
+      <div data-hub-item className="panel rounded-[2rem] p-5 sm:p-6 xl:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <BookOpenCheck className="h-5 w-5 text-brand" />
             <h3 className="text-h2 text-fg-strong">服务九宫格</h3>
           </div>
-          <p className="text-body-sm text-fg-muted">12 个训练入口，点击即进。</p>
+          {/* H1 删：自我说明副标题删（九宫格图标+标题自明） */}
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {payload.services.map((service) => (

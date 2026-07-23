@@ -57,7 +57,6 @@ export interface FundLabPayload {
   }>;
   coach: {
     title: string;
-    summary: string;
     nextSteps: string[];
   };
 }
@@ -224,8 +223,6 @@ export function buildFundLabPayload(run: ScenarioRun, selectedPlan: FundLabPlan 
     history,
     coach: {
       title: "Mr.Brown 的基金实验提示",
-      summary:
-        "基金/ETF 实验室用来理解组合，而不是推荐真实产品。先比较风险、回撤和分散度，再决定是否把类似思路迁移到模拟沙盘。",
       nextSteps: [
         "先选择一个组合，再看最大回撤是否能承受。",
         "比较一次性投入和定投计划，观察平均成本差异。",

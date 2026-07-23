@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { CheckCircle2, Loader2, ShieldCheck, Siren, Umbrella, WalletCards } from "lucide-react";
 
+import { Disclosure } from "@/components/shared/disclosure";
 import { MoneyText } from "@/components/shared/money-text";
 import type { InsurancePlanId } from "@/lib/life-cashflow";
 import type { ProtectionUmbrellaPayload } from "@/lib/protection-umbrella";
@@ -324,15 +325,31 @@ export function StudentProtectionUmbrellaDashboard({ initialPayload }: { initial
           <section className="rounded-[2rem] bg-bg-inverse p-5 text-white">
             <p className="bz-eyebrow-inverse">Mr.Brown</p>
             <h2 className="mt-2 text-h2">{payload.coach.title}</h2>
-            <p className="mt-3 text-body leading-7 text-white/68">{payload.coach.summary}</p>
             <div className="mt-4 space-y-3">
-              {payload.coach.nextSteps.map((step) => (
+              {payload.coach.nextSteps.slice(0, 1).map((step) => (
                 <div key={step} data-motion-card className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
                   <span>{step}</span>
                 </div>
               ))}
             </div>
+            {payload.coach.nextSteps.length > 1 && (
+              <Disclosure
+                className="mt-3"
+                summary={`展开其余 ${payload.coach.nextSteps.length - 1} 步建议`}
+                summaryClassName="text-white/76 hover:text-white"
+                panelClassName="text-white/72"
+              >
+                <div className="space-y-3">
+                  {payload.coach.nextSteps.slice(1).map((step) => (
+                    <div key={step} className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 text-body-sm leading-6 text-white/78">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
           </section>
         </aside>
       </div>

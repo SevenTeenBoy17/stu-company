@@ -355,7 +355,6 @@ export function StudentSandbox({
       meta: netWorthDelta === 0 ? "本回合保持观察" : `较上回合 ${formatCurrency(netWorthDelta)}`,
       icon: WalletCards,
       money: true,
-      isHero: true,
     },
     {
       label: "可用现金",
@@ -366,7 +365,6 @@ export function StudentSandbox({
       meta: "行动前先留安全垫",
       icon: Landmark,
       money: true,
-      isHero: false,
     },
     {
       label: "持仓市值",
@@ -377,7 +375,6 @@ export function StudentSandbox({
       meta: `${holdingsRows.length} 个资产正在观察`,
       icon: LineChart,
       money: true,
-      isHero: false,
     },
     {
       label: "班级排名",
@@ -388,7 +385,6 @@ export function StudentSandbox({
       meta: state.classroom.name,
       icon: Trophy,
       money: false,
-      isHero: false,
     },
     {
       label: "风险评分",
@@ -399,7 +395,6 @@ export function StudentSandbox({
       meta: `纪律分 ${latestSnapshot?.disciplineScore ?? "--"}`,
       icon: ShieldCheck,
       money: false,
-      isHero: false,
     },
   ];
 
@@ -416,24 +411,20 @@ export function StudentSandbox({
 
   return (
     <div className="space-y-6 pb-24">
-      {/* ── Page header ── */}
-      <header className="panel rounded-[1.65rem] px-5 py-4 sm:px-6" data-motion-reveal>
-        {/* Eyebrow on light panel → bz-eyebrow (replaces hardcoded text-orange-500 tracking class) */}
-        <p className="bz-eyebrow bz-brand-text-on-light">Brown Zone</p>
-        {/* LC10h E2E 修复：本页标题「学生策略台」由 PlatformLayout 以 <h1> 渲染（页面唯一 h1）。
-            此处沙盘头部曾用同名 <h1>，与外壳标题构成重复 h1（strict-mode 命中 2 个 heading）。
-            降为视觉标题 <p>（样式不变），保证每页只有一个「学生策略台」heading。 */}
-        <p className="mt-2 text-display-sm font-semibold tracking-tight text-fg-strong sm:text-display-md">学生策略台</p>
-      </header>
-
-      {/* ── KPI bar: ONE hero (net worth) + 4 secondary metrics ── */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {heroMetrics.map((item) => {
+      {/* ── KPI bar: 5 uniform metric cards (all text-h2) ──
+          itest12-P2 #30：页内重复的「学生策略台」header panel 已删——PlatformLayout 的 h1
+          已承担页面标题（Stripe 口径：页面标题只出现一次），首屏省一个面板高度。 */}
+      <section className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        {heroMetrics.map((item, index) => {
           const Icon = item.icon;
           return (
             <div
               key={item.label}
-              className="panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 sm:p-5"
+              // itest12-P2 #43：移动/平板双列紧凑数字卡；第五张（风险评分）跨列填满奇数行末位。
+              className={cn(
+                "panel min-w-0 overflow-hidden rounded-[1.65rem] p-4 sm:p-5",
+                index === heroMetrics.length - 1 && "col-span-2 xl:col-span-1",
+              )}
               data-motion-card
               data-motion-reveal
             >
@@ -443,15 +434,15 @@ export function StudentSandbox({
                   <Icon className="h-5 w-5" />
                 </span>
               </div>
-              {/* Net worth card → ONE hero number; others → text-h2 */}
+              {/* 五卡数字统一为 text-h2：原净值 hero 档（bz-hero-stat 琥珀底衬 + text-hero-num）
+                  取消——用户裁决五卡大小需一致、且底衬没包住数字。 */}
               {/* 交付审查 P1：money 卡不再嵌 <MoneyText>——count-up 以 textContent
                   覆写子树会摘除元素子节点，此后 React 更新失联、数字冻结在首帧。
                   改为纯文本子节点（React 单文本子节点路径可自愈）+ 在 <p> 上
                   复刻 MoneyText 的字重与红涨绿跌色。 */}
               <p
                 className={cn(
-                  "mt-3 max-w-full leading-none tracking-tight tabular-nums",
-                  item.isHero ? "bz-hero-stat text-hero-num" : "text-h2",
+                  "mt-3 max-w-full text-h2 leading-none tracking-tight tabular-nums",
                   item.money
                     ? cn(
                         "font-extrabold whitespace-nowrap",
@@ -510,11 +501,12 @@ export function StudentSandbox({
               <p className="mt-3 text-body leading-8 text-fg-muted">{eventLead}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span
+                  // itest12-P2 #18：利好/利空徽章统一到 up/down token（红涨绿跌），同页决策结果块同口径。
                   className={`rounded-full px-2.5 py-1 text-caption font-semibold ${
                     state.market.event.signal === "利好"
-                      ? "bg-rose-100 text-rose-700"
+                      ? "bg-up-soft text-[var(--up-700)]"
                       : state.market.event.signal === "利空"
-                        ? "bg-emerald-100 text-emerald-700"
+                        ? "bg-down-soft text-[var(--down-700)]"
                         : "bg-slate-100 text-fg-muted"
                   }`}
                 >
@@ -612,7 +604,7 @@ export function StudentSandbox({
                       submitAction(undefined, "/api/sim/replay");
                     }
                   }}
-                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-body-sm font-semibold text-[#b96621] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#f0c89a] bg-[#fff7ee] px-4 text-body-sm font-semibold text-[#944314] transition-colors hover:bg-[#ffeede] disabled:opacity-60"
                 >
                   🔄 新赛季（高级版）
                 </button>
@@ -784,7 +776,7 @@ export function StudentSandbox({
                       orderMode: tradeForm.orderMode,
                     })
                   }
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-orange-400 px-5 text-body font-semibold text-slate-950 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-brand px-5 text-body font-semibold text-fg-default transition-transform hover:-translate-y-0.5 hover:bg-brand-hover disabled:opacity-60"
                 >
                   提交{tradeForm.side === "buy" ? "买入" : "卖出"}指令
                 </button>
@@ -1013,7 +1005,8 @@ export function StudentSandbox({
           </div>
         </section>
 
-        <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6">
+        {/* itest12-P2 #32：右栏卡贴内容高度（xl:self-start），避免默认 align-stretch 拉出尾部空白。 */}
+        <section className="panel min-w-0 rounded-[2rem] p-5 sm:p-6 xl:self-start">
           {/* Eyebrow on light panel → bz-eyebrow */}
           <p className="bz-eyebrow bz-brand-text-on-light">Leaderboard</p>
           <h2 className="mt-3 text-display-sm font-semibold text-fg-strong">学习榜与当前位置</h2>
@@ -1045,8 +1038,8 @@ export function StudentSandbox({
           </div>
           {topLeaderboard.every((entry) => entry.userId !== state.user.id) ? (
             <div className="mt-4 rounded-[1.5rem] border border-orange-400 bg-orange-50 p-4">
+              {/* H4 删：鼓励语（无数据）删，保留带 rank 数据的当前位置 */}
               <p className="text-body font-semibold text-fg-strong">我的当前位置：#{rank}</p>
-              <p className="mt-1 text-body-sm text-fg-muted">继续提高纪律分和现金垫，排名会更稳。</p>
             </div>
           ) : null}
         </section>

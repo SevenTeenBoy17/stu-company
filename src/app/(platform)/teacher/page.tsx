@@ -18,7 +18,7 @@ export default async function TeacherPage() {
     <PlatformLayout
       role="teacher"
       heading="教师指挥舱"
-      summary="围绕一位老师的试点班级展开：任务发布、排行榜、邀请码池与学生行为标签全部汇总在一个教学控制面板。"
+      summary="任务、榜单与邀请码，一站管理。"
     >
       <TeacherConsole initialData={overview} />
     </PlatformLayout>

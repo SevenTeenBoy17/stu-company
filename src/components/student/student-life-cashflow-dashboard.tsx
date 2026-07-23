@@ -247,7 +247,6 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <div className="mt-5 rounded-[1.7rem] border border-brand/20 bg-brand/10 p-5">
               <p className="bz-eyebrow-inverse">Mr.Brown</p>
               <h2 className="mt-3 text-h2 text-white">{payload.coach.title}</h2>
-              <p className="mt-3 text-body leading-7 text-white/66">{payload.coach.summary}</p>
               <button
                 type="button"
                 data-testid="life-cashflow-apply"
@@ -304,9 +303,7 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                   <WalletCards className="h-5 w-5 text-brand" />
                   <h2 className="text-h1 text-fg-strong">选择预算策略</h2>
                 </div>
-                <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                  预算不是少花钱比赛，而是给重要目标留位置。切换方案后会重新测算现金流。
-                </p>
+                {/* L1 删：切换即重算是行为反馈，无需前置说明 */}
               </div>
               <button
                 type="button"
@@ -376,11 +373,24 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
                     <div className="mt-4 h-3 rounded-full bg-slate-100">
                       <div className="h-full rounded-full bg-slate-950" style={{ width: `${clamp(row.ratio, 4, 100)}%` }} />
                     </div>
-                    <p className="mt-3 text-body-sm leading-6 text-fg-muted">{row.hint}</p>
                   </article>
                 );
               })}
             </div>
+            {/* L2 折：4 行 hint 收进单条 Disclosure（label+比例+进度条+金额已足够扫读） */}
+            <Disclosure
+              summary="查看各项说明"
+              className="mt-4 rounded-[1.25rem] border border-slate-200 px-2"
+            >
+              <dl className="grid gap-2">
+                {payload.budgetRows.map((row) => (
+                  <div key={row.id}>
+                    <dt className="text-body-sm font-semibold text-fg-strong">{row.label}</dt>
+                    <dd className="mt-0.5 text-caption leading-5 text-fg-muted">{row.hint}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Disclosure>
           </section>
         </div>
 
@@ -522,15 +532,33 @@ export function StudentLifeCashflowDashboard({ initialPayload }: { initialPayloa
             <Sparkles className="h-5 w-5 text-brand" />
             <h2 className="text-h1 text-fg-strong">下一步行动</h2>
           </div>
+          {/* L3 折：默认展开第 1 步，其余收进 Disclosure（与其它页一致） */}
           <div className="mt-5 space-y-3">
-            {payload.coach.nextSteps.map((step, index) => (
+            {payload.coach.nextSteps.slice(0, 1).map((step) => (
               <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
-                  {index + 1}
+                  1
                 </span>
                 <p className="text-body leading-7 text-fg-default">{step}</p>
               </div>
             ))}
+            {payload.coach.nextSteps.length > 1 && (
+              <Disclosure
+                summary={`查看其余 ${payload.coach.nextSteps.length - 1} 步`}
+                className="rounded-[1.35rem] border border-slate-200 px-2"
+              >
+                <div className="space-y-3">
+                  {payload.coach.nextSteps.slice(1).map((step, index) => (
+                    <div key={step} className="flex gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-body-sm font-semibold text-slate-950">
+                        {index + 2}
+                      </span>
+                      <p className="text-body leading-7 text-fg-default">{step}</p>
+                    </div>
+                  ))}
+                </div>
+              </Disclosure>
+            )}
           </div>
           <p className="mt-5 text-caption text-fg-muted">最近测算：{formatTime(payload.generatedAt)}</p>
           {(state === "success" || applyState === "success") && (

@@ -499,9 +499,7 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   <LineChart className="h-5 w-5 text-brand" />
                   <h2 className="text-h1 font-semibold text-fg-strong">执行轨迹</h2>
                 </div>
-                <p className="mt-2 max-w-2xl text-body leading-7 text-fg-muted">
-                  机器人按回合拆单，重点是看清成本与现金余量如何联动。
-                </p>
+                {/* AI2 删：下方 3 数字卡 + 轨迹图自明 */}
               </div>
               <div className="rounded-full bg-slate-950 px-4 py-2 text-caption font-semibold text-white">
                 {payload.selected.startRound} - {payload.selected.endRound} 回合
@@ -644,12 +642,13 @@ export function StudentAutoInvestDashboard({ initialPayload }: { initialPayload:
                   </p>
                 </div>
               </div>
+              {/* AI3 删：保留「本次差异：¥X」数字句，删方法论尾巴 */}
               <p className="mt-5 rounded-[1.35rem] bg-slate-950 px-5 py-4 text-body font-semibold leading-7 text-white">
                 本次差异：
                 <MoneyText tone="dark" className="mx-1">
                   {formatCurrency(payload.comparison.autoInvestEdge)}
                 </MoneyText>
-                。差异不是结论，而是复盘入口：市场路径不同，胜出的策略也会不同。
+                。
               </p>
             </article>
 

@@ -15,15 +15,15 @@ export function SiteFooter() {
           <div>
             <Logo />
             <p className="mt-6 max-w-md text-sm leading-7 text-white/62">
-              用 AI 把经济学装进游戏里。Brown Zone 把财商教育、策略模拟与家校共育做成同一套演示级产品体验。
+              用 AI 把经济学装进游戏里。Brown Zone 把财商教育、策略模拟与家校共育做成同一套产品级体验，让每一间教室都能拥有自己的经济沙盘。
             </p>
             <div className="mt-6 space-y-2 text-sm text-white/70">
-              <p>成都市树德实验中学 · 学生创意公司计划书 Demo</p>
+              <p>成都市树德实验高级中学 · 学生创业团队出品</p>
               <a
-                href="mailto:contact@brownzone.ai"
+                href="mailto:nuoyanoo@163.com"
                 className="inline-block break-words transition-colors hover:text-white"
               >
-                contact@brownzone.ai
+                nuoyanoo@163.com
               </a>
             </div>
           </div>
@@ -67,7 +67,7 @@ export function SiteFooter() {
 
         <div className="mt-16 border-t border-white/8 pt-6 text-xs leading-6 text-white/70">
           <p>
-            Brown Zone 演示环境仅用于教育展示与模拟体验，不提供任何真实交易、开户或收益承诺。所有页面与数据均围绕未成年人友好、去金钱化与课堂应用场景设计。
+            Brown Zone 仅用于教育模拟与学习体验，不提供任何真实交易、开户或收益承诺。所有页面与数据均围绕未成年人友好、去金钱化与课堂应用场景设计。
           </p>
         </div>
       </div>

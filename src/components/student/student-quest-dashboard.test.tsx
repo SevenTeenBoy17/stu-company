@@ -154,11 +154,12 @@ describe("StudentQuestDashboard quest flip", () => {
     expect(cardBack).toHaveAttribute("aria-hidden", "false");
     expect(cardBack).toHaveAttribute("aria-expanded", "false");
     expect(cardBack).toHaveAttribute("aria-controls", "season-objective-card-front-market-observe");
-    expect(cardBack).toHaveTextContent("卡背");
+    // itest12 P2 #38：卡背保留翻卡仪式，但改为「visualTitle 徽章 + 进度点」作翻开前线索
+    // （学生翻开前能判断先翻哪张），旧的「赛季任务卡背 / 翻开后再查看…」纯说明句已删。
     expect(cardBack).toHaveTextContent("翻开任务");
     expect(cardBack).toHaveAttribute("aria-label", "翻开赛季任务卡 1");
-    expect(cardBack).not.toHaveTextContent("市场观察");
-    expect(cardBack).not.toHaveTextContent("0/1");
+    expect(cardBack).toHaveTextContent("市场观察");
+    expect(cardBack).toHaveTextContent("1/1");
     expect(cardFront).toHaveAttribute("aria-hidden", "true");
 
     await user.click(cardBack);

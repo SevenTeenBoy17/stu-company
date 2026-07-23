@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Image from "next/image";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
   History,
   LoaderCircle,
   MessageSquareQuote,
   Plus,
   SendHorizontal,
-  Sparkles,
   X,
 } from "lucide-react";
 
@@ -26,6 +25,18 @@ import type { AiChatMessage, AiChatSession, Role } from "@/lib/types";
 import { cn, formatDateLabel } from "@/lib/utils";
 
 const GUEST_STORAGE_KEY = "brown-zone-ai-guest-sessions";
+
+// B: 悬浮球周期性标语气泡的配置。营销性提醒，克制不骚扰——本会话打开过面板即静默。
+const BUBBLE_DISMISSED_KEY = "brown-zone-ai-bubble-dismissed";
+const BUBBLE_MESSAGES = [
+  "这笔交易值不值？问我",
+  "有问题？找 Mr.Brown",
+  "AI 助手 · 点我提问",
+] as const;
+const BUBBLE_FIRST_DELAY_MS = 8_000; // 挂载后首次出现
+const BUBBLE_VISIBLE_MS = 4_000; // 停留后自动收起
+const BUBBLE_INTERVAL_MS = 60_000; // 之后每 60s 轮换出现
+const BUBBLE_MAX_SHOWS = 3; // 最多出现 3 次
 
 type Viewer = {
   id: string;
@@ -149,6 +160,9 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [contextMeta, setContextMeta] = useState<{ assetId?: string; actionLogId?: string }>({});
+  // B: 标语气泡的可见性与轮换文案序号。
+  const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [bubbleIndex, setBubbleIndex] = useState(0);
 
   // A11y: full dialog keyboard contract — focus-in, Tab-trap, Esc, focus-restore.
   useFocusTrap(isOpen, panelRef, () => setIsOpen(false));
@@ -454,6 +468,70 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
     messagesEndRef.current?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "end" });
   }, [isOpen, messages]);
 
+  // B: 让调度闭包始终看到最新的开合状态，而无需把 isOpen 放进依赖去重启定时器。
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+
+  // B: 任何方式打开面板（悬浮球 / 气泡 / 外部事件 / 自动发送）都在本会话静默气泡，
+  //     并立即收起当前气泡。面板开着时不弹。
+  useEffect(() => {
+    if (!isOpen) return;
+    setBubbleVisible(false);
+    try {
+      window.sessionStorage.setItem(BUBBLE_DISMISSED_KEY, "1");
+    } catch {
+      // sessionStorage 不可用时静默降级——气泡仅是营销提醒，不影响主流程。
+    }
+  }, [isOpen]);
+
+  // B: 挂载后 8s 首次滑出、停留 4s 收起，之后每 60s 轮换出现，最多 3 次；
+  //     用户本会话打开过面板后永不再弹。所有定时器在卸载/静默时清理。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isBubbleDismissed = () => {
+      try {
+        return window.sessionStorage.getItem(BUBBLE_DISMISSED_KEY) === "1";
+      } catch {
+        return false;
+      }
+    };
+
+    if (isBubbleDismissed()) return;
+
+    let shows = 0;
+    const timers: Array<ReturnType<typeof setTimeout>> = [];
+
+    const popOnce = () => {
+      if (isBubbleDismissed() || isOpenRef.current) return;
+      setBubbleIndex(shows % BUBBLE_MESSAGES.length);
+      shows += 1;
+      setBubbleVisible(true);
+      const hideTimer = setTimeout(() => setBubbleVisible(false), BUBBLE_VISIBLE_MS);
+      timers.push(hideTimer);
+    };
+
+    const firstTimer = setTimeout(() => {
+      popOnce();
+      const intervalTimer = setInterval(() => {
+        if (shows >= BUBBLE_MAX_SHOWS || isBubbleDismissed()) {
+          clearInterval(intervalTimer);
+          return;
+        }
+        popOnce();
+      }, BUBBLE_INTERVAL_MS);
+      timers.push(intervalTimer);
+    }, BUBBLE_FIRST_DELAY_MS);
+    timers.push(firstTimer);
+
+    return () => {
+      timers.forEach((timer) => {
+        clearTimeout(timer);
+        clearInterval(timer);
+      });
+    };
+  }, []);
+
   const placeholder =
     mode === "student-context"
       ? "询问当前这只股票或者这笔交易的情况..."
@@ -462,6 +540,27 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
   return (
     <>
       <div className="safe-floating-offset pointer-events-none fixed z-[70]">
+        {/* B: 周期性标语气泡——纯营销提醒(aria-hidden，不进读屏)，贴悬浮球上方右对齐。
+            点击等同点击悬浮球打开面板；非 focusable、不占 tab 序，可访问名由按钮承载。
+            轻微 slide+fade，尊重 reduced-motion。 */}
+        <div
+          aria-hidden="true"
+          onClick={() => {
+            setIsOpen(true);
+            setIsHistoryOpen(false);
+            if (viewer) {
+              void refreshAuthHistory();
+            }
+          }}
+          className={cn(
+            "absolute bottom-full right-0 mb-3 cursor-pointer whitespace-nowrap rounded-2xl bg-[var(--ink-800)] px-4 py-2.5 text-sm font-semibold text-white shadow-xl shadow-slate-950/25 transition-all duration-300 ease-out motion-reduce:transition-none",
+            bubbleVisible
+              ? "pointer-events-auto translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-1 opacity-0",
+          )}
+        >
+          {BUBBLE_MESSAGES[bubbleIndex]}
+        </div>
         <button
           type="button"
           data-motion-button
@@ -472,17 +571,21 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
               void refreshAuthHistory();
             }
           }}
-          className="pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--ink-700)] text-white shadow-2xl shadow-slate-950/30 sm:h-16 sm:w-16"
+          className="group pointer-events-auto relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[var(--ink-700)] text-white shadow-2xl shadow-slate-950/30 sm:h-16 sm:w-16"
           data-allow-overflow="true"
           aria-label="打开 KeyAI"
         >
-          <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle,var(--brand)_0%,transparent_62%)] opacity-30" />
-          <span className="absolute -inset-2 rounded-full border border-white/10" />
-          <span className="relative flex h-8 w-8 items-center justify-center rounded-[0.95rem] border border-white/12 bg-white/6 sm:h-11 sm:w-11 sm:rounded-[1.2rem]">
-            <span className="absolute left-1 h-2.5 w-1 rounded-full bg-brand sm:left-1.5 sm:h-3" />
-            <span className="absolute right-1 h-2.5 w-1 rounded-full bg-brand sm:right-1.5 sm:h-3" />
-            <span className="text-xs font-bold tracking-tight sm:text-sm">AI</span>
-          </span>
+          {/* 悬浮球换装：Brown Zone 吉祥物；圆形裁切由按钮 overflow-hidden rounded-full 完成。
+              图片纯装饰（alt=""），可访问名由按钮 aria-label 承载。hover 轻微放大。 */}
+          <Image
+            src="/brand/v3/ai-assistant-mascot.webp"
+            alt=""
+            width={64}
+            height={64}
+            sizes="64px"
+            priority
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
         </button>
       </div>
 
@@ -508,8 +611,17 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
             >
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,var(--info-100),transparent_36%),linear-gradient(135deg,var(--ink-800)_0%,var(--ink-600)_100%)] text-white shadow-lg shadow-slate-700/20">
-                    <Bot className="h-5 w-5" />
+                  {/* 面板头像同悬浮球换 Brown Zone 吉祥物；alt="" 纯装饰，
+                      MR.BROWN 眉标 + KeyAI 标题已承载可访问名。 */}
+                  <div className="relative h-11 w-11 overflow-hidden rounded-full shadow-lg shadow-slate-700/20">
+                    <Image
+                      src="/brand/v3/ai-assistant-mascot.webp"
+                      alt=""
+                      width={44}
+                      height={44}
+                      sizes="44px"
+                      className="h-full w-full object-cover"
+                    />
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.26em] text-brand">Mr.Brown</p>
@@ -636,16 +748,19 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     </div>
                   ) : (
                     <div className="flex h-full flex-col justify-between gap-6">
-                      <div className="pt-8">
-                        <div className="flex items-center gap-3 text-slate-700">
-                          <Sparkles className="h-5 w-5 text-brand" />
-                          <p className="text-sm font-medium">你可以直接和 KeyAI 对话。</p>
+                      <div className="flex flex-col items-center pt-8 text-center">
+                        {/* 空态改为居中小吉祥物 + 单句引导；副句删——下方快捷提问 chips 本身即引导。 */}
+                        <div className="h-[72px] w-[72px] overflow-hidden rounded-full shadow-md shadow-slate-300/60">
+                          <Image
+                            src="/brand/v3/ai-assistant-mascot.webp"
+                            alt=""
+                            width={72}
+                            height={72}
+                            sizes="72px"
+                            className="h-full w-full object-cover"
+                          />
                         </div>
-                        <p className="mt-3 text-sm leading-7 text-slate-500">
-                          {mode === "student-context"
-                            ? "我会结合当前回合、资产、交易和现金流来回答。"
-                            : "我会根据你的页面和角色，给出最合适的说明、建议或试玩引导。"}
-                        </p>
+                        <p className="mt-4 text-sm font-medium text-slate-700">和 Mr.Brown 聊聊你的沙盘。</p>
                       </div>
 
                       <div className="grid gap-3">
@@ -698,7 +813,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     onClick={() => {
                       void sendPrompt();
                     }}
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-info text-white shadow-lg shadow-info/25 transition-transform hover:-translate-y-0.5 hover:bg-[var(--info-600)] disabled:opacity-60"
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-brand !text-slate-950 shadow-lg shadow-brand/30 transition-transform hover:-translate-y-0.5 hover:bg-brand-hover disabled:opacity-60"
                     aria-label="发送消息"
                   >
                     {isSending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <SendHorizontal className="h-5 w-5" />}
@@ -710,7 +825,7 @@ export function GlobalAiAssistant({ viewer }: { viewer: Viewer }) {
                     <button
                       type="button"
                       onClick={startNewConversation}
-                      className="inline-flex items-center gap-2 rounded-full bg-info px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--info-600)]"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-bold !text-slate-950 shadow-lg shadow-brand/30 transition-transform hover:-translate-y-0.5 hover:bg-brand-hover"
                     >
                       <Plus className="h-4 w-4" />
                       New
