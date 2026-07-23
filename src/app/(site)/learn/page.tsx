@@ -13,10 +13,11 @@ export default function LearnPage() {
                 通过 Brown Zone 课程，把“学会概念”升级为“敢做决策”。
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-8 text-white/68">
-                页面结构参考了你提供的 TradingKey 学习页，但所有视觉与插画都重新设计为 Brown Zone 的产品语言，更强调课堂试点与模拟实操感。
+                8 大模块把考点变成任务流：先看懂，再上手，最后拿到 AI 复盘。
               </p>
             </div>
-            <div className="grid-strokes bz-inverse-tile p-6">
+            {/* 交付门审计：外层只留 grid-strokes 底纹，避免与内层统计卡双层 bz-inverse-tile 嵌套。 */}
+            <div className="grid-strokes p-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
                   ["8 大模块", "覆盖股市、储蓄、房产、创业与家校协同。"],

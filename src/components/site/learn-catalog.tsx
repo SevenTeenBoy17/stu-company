@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -50,6 +50,8 @@ export function LearnCatalog() {
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
   const [quizMessage, setQuizMessage] = useState<string | null>(null);
   const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const quizTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const quizDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("q");
@@ -87,6 +89,22 @@ export function LearnCatalog() {
       alive = false;
     };
   }, []);
+
+  // 交付门审计：quiz 弹窗补齐对话框焦点契约（照抄 site-header 抽屉实现）——
+  // 打开时把焦点移入弹窗，监听 Esc 关闭，关闭时把焦点交还触发按钮。
+  useEffect(() => {
+    if (!quizModule) return;
+    const trigger = quizTriggerRef.current;
+    quizDialogRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setQuizModule(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      trigger?.focus();
+    };
+  }, [quizModule]);
 
   async function openQuiz(module: QuizModule) {
     if (pendingKey || completedKeys?.has(module.key)) return;
@@ -186,6 +204,7 @@ export function LearnCatalog() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="搜索课程、关键词或能力点"
+            aria-label="搜索课程、关键词或能力点"
             className="w-full rounded-full border border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 outline-none ring-0 transition focus:border-brand lg:max-w-sm"
           />
         </div>
@@ -225,7 +244,7 @@ export function LearnCatalog() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {filteredModules.map((module) => (
-            <article key={module.key} data-motion-card className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow hover:shadow-lg">
+            <article key={module.key} data-motion-card className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow duration-200 hover:shadow-[0_22px_56px_rgba(15,23,42,0.12)]">
               <div className={`relative h-52 w-full ${levelTints[module.level as string] ?? "bg-[var(--ink-50)]"}`}>
                 <Image
                   src={moduleArt[module.key]?.src ?? "/brand/v2/learn-market.webp"}
@@ -236,12 +255,9 @@ export function LearnCatalog() {
                 />
               </div>
               <div className="flex flex-1 flex-col p-6">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
                   <span className="bz-brand-chip rounded-full px-3 py-1 text-xs font-semibold">
                     {levelLabels[module.level as string] ?? module.level}
-                  </span>
-                  <span className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Brown Zone
                   </span>
                 </div>
                 <h3 className="mt-4 text-2xl font-semibold text-slate-950">{module.title}</h3>
@@ -277,7 +293,10 @@ export function LearnCatalog() {
                     <button
                       type="button"
                       data-motion-button
-                      onClick={() => openQuiz({ key: module.key, title: module.title })}
+                      onClick={(event) => {
+                        quizTriggerRef.current = event.currentTarget;
+                        void openQuiz({ key: module.key, title: module.title });
+                      }}
                       disabled={completedKeys.has(module.key) || pendingKey === module.key}
                       className={cn(
                         "inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition",
@@ -302,11 +321,18 @@ export function LearnCatalog() {
 
       {quizModule ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-          <div className="max-h-[calc(100svh-4rem)] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+          <div
+            ref={quizDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="learn-quiz-title"
+            tabIndex={-1}
+            className="max-h-[calc(100svh-4rem)] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl outline-none sm:p-8"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.28em] text-brand-ink">Brown Zone Quiz</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-950">{quizModule.title} · 课后小测</h2>
+                <h2 id="learn-quiz-title" className="mt-2 text-2xl font-bold text-slate-950">{quizModule.title} · 课后小测</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-500">答对 80 分以上计入学习分。</p>
               </div>
               <button

@@ -13,7 +13,7 @@ export const metadata = {
 
 export default async function StudentGoalAccountsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/student/goal-accounts")}`);
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const state = await getSimulationStateForUser(user.id);

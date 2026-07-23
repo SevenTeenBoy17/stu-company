@@ -178,7 +178,9 @@ export function PlatformLayout({
                     </Link>
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-2 pb-1">
+                {/* itest11：12 枚二级药丸在窄屏全铺占半屏——改单行横滑带（隐藏滚动条，
+                    [&>a]:shrink-0 防止药丸被压扁触发 truncate 而不滚动）。 */}
+                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>a]:shrink-0">
                   {studentSecondaryItems.map((item, index) => (
                     <CompactNavLink
                       key={item.href}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
 
@@ -264,9 +264,13 @@ describe("student high-traffic panels accessibility smoke", () => {
     mockSvgPathLength();
     const run = makeRun();
     const summary = buildWealthSummary(run);
-    const { container } = render(
-      <StudentWealthDashboard summary={summary} review={buildWealthReviewPayload(run, summary)} />,
+    const review = buildWealthReviewPayload(run, summary);
+    server.use(
+      http.post("/api/student/wealth-summary", () =>
+        HttpResponse.json({ summary, review, message: "财富复盘已记录。" }),
+      ),
     );
+    const { container } = render(<StudentWealthDashboard summary={summary} review={review} />);
 
     await screen.findByTestId("wealth-review-submit");
 
@@ -278,6 +282,14 @@ describe("student high-traffic panels accessibility smoke", () => {
 
     const results = await axe(container, COMPONENT_AXE_OPTIONS);
     expect(results).toHaveNoViolations();
+
+    // itest11：提交持有计划后的结果消息必须是 live region（success → role="status"，error → role="alert"）。
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "先观察现金垫是否恢复到目标区间再决定加仓。" },
+    });
+    fireEvent.click(screen.getByTestId("wealth-review-submit"));
+    const statusMessage = await screen.findByText("财富复盘已记录。");
+    expect(statusMessage).toHaveAttribute("role", "status");
   }, 15_000);
 
   it("renders the history review dashboard without axe-core violations", async () => {

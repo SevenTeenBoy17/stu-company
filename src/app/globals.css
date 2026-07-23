@@ -150,6 +150,19 @@
   --text-display-lg--letter-spacing: -0.015em;
   --text-display-lg--font-weight: 700;
 
+  /* 交付审查 P2：text-display-md/sm 与 text-h4 已在 16 处组件中使用，但
+     token 缺失时 Tailwind v4 不生成任何 CSS——标题静默落回继承正文字号。
+     补齐阶梯中缺的三档（display-lg 2.5rem 与 h1 2rem 之间、h3 与 body 之间）。 */
+  --text-display-md: 2.25rem;
+  --text-display-md--line-height: 2.75rem;
+  --text-display-md--letter-spacing: -0.015em;
+  --text-display-md--font-weight: 700;
+
+  --text-display-sm: 1.75rem;
+  --text-display-sm--line-height: 2.25rem;
+  --text-display-sm--letter-spacing: -0.01em;
+  --text-display-sm--font-weight: 700;
+
   --text-h1: 2rem;
   --text-h1--line-height: 2.5rem;
   --text-h1--letter-spacing: -0.01em;
@@ -163,6 +176,10 @@
   --text-h3: 1.25rem;
   --text-h3--line-height: 1.75rem;
   --text-h3--font-weight: 600;
+
+  --text-h4: 1.125rem;
+  --text-h4--line-height: 1.625rem;
+  --text-h4--font-weight: 600;
 
   --text-body-lg: 1.0625rem;
   --text-body-lg--line-height: 1.625rem;
@@ -636,10 +653,6 @@ select {
 
 .quest-glass-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 138, 56, 0.86));
-}
-
-footer img[src*="footer-pattern.svg"] {
-  display: none !important;
 }
 
 @media (min-width: 768px) {

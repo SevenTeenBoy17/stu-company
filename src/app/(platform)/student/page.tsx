@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/session-user";
 
 export default async function StudentPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/student")}`);
   if (user.role !== "student") redirect(roleHomePath(user.role));
 
   const initialState = await getSimulationStateForUser(user.id);

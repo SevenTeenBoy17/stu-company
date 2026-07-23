@@ -6,9 +6,9 @@ import { SectionReveal } from "@/components/site/section-reveal";
 import { StockTickerTape } from "@/components/site/stock-ticker-tape";
 import {
   comparisonRows,
+  heroProductStats,
   learningModules,
   roadmapPhases,
-  showcaseStats,
   teamProfiles,
 } from "@/lib/content";
 import { getTickerTapePayload } from "@/lib/market-data";
@@ -78,7 +78,7 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
-            {showcaseStats.map((stat) => (
+            {heroProductStats.map((stat) => (
               <div key={stat.label} data-motion-card className="bz-inverse-tile p-5">
                 <p className="text-caption uppercase tracking-wide text-white/70">{stat.label}</p>
                 <p className="mt-3 text-2xl font-semibold text-white">{stat.value}</p>
@@ -159,15 +159,14 @@ export default async function HomePage() {
               delay={(index % 4) * 0.04}
               className="panel flex flex-col overflow-hidden rounded-3xl transition-shadow duration-200 hover:shadow-[0_22px_56px_rgba(15,23,42,0.12)]"
             >
-              <a
-                href={module.href}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* 交付门审计：首页模块卡不再外跳资料站，统一内链到 /learn 承接（外链保留在课程目录卡）。 */}
+              <Link
+                href="/learn"
                 data-motion-card
-                aria-label={`深入学习「${module.title}」— 前往${module.hrefLabel}（在新标签页打开）`}
+                aria-label={`在投资课程页深入学习「${module.title}」`}
                 className="group flex flex-1 flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
-                <div className="relative h-52 w-full bg-bg-muted">
+                <div className="relative h-40 w-full bg-bg-muted">
                   <Image
                     src={moduleArt[module.key]?.src ?? "/brand/v2/learn-market.webp"}
                     alt={moduleArt[module.key]?.alt ?? module.title}
@@ -183,22 +182,12 @@ export default async function HomePage() {
                   <h3 className="mt-4 text-2xl font-semibold text-slate-950 transition-colors group-hover:text-brand-ink">
                     {module.title}
                   </h3>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {module.highlights.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
                   <span className="mt-auto inline-flex items-center gap-1.5 self-start pt-5 text-sm font-bold text-brand-ink transition-all group-hover:gap-2.5">
-                    前往 {module.hrefLabel}
+                    去投资课程
                     <ArrowUpRight className="h-4 w-4" />
                   </span>
                 </div>
-              </a>
+              </Link>
             </SectionReveal>
           ))}
         </div>
@@ -268,7 +257,7 @@ export default async function HomePage() {
       <section id="safety" className="page-shell mt-14 grid gap-6 lg:mt-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <SectionReveal className="panel rounded-3xl p-7">
           <p className="bz-eyebrow">团队与愿景</p>
-          <h2 className="mt-4 text-4xl font-semibold text-slate-950">
+          <h2 className="font-display mt-4 text-4xl font-semibold text-slate-950">
             以游戏为载体，做真正对同龄人有帮助的经济学启蒙
           </h2>
           <div className="mt-6 space-y-4">

@@ -444,19 +444,27 @@ export function StudentSandbox({
                 </span>
               </div>
               {/* Net worth card → ONE hero number; others → text-h2 */}
+              {/* 交付审查 P1：money 卡不再嵌 <MoneyText>——count-up 以 textContent
+                  覆写子树会摘除元素子节点，此后 React 更新失联、数字冻结在首帧。
+                  改为纯文本子节点（React 单文本子节点路径可自愈）+ 在 <p> 上
+                  复刻 MoneyText 的字重与红涨绿跌色。 */}
               <p
                 className={cn(
                   "mt-3 max-w-full leading-none tracking-tight tabular-nums",
-                  item.isHero
-                    ? "bz-hero-stat text-hero-num text-fg-strong"
-                    : "text-h2 text-fg-strong",
+                  item.isHero ? "bz-hero-stat text-hero-num" : "text-h2",
+                  item.money
+                    ? cn(
+                        "font-extrabold whitespace-nowrap",
+                        String(item.value).trimStart().startsWith("-") ? "text-down" : "text-up",
+                      )
+                    : "text-fg-strong",
                 )}
                 data-motion-number
                 data-motion-value={item.motionValue}
                 data-motion-prefix={item.motionPrefix}
                 data-motion-format={item.motionFormat}
               >
-                {item.money ? <MoneyText>{item.value}</MoneyText> : item.value}
+                {item.value}
               </p>
               <p className="mt-3 line-clamp-2 min-w-0 text-body-sm leading-6 text-fg-muted">{item.meta}</p>
             </div>

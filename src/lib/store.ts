@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { hashPassword, verifyPassword } from "@/lib/password";
 
-import { SUPERADMIN_TEAM } from "@/lib/auth-roles";
+import { isSuperAdmin, SUPERADMIN_TEAM } from "@/lib/auth-roles";
 import { learningModules } from "@/lib/content";
 import {
   advanceSimulationRun,
@@ -1923,8 +1923,9 @@ export function getParentOverview(userId: string) {
   };
 }
 
+// 统一走 auth-roles 集中判定：内置 superadmin + 参赛队四邮箱 + SUPERADMIN_EMAILS env。
 function isSuperAdminUser(user?: UserRecord | null) {
-  return user?.id === "superadmin" || user?.email.toLowerCase() === "superadmin";
+  return user != null && isSuperAdmin(user);
 }
 
 export function canUserPayForTarget(payerId: string, targetUserId: string) {

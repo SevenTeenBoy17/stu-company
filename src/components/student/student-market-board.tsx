@@ -727,9 +727,10 @@ export function StudentMarketBoard({
                     ) : null}
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-h3 text-fg-strong">全部</span>
+                    {/* 审查项 4：主标题跟随当前板块，caption 不再重复「当前：」只留样本数 */}
+                    <span className="block text-h3 text-fg-strong">{activeThemeFilter?.label ?? "全部"}</span>
                     <span className="mt-1 block text-body-sm font-semibold leading-5 text-fg-muted">
-                      当前：{activeThemeFilter?.label ?? "全部"} · {activeThemeFilter?.count ?? payload.watchlist.length} 个样本
+                      {activeThemeFilter?.count ?? payload.watchlist.length} 个样本
                     </span>
                   </span>
                 </span>

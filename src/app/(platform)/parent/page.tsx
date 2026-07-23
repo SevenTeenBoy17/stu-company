@@ -9,7 +9,7 @@ import { getParentOverview, roleHomePath } from "@/lib/db/repo";
 export default async function ParentPage() {
   // L3: redirect rather than render a 200 AccessGate for unauthorised roles.
   const user = await getCurrentUser();
-  if (!user) redirect("/demo?reason=login_required");
+  if (!user) redirect(`/demo?auth=login&reason=login_required&next=${encodeURIComponent("/parent")}`);
   if (user.role !== "parent") redirect(roleHomePath(user.role));
 
   const overview = await getParentOverview(user.id);

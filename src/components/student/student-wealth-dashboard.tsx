@@ -218,6 +218,7 @@ export function StudentWealthDashboard({
           { id: "sec-life-map", label: "理财地图" },
           { id: "sec-brown-advice", label: "布朗建议" },
           { id: "sec-holding-plan", label: "持有复盘" },
+          { id: "sec-cash-position", label: "现金与负债" },
         ]}
       />
       <section
@@ -272,10 +273,17 @@ export function StudentWealthDashboard({
                 </div>
                 <div data-motion-card className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5">
                   <p className="text-caption font-semibold text-white/56">风险 / 纪律</p>
-                  <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-h3 tabular-nums text-white sm:text-h2">
-                    {summary.riskScore}
-                    <span className="text-h4 text-white/70 sm:text-h3">/</span>
-                    {summary.disciplineScore}
+                  {/* 审查项 9：双裸数字各带标注，读者无需回看标题猜「哪个是风险」 */}
+                  <p className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-white">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="text-caption font-semibold text-white/56">风险</span>
+                      <span className="text-h3 tabular-nums sm:text-h2">{summary.riskScore}</span>
+                    </span>
+                    <span aria-hidden className="text-h4 text-white/40">·</span>
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="text-caption font-semibold text-white/56">纪律</span>
+                      <span className="text-h3 tabular-nums sm:text-h2">{summary.disciplineScore}</span>
+                    </span>
                   </p>
                 </div>
               </div>
@@ -630,6 +638,8 @@ export function StudentWealthDashboard({
 
             {status.message ? (
               <p
+                role={status.type === "error" ? "alert" : "status"}
+                aria-live={status.type === "error" ? undefined : "polite"}
                 className={cn(
                   "mt-4 rounded-2xl px-4 py-3 text-sm font-bold",
                   status.type === "error" && "bg-error/10 text-error",
@@ -706,7 +716,7 @@ export function StudentWealthDashboard({
         </div>
       </section>
 
-      <section data-wealth-reveal className="panel rounded-[2rem] p-5 md:p-6">
+      <section id="sec-cash-position" data-wealth-reveal className="panel rounded-[2rem] p-5 md:p-6">
         <div className="grid gap-4 md:grid-cols-4">
           <div className="flex items-center gap-4 rounded-[1.5rem] bg-white p-5">
             <WalletCards className="h-7 w-7 text-brand" />

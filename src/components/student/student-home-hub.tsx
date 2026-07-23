@@ -475,8 +475,9 @@ export function StudentHomeHub({ payload }: { payload: StudentHomeHubPayload }) 
                     </Link>
                   </div>
 
-                  <div className="grid min-w-0 auto-rows-min gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
-                    {/* v2 信息收敛：子卡只留标题+状态徽标；learn 收进 aria-label（读屏完整播报，同九宫格模式） */}
+                  <div className="hidden min-w-0 auto-rows-min gap-3 sm:grid sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
+                    {/* v2 信息收敛：子卡只留标题+状态徽标；learn 收进 aria-label（读屏完整播报，同九宫格模式）
+                        审查项 10：移动端整组隐藏——12 入口由下方九宫格独家承担，避免双份入口列表 */}
                     {groupServices.slice(0, 4).map((service) => (
                       <Link
                         key={service.id}

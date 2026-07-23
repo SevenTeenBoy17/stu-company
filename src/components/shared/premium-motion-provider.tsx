@@ -132,6 +132,12 @@ function animateNumber(element: HTMLElement, reduceMotion: boolean) {
   const value = Number(element.dataset.motionValue);
   if (!Number.isFinite(value)) return;
 
+  // 交付审查 P1：textContent 覆写会把 React 管理的元素子节点（如 MoneyText 的
+  // span）摘出 DOM，此后 React 重渲染只更新已脱离文档的节点，屏上数字永久冻结
+  // 在首次动画值。协议收紧为「data-motion-number 节点只允许纯文本子节点」（与
+  // StatCard 一致）：含元素子节点时跳过 count-up，保留 SSR 文本与 React 掌控权。
+  if (element.childElementCount > 0) return;
+
   const format = (element.dataset.motionFormat ?? "integer") as MotionNumberFormat;
   const prefix = element.dataset.motionPrefix ?? "";
   const suffix = element.dataset.motionSuffix ?? "";
@@ -424,7 +430,11 @@ function addStoryPin(container: HTMLElement) {
       steps.forEach((step) => {
         step.style.gridArea = "1 / 1";
       });
-      gsap.set(steps.slice(1), { autoAlpha: 0, y: 44 });
+      // 交付审查：隐藏态用 opacity 而非 autoAlpha——autoAlpha 会写
+      // visibility:hidden，把第 2/3 幕整体移出无障碍树，读屏的标题导航/
+      // 虚拟光标永远读不到「练 / 看见成长」。opacity:0 保留在 a11y 树；
+      // pointerEvents:none 防止叠放的隐藏幕挡住当前幕的指针交互。
+      gsap.set(steps.slice(1), { opacity: 0, y: 44, pointerEvents: "none" });
 
       const timeline = gsap.timeline({
         defaults: { ease: "none" },
@@ -442,24 +452,24 @@ function addStoryPin(container: HTMLElement) {
         if (index === 0) return;
         const at = index - 0.5;
         timeline
-          .to(steps[index - 1], { autoAlpha: 0, y: -36, duration: 0.5 }, at)
-          .to(step, { autoAlpha: 1, y: 0, duration: 0.5 }, at + 0.18);
+          .to(steps[index - 1], { opacity: 0, y: -36, pointerEvents: "none", duration: 0.5 }, at)
+          .to(step, { opacity: 1, y: 0, pointerEvents: "auto", duration: 0.5 }, at + 0.18);
       });
 
       return () => {
         timeline.scrollTrigger?.kill();
         timeline.kill();
         gsap.killTweensOf(steps);
-        gsap.set(steps, { clearProps: "opacity,visibility,transform" });
+        gsap.set(steps, { clearProps: "opacity,visibility,transform,pointerEvents" });
         steps.forEach((step) => {
           step.style.gridArea = "";
         });
         container.style.display = previousDisplay;
       };
     } catch {
-      // 审查 #11 兜底：pin 构建异常时绝不让 2/3 幕停留在 autoAlpha:0——
+      // 审查 #11 兜底：pin 构建异常时绝不让 2/3 幕停留在隐藏态——
       // 内容可见性优先于动效（与 revealSafety 同一原则）。
-      gsap.set(steps, { autoAlpha: 1, clearProps: "transform" });
+      gsap.set(steps, { autoAlpha: 1, clearProps: "transform,pointerEvents" });
       steps.forEach((step) => {
         step.style.gridArea = "";
       });
@@ -669,6 +679,10 @@ export function PremiumMotionProvider({ deferred = false }: { deferred?: boolean
       const attachStoryTarget = (target: HTMLElement) => {
         if (storyAttached.has(target)) return;
         storyAttached.add(target);
+        // 交付审查：deferred chunk 迟到时若用户已滚入/滚过三幕区，建 pin 会在
+        // 脚下插入 ~2.5 视口高的 pin-spacer，正在阅读的内容整体位移——与
+        // split/reveal 的首屏豁免同一原则：迟到就保持自然平铺，不再建 pin。
+        if (deferred && target.getBoundingClientRect().top < 0) return;
         cleanups.push(addStoryPin(target));
       };
 

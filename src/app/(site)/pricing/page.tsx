@@ -124,7 +124,8 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
   return (
     <div className="pb-24">
       <section className="page-shell pt-8 sm:pt-12">
-        <SectionReveal className="bz-ink-panel rounded-3xl px-6 py-10 text-center sm:px-10 sm:py-14">
+        {/* 交付门审计：hero 底部留白加大，避免下方 -mt 卡区连同「推荐体验」徽标顶进 hero 文案。 */}
+        <SectionReveal className="bz-ink-panel rounded-3xl px-6 pb-16 pt-10 text-center sm:px-10 sm:pb-24 sm:pt-14">
           <p className="bz-eyebrow-inverse">订阅方案</p>
           <h1 className="font-display mx-auto mt-5 max-w-3xl text-display-lg font-semibold leading-tight sm:text-display-xl">
             个人月卡 + 学校授权，兼顾自助体验和课堂规模化。
@@ -242,7 +243,7 @@ export default async function PricingPage({ searchParams }: PricingPageProps) {
       <section className="page-shell mt-16">
         <SectionReveal className="text-center">
           <p className="bz-eyebrow">常见问题</p>
-          <h2 className="font-display mt-4 text-3xl font-semibold text-[var(--ink-900)]">家长和老师常问的问题</h2>
+          <h2 className="font-display mt-4 text-4xl font-semibold text-[var(--ink-900)]">家长和老师常问的问题</h2>
         </SectionReveal>
         {/* UI v2（审计：FAQ 手风琴）：问题常显，答案默认收起。 */}
         <div className="mx-auto mt-8 max-w-2xl space-y-4">

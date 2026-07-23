@@ -449,6 +449,13 @@ export const showcaseStats = [
   { label: "试点路径", value: "5-10 所重点高中", detail: "先校内验证，再联赛扩张与 SaaS 化" },
 ];
 
+// 交付门审计：首页 hero 三瓦片改讲产品价值指标（B 端赛道叙事 showcaseStats 保留给页内板块）。
+export const heroProductStats = [
+  { label: "课程体系", value: "8 大模块", detail: "覆盖股市、储蓄、房产、创业与家校协同" },
+  { label: "沙盘节奏", value: "12 回合赛季", detail: "每回合都有新的市场主题与事件卡" },
+  { label: "成长反馈", value: "AI 六维成长报告", detail: "AI 行为点评 + 六维雷达，看见习惯变化" },
+];
+
 export const comparisonRows = [
   {
     label: "市场真实度",
